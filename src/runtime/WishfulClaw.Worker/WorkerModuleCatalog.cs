@@ -7,6 +7,7 @@ public static class WorkerModuleCatalog
 {
     public static IReadOnlyList<IWorkerModule> Default { get; } =
     [
-        new SystemModule()
+        new SystemModule(),
+        new ConfigModule()
     ];
 }
