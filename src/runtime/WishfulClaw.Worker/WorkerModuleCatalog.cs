@@ -9,6 +9,7 @@ public static class WorkerModuleCatalog
     [
         new SystemModule(),
         new ConfigModule(),
-        new ProviderModule()
+        new ProviderModule(),
+        new ProviderTestModule()
     ];
 }
