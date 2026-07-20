@@ -1,69 +1,36 @@
+using System.Buffers;
+using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace WishfulClaw.Contracts;
 
-/// <summary>
-/// Worker 响应抽象基类。具体编码逻辑由 Core 层实现。
-/// </summary>
-public abstract class WorkerResponse
+public sealed class WorkerResponse
 {
-    public abstract byte[] ToJsonBytes(JsonElement? id);
+    private readonly Action<Utf8JsonWriter> _resultWriter;
 
-    public static WorkerResponse Json<T>(T result, JsonTypeInfo<T> typeInfo)
+    private WorkerResponse(Action<Utf8JsonWriter> resultWriter)
     {
-        return new JsonWorkerResponse<T>(result, typeInfo);
+        _resultWriter = resultWriter;
+    }
+
+    public static WorkerResponse Json<T>(T result)
+    {
+        return new WorkerResponse(writer => JsonSerializer.Serialize(writer, result));
     }
 
     public static WorkerResponse String(string result)
     {
-        return new StringWorkerResponse(result);
+        return new WorkerResponse(writer => writer.WriteStringValue(result));
     }
 
-    public static WorkerResponse Error(string message)
+    public static WorkerResponse FromWriter(Action<Utf8JsonWriter> writeResult)
     {
-        return new ErrorWorkerResponse(message);
+        return new WorkerResponse(writeResult);
     }
 
     public static WorkerResponse RawJson(string result)
     {
-        return new RawJsonWorkerResponse(result);
-    }
-}
-
-internal sealed class JsonWorkerResponse<T>(T result, JsonTypeInfo<T> typeInfo) : WorkerResponse
-{
-    public override byte[] ToJsonBytes(JsonElement? id)
-    {
-        return WorkerJsonHelper.WriteResponse(id, writer =>
-            JsonSerializer.Serialize(writer, result, typeInfo));
-    }
-}
-
-internal sealed class StringWorkerResponse(string result) : WorkerResponse
-{
-    public override byte[] ToJsonBytes(JsonElement? id)
-    {
-        return WorkerJsonHelper.WriteResponse(id, writer => writer.WriteStringValue(result));
-    }
-}
-
-internal sealed class ErrorWorkerResponse(string message) : WorkerResponse
-{
-    public override byte[] ToJsonBytes(JsonElement? id)
-    {
-        return WorkerJsonHelper.WriteResponse(id, writer =>
-            JsonSerializer.Serialize(writer, new ErrorResult(message),
-                WorkerJsonContext.Default.ErrorResult));
-    }
-}
-
-internal sealed class RawJsonWorkerResponse(string result) : WorkerResponse
-{
-    public override byte[] ToJsonBytes(JsonElement? id)
-    {
-        return WorkerJsonHelper.WriteResponse(id, writer =>
+        return new WorkerResponse(writer =>
         {
             try
             {
@@ -76,24 +43,63 @@ internal sealed class RawJsonWorkerResponse(string result) : WorkerResponse
             }
         });
     }
+
+    public static WorkerResponse Error(string message)
+    {
+        return Json(new ErrorResult(message));
+    }
+
+    public byte[] ToJsonBytes(JsonElement? id)
+    {
+        return WorkerJsonHelper.WriteResponse(id, _resultWriter);
+    }
 }
 
-/// <summary>
-/// 通用数据模型。
-/// </summary>
 public sealed record ErrorResult(string Error);
-
 public sealed record StatusResult(bool Ok, int Pid);
-
 public sealed record WorkerRoutesResult(string[] Methods);
 
-/// <summary>
-/// JSON 序列化上下文（AOT 友好）。
-/// </summary>
-[JsonSourceGenerationOptions(
-    WriteIndented = false,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(ErrorResult))]
-[JsonSerializable(typeof(StatusResult))]
-[JsonSerializable(typeof(WorkerRoutesResult))]
-public partial class WorkerJsonContext : JsonSerializerContext;
+public static class WorkerJsonHelper
+{
+    private static readonly JsonWriterOptions WriterOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    public static byte[] WriteResponse(JsonElement? id, Action<Utf8JsonWriter> writeResult)
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
+        {
+            writer.WriteStartObject();
+            WriteId(writer, id);
+            writer.WritePropertyName("result");
+            writeResult(writer);
+            writer.WriteEndObject();
+        }
+        return buffer.WrittenMemory.ToArray();
+    }
+
+    public static byte[] WriteEvent(string eventName, Action<Utf8JsonWriter> writeParameters)
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("event", eventName);
+            writer.WritePropertyName("params");
+            writeParameters(writer);
+            writer.WriteEndObject();
+        }
+        return buffer.WrittenMemory.ToArray();
+    }
+
+    private static void WriteId(Utf8JsonWriter writer, JsonElement? id)
+    {
+        writer.WritePropertyName("id");
+        if (id.HasValue)
+            id.Value.WriteTo(writer);
+        else
+            writer.WriteNullValue();
+    }
+}

@@ -1,1 +1,1 @@
-// This file is intentionally left empty. Core content will be added in step 3.
+// Placeholder removed — Core/Protocol layer implemented.
