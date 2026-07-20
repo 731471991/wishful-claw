@@ -150,42 +150,57 @@ class NativeWorkerManager {
   }
 
   private async connect(endpoint: string): Promise<void> {
-    const pipeName = endpoint.startsWith('\\\\.\\pipe\\')
-      ? endpoint.slice('\\\\.\\pipe\\'.length)
-      : endpoint
+    // Pass the full endpoint path directly to net.createConnection.
+    // On Windows this is `\\.\pipe\wishful-claw-...`; Node.js handles it natively.
+    // On Unix this is a filesystem socket path.
+    const deadline = Date.now() + CONNECT_TIMEOUT_MS
+    const retryIntervalMs = 200
+    let lastError: Error | null = null
 
-    return new Promise((resolve, reject) => {
-      const socket = net.createConnection(pipeName, () => {
+    while (Date.now() < deadline) {
+      if (this.child?.exitCode !== null && this.child?.exitCode !== undefined) {
+        throw new Error(`Worker exited before IPC connection: code=${this.child.exitCode}`)
+      }
+      try {
+        const socket = await new Promise<net.Socket>((resolve, reject) => {
+          const s = net.createConnection(endpoint)
+          const timer = setTimeout(() => {
+            s.destroy()
+            reject(new Error('connect attempt timeout'))
+          }, 1000)
+
+          s.once('connect', () => {
+            clearTimeout(timer)
+            resolve(s)
+          })
+          s.once('error', (error) => {
+            clearTimeout(timer)
+            s.destroy()
+            reject(error)
+          })
+        })
+
+        // Only attach data/close handlers after successful connection
+        this.socket = socket
+        socket.on('data', (chunk: Buffer) => {
+          this.handleSocketData(chunk)
+        })
+        socket.on('close', () => {
+          if (!this.socket?.destroyed) {
+            this.closeWorker(new Error('Worker IPC closed'))
+          }
+        })
         console.log('[Worker] socket connected')
-        resolve()
-      })
+        return
+      } catch (err) {
+        lastError = err as Error
+        await new Promise((r) => setTimeout(r, retryIntervalMs))
+      }
+    }
 
-      const timeout = setTimeout(() => {
-        socket.destroy()
-        reject(new Error(`Worker connect timeout (${CONNECT_TIMEOUT_MS}ms)`))
-      }, CONNECT_TIMEOUT_MS)
-
-      socket.on('connect', () => {
-        clearTimeout(timeout)
-      })
-
-      socket.on('data', (chunk: Buffer) => {
-        this.handleSocketData(chunk)
-      })
-
-      socket.on('close', () => {
-        if (!this.socket?.destroyed) {
-          this.closeWorker(new Error('Worker IPC closed'))
-        }
-      })
-
-      socket.on('error', (error) => {
-        clearTimeout(timeout)
-        reject(error)
-      })
-
-      this.socket = socket
-    })
+    throw new Error(
+      `Worker connect timed out (${CONNECT_TIMEOUT_MS}ms): ${lastError?.message}`
+    )
   }
 
   private handleSocketData(chunk: Buffer): void {

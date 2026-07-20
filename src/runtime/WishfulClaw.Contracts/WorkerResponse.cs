@@ -15,7 +15,7 @@ public sealed class WorkerResponse
 
     public static WorkerResponse Json<T>(T result)
     {
-        return new WorkerResponse(writer => JsonSerializer.Serialize(writer, result));
+        return new WorkerResponse(writer => JsonSerializer.Serialize(writer, result, WorkerJsonHelper.JsonOptions));
     }
 
     public static WorkerResponse String(string result)
@@ -64,6 +64,12 @@ public static class WorkerJsonHelper
     private static readonly JsonWriterOptions WriterOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    public static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
     public static byte[] WriteResponse(JsonElement? id, Action<Utf8JsonWriter> writeResult)

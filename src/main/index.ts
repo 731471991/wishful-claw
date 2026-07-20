@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
-import { optimizer, is } from '@electron-toolkit/utils'
+
 import { getNativeWorker } from './lib/native-worker'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 
@@ -29,7 +29,7 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
@@ -38,10 +38,6 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   app.setAppUserModelId('com.wishfulclaw.app')
-
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
 
   // Register IPC handler: forward ping to worker
   registerMessagePackHandler<Record<string, unknown>, { ok: boolean; pid: number }>(
