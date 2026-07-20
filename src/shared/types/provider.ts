@@ -12,6 +12,24 @@ export type ProviderType =
 
 export type ModelCategory = 'chat' | 'embedding' | 'image' | 'video'
 
+export type ReasoningEffortLevel =
+  | 'none'
+  | 'minimal'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh'
+  | 'max'
+  | 'ultra'
+
+export interface ThinkingConfig {
+  bodyParams?: Record<string, unknown>
+  disabledBodyParams?: Record<string, unknown>
+  forceTemperature?: number
+  reasoningEffortLevels?: ReasoningEffortLevel[]
+  defaultReasoningEffort?: ReasoningEffortLevel
+}
+
 export interface AIModelConfig {
   id: string
   name: string
@@ -23,6 +41,8 @@ export interface AIModelConfig {
   supportsVision?: boolean
   supportsFunctionCall?: boolean
   supportsThinking?: boolean
+  thinkingConfig?: ThinkingConfig
+  icon?: string
   inputPrice?: number
   outputPrice?: number
 }
