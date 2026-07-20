@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="WishfulClaw.Contracts/WishfulClaw.Contracts.csproj" />
+  <Project Path="WishfulClaw.Core/WishfulClaw.Core.csproj" />
+  <Project Path="WishfulClaw.Worker/WishfulClaw.Worker.csproj" />
+  <Project Path="WishfulClaw.Workspace/WishfulClaw.Workspace.csproj" />
+</Solution>
