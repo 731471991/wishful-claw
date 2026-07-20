@@ -14,6 +14,24 @@ async function invokeMessagePackBinary<T>(channel: string, payload: unknown): Pr
   return decodeMessagePackPayload<T>(response as ArrayBuffer | ArrayBufferView)
 }
 
+/**
+ * Listen for a MessagePack-encoded event from the main process.
+ * Returns an unsubscribe function.
+ */
+function onMessagePackEvent<T = unknown>(
+  channel: string,
+  callback: (payload: T) => void
+): () => void {
+  const binaryChannel = toMessagePackChannel(channel)
+  const handler = (_event: unknown, bytes: ArrayBuffer | ArrayBufferView): void => {
+    callback(decodeMessagePackPayload<T>(bytes))
+  }
+  ipcRenderer.on(binaryChannel, handler)
+  return () => {
+    ipcRenderer.removeListener(binaryChannel, handler)
+  }
+}
+
 const api = {
   ping: () => invokeMessagePackBinary<{ ok: boolean; pid: number }>('worker/ping', {}),
 
@@ -23,7 +41,11 @@ const api = {
 
   // Worker request forwarder — main process forwards to worker via named pipe
   workerRequest: <T = unknown>(method: string, params?: unknown): Promise<T> =>
-    invokeMessagePackBinary<T>('worker:request', { method, params: params ?? {} })
+    invokeMessagePackBinary<T>('worker:request', { method, params: params ?? {} }),
+
+  // Listen for main → renderer push events (e.g. window:maximized)
+  on: <T = unknown>(channel: string, callback: (payload: T) => void): (() => void) =>
+    onMessagePackEvent<T>(channel, callback)
 }
 
 if (process.contextIsolated) {

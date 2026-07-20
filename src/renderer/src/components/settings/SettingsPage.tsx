@@ -1,6 +1,7 @@
 import { ArrowLeft, Server, Info } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
+import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore, type SettingsTab } from '@renderer/stores/ui-store'
 import { ProviderPanel } from '@renderer/components/settings/ProviderPanel'
 import { cn } from '@renderer/lib/utils'
@@ -60,7 +61,7 @@ export function SettingsPage(): React.JSX.Element {
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex h-full min-h-0 w-full flex-col bg-muted/10">
-        {/* Header with back button */}
+        {/* Header with back button + window controls */}
         <header className="relative flex h-10 shrink-0 items-center gap-3 border-b bg-background/90 px-3 backdrop-blur">
           <Button
             variant="ghost"
@@ -77,6 +78,7 @@ export function SettingsPage(): React.JSX.Element {
               管理 AI 服务商和模型
             </div>
           </div>
+          <WindowControls />
         </header>
 
         {/* Body: sidebar + content */}

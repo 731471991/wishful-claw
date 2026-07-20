@@ -1,6 +1,7 @@
 import { MessageSquare, Settings } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore } from '@renderer/stores/ui-store'
 
 
@@ -49,8 +50,9 @@ function MainContent(): React.JSX.Element {
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
       {/* Title bar */}
-      <header className="flex h-10 shrink-0 items-center border-b px-4">
-        <div className="text-sm font-semibold text-foreground/92">Wishful Claw</div>
+      <header className="flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
+        <div className="px-4 text-sm font-semibold text-foreground/92">Wishful Claw</div>
+        <WindowControls />
       </header>
 
       {/* Main area — placeholder for future chat / agent loop */}

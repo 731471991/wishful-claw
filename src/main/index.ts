@@ -4,6 +4,7 @@ import { join } from 'path'
 import { getNativeWorker } from './lib/native-worker'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
+import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -14,11 +15,24 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     show: false,
+    // macOS: hide title bar but keep traffic lights
+    // Windows/Linux: remove frame entirely for custom title bar
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 12, y: 12 } }
+      : { frame: false }),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
+  })
+
+  // Notify renderer when window is maximized/unmaximized
+  mainWindow.on('maximize', () => {
+    safeSendMessagePackToWindow(mainWindow!, 'window:maximized', true)
+  })
+  mainWindow.on('unmaximize', () => {
+    safeSendMessagePackToWindow(mainWindow!, 'window:maximized', false)
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -37,8 +51,32 @@ function createWindow(): void {
   }
 }
 
+function registerWindowControlHandlers(): void {
+  registerMessagePackHandler<void>('window:minimize', (_args, event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize()
+  })
+
+  registerMessagePackHandler<void>('window:maximize', (_args, event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
+
+  registerMessagePackHandler<void>('window:close', (_args, event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close()
+  })
+
+  registerMessagePackHandler<void, boolean>('window:isMaximized', (_args, event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+  })
+}
+
 app.whenReady().then(() => {
   app.setAppUserModelId('com.wishfulclaw.app')
+
+  // Window control handlers (minimize / maximize / close / isMaximized)
+  registerWindowControlHandlers()
 
   // Register IPC handler: forward ping to worker
   registerMessagePackHandler<Record<string, unknown>, { ok: boolean; pid: number }>(

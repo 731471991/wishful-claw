@@ -1,5 +1,6 @@
 import { BrainCircuit, ArrowRight, ShieldCheck, Sparkles, Settings } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore } from '@renderer/stores/ui-store'
 
 export function SplashPage(): React.JSX.Element {
@@ -8,18 +9,23 @@ export function SplashPage(): React.JSX.Element {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
-      {/* Header */}
-      <header className="flex h-14 shrink-0 items-center justify-between px-5">
-        <div className="text-base font-semibold text-foreground">Wishful Claw</div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs text-muted-foreground hover:text-foreground"
-          onClick={() => openSettings('provider')}
-        >
-          <Settings className="size-3.5" />
-          AI 服务商设置
-        </Button>
+      {/* Title bar */}
+      <header className="flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
+        <div className="flex items-center px-3">
+          <div className="text-sm font-semibold text-foreground">Wishful Claw</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => openSettings('provider')}
+          >
+            <Settings className="size-3.5" />
+            AI 服务商设置
+          </Button>
+          <WindowControls />
+        </div>
       </header>
 
       {/* Main content */}
