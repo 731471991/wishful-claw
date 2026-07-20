@@ -3,6 +3,10 @@ import { Toaster } from 'sonner'
 import { ThemeProvider } from '@renderer/components/theme-provider'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { initProviderStore } from '@renderer/stores/provider-store'
+
+// Initialize provider store — ensures builtin presets exist
+initProviderStore()
 import { SplashPage } from '@renderer/components/SplashPage'
 import { MainLayout } from '@renderer/components/layout/MainLayout'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
