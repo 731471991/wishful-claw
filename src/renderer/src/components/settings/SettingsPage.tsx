@@ -1,15 +1,27 @@
-import { ArrowLeft, Server, Info } from 'lucide-react'
+import { ArrowLeft, Server, Info, Settings } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore, type SettingsTab } from '@renderer/stores/ui-store'
 import { ProviderPanel } from '@renderer/components/settings/ProviderPanel'
+import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { cn } from '@renderer/lib/utils'
 
 const menuGroups: Array<{
   label: string
   items: { id: SettingsTab; icon: React.ReactNode; label: string; desc: string }[]
 }> = [
+  {
+    label: '通用',
+    items: [
+      {
+        id: 'general',
+        icon: <Settings className="size-4" />,
+        label: '通用',
+        desc: '主题、外观和偏好设置'
+      }
+    ]
+  },
   {
     label: 'AI 服务',
     items: [
@@ -129,6 +141,10 @@ export function SettingsPage(): React.JSX.Element {
             {settingsTab === 'provider' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <ProviderPanel />
+              </div>
+            ) : settingsTab === 'general' ? (
+              <div className="flex-1 overflow-y-auto">
+                <GeneralPanel />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
