@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Plus,
   Search,
@@ -166,6 +166,18 @@ function ModelFormDialog({
   const [supportsFunctionCall, setSupportsFunctionCall] = useState(
     initial?.supportsFunctionCall ?? true
   )
+
+  // Reset form state whenever the dialog opens or the initial model changes
+  useEffect(() => {
+    if (open) {
+      setId(initial?.id ?? '')
+      setName(initial?.name ?? '')
+      setContextLength(initial?.contextLength?.toString() ?? '128000')
+      setMaxOutputTokens(initial?.maxOutputTokens?.toString() ?? '16384')
+      setSupportsVision(initial?.supportsVision ?? false)
+      setSupportsFunctionCall(initial?.supportsFunctionCall ?? true)
+    }
+  }, [open, initial])
 
   const handleSave = (): void => {
     if (!id.trim()) return

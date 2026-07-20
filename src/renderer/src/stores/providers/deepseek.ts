@@ -4,31 +4,50 @@ export const deepseekPreset: BuiltinProviderPreset = {
   builtinId: 'deepseek',
   version: 1,
   name: 'DeepSeek',
-  type: 'openai-chat',
-  defaultBaseUrl: 'https://api.deepseek.com/v1',
-  homepage: 'https://deepseek.com',
+  type: 'anthropic',
+  defaultBaseUrl: 'https://api.deepseek.com/anthropic',
+  homepage: 'https://platform.deepseek.com',
   apiKeyUrl: 'https://platform.deepseek.com/api_keys',
-  defaultModel: 'deepseek-chat',
+  defaultModel: 'deepseek-v4-flash',
   defaultModels: [
     {
-      id: 'deepseek-chat',
-      name: 'DeepSeek Chat',
+      id: 'deepseek-v4-flash',
+      name: 'DeepSeek V4 Flash',
+      icon: 'deepseek',
       enabled: true,
-      contextLength: 64_000,
-      maxOutputTokens: 8_192,
+      contextLength: 1_000_000,
+      maxOutputTokens: 384_000,
+      supportsVision: false,
       supportsFunctionCall: true,
       inputPrice: 0.14,
-      outputPrice: 0.28
+      outputPrice: 0.28,
+      cacheCreationPrice: 0.14,
+      cacheHitPrice: 0.0028,
+      supportsThinking: true,
+      thinkingConfig: {
+        bodyParams: { enable_thinking: true },
+        disabledBodyParams: { enable_thinking: false }
+      }
     },
     {
-      id: 'deepseek-reasoner',
-      name: 'DeepSeek Reasoner',
+      id: 'deepseek-v4-pro',
+      name: 'DeepSeek V4 Pro',
+      icon: 'deepseek',
       enabled: true,
-      contextLength: 64_000,
-      maxOutputTokens: 8_192,
+      contextLength: 1_000_000,
+      maxOutputTokens: 384_000,
+      supportsVision: false,
+      supportsFunctionCall: true,
+      inputPrice: 0.435,
+      outputPrice: 0.87,
+      cacheCreationPrice: 0.435,
+      cacheHitPrice: 0.003625,
       supportsThinking: true,
-      inputPrice: 0.55,
-      outputPrice: 2.19
+      thinkingConfig: {
+        bodyParams: { enable_thinking: true },
+        disabledBodyParams: { enable_thinking: false }
+      }
     }
-  ]
+  ],
+  deprecatedModelIds: ['deepseek-chat', 'deepseek-reasoner']
 }

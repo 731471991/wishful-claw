@@ -72,19 +72,56 @@ function createCustomProvider(name: string, type: ProviderType, baseUrl: string)
 /**
  * Ensure all builtin presets exist in the provider list.
  * Missing presets are added with defaultEnabled state.
+ * Existing presets with outdated version are upgraded:
+ *   - New models from the preset are added (preserving user-added models)
+ *   - Preset model metadata (price, context, thinking config, etc.) is refreshed
+ *   - Provider type/baseUrl are updated if the preset changed them
+ *   - User customizations (apiKey, enabled, per-model enabled flags) are preserved
  * Called on store initialization (after hydration).
  */
 function ensureBuiltinPresets(): void {
   const currentProviders = useProviderStore.getState().providers
+  let changed = false
+  const nextProviders = [...currentProviders]
 
   for (const preset of builtinProviderPresets) {
-    const existing = currentProviders.find(p => p.builtinId === preset.builtinId)
-    if (!existing) {
+    const existing = currentProviders.findIndex(p => p.builtinId === preset.builtinId)
+    if (existing === -1) {
+      // Missing preset — add it
       const provider = createProviderFromPreset(preset)
-      useProviderStore.setState(state => ({
-        providers: [...state.providers, provider]
-      }))
+      nextProviders.push(provider)
+      changed = true
+      continue
     }
+
+    const current = currentProviders[existing]
+    if ((current.presetVersion ?? 0) >= preset.version) continue
+
+    // Version upgrade — refresh model list while preserving user state
+    const presetModelIds = new Set(preset.defaultModels.map(m => m.id))
+    const userCustomModels = current.models.filter(m => !presetModelIds.has(m.id))
+
+    // For preset models, preserve user's enabled flag; refresh all other metadata
+    const refreshedModels = preset.defaultModels.map(presetModel => {
+      const userModel = current.models.find(m => m.id === presetModel.id)
+      if (userModel) {
+        return { ...presetModel, enabled: userModel.enabled }
+      }
+      return { ...presetModel }
+    })
+
+    nextProviders[existing] = {
+      ...current,
+      type: preset.type,
+      baseUrl: preset.defaultBaseUrl,
+      models: [...refreshedModels, ...userCustomModels],
+      presetVersion: preset.version
+    }
+    changed = true
+  }
+
+  if (changed) {
+    useProviderStore.setState({ providers: nextProviders })
   }
 }
 

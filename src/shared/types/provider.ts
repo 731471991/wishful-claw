@@ -8,9 +8,14 @@ export type ProviderType =
   | 'anthropic'
   | 'openai-chat'
   | 'openai-responses'
+  | 'openai-images'
   | 'gemini'
 
-export type ModelCategory = 'chat' | 'embedding' | 'image' | 'video'
+export type ModelCategory = 'chat' | 'speech' | 'embedding' | 'image' | 'video'
+
+export type ResponseSummary = 'auto' | 'concise' | 'detailed'
+
+export type ServiceTier = 'auto' | 'default' | 'flex' | 'priority'
 
 export type ReasoningEffortLevel =
   | 'none'
@@ -41,10 +46,17 @@ export interface AIModelConfig {
   supportsVision?: boolean
   supportsFunctionCall?: boolean
   supportsThinking?: boolean
+  supportsComputerUse?: boolean
   thinkingConfig?: ThinkingConfig
   icon?: string
   inputPrice?: number
   outputPrice?: number
+  cacheCreationPrice?: number
+  cacheHitPrice?: number
+  enablePromptCache?: boolean
+  enableSystemPromptCache?: boolean
+  responseSummary?: ResponseSummary
+  serviceTier?: ServiceTier
 }
 
 export interface RequestOverrides {
@@ -78,6 +90,7 @@ export interface BuiltinProviderPreset {
   type: ProviderType
   defaultBaseUrl: string
   defaultModels: AIModelConfig[]
+  deprecatedModelIds?: string[]
   defaultEnabled?: boolean
   requiresApiKey?: boolean
   homepage: string
