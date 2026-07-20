@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { useProviderStore, builtinProviderPresets } from '../../stores/provider-store'
+import { useProviderStore, builtinProviderPresets } from '@renderer/stores/provider-store'
 import type { AIProvider, AIModelConfig, BuiltinProviderPreset } from '../../../../shared/types/provider'
 
 export function ProviderPanel({ onClose }: { onClose?: () => void }) {

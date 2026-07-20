@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
 import type { AIProvider, AIModelConfig, BuiltinProviderPreset } from '../../../shared/types/provider'
-import { builtinProviderPresets } from './providers'
-import { aiProviderStorage } from '../lib/ipc/ai-provider-storage'
+import { builtinProviderPresets } from '@renderer/stores/providers'
+import { aiProviderStorage } from '@renderer/lib/ipc/ai-provider-storage'
 
 const STORAGE_KEY = 'wishful-claw-providers'
 

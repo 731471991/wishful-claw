@@ -1,4 +1,4 @@
-import { createIpcStateStorage } from './ipc-state-storage'
+import { createIpcStateStorage } from '@renderer/lib/ipc/ipc-state-storage'
 
 /**
  * Zustand storage for provider state. The main process persists this into

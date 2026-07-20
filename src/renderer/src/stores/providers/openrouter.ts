@@ -1,4 +1,4 @@
-import type { BuiltinProviderPreset } from './types'
+import type { BuiltinProviderPreset } from '@renderer/stores/providers/types'
 
 export const openrouterPreset: BuiltinProviderPreset = {
   builtinId: 'openrouter',
