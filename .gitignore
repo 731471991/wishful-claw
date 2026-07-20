@@ -1,0 +1,44 @@
+# .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.user
+*.suo
+*.cache
+*.log
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+dist/
+*.tsbuildinfo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Secrets
+.env
+.env.local
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+*.key
+
+# Build
+publish/
+artifacts/
+TestResults/
+
+# Logs
+logs/
+*.log
