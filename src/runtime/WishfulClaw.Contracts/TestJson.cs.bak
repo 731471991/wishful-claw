@@ -1,0 +1,13 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace WishfulClaw.Contracts;
+
+public static class TestJson
+{
+    public static void Test()
+    {
+        JsonSerializerOptions opts = new();
+        JsonTypeInfo<string> info = opts.GetTypeInfo(typeof(string)) as JsonTypeInfo<string>;
+    }
+}

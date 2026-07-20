@@ -42,3 +42,5 @@ TestResults/
 # Logs
 logs/
 *.log
+out/
+package-lock.json

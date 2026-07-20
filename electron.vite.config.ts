@@ -1,0 +1,21 @@
+import { resolve } from 'path'
+import { defineConfig } from 'electron-vite'
+import react from '@vitejs/plugin-react'
+
+// Ensure Electron runs in app mode with the correct binary
+// (WPS Lingxi sets these env vars which interfere with our dev server)
+delete process.env.ELECTRON_RUN_AS_NODE
+delete process.env.ELECTRON_EXEC_PATH
+
+export default defineConfig({
+  main: {},
+  preload: {},
+  renderer: {
+    resolve: {
+      alias: {
+        '@renderer': resolve('src/renderer/src')
+      }
+    },
+    plugins: [react()]
+  }
+})
