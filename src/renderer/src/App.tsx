@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
+import { ProviderPanel } from './components/settings/ProviderPanel'
 
 export function App() {
-  const [result, setResult] = useState<string>('—')
+  const [view, setView] = useState<'home' | 'settings'>('home')
+  const [pingResult, setPingResult] = useState<string>('—')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -10,14 +12,18 @@ export function App() {
     setError(null)
     try {
       const res = await window.api.ping()
-      setResult(`ok=${res.ok}, pid=${res.pid}`)
+      setPingResult(`ok=${res.ok}, pid=${res.pid}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-      setResult('FAILED')
+      setPingResult('FAILED')
     } finally {
       setIsLoading(false)
     }
   }, [])
+
+  if (view === 'settings') {
+    return <ProviderPanel onClose={() => setView('home')} />
+  }
 
   return (
     <div
@@ -31,7 +37,7 @@ export function App() {
       }}
     >
       <h1 style={{ fontSize: '2rem', fontWeight: 600 }}>Wishful Claw</h1>
-      <p style={{ color: '#888' }}>迭代一：项目骨架 — Ping/Pong 验证</p>
+      <p style={{ color: '#888' }}>迭代二：AI 服务商 + 模型管理</p>
 
       <button
         onClick={handlePing}
@@ -63,9 +69,24 @@ export function App() {
       >
         <div style={{ color: '#888', marginBottom: '4px' }}>Response:</div>
         <div style={{ color: error ? '#e74c3c' : '#55efc4' }}>
-          {error ? `Error: ${error}` : result}
+          {error ? `Error: ${error}` : pingResult}
         </div>
       </div>
+
+      <button
+        onClick={() => setView('settings')}
+        style={{
+          padding: '8px 20px',
+          fontSize: '0.9rem',
+          cursor: 'pointer',
+          background: '#2a2a3e',
+          color: '#ccc',
+          border: '1px solid #3a3a4e',
+          borderRadius: '6px'
+        }}
+      >
+        ⚙ Provider 设置
+      </button>
     </div>
   )
 }
