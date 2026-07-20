@@ -8,6 +8,7 @@ public static class WorkerModuleCatalog
     public static IReadOnlyList<IWorkerModule> Default { get; } =
     [
         new SystemModule(),
-        new ConfigModule()
+        new ConfigModule(),
+        new ProviderModule()
     ];
 }
