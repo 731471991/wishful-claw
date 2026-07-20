@@ -34,7 +34,7 @@ interface ProviderState {
   setModels: (providerId: string, models: AIModelConfig[]) => void
 
   // ── Worker API (test + fetch models) ──
-  testConnection: (provider: AIProvider) => Promise<{ ok: boolean; statusCode?: number; error?: string }>
+  testConnection: (provider: AIProvider, modelId?: string) => Promise<{ ok: boolean; statusCode?: number; error?: string }>
   fetchModels: (provider: AIProvider) => Promise<AIModelConfig[]>
 }
 
@@ -224,12 +224,13 @@ export const useProviderStore = create<ProviderState>()(
         }))
       },
 
-      testConnection: async (provider) => {
+      testConnection: async (provider, modelId) => {
         return window.api.workerRequest('provider/test', {
           type: provider.type,
           baseUrl: provider.baseUrl,
           apiKey: provider.apiKey,
-          builtinId: provider.builtinId
+          builtinId: provider.builtinId,
+          modelId
         })
       },
 

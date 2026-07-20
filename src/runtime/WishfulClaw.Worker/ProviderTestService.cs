@@ -112,7 +112,8 @@ internal static class ProviderTestService
         string Type,
         string BaseUrl,
         string ApiKey,
-        string? BuiltinId);
+        string? BuiltinId,
+        string? ModelId);
 
     private static ProviderConfig? ExtractProviderConfig(JsonElement parameters)
     {
@@ -139,7 +140,8 @@ internal static class ProviderTestService
             return null;
         }
 
-        return new ProviderConfig(type!, baseUrl!, apiKey, builtinId);
+        var modelId = JsonHelpers.GetString(parameters, "modelId");
+        return new ProviderConfig(type!, baseUrl!, apiKey, builtinId, modelId);
     }
 
     private static (string url, HttpRequestMessage request) BuildTestRequest(ProviderConfig provider)
@@ -155,7 +157,7 @@ internal static class ProviderTestService
             request.Content = new StringContent(
                 JsonSerializer.Serialize(new
                 {
-                    model = "claude-3-5-haiku-20241022",
+                    model = provider.ModelId ?? "claude-3-5-haiku-20241022",
                     max_tokens = 1,
                     messages = new[] { new { role = "user", content = "Hi" } }
                 }),
@@ -174,7 +176,7 @@ internal static class ProviderTestService
         req.Content = new StringContent(
             JsonSerializer.Serialize(new
             {
-                model = "gpt-4o-mini",
+                model = provider.ModelId ?? "gpt-4o-mini",
                 max_tokens = 1,
                 messages = new[] { new { role = "user", content = "Hi" } }
             }),

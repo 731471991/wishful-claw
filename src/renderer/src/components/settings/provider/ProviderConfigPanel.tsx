@@ -132,7 +132,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await testConnection(provider)
+      const result = await testConnection(provider, testModelId)
       setTestResult(result)
       if (result.ok) {
         toast.success('连接测试成功')
@@ -348,35 +348,6 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
             <p className="text-[11px] text-muted-foreground">Anthropic 缓存生存时间，模型级配置可覆盖</p>
           </section>
         )}
-
-        {/* Request parameter carrying (provider-level) */}
-        <section className="mt-5 space-y-3">
-          <label className="text-sm font-medium">请求参数</label>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-xs">发送 max_tokens</p>
-              <p className="text-[11px] text-muted-foreground">是否在请求中包含最大输出 Token 参数</p>
-            </div>
-            <Switch
-              checked={provider.sendMaxOutputTokens !== false}
-              onCheckedChange={(checked) =>
-                updateProvider(provider.id, { sendMaxOutputTokens: checked })
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-xs">发送 temperature</p>
-              <p className="text-[11px] text-muted-foreground">是否在请求中包含 temperature 参数</p>
-            </div>
-            <Switch
-              checked={provider.sendTemperature !== false}
-              onCheckedChange={(checked) =>
-                updateProvider(provider.id, { sendTemperature: checked })
-              }
-            />
-          </div>
-        </section>
 
         <Separator className="my-5" />
 
