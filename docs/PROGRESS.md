@@ -1,16 +1,20 @@
 # 开发进度
 
 ## 迭代一：项目骨架
-- 状态：未开始
-- Plan: —
+- 状态：进行中（步骤1-8完成，步骤9集成验证待 Electron 安装）
+- 分支：dev/iter-1
+- Plan: docs/plans/plan_001/
 - VERDICT: —
-- Commit: —
-- 日期: —
+- Tag: —
+- Commit: 70a610b
+- 日期: 2026-07-20
+- 备注：前端工程搭建完成（typecheck + build 通过），.NET 后端编译通过，Worker 可启动。Electron 二进制安装因文件锁定失败，需手动清理后重新安装。
 
 ## 迭代二：AI 服务商 + 模型管理
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
 
@@ -18,6 +22,7 @@
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
 
@@ -25,6 +30,7 @@
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
 
@@ -32,6 +38,7 @@
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
 
@@ -39,6 +46,7 @@
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
 
@@ -46,6 +54,7 @@
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
 
@@ -53,5 +62,6 @@
 - 状态：未开始
 - Plan: —
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
