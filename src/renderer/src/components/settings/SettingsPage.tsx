@@ -74,9 +74,6 @@ export function SettingsPage(): React.JSX.Element {
           </Button>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-foreground/92">设置</div>
-            <div className="hidden truncate text-[11px] text-muted-foreground sm:block">
-              管理 AI 服务商和模型
-            </div>
           </div>
           <WindowControls />
         </header>
