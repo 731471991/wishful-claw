@@ -13,7 +13,12 @@ import {
   Pencil,
   Brain,
   Sparkles,
-  Code2
+  Code2,
+  Image as ImageIcon,
+  Mic,
+  Video,
+  Shapes,
+  MonitorSmartphone
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
@@ -50,14 +55,43 @@ import type {
   AIProvider,
   AIModelConfig,
   ProviderType,
+  ModelCategory,
   ThinkingConfig,
-  ReasoningEffortLevel
+  ReasoningEffortLevel,
 } from '../../../../shared/types/provider'
 import { cn } from '@renderer/lib/utils'
+
+// ─── Constants ───
 
 const REASONING_EFFORT_OPTIONS: ReasoningEffortLevel[] = [
   'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'
 ]
+
+const MODEL_ICON_OPTIONS = [
+  'openai', 'claude', 'anthropic', 'gemini', 'deepseek', 'qwen',
+  'chatglm', 'minimax', 'kimi', 'moonshot', 'grok', 'meta',
+  'llama', 'mistral', 'baidu', 'hunyuan', 'nvidia', 'stepfun',
+  'doubao', 'ollama', 'siliconcloud', 'mimo', 'bigmodel'
+] as const
+
+const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
+  'anthropic': 'Anthropic Messages',
+  'openai-chat': 'OpenAI Chat (兼容)',
+  'openai-responses': 'OpenAI Responses',
+  'openai-images': 'OpenAI Images',
+  'seedance-video': 'Seedance Video (Volcengine)',
+  'xai-video': 'xAI Video',
+  'gemini': 'Gemini',
+  'vertex-ai': 'Vertex AI'
+}
+
+const MIN_COMPRESSION_THRESHOLD = 0.3
+const MAX_COMPRESSION_THRESHOLD = 0.9
+const DEFAULT_COMPRESSION_THRESHOLD = 0.8
+
+function clampCompressionThreshold(value: number): number {
+  return Math.min(MAX_COMPRESSION_THRESHOLD, Math.max(MIN_COMPRESSION_THRESHOLD, value))
+}
 
 function toRoundedTokenThousands(value: number): string {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
@@ -80,7 +114,7 @@ function AddProviderDialog({
   const [baseUrl, setBaseUrl] = useState('')
 
   const handleAdd = (): void => {
-    if (!name.trim() || !baseUrl.trim()) return
+    if (!name.trim()) return
     addCustomProvider(name.trim(), type, baseUrl.trim())
     toast.success(`已添加 ${name.trim()}`)
     setName('')
@@ -88,6 +122,11 @@ function AddProviderDialog({
     setType('openai-chat')
     onOpenChange(false)
   }
+
+  const providerTypeOptions: ProviderType[] = [
+    'openai-chat', 'openai-responses', 'anthropic', 'gemini',
+    'openai-images', 'seedance-video', 'xai-video'
+  ]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -113,8 +152,9 @@ function AddProviderDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="openai-chat">OpenAI Chat (兼容)</SelectItem>
-                <SelectItem value="anthropic">Anthropic Messages</SelectItem>
+                {providerTypeOptions.map((t) => (
+                  <SelectItem key={t} value={t}>{PROVIDER_TYPE_LABELS[t]}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -128,12 +168,8 @@ function AddProviderDialog({
             <p className="text-xs text-muted-foreground">API 的基础地址，通常以 /v1 结尾</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button disabled={!name.trim() || !baseUrl.trim()} onClick={handleAdd}>
-              添加
-            </Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button disabled={!name.trim()} onClick={handleAdd}>添加</Button>
           </div>
         </div>
       </DialogContent>
@@ -146,120 +182,519 @@ function AddProviderDialog({
 function ModelFormDialog({
   open,
   onOpenChange,
+  providerType,
   initial,
   onSave
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
+  providerType?: ProviderType | null
   initial?: AIModelConfig
   onSave: (model: AIModelConfig) => void
 }): React.JSX.Element {
-  const [id, setId] = useState(initial?.id ?? '')
-  const [name, setName] = useState(initial?.name ?? '')
-  const [contextLength, setContextLength] = useState(
-    initial?.contextLength?.toString() ?? '128000'
+  const isEdit = !!initial
+
+  const [id, setId] = useState('')
+  const [name, setName] = useState('')
+  const [typeOverride, setTypeOverride] = useState<ProviderType | 'none'>('none')
+  const [category, setCategory] = useState<ModelCategory>('chat')
+  const [contextLength, setContextLength] = useState('')
+  const [maxOutputTokens, setMaxOutputTokens] = useState('')
+  const [contextCompressionThreshold, setContextCompressionThreshold] = useState(
+    Math.round(DEFAULT_COMPRESSION_THRESHOLD * 100).toString()
   )
-  const [maxOutputTokens, setMaxOutputTokens] = useState(
-    initial?.maxOutputTokens?.toString() ?? '16384'
-  )
-  const [supportsVision, setSupportsVision] = useState(initial?.supportsVision ?? false)
-  const [supportsFunctionCall, setSupportsFunctionCall] = useState(
-    initial?.supportsFunctionCall ?? true
-  )
+  const [inputPrice, setInputPrice] = useState('')
+  const [outputPrice, setOutputPrice] = useState('')
+  const [cacheCreationPrice, setCacheCreationPrice] = useState('')
+  const [cacheHitPrice, setCacheHitPrice] = useState('')
+  const [premiumRequestMultiplier, setPremiumRequestMultiplier] = useState('')
+  const [availablePlans, setAvailablePlans] = useState('')
+  const [supportsVision, setSupportsVision] = useState(false)
+  const [supportsFunctionCall, setSupportsFunctionCall] = useState(true)
+  const [supportsComputerUse, setSupportsComputerUse] = useState(false)
+  const [enableComputerUse, setEnableComputerUse] = useState(false)
+  const [supportsBuiltinSearch, setSupportsBuiltinSearch] = useState(false)
+  const [enableBuiltinSearch, setEnableBuiltinSearch] = useState(true)
+  const [supportsFastMode, setSupportsFastMode] = useState(false)
+  const [supportsWebsocket, setSupportsWebsocket] = useState(false)
+  const [supportsImageGeneration, setSupportsImageGeneration] = useState(false)
+  const [icon, setIcon] = useState('')
+  const [responseSummary, setResponseSummary] = useState<'auto' | 'concise' | 'detailed' | 'none'>('none')
+  const [websocketMode, setWebsocketMode] = useState<'auto' | 'disabled'>('disabled')
+  const [enableSystemPromptCache, setEnableSystemPromptCache] = useState(true)
+  const [cacheTtl, setCacheTtl] = useState<'5m' | '1h'>('5m')
 
   // Reset form state whenever the dialog opens or the initial model changes
   useEffect(() => {
-    if (open) {
-      setId(initial?.id ?? '')
-      setName(initial?.name ?? '')
-      setContextLength(initial?.contextLength?.toString() ?? '128000')
-      setMaxOutputTokens(initial?.maxOutputTokens?.toString() ?? '16384')
-      setSupportsVision(initial?.supportsVision ?? false)
-      setSupportsFunctionCall(initial?.supportsFunctionCall ?? true)
-    }
+    if (!open) return
+    setId(initial?.id ?? '')
+    setName(initial?.name ?? '')
+    setTypeOverride(initial?.type ?? 'none')
+    setCategory(initial?.category ?? 'chat')
+    setContextLength(initial?.contextLength?.toString() ?? '')
+    setMaxOutputTokens(initial?.maxOutputTokens?.toString() ?? '')
+    setContextCompressionThreshold(
+      Math.round(
+        clampCompressionThreshold(
+          initial?.contextCompressionThreshold ?? DEFAULT_COMPRESSION_THRESHOLD
+        ) * 100
+      ).toString()
+    )
+    setInputPrice(initial?.inputPrice?.toString() ?? '')
+    setOutputPrice(initial?.outputPrice?.toString() ?? '')
+    setCacheCreationPrice(initial?.cacheCreationPrice?.toString() ?? '')
+    setCacheHitPrice(initial?.cacheHitPrice?.toString() ?? '')
+    setPremiumRequestMultiplier(initial?.premiumRequestMultiplier?.toString() ?? '')
+    setAvailablePlans(initial?.availablePlans?.join(', ') ?? '')
+    setSupportsVision(initial?.supportsVision ?? false)
+    setSupportsFunctionCall(initial?.supportsFunctionCall ?? true)
+    setSupportsComputerUse(initial?.supportsComputerUse ?? false)
+    setEnableComputerUse(initial?.enableComputerUse ?? false)
+    setSupportsBuiltinSearch(initial?.supportsBuiltinSearch ?? false)
+    setEnableBuiltinSearch(initial?.enableBuiltinSearch ?? true)
+    setSupportsFastMode(initial?.serviceTier === 'priority')
+    setSupportsWebsocket(initial?.supportsWebsocket ?? false)
+    setSupportsImageGeneration(initial?.supportsImageGeneration ?? false)
+    setIcon(initial?.icon ?? '')
+    setResponseSummary(initial?.responseSummary ?? 'none')
+    setWebsocketMode(initial?.websocketMode ?? 'disabled')
+    setEnableSystemPromptCache(initial?.enableSystemPromptCache ?? true)
+    setCacheTtl(initial?.cacheTtl ?? '5m')
   }, [open, initial])
 
+  const requestType = typeOverride === 'none' ? providerType : typeOverride
+  const isResponsesModel = requestType === 'openai-responses'
+  const isAnthropicModel = requestType === 'anthropic'
+  const isOpenAiChatModel = requestType === 'openai-chat'
+
   const handleSave = (): void => {
-    if (!id.trim()) return
-    onSave({
-      id: id.trim(),
-      name: name.trim() || id.trim(),
+    const modelId = id.trim()
+    if (!modelId) return
+
+    const model: AIModelConfig = {
+      id: modelId,
+      name: name.trim() || modelId,
       enabled: initial?.enabled ?? true,
-      contextLength: Number(contextLength) || 128000,
-      maxOutputTokens: Number(maxOutputTokens) || 16384,
-      supportsVision,
-      supportsFunctionCall,
-      ...(initial?.supportsThinking !== undefined ? { supportsThinking: initial.supportsThinking } : {}),
-      ...(initial?.thinkingConfig ? { thinkingConfig: initial.thinkingConfig } : {})
-    })
-    setId('')
-    setName('')
+      category
+    }
+
+    if (typeOverride && typeOverride !== 'none') model.type = typeOverride
+    if (contextLength.trim()) {
+      const v = parseInt(contextLength)
+      if (!isNaN(v)) model.contextLength = v
+    }
+    if (maxOutputTokens.trim()) {
+      const v = parseInt(maxOutputTokens)
+      if (!isNaN(v)) model.maxOutputTokens = v
+    }
+    if (contextCompressionThreshold.trim()) {
+      const v = parseFloat(contextCompressionThreshold)
+      if (!isNaN(v)) model.contextCompressionThreshold = clampCompressionThreshold(v / 100)
+    }
+    if (inputPrice.trim()) {
+      const v = parseFloat(inputPrice)
+      if (!isNaN(v)) model.inputPrice = v
+    }
+    if (outputPrice.trim()) {
+      const v = parseFloat(outputPrice)
+      if (!isNaN(v)) model.outputPrice = v
+    }
+    if (cacheCreationPrice.trim()) {
+      const v = parseFloat(cacheCreationPrice)
+      if (!isNaN(v)) model.cacheCreationPrice = v
+    }
+    if (cacheHitPrice.trim()) {
+      const v = parseFloat(cacheHitPrice)
+      if (!isNaN(v)) model.cacheHitPrice = v
+    }
+    if (premiumRequestMultiplier.trim()) {
+      const v = parseFloat(premiumRequestMultiplier)
+      if (!isNaN(v)) model.premiumRequestMultiplier = v
+    }
+    const parsedPlans = availablePlans.split(',').map(s => s.trim()).filter(Boolean)
+    if (parsedPlans.length > 0) model.availablePlans = parsedPlans
+
+    model.supportsVision = supportsVision
+    model.supportsFunctionCall = supportsFunctionCall
+    model.supportsComputerUse = supportsComputerUse
+    model.enableComputerUse = supportsComputerUse && enableComputerUse
+
+    if (isAnthropicModel || isResponsesModel) {
+      model.supportsBuiltinSearch = supportsBuiltinSearch
+      model.enableBuiltinSearch = supportsBuiltinSearch && enableBuiltinSearch
+    }
+    if (isResponsesModel || isOpenAiChatModel) {
+      if (supportsFastMode) model.serviceTier = 'priority'
+    }
+    if (icon.trim()) model.icon = icon.trim()
+    if (responseSummary && responseSummary !== 'none') model.responseSummary = responseSummary
+    model.enableSystemPromptCache = enableSystemPromptCache
+    model.cacheTtl = cacheTtl
+
+    if (isResponsesModel) {
+      model.supportsWebsocket = supportsWebsocket
+      model.websocketMode = supportsWebsocket ? websocketMode : 'disabled'
+      model.supportsImageGeneration = supportsImageGeneration
+    }
+
+    // preserve thinking config if editing
+    if (initial?.supportsThinking) model.supportsThinking = initial.supportsThinking
+    if (initial?.thinkingConfig) model.thinkingConfig = initial.thinkingConfig
+
+    onSave(model)
     onOpenChange(false)
   }
 
+  const typeOverrideOptions: ProviderType[] = [
+    'openai-chat', 'openai-responses', 'anthropic', 'gemini',
+    'openai-images', 'seedance-video', 'xai-video'
+  ]
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{initial ? '编辑模型' : '添加模型'}</DialogTitle>
+          <DialogTitle>{isEdit ? '编辑模型' : '添加模型'}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? `修改 ${initial?.name} 的配置` : '配置新模型的参数和能力'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">模型 ID</label>
-            <Input
-              placeholder="gpt-4o-mini"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              autoFocus
-              disabled={!!initial}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">显示名称</label>
-            <Input
-              placeholder="GPT-4o Mini"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
+          {/* ID + Name */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">上下文长度</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">模型 ID *</label>
+              <Input
+                placeholder="gpt-4o-mini"
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                disabled={isEdit}
+                autoFocus={!isEdit}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">显示名称</label>
+              <Input
+                placeholder="GPT-4o Mini"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus={isEdit}
+                className="text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Protocol type override */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">协议覆盖</label>
+            <p className="text-[11px] text-muted-foreground">
+              {providerType
+                ? `不选则跟随服务商协议 (${PROVIDER_TYPE_LABELS[providerType]})`
+                : '不选则跟随服务商协议'}
+            </p>
+            <Select value={typeOverride} onValueChange={(v) => setTypeOverride(v as ProviderType | 'none')}>
+              <SelectTrigger className="text-xs">
+                <SelectValue placeholder="跟随服务商协议" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs">跟随服务商协议</SelectItem>
+                {typeOverrideOptions.map((t) => (
+                  <SelectItem key={t} value={t} className="text-xs">{PROVIDER_TYPE_LABELS[t]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Model category */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">模型分类</label>
+            <p className="text-[11px] text-muted-foreground">该模型的使用方式</p>
+            <Select value={category} onValueChange={(v) => setCategory(v as ModelCategory)}>
+              <SelectTrigger className="text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chat" className="text-xs">对话</SelectItem>
+                <SelectItem value="speech" className="text-xs">语音</SelectItem>
+                <SelectItem value="embedding" className="text-xs">嵌入</SelectItem>
+                <SelectItem value="image" className="text-xs">图像</SelectItem>
+                <SelectItem value="video" className="text-xs">视频</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Context + Max output */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">上下文长度</label>
               <Input
                 type="number"
+                placeholder="128000"
                 value={contextLength}
                 onChange={(e) => setContextLength(e.target.value)}
+                className="text-xs"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">最大输出 Token</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">最大输出 Token</label>
               <Input
                 type="number"
+                placeholder="4096"
                 value={maxOutputTokens}
                 onChange={(e) => setMaxOutputTokens(e.target.value)}
+                className="text-xs"
               />
             </div>
           </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <label className="text-sm font-medium">支持视觉</label>
-              <p className="text-xs text-muted-foreground">模型可以处理图片输入</p>
-            </div>
-            <Switch checked={supportsVision} onCheckedChange={setSupportsVision} />
+
+          {/* Context compression threshold */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">上下文压缩触发比例</label>
+            <p className="text-[11px] text-muted-foreground">
+              当上下文使用量达到此比例时触发压缩（{Math.round(MIN_COMPRESSION_THRESHOLD * 100)}-{Math.round(MAX_COMPRESSION_THRESHOLD * 100)}%）
+            </p>
+            <Input
+              type="number"
+              min={Math.round(MIN_COMPRESSION_THRESHOLD * 100)}
+              max={Math.round(MAX_COMPRESSION_THRESHOLD * 100)}
+              placeholder="80"
+              value={contextCompressionThreshold}
+              onChange={(e) => setContextCompressionThreshold(e.target.value)}
+              className="text-xs"
+            />
           </div>
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div>
-              <label className="text-sm font-medium">支持函数调用</label>
-              <p className="text-xs text-muted-foreground">模型支持 tool/function calling</p>
+
+          {/* Pricing */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">
+              定价 <span className="text-muted-foreground font-normal">(USD / 百万 Token)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">输入价格</p>
+                <Input
+                  type="number" step="0.01" placeholder="0.00"
+                  value={inputPrice}
+                  onChange={(e) => setInputPrice(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">输出价格</p>
+                <Input
+                  type="number" step="0.01" placeholder="0.00"
+                  value={outputPrice}
+                  onChange={(e) => setOutputPrice(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">缓存写入价格</p>
+                <Input
+                  type="number" step="0.01" placeholder="0.00"
+                  value={cacheCreationPrice}
+                  onChange={(e) => setCacheCreationPrice(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">缓存命中价格</p>
+                <Input
+                  type="number" step="0.01" placeholder="0.00"
+                  value={cacheHitPrice}
+                  onChange={(e) => setCacheHitPrice(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
             </div>
-            <Switch checked={supportsFunctionCall} onCheckedChange={setSupportsFunctionCall} />
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">Premium 请求倍率</p>
+                <Input
+                  type="number" step="0.01" placeholder="1"
+                  value={premiumRequestMultiplier}
+                  onChange={(e) => setPremiumRequestMultiplier(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">可用计划</p>
+                <Input
+                  placeholder="pro, pro+, business"
+                  value={availablePlans}
+                  onChange={(e) => setAvailablePlans(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            </div>
           </div>
+
+          {/* Icon */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium">模型图标</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIcon('')}
+                className={cn(
+                  'flex size-7 items-center justify-center rounded border transition-colors',
+                  icon === ''
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-muted-foreground/50 hover:bg-muted/40'
+                )}
+              >
+                <span className="text-[10px] text-muted-foreground">auto</span>
+              </button>
+              {MODEL_ICON_OPTIONS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setIcon(key)}
+                  className={cn(
+                    'flex size-7 items-center justify-center rounded border transition-colors',
+                    icon === key
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-muted-foreground/50 hover:bg-muted/40'
+                  )}
+                  title={key}
+                >
+                  <Server className="size-3.5 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Responses config */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium">Responses 配置</label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">推理摘要</span>
+                <Select
+                  value={responseSummary}
+                  onValueChange={(v) => setResponseSummary(v as 'auto' | 'concise' | 'detailed' | 'none')}
+                >
+                  <SelectTrigger className="h-7 w-36 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-[11px]">不设置</SelectItem>
+                    <SelectItem value="auto" className="text-[11px]">自动</SelectItem>
+                    <SelectItem value="concise" className="text-[11px]">简洁</SelectItem>
+                    <SelectItem value="detailed" className="text-[11px]">详细</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {isResponsesModel && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">WebSocket 传输</span>
+                    <Switch
+                      checked={supportsWebsocket && websocketMode === 'auto'}
+                      disabled={!supportsWebsocket}
+                      onCheckedChange={(v) => setWebsocketMode(v ? 'auto' : 'disabled')}
+                    />
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">支持 WebSocket</span>
+                      <span className="text-[11px] text-muted-foreground/70">启用 Responses API 的 WebSocket 传输</span>
+                    </div>
+                    <Switch checked={supportsWebsocket} onCheckedChange={setSupportsWebsocket} />
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">支持图像生成</span>
+                      <span className="text-[11px] text-muted-foreground/70">注入 image_generation 服务端工具</span>
+                    </div>
+                    <Switch checked={supportsImageGeneration} onCheckedChange={setSupportsImageGeneration} />
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">系统提示词缓存</span>
+                <Switch checked={enableSystemPromptCache} onCheckedChange={setEnableSystemPromptCache} />
+              </div>
+              {isAnthropicModel && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">缓存 TTL</span>
+                  <Select value={cacheTtl} onValueChange={(v) => setCacheTtl(v as '5m' | '1h')}>
+                    <SelectTrigger className="w-20 h-7 text-[11px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5m">5m</SelectItem>
+                      <SelectItem value="1h">1h</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Capabilities */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium">能力</label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">支持视觉</span>
+                <Switch checked={supportsVision} onCheckedChange={setSupportsVision} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">支持函数调用</span>
+                <Switch checked={supportsFunctionCall} onCheckedChange={setSupportsFunctionCall} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">支持 Computer Use</span>
+                <Switch checked={supportsComputerUse} onCheckedChange={setSupportsComputerUse} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">启用 Computer Use</span>
+                <Switch
+                  checked={supportsComputerUse && enableComputerUse}
+                  disabled={!supportsComputerUse}
+                  onCheckedChange={setEnableComputerUse}
+                />
+              </div>
+              {(isResponsesModel || isOpenAiChatModel) && (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">支持快速模式</span>
+                    <span className="text-[11px] text-muted-foreground/70">使用 priority service tier</span>
+                  </div>
+                  <Switch checked={supportsFastMode} onCheckedChange={setSupportsFastMode} />
+                </div>
+              )}
+              {(isAnthropicModel || isResponsesModel) && (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">支持内置搜索</span>
+                      <span className="text-[11px] text-muted-foreground/70">Anthropic web_search / OpenAI Responses web_search</span>
+                    </div>
+                    <Switch checked={supportsBuiltinSearch} onCheckedChange={setSupportsBuiltinSearch} />
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">启用内置搜索</span>
+                      <span className="text-[11px] text-muted-foreground/70">默认注入搜索工具</span>
+                    </div>
+                    <Switch
+                      checked={supportsBuiltinSearch && enableBuiltinSearch}
+                      disabled={!supportsBuiltinSearch}
+                      onCheckedChange={setEnableBuiltinSearch}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button disabled={!id.trim()} onClick={handleSave}>
-              {initial ? '保存' : '添加'}
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button size="sm" disabled={!id.trim()} onClick={handleSave}>
+              {isEdit ? '保存' : '添加'}
             </Button>
           </div>
         </div>
@@ -459,10 +894,7 @@ function ThinkingConfigDialog({
                   某些模型在思考模式下要求固定 temperature（如 1），留空则不强制
                 </p>
                 <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="2"
+                  type="number" step="0.1" min="0" max="2"
                   placeholder="留空不强制"
                   value={forceTemp}
                   onChange={(e) => setForceTemp(e.target.value)}
@@ -473,12 +905,8 @@ function ThinkingConfigDialog({
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button size="sm" onClick={handleSave}>
-              保存
-            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button size="sm" onClick={handleSave}>保存</Button>
           </div>
         </div>
       </DialogContent>
@@ -506,10 +934,14 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
   const [editingModel, setEditingModel] = useState<AIModelConfig | null>(null)
   const [editingThinkingModel, setEditingThinkingModel] = useState<AIModelConfig | null>(null)
   const [modelSearch, setModelSearch] = useState('')
+  const [testModelId, setTestModelId] = useState(
+    provider.models.find((m) => m.enabled)?.id ?? provider.models[0]?.id ?? ''
+  )
 
   const enabledModelCount = provider.models.filter((m) => m.enabled).length
   const hasEnabledModels = enabledModelCount > 0
   const hasDisabledModels = enabledModelCount < provider.models.length
+  const authReady = provider.requiresApiKey === false || Boolean(provider.apiKey)
 
   const filteredModels = useMemo(() => {
     if (!modelSearch) return provider.models
@@ -583,17 +1015,38 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
     label: string
   }> => {
     const indicators: Array<{ key: string; icon: React.ComponentType<{ className?: string }>; label: string }> = []
+    if (model.category === 'image') {
+      indicators.push({ key: 'category-image', icon: ImageIcon, label: '图像' })
+    } else if (model.category === 'speech') {
+      indicators.push({ key: 'category-speech', icon: Mic, label: '语音' })
+    } else if (model.category === 'embedding') {
+      indicators.push({ key: 'category-embedding', icon: Shapes, label: '嵌入' })
+    } else if (model.category === 'video') {
+      indicators.push({ key: 'category-video', icon: Video, label: '视频' })
+    }
     if (model.supportsVision) {
       indicators.push({ key: 'vision', icon: Eye, label: '支持视觉' })
     }
     if (model.supportsFunctionCall !== false) {
       indicators.push({ key: 'function', icon: Code2, label: '支持函数调用' })
     }
+    if (model.supportsComputerUse) {
+      indicators.push({
+        key: 'computer-use',
+        icon: MonitorSmartphone,
+        label: model.enableComputerUse ? 'Computer Use 已启用' : '支持 Computer Use'
+      })
+    }
     if (model.supportsThinking) {
       indicators.push({ key: 'thinking', icon: Sparkles, label: '支持思考' })
     }
     return indicators
   }
+
+  const providerTypeOptions: ProviderType[] = [
+    'openai-chat', 'openai-responses', 'anthropic', 'gemini',
+    'openai-images', 'seedance-video', 'xai-video'
+  ]
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -606,7 +1059,7 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
           <div>
             <h3 className="text-sm font-semibold">{provider.name}</h3>
             <p className="text-[11px] text-muted-foreground">
-              {provider.type === 'anthropic' ? 'Anthropic Messages API' : 'OpenAI Chat (兼容)'}
+              {PROVIDER_TYPE_LABELS[provider.type] ?? provider.type}
             </p>
           </div>
         </div>
@@ -671,28 +1124,36 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
           />
         </section>
 
-        {/* Test & Fetch buttons */}
-        <section className="mt-4 flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1 text-xs"
-            onClick={handleTest}
-            disabled={testing}
-          >
-            {testing ? <Loader2 className="size-3 animate-spin" /> : <Server className="size-3" />}
-            测试连接
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1 text-xs"
-            onClick={handleFetchModels}
-            disabled={fetchingModels}
-          >
-            {fetchingModels ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-            拉取模型
-          </Button>
+        {/* Connection check */}
+        <section className="mt-4 space-y-2">
+          <label className="text-sm font-medium">连接测试</label>
+          <div className="flex items-center gap-2">
+            <Select value={testModelId} onValueChange={setTestModelId}>
+              <SelectTrigger className="flex-1 text-xs">
+                <SelectValue placeholder={provider.models[0]?.id || '无可用模型'} />
+              </SelectTrigger>
+              <SelectContent>
+                {(provider.models.some((m) => m.enabled)
+                  ? provider.models.filter((m) => m.enabled)
+                  : provider.models
+                ).map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 shrink-0 gap-1.5 text-xs"
+              disabled={!authReady || testing}
+              onClick={handleTest}
+            >
+              {testing ? <Loader2 className="size-3 animate-spin" /> : <Server className="size-3" />}
+              {testing ? '测试中...' : '测试'}
+            </Button>
+          </div>
         </section>
 
         {/* Test result */}
@@ -715,6 +1176,77 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
             </span>
           </div>
         )}
+
+        {/* Protocol type (for custom providers) */}
+        {!provider.builtinId && (
+          <section className="mt-5 space-y-2">
+            <label className="text-sm font-medium">协议类型</label>
+            <Select
+              value={provider.type}
+              onValueChange={(v) => updateProvider(provider.id, { type: v as ProviderType })}
+            >
+              <SelectTrigger className="text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {providerTypeOptions.map((t) => (
+                  <SelectItem key={t} value={t} className="text-xs">
+                    {PROVIDER_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </section>
+        )}
+
+        {/* Anthropic cache TTL (provider-level) */}
+        {provider.type === 'anthropic' && (
+          <section className="mt-5 space-y-2">
+            <label className="text-sm font-medium">缓存 TTL</label>
+            <Select
+              value={provider.cacheTtl ?? '5m'}
+              onValueChange={(v) => updateProvider(provider.id, { cacheTtl: v as '5m' | '1h' })}
+            >
+              <SelectTrigger className="w-24 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5m">5m</SelectItem>
+                <SelectItem value="1h">1h</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">Anthropic 缓存生存时间，模型级配置可覆盖</p>
+          </section>
+        )}
+
+        {/* Request parameter carrying (provider-level) */}
+        <section className="mt-5 space-y-3">
+          <label className="text-sm font-medium">请求参数</label>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-xs">发送 max_tokens</p>
+              <p className="text-[11px] text-muted-foreground">是否在请求中包含最大输出 Token 参数</p>
+            </div>
+            <Switch
+              checked={provider.sendMaxOutputTokens !== false}
+              onCheckedChange={(checked) =>
+                updateProvider(provider.id, { sendMaxOutputTokens: checked })
+              }
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-xs">发送 temperature</p>
+              <p className="text-[11px] text-muted-foreground">是否在请求中包含 temperature 参数</p>
+            </div>
+            <Switch
+              checked={provider.sendTemperature !== false}
+              onCheckedChange={(checked) =>
+                updateProvider(provider.id, { sendTemperature: checked })
+              }
+            />
+          </div>
+        </section>
 
         <Separator className="my-5" />
 
@@ -751,8 +1283,7 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
                 {provider.models.length > 0 && (
                   <>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="outline" size="sm"
                       className="h-8 rounded-full px-3 text-[11px]"
                       disabled={!hasDisabledModels}
                       onClick={() => handleSetAllModelsEnabled(true)}
@@ -760,8 +1291,7 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
                       全部启用
                     </Button>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="outline" size="sm"
                       className="h-8 rounded-full px-3 text-[11px]"
                       disabled={!hasEnabledModels}
                       onClick={() => handleSetAllModelsEnabled(false)}
@@ -771,8 +1301,16 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
                   </>
                 )}
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="outline" size="sm"
+                  className="h-8 gap-1 text-[11px]"
+                  onClick={handleFetchModels}
+                  disabled={fetchingModels}
+                >
+                  {fetchingModels ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+                  拉取模型
+                </Button>
+                <Button
+                  variant="outline" size="sm"
                   className="h-8 w-8 rounded-full p-0"
                   onClick={() => { setEditingModel(null); setModelDialogOpen(true) }}
                 >
@@ -821,6 +1359,25 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
                           {(model.inputPrice != null || model.outputPrice != null) && (
                             <span className="rounded-full bg-muted/45 px-2 py-0.5">
                               ${model.inputPrice ?? '?'}/${model.outputPrice ?? '?'}
+                            </span>
+                          )}
+                          {(model.cacheCreationPrice != null || model.cacheHitPrice != null) && (
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400">
+                              {model.cacheCreationPrice != null && model.cacheHitPrice != null
+                                ? `cache $${model.cacheCreationPrice}/${model.cacheHitPrice}`
+                                : model.cacheCreationPrice != null
+                                  ? `cache write $${model.cacheCreationPrice}`
+                                  : `cache read $${model.cacheHitPrice}`}
+                            </span>
+                          )}
+                          {(model.premiumRequestMultiplier != null || model.availablePlans?.length) && (
+                            <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-600 dark:text-sky-400">
+                              {model.premiumRequestMultiplier != null
+                                ? `${model.premiumRequestMultiplier}x`
+                                : 'plans'}
+                              {model.availablePlans?.length
+                                ? ` · ${model.availablePlans.join('/')}`
+                                : ''}
                             </span>
                           )}
                           {capabilityIndicators.length > 0 && (
@@ -905,6 +1462,7 @@ function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.
       <ModelFormDialog
         open={modelDialogOpen}
         onOpenChange={setModelDialogOpen}
+        providerType={provider.type}
         initial={editingModel ?? undefined}
         onSave={handleSaveModel}
       />
