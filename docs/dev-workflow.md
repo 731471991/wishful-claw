@@ -5,13 +5,84 @@
 
 ---
 
-## 工作流总览
+## Git 工作流总则
+
+### 分支策略
+
+| 分支 | 用途 | 规则 |
+|------|------|------|
+| `main` | 稳定主线 | 只接受 merge，禁止直接 push commit |
+| `dev/iter-{N}` | 迭代开发分支 | 每个迭代开一条，从 main 切出 |
+| `dev/iter-{N}/plan-{NNN}` | 计划分支（可选） | 复杂计划单独开分支，从 dev/iter-{N} 切出 |
+
+> 单人项目分支不需要太重。简单迭代直接在 `dev/iter-{N}` 上提交；迭代内拆了多个 plan 且怕互相干扰时才开 plan 分支。
+
+### 提交节奏
+
+**核心原则：小步提交，每一步都是可回滚的检查点。**
 
 ```
-探索态 → 规划态 → 规划验证 → 执行态 → 审查态 → 验证态
+探索态（只读，不提交）
+    ↓
+规划态 → commit: "plan(迭代N): 规划文档 + 步骤清单"
+    ↓
+执行态 → 每完成一个步骤 [✓] 立即 commit
+    ↓        ↘ 步骤失败 [✗] → git reset 回上一个 [✓] 的 commit
+    ↓
+审查态 → commit: "review(迭代N): 审查修正"（如有改动）
+    ↓
+验证态 → PASS 打 tag: v0.{N}.0
+         合并 dev/iter-{N} → main
+         push main + tags
+```
+
+### 提交规范
+
+```
+<type>(<scope>): <简述>
+
+<可选正文：为什么改、改了什么关键逻辑>
+```
+
+| type | 含义 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat(provider): 接入 OpenAI Provider 配置页面` |
+| `fix` | 修 bug | `fix(loop): 修复流式输出截断问题` |
+| `refactor` | 重构 | `refactor(runtime): 拆分 OpenAIChatRuntime` |
+| `docs` | 文档 | `docs(plan): 迭代二规划文档` |
+| `chore` | 构建/配置 | `chore: 配置 .editorconfig` |
+| `test` | 测试 | `test(core): 记忆检索单元测试` |
+
+### 防误操作规则
+
+1. **执行态开始前**：确保工作区干净（`git status` 无未提交改动），否则先 stash 或 commit
+2. **每步执行前**：如果上一步的 commit 存在，当前就是安全点——搞砸了随时 `git reset --hard` 回来
+3. **大改动前**：先 commit 当前状态，打一个临时标记 `git tag wip-{描述}`，方便回滚
+4. **验证态失败**：`git reset --hard` 回到审查态提交，不要在失败的代码上继续打补丁
+5. **每天收工**：push 到远程，别只留在本地
+6. **每天开工**：先 `git pull`，确保本地和远程同步
+
+### 应急回滚
+
+```bash
+# 查看提交历史，找到要回滚的点
+git log --oneline -20
+
+# 回滚到指定 commit，丢弃之后所有改动（危险！确认后再用）
+git reset --hard <commit-hash>
+
+# 只回退某个文件到指定版本
+git checkout <commit-hash> -- <file-path>
+
+# 不确定要不要丢？先 stash 保存现场
+git stash
+# 后悔了可以恢复
+git stash pop
 ```
 
 ---
+
+## 六阶段工作流
 
 ### 阶段一：探索态（只读探测）
 
@@ -21,6 +92,8 @@
 - 探测项目当前结构、已有代码、依赖状态
 - 阅读相关参考项目源码（路径见 AGENTS.md）
 - 确认当前迭代目标（见 docs/iteration-plan.md）
+
+**Git 操作**：无（只读阶段）
 
 **输出**：`docs/plans/plan_XXX/exploration_findings.md`
 
@@ -44,6 +117,17 @@
    - 涉及的文件和模块
    - 参考源码的具体文件路径
 4. 启动规划验证 → 用户确认后才能执行
+
+**Git 操作**：
+```bash
+# 新迭代：从 main 切开发分支
+git checkout main
+git checkout -b dev/iter-{N}
+
+# 提交规划文档
+git add docs/plans/plan_XXX/
+git commit -m "docs(plan): 迭代{N}规划文档 + 步骤清单"
+```
 
 **plan.md 格式**：
 
@@ -82,6 +166,12 @@
 
 **输出**：`docs/plans/plan_XXX/compliance_report.md`
 
+**Git 操作**：
+```bash
+git add docs/plans/plan_XXX/compliance_report.md
+git commit -m "docs(plan): 迭代{N}规划验证报告"
+```
+
 **完成后**：更新 `docs/PROGRESS.md`
 
 **阻断规则**：❌ 项 > 0 时禁止进入用户确认环节
@@ -91,15 +181,31 @@
 ### 阶段四：执行态（循环执行）
 
 ```
-fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [✓] → 重复
+fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [✓] → commit → 重复
 ```
 
 **执行规则**：
 - 每次只执行一个步骤
 - 执行完立即做 Mini 验证（能编译？能跑？符合预期？）
-- 验证通过标记 [✓]，失败标记 [✗] 并记录原因
+- 验证通过标记 [✓]，**立即 commit**
+- 验证失败标记 [✗]，记录原因，`git reset --hard` 回上一个 [✓] 的 commit，修复后重试
 - 从 OpenCowork / KodaClaw / OpenClaw.net 搬代码时，必须适配项目命名空间和分层约定
 - 新建文件必须符合 AGENTS.md 中的目录结构
+
+**Git 操作（每步一个 commit）**：
+```bash
+# 执行前确认工作区干净
+git status
+
+# 执行步骤，Mini 验证通过后
+git add <涉及的文件>
+git commit -m "feat(scope): 步骤N - 简述"
+
+# 如果搞砸了，回滚到上一步
+git reset --hard HEAD~1
+```
+
+**大步骤拆 commit**：如果一个步骤涉及多个文件且逻辑独立，拆成多个 commit，每个 commit 能独立编译通过。
 
 **终止检查**：所有步骤均为 [✓] / [✗]，0 个 [ ] 残留 → 结束。
 
@@ -118,6 +224,17 @@ fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [�
 
 **输出**：`docs/plans/plan_XXX/review_report.md`
 
+**Git 操作**：
+```bash
+# 审查如有修正
+git add <修正的文件>
+git commit -m "review(迭代N): 审查修正 - 简述"
+
+# 提交审查报告
+git add docs/plans/plan_XXX/review_report.md
+git commit -m "docs(review): 迭代{N}审查报告"
+```
+
 **阻断规则**：❌ 项 > 0 时禁止进入验证态
 
 ---
@@ -133,7 +250,24 @@ fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [�
 
 **输出**：`docs/plans/plan_XXX/verification_report.md`
 
-**完成后**：更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + 日期）
+**Git 操作**：
+```bash
+# 验证通过，打 tag
+git tag -a v0.{N}.0 -m "迭代{N}: {迭代名称} - 验证通过"
+
+# 合并到 main
+git checkout main
+git merge dev/iter-{N} --no-ff -m "merge: 迭代{N} - {迭代名称}"
+
+# 推送到远程
+git push origin main
+git push origin v0.{N}.0
+
+# 验证失败，回滚到审查态提交
+git reset --hard HEAD~1  # 回退验证阶段的改动
+```
+
+**完成后**：更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）
 
 **最终裁定**：`PASS` / `FAIL` / `PARTIAL`
 
@@ -145,14 +279,22 @@ fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [�
 # 开发进度
 
 ## 迭代一：项目骨架
-- 状态：进行中
+- 状态：已完成
+- 分支：dev/iter-1
 - Plan: docs/plans/plan_001/
+- VERDICT: PASS
+- Tag: v0.1.0
+- Commit: a1b2c3d
+- 日期: 2026-07-20
+
+## 迭代二：AI 服务商管理
+- 状态：进行中
+- 分支：dev/iter-2
+- Plan: docs/plans/plan_002/
 - VERDICT: —
+- Tag: —
 - Commit: —
 - 日期: —
-
-## 迭代二：Agent Loop + Provider
-- 状态：未开始
 ...
 ```
 
@@ -163,3 +305,6 @@ fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [�
 - 前端代码注意去掉 OpenCowork 特有的频道、CodeGraph 等不需要的功能
 - 每个 plan 编号递增（plan_001, plan_002, ...）
 - 验证报告必须有实际证据，不能只写"应该没问题"
+- **commit 粒度宁小勿大**——每步一个 commit 是底线，不是上限
+- **不要攒一堆改动再提交**——攒得越多，回滚越难，一天白搞的风险越大
+- **push 是最后的保险**——本地 commit 只防误操作，push 到远程才防丢数据
