@@ -1,536 +1,621 @@
-import { useState, useCallback } from 'react'
+import { useState, useMemo } from 'react'
+import {
+  Plus,
+  Search,
+  Eye,
+  EyeOff,
+  Loader2,
+  Trash2,
+  RefreshCw,
+  Server,
+  CheckCircle2,
+  XCircle,
+  Pencil
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@renderer/components/ui/button'
+import { Input } from '@renderer/components/ui/input'
+import { Switch } from '@renderer/components/ui/switch'
+import { Separator } from '@renderer/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from '@renderer/components/ui/dialog'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from '@renderer/components/ui/context-menu'
 import { useProviderStore, builtinProviderPresets } from '@renderer/stores/provider-store'
 import type { AIProvider, AIModelConfig, BuiltinProviderPreset } from '../../../../shared/types/provider'
+import { cn } from '@renderer/lib/utils'
 
-export function ProviderPanel({ onClose }: { onClose?: () => void }) {
-  const {
-    providers,
-    activeProviderId,
-    addProvider,
-    updateProvider,
-    deleteProvider,
-    setActiveProvider,
-    setModels,
-    testConnection,
-    fetchModels
-  } = useProviderStore()
+// ─── Add Provider Dialog ───
 
-  const [selectedId, setSelectedId] = useState<string | null>(
-    activeProviderId ?? providers[0]?.id ?? null
-  )
-  const [showAddMenu, setShowAddMenu] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [fetchingModels, setFetchingModels] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
+function AddProviderDialog({
+  open,
+  onOpenChange
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}): React.JSX.Element {
+  const addProvider = useProviderStore((s) => s.addProvider)
 
-  const selectedProvider = providers.find(p => p.id === selectedId) ?? null
-
-  const handleAddProvider = useCallback((preset: BuiltinProviderPreset) => {
-    const provider = addProvider(preset)
-    setSelectedId(provider.id)
-    setShowAddMenu(false)
-  }, [addProvider])
-
-  const handleTest = useCallback(async () => {
-    if (!selectedProvider) return
-    setTesting(true)
-    setTestResult(null)
-    try {
-      const result = await testConnection(selectedProvider)
-      if (result.ok) {
-        setTestResult(`✓ 连接成功${result.statusCode ? ` (HTTP ${result.statusCode})` : ''}`)
-      } else {
-        setTestResult(`✗ ${result.error ?? '连接失败'}`)
-      }
-    } catch (err) {
-      setTestResult(`✗ ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setTesting(false)
-    }
-  }, [selectedProvider, testConnection])
-
-  const handleFetchModels = useCallback(async () => {
-    if (!selectedProvider) return
-    setFetchingModels(true)
-    try {
-      const models = await fetchModels(selectedProvider)
-      const modelConfigs: AIModelConfig[] = models.map(m => ({
-        id: m.id,
-        name: m.name ?? m.id,
-        enabled: true
-      }))
-      setModels(selectedProvider.id, modelConfigs)
-    } catch (err) {
-      setTestResult(`✗ 拉取模型失败: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      setFetchingModels(false)
-    }
-  }, [selectedProvider, fetchModels, setModels])
-
-  const handleDelete = useCallback(() => {
-    if (!selectedProvider) return
-    if (!confirm(`确定删除 Provider "${selectedProvider.name}"？`)) return
-    deleteProvider(selectedProvider.id)
-    const remaining = providers.filter(p => p.id !== selectedProvider.id)
-    setSelectedId(remaining[0]?.id ?? null)
-  }, [selectedProvider, deleteProvider, providers])
-
-  if (!selectedProvider && providers.length === 0) {
-    return (
-      <div style={containerStyle}>
-        <div style={headerStyle}>
-          <h2 style={titleStyle}>AI 服务商</h2>
-          {onClose && <button onClick={onClose} style={closeBtnStyle}>✕</button>}
-        </div>
-        <div style={{ ...emptyStateStyle, position: 'relative' }}>
-          <p style={{ color: '#888', marginBottom: '16px' }}>还没有配置任何 Provider</p>
-          <button onClick={() => setShowAddMenu(!showAddMenu)} style={primaryBtnStyle}>
-            + 添加 Provider
-          </button>
-          {showAddMenu && (
-            <div style={dropdownStyle}>
-              {builtinProviderPresets.map(preset => (
-                <button
-                  key={preset.builtinId}
-                  onClick={() => handleAddProvider(preset)}
-                  style={dropdownItemStyle}
-                >
-                  <span>{preset.name}</span>
-                  <span style={{ color: '#666', fontSize: '0.8rem' }}>{preset.type}</span>
-                </button>
-              ))}
-              <button
-                onClick={() => {
-                  const custom: BuiltinProviderPreset = {
-                    builtinId: 'custom',
-                    version: 1,
-                    name: '自定义 (OpenAI 兼容)',
-                    type: 'openai-chat',
-                    defaultBaseUrl: '',
-                    homepage: '',
-                    defaultModels: [],
-                    requiresApiKey: true
-                  }
-                  handleAddProvider(custom)
-                }}
-                style={dropdownItemStyle}
-              >
-                <span>自定义 (OpenAI 兼容)</span>
-                <span style={{ color: '#666', fontSize: '0.8rem' }}>openai-chat</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )
+  const handleAddPreset = (preset: BuiltinProviderPreset): void => {
+    addProvider(preset)
+    toast.success(`已添加 ${preset.name}`)
+    onOpenChange(false)
   }
 
   return (
-    <div style={containerStyle}>
-      <div style={headerStyle}>
-        <h2 style={titleStyle}>AI 服务商</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => setShowAddMenu(!showAddMenu)}
-            style={smallBtnStyle}
-          >
-            + 添加
-          </button>
-          {onClose && <button onClick={onClose} style={closeBtnStyle}>✕</button>}
-        </div>
-      </div>
-
-      {showAddMenu && (
-        <div style={dropdownStyle}>
-          {builtinProviderPresets.map(preset => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>添加 AI 服务商</DialogTitle>
+          <DialogDescription>选择一个内置预设，或添加自定义服务商</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 pt-2">
+          {builtinProviderPresets.map((preset) => (
             <button
               key={preset.builtinId}
-              onClick={() => handleAddProvider(preset)}
-              style={dropdownItemStyle}
+              onClick={() => handleAddPreset(preset)}
+              className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/60"
             >
-              <span>{preset.name}</span>
-              <span style={{ color: '#666', fontSize: '0.8rem' }}>{preset.type}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => {
-              const custom: BuiltinProviderPreset = {
-                builtinId: 'custom',
-                version: 1,
-                name: '自定义 (OpenAI 兼容)',
-                type: 'openai-chat',
-                defaultBaseUrl: '',
-                homepage: '',
-                defaultModels: [],
-                requiresApiKey: true
-              }
-              handleAddProvider(custom)
-            }}
-            style={dropdownItemStyle}
-          >
-            <span>自定义 (OpenAI 兼容)</span>
-            <span style={{ color: '#666', fontSize: '0.8rem' }}>openai-chat</span>
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
-        {/* Provider list */}
-        <div style={sidebarStyle}>
-          {providers.map(p => (
-            <button
-              key={p.id}
-              onClick={() => { setSelectedId(p.id); setActiveProvider(p.id); setTestResult(null); }}
-              style={{
-                ...providerItemStyle,
-                ...(p.id === selectedId ? activeProviderItemStyle : {})
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  width: '8px', height: '8px', borderRadius: '50%',
-                  background: p.enabled ? '#55efc4' : '#636e72'
-                }} />
-                <span>{p.name}</span>
-              </div>
-              <span style={{ color: '#636e72', fontSize: '0.75rem' }}>
-                {p.models.length} models
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border/60">
+                <Server className="size-4 text-muted-foreground" />
               </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">{preset.name}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {preset.defaultBaseUrl}
+                </div>
+              </div>
+              <Plus className="size-4 text-muted-foreground" />
             </button>
           ))}
         </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
-        {/* Provider detail */}
-        {selectedProvider && (
-          <div style={detailStyle}>
-            {/* Name */}
-            <div style={fieldStyle}>
-              <label style={labelStyle}>名称</label>
-              <input
-                style={inputStyle}
-                value={selectedProvider.name}
-                onChange={e => updateProvider(selectedProvider.id, { name: e.target.value })}
+// ─── Add/Edit Model Dialog ───
+
+function ModelFormDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSave
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  initial?: AIModelConfig
+  onSave: (model: AIModelConfig) => void
+}): React.JSX.Element {
+  const [id, setId] = useState(initial?.id ?? '')
+  const [name, setName] = useState(initial?.name ?? '')
+  const [contextLength, setContextLength] = useState(
+    initial?.contextLength?.toString() ?? '128000'
+  )
+  const [maxOutputTokens, setMaxOutputTokens] = useState(
+    initial?.maxOutputTokens?.toString() ?? '16384'
+  )
+
+  const handleSave = (): void => {
+    if (!id.trim()) return
+    onSave({
+      id: id.trim(),
+      name: name.trim() || id.trim(),
+      enabled: true,
+      contextLength: Number(contextLength) || 128000,
+      maxOutputTokens: Number(maxOutputTokens) || 16384,
+      supportsVision: false,
+      supportsFunctionCall: true
+    })
+    setId('')
+    setName('')
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{initial ? '编辑模型' : '添加模型'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">模型 ID</label>
+            <Input
+              placeholder="gpt-4o-mini"
+              value={id}
+              onChange={(e) => setId(e.target.value)}
+              autoFocus
+              disabled={!!initial}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">显示名称</label>
+            <Input
+              placeholder="GPT-4o Mini"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">上下文长度</label>
+              <Input
+                type="number"
+                value={contextLength}
+                onChange={(e) => setContextLength(e.target.value)}
               />
             </div>
-
-            {/* Type */}
-            <div style={fieldStyle}>
-              <label style={labelStyle}>类型</label>
-              <select
-                style={inputStyle}
-                value={selectedProvider.type}
-                onChange={e => updateProvider(selectedProvider.id, { type: e.target.value as AIProvider['type'] })}
-              >
-                <option value="openai-chat">OpenAI Chat</option>
-                <option value="openai-responses">OpenAI Responses</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="gemini">Gemini</option>
-              </select>
-            </div>
-
-            {/* Base URL */}
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Base URL</label>
-              <input
-                style={inputStyle}
-                placeholder="https://api.openai.com/v1"
-                value={selectedProvider.baseUrl}
-                onChange={e => updateProvider(selectedProvider.id, { baseUrl: e.target.value })}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">最大输出 Token</label>
+              <Input
+                type="number"
+                value={maxOutputTokens}
+                onChange={(e) => setMaxOutputTokens(e.target.value)}
               />
-            </div>
-
-            {/* API Key */}
-            <div style={fieldStyle}>
-              <label style={labelStyle}>API Key</label>
-              <input
-                style={inputStyle}
-                type="password"
-                placeholder={selectedProvider.requiresApiKey === false ? '可选' : 'sk-...'}
-                value={selectedProvider.apiKey}
-                onChange={e => updateProvider(selectedProvider.id, { apiKey: e.target.value })}
-              />
-            </div>
-
-            {/* Enabled */}
-            <div style={fieldStyle}>
-              <label style={labelStyle}>启用</label>
-              <input
-                type="checkbox"
-                checked={selectedProvider.enabled}
-                onChange={e => updateProvider(selectedProvider.id, { enabled: e.target.checked })}
-              />
-            </div>
-
-            {/* Test + Fetch buttons */}
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', marginBottom: '8px' }}>
-              <button
-                onClick={handleTest}
-                disabled={testing}
-                style={testing ? { ...primaryBtnStyle, opacity: 0.5 } : primaryBtnStyle}
-              >
-                {testing ? '测试中...' : '测试连接'}
-              </button>
-              <button
-                onClick={handleFetchModels}
-                disabled={fetchingModels}
-                style={testing ? { ...secondaryBtnStyle, opacity: 0.5 } : secondaryBtnStyle}
-              >
-                {fetchingModels ? '拉取中...' : '拉取模型'}
-              </button>
-              <button onClick={handleDelete} style={dangerBtnStyle}>
-                删除
-              </button>
-            </div>
-
-            {testResult && (
-              <div style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                fontSize: '0.85rem',
-                fontFamily: 'monospace',
-                background: testResult.startsWith('✓') ? '#1a4a2a' : '#4a1a1a',
-                color: testResult.startsWith('✓') ? '#55efc4' : '#e17055'
-              }}>
-                {testResult}
-              </div>
-            )}
-
-            {/* Models */}
-            <div style={{ marginTop: '16px' }}>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                marginBottom: '8px'
-              }}>
-                <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ccc' }}>
-                  模型 ({selectedProvider.models.length})
-                </h3>
-                <button
-                  onClick={() => {
-                    const id = prompt('模型 ID:')
-                    if (!id) return
-                    const name = prompt('显示名称:', id) ?? id
-                    useProviderStore.getState().addModel(selectedProvider.id, {
-                      id, name, enabled: true
-                    })
-                  }}
-                  style={smallBtnStyle}
-                >
-                  + 添加模型
-                </button>
-              </div>
-
-              {selectedProvider.models.length === 0 ? (
-                <p style={{ color: '#636e72', fontSize: '0.85rem' }}>
-                  暂无模型。点击"拉取模型"从 API 获取，或手动添加。
-                </p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {selectedProvider.models.map(model => (
-                    <div
-                      key={model.id}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '6px 10px',
-                        background: '#1a1a2e',
-                        borderRadius: '6px',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={model.enabled}
-                        onChange={e => useProviderStore.getState().updateModel(
-                          selectedProvider.id, model.id, { enabled: e.target.checked }
-                        )}
-                      />
-                      <span style={{ flex: 1, color: '#eee' }}>{model.name}</span>
-                      <span style={{ color: '#636e72', fontSize: '0.75rem' }}>{model.id}</span>
-                      {model.contextLength && (
-                        <span style={{ color: '#636e72', fontSize: '0.7rem' }}>
-                          {(model.contextLength / 1000).toFixed(0)}K
-                        </span>
-                      )}
-                      <button
-                        onClick={() => useProviderStore.getState().deleteModel(
-                          selectedProvider.id, model.id
-                        )}
-                        style={{
-                          background: 'none', border: 'none', color: '#e17055',
-                          cursor: 'pointer', fontSize: '0.8rem'
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
-        )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              取消
+            </Button>
+            <Button disabled={!id.trim()} onClick={handleSave}>
+              {initial ? '保存' : '添加'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Provider Config Panel ───
+
+function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.Element {
+  const updateProvider = useProviderStore((s) => s.updateProvider)
+  const deleteProvider = useProviderStore((s) => s.deleteProvider)
+  const addModel = useProviderStore((s) => s.addModel)
+  const updateModel = useProviderStore((s) => s.updateModel)
+  const deleteModel = useProviderStore((s) => s.deleteModel)
+  const setModels = useProviderStore((s) => s.setModels)
+  const testConnection = useProviderStore((s) => s.testConnection)
+  const fetchModels = useProviderStore((s) => s.fetchModels)
+
+  const [showKey, setShowKey] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
+  const [fetchingModels, setFetchingModels] = useState(false)
+  const [modelDialogOpen, setModelDialogOpen] = useState(false)
+  const [editingModel, setEditingModel] = useState<AIModelConfig | null>(null)
+
+  const handleTest = async (): Promise<void> => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const result = await testConnection(provider)
+      setTestResult(result)
+      if (result.ok) {
+        toast.success('连接测试成功')
+      } else {
+        toast.error('连接测试失败', { description: result.error })
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      setTestResult({ ok: false, error })
+      toast.error('连接测试失败', { description: error })
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const handleFetchModels = async (): Promise<void> => {
+    setFetchingModels(true)
+    try {
+      const models = await fetchModels(provider)
+      if (models.length === 0) {
+        toast.info('未拉取到模型')
+      } else {
+        setModels(provider.id, models)
+        toast.success(`已拉取 ${models.length} 个模型`)
+      }
+    } catch (err) {
+      toast.error('拉取模型失败', {
+        description: err instanceof Error ? err.message : String(err)
+      })
+    } finally {
+      setFetchingModels(false)
+    }
+  }
+
+  const handleSaveModel = (model: AIModelConfig): void => {
+    if (editingModel) {
+      updateModel(provider.id, editingModel.id, model)
+      toast.success('模型已更新')
+    } else {
+      addModel(provider.id, model)
+      toast.success('模型已添加')
+    }
+    setEditingModel(null)
+  }
+
+  return (
+    <div className="flex h-full flex-col overflow-y-auto">
+      <div className="mx-auto w-full max-w-2xl px-8 pb-16 pt-8">
+        {/* Provider header */}
+        <div className="mb-6 flex items-center gap-3">
+          <span className="flex size-10 items-center justify-center rounded-lg bg-background ring-1 ring-border/60">
+            <Server className="size-5 text-muted-foreground" />
+          </span>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold">{provider.name}</h2>
+            <p className="text-xs text-muted-foreground">{provider.baseUrl}</p>
+          </div>
+          <Switch
+            checked={provider.enabled}
+            onCheckedChange={(checked) => updateProvider(provider.id, { enabled: checked })}
+          />
+        </div>
+
+        {/* Config section */}
+        <div className="space-y-5">
+          {/* API Key */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">API Key</label>
+            <div className="relative">
+              <Input
+                type={showKey ? 'text' : 'password'}
+                placeholder={provider.requiresApiKey === false ? '不需要 API Key' : '输入 API Key'}
+                value={provider.apiKey}
+                onChange={(e) => updateProvider(provider.id, { apiKey: e.target.value })}
+                disabled={provider.requiresApiKey === false}
+                className="pr-10"
+              />
+              <button
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Base URL */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Base URL</label>
+            <Input
+              placeholder="https://api.openai.com/v1"
+              value={provider.baseUrl}
+              onChange={(e) => updateProvider(provider.id, { baseUrl: e.target.value })}
+            />
+          </div>
+
+          {/* Test & Fetch buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTest}
+              disabled={testing}
+            >
+              {testing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Server className="size-3.5" />
+              )}
+              测试连接
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFetchModels}
+              disabled={fetchingModels}
+            >
+              {fetchingModels ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              拉取模型列表
+            </Button>
+            {!provider.builtinId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  deleteProvider(provider.id)
+                  toast.success('服务商已删除')
+                }}
+              >
+                <Trash2 className="size-3.5" />
+                删除
+              </Button>
+            )}
+          </div>
+
+          {/* Test result */}
+          {testResult && (
+            <div
+              className={cn(
+                'flex items-center gap-2 rounded-lg border p-3 text-sm',
+                testResult.ok
+                  ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400'
+                  : 'border-destructive/30 bg-destructive/5 text-destructive'
+              )}
+            >
+              {testResult.ok ? (
+                <CheckCircle2 className="size-4 shrink-0" />
+              ) : (
+                <XCircle className="size-4 shrink-0" />
+              )}
+              <span className="min-w-0 truncate">
+                {testResult.ok ? '连接成功' : testResult.error ?? '连接失败'}
+              </span>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Models section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">模型列表</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingModel(null)
+                  setModelDialogOpen(true)
+                }}
+              >
+                <Plus className="size-3.5" />
+                添加模型
+              </Button>
+            </div>
+
+            {provider.models.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                暂无模型，点击「拉取模型列表」或手动添加
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {provider.models.map((model) => (
+                  <div
+                    key={model.id}
+                    className="group flex items-center gap-3 rounded-lg border p-2.5"
+                  >
+                    <Switch
+                      checked={model.enabled}
+                      onCheckedChange={(checked) =>
+                        updateModel(provider.id, model.id, { enabled: checked })
+                      }
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">{model.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {model.id} · {model.contextLength?.toLocaleString() ?? '?'} ctx
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setEditingModel(model)
+                        setModelDialogOpen(true)
+                      }}
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteModel(provider.id, model.id)
+                        toast.success('模型已删除')
+                      }}
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      <ModelFormDialog
+        open={modelDialogOpen}
+        onOpenChange={setModelDialogOpen}
+        initial={editingModel ?? undefined}
+        onSave={handleSaveModel}
+      />
     </div>
   )
 }
 
-// ── Styles ──
+// ─── Provider Panel (main) ───
 
-const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  height: '100%',
-  background: '#0f0f1e',
-  color: '#eee',
-  fontFamily: 'system-ui, sans-serif'
-}
+export function ProviderPanel(): React.JSX.Element {
+  const providers = useProviderStore((s) => s.providers)
+  const deleteProvider = useProviderStore((s) => s.deleteProvider)
 
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '16px 20px',
-  borderBottom: '1px solid #2a2a3e'
-}
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null
+  )
+  const [searchQuery, setSearchQuery] = useState('')
+  const [dialogOpen, setDialogOpen] = useState(false)
 
-const titleStyle: React.CSSProperties = {
-  fontSize: '1.2rem',
-  fontWeight: 600,
-  margin: 0
-}
+  const resolvedSelectedId =
+    selectedId && providers.some((p) => p.id === selectedId)
+      ? selectedId
+      : (providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null)
 
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', color: '#888',
-  fontSize: '1.2rem', cursor: 'pointer'
-}
+  const selectedProvider = resolvedSelectedId
+    ? (providers.find((p) => p.id === resolvedSelectedId) ?? null)
+    : null
 
-const smallBtnStyle: React.CSSProperties = {
-  padding: '4px 10px',
-  fontSize: '0.8rem',
-  background: '#2a2a3e',
-  color: '#ccc',
-  border: '1px solid #3a3a4e',
-  borderRadius: '4px',
-  cursor: 'pointer'
-}
+  const enabledProviders = useMemo(
+    () =>
+      providers.filter(
+        (p) =>
+          p.enabled &&
+          (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      ),
+    [providers, searchQuery]
+  )
 
-const primaryBtnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  fontSize: '0.85rem',
-  background: '#6c5ce7',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: 'pointer'
-}
+  const disabledProviders = useMemo(
+    () =>
+      providers.filter(
+        (p) =>
+          !p.enabled &&
+          (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      ),
+    [providers, searchQuery]
+  )
 
-const secondaryBtnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  fontSize: '0.85rem',
-  background: '#2a2a3e',
-  color: '#ccc',
-  border: '1px solid #3a3a4e',
-  borderRadius: '6px',
-  cursor: 'pointer'
-}
+  const renderProviderListItem = (provider: AIProvider, muted: boolean): React.JSX.Element => {
+    const enabledModelCount = provider.models.filter((m) => m.enabled).length
+    const authReady = provider.requiresApiKey === false || Boolean(provider.apiKey)
 
-const dangerBtnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  fontSize: '0.85rem',
-  background: '#4a1a1a',
-  color: '#e17055',
-  border: '1px solid #6a2a2a',
-  borderRadius: '6px',
-  cursor: 'pointer'
-}
+    return (
+      <ContextMenu key={provider.id}>
+        <ContextMenuTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setSelectedId(provider.id)}
+            className={cn(
+              'group/provider relative mt-1 flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors',
+              resolvedSelectedId === provider.id
+                ? 'bg-primary/10 text-foreground ring-1 ring-primary/15'
+                : muted
+                  ? 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  : 'text-foreground/85 hover:bg-muted/60'
+            )}
+          >
+            <span
+              className={cn(
+                'absolute bottom-2 left-0 top-2 w-0.5 rounded-full',
+                resolvedSelectedId === provider.id ? 'bg-primary' : 'bg-transparent'
+              )}
+            />
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border/60">
+              <Server className={cn('size-4 text-muted-foreground', muted && 'opacity-50')} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium">{provider.name}</span>
+              <span className="mt-0.5 block truncate text-[10px] text-muted-foreground/70">
+                {enabledModelCount}/{provider.models.length} 模型
+              </span>
+            </span>
+            <span
+              className={cn(
+                'size-2 shrink-0 rounded-full',
+                provider.enabled && authReady
+                  ? 'bg-emerald-500'
+                  : provider.enabled
+                    ? 'bg-amber-500'
+                    : 'bg-muted-foreground/30'
+              )}
+            />
+          </button>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-44">
+          <ContextMenuItem
+            className="gap-2 text-xs text-destructive focus:text-destructive"
+            disabled={Boolean(provider.builtinId)}
+            onSelect={() => {
+              deleteProvider(provider.id)
+              if (selectedId === provider.id) setSelectedId(null)
+              toast.success('服务商已删除')
+            }}
+          >
+            <Trash2 className="size-3.5" />
+            删除服务商
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    )
+  }
 
-const emptyStateStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flex: 1
-}
+  return (
+    <div className="flex h-full flex-col overflow-hidden bg-background">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left: Provider list */}
+        <div className="flex w-60 shrink-0 flex-col border-r bg-muted/10">
+          {/* Search + Add */}
+          <div className="flex items-center gap-1.5 border-b p-2.5">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
+              <Input
+                placeholder="搜索服务商"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 bg-background pl-7 text-xs shadow-none"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-foreground"
+              onClick={() => setDialogOpen(true)}
+              title="添加服务商"
+            >
+              <Plus className="size-4" />
+            </Button>
+          </div>
 
-const dropdownStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: '100%',
-  left: '50%',
-  transform: 'translateX(-50%)',
-  background: '#1a1a2e',
-  border: '1px solid #3a3a4e',
-  borderRadius: '8px',
-  padding: '4px',
-  zIndex: 100,
-  minWidth: '280px',
-  boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
-}
+          {/* List */}
+          <div className="flex-1 overflow-y-auto py-2">
+            <div className="pb-20">
+              {enabledProviders.length > 0 && (
+                <div className="px-2 pb-1 pt-1">
+                  <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/55">
+                    已启用
+                  </p>
+                  {enabledProviders.map((p) => renderProviderListItem(p, false))}
+                </div>
+              )}
 
-const dropdownItemStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  width: '100%',
-  padding: '8px 12px',
-  background: 'none',
-  border: 'none',
-  color: '#eee',
-  cursor: 'pointer',
-  borderRadius: '4px',
-  fontSize: '0.85rem'
-}
+              {disabledProviders.length > 0 && (
+                <div className="px-2 pb-1 pt-3">
+                  <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/55">
+                    已禁用
+                  </p>
+                  {disabledProviders.map((p) => renderProviderListItem(p, true))}
+                </div>
+              )}
 
-const sidebarStyle: React.CSSProperties = {
-  width: '200px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '2px',
-  overflowY: 'auto',
-  borderRight: '1px solid #2a2a3e',
-  paddingRight: '8px'
-}
+              {enabledProviders.length === 0 && disabledProviders.length === 0 && (
+                <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                  暂无服务商，点击 + 添加
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
-const providerItemStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '8px 12px',
-  background: 'none',
-  border: 'none',
-  color: '#ccc',
-  cursor: 'pointer',
-  borderRadius: '6px',
-  fontSize: '0.85rem',
-  textAlign: 'left'
-}
+        {/* Right: Config panel */}
+        <div className="flex-1 min-w-0">
+          {selectedProvider ? (
+            <ProviderConfigPanel provider={selectedProvider} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              选择左侧的服务商进行配置
+            </div>
+          )}
+        </div>
+      </div>
 
-const activeProviderItemStyle: React.CSSProperties = {
-  background: '#2a2a4e'
-}
-
-const detailStyle: React.CSSProperties = {
-  flex: 1,
-  overflowY: 'auto',
-  padding: '16px'
-}
-
-const fieldStyle: React.CSSProperties = {
-  marginBottom: '12px'
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: '0.8rem',
-  color: '#888',
-  marginBottom: '4px'
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  background: '#1a1a2e',
-  border: '1px solid #3a3a4e',
-  borderRadius: '6px',
-  color: '#eee',
-  fontSize: '0.85rem',
-  outline: 'none'
+      <AddProviderDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+    </div>
+  )
 }
