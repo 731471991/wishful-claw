@@ -15,7 +15,15 @@ async function invokeMessagePackBinary<T>(channel: string, payload: unknown): Pr
 }
 
 const api = {
-  ping: () => invokeMessagePackBinary<{ ok: boolean; pid: number }>('worker/ping', {})
+  ping: () => invokeMessagePackBinary<{ ok: boolean; pid: number }>('worker/ping', {}),
+
+  // Generic IPC invoke — used by IPC state storage for provider persistence
+  invoke: <T = unknown>(channel: string, payload: unknown): Promise<T> =>
+    invokeMessagePackBinary<T>(channel, payload),
+
+  // Worker provider CRUD — routed through main process to worker
+  workerRequest: <T = unknown>(method: string, params?: unknown): Promise<T> =>
+    invokeMessagePackBinary<T>(`worker:${method}`, params ?? {})
 }
 
 if (process.contextIsolated) {

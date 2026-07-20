@@ -3,6 +3,7 @@ import { join } from 'path'
 
 import { getNativeWorker } from './lib/native-worker'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
+import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -48,6 +49,9 @@ app.whenReady().then(() => {
       return result
     }
   )
+
+  // Register AI provider persistence handlers
+  registerAiProviderHandlers()
 
   createWindow()
 
