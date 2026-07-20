@@ -21,9 +21,9 @@ const api = {
   invoke: <T = unknown>(channel: string, payload: unknown): Promise<T> =>
     invokeMessagePackBinary<T>(channel, payload),
 
-  // Worker provider CRUD — routed through main process to worker
+  // Worker request forwarder — main process forwards to worker via named pipe
   workerRequest: <T = unknown>(method: string, params?: unknown): Promise<T> =>
-    invokeMessagePackBinary<T>(`worker:${method}`, params ?? {})
+    invokeMessagePackBinary<T>('worker:request', { method, params: params ?? {} })
 }
 
 if (process.contextIsolated) {

@@ -50,6 +50,16 @@ app.whenReady().then(() => {
     }
   )
 
+  // Generic worker request forwarder: renderer calls window.api.workerRequest(method, params)
+  // and main forwards to the worker via named pipe IPC.
+  registerMessagePackHandler<{ method: string; params?: unknown }, unknown>(
+    'worker:request',
+    async (args) => {
+      const worker = getNativeWorker()
+      return worker.request(args.method, args.params ?? {})
+    }
+  )
+
   // Register AI provider persistence handlers
   registerAiProviderHandlers()
 
