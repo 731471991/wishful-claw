@@ -33,12 +33,16 @@
   - plan_003b: 前端框架修复 — 搬入 OpenCowork 完整布局（NavRail+WorkspaceSidebar+TitleBar+CommandPalette+RightPanel+SessionConversationPane+ChatHomePage+ProjectHomePage），保留所有功能入口+接口预留，chat-store 拆分7文件+immer中间件。tsc+electron-vite build+dotnet build 全部通过。
 
 ## 迭代四：工具链（最小集）
-- 状态：未开始
-- Plan: —
-- VERDICT: —
-- Tag: —
-- Commit: —
-- 日期: —
+- 状态：进行中（plan-001 + plan-002 代码完成，待端到端验证）
+- 分支：dev/iter-4
+- Plan: docs/plans/iter-4/plan-001/ + docs/plans/iter-4/plan-002/
+- VERDICT: PASS (编译验证) / 待端到端验证
+- Tag: —（待验证后打 v0.4.0）
+- Commit: 867b890 (plan-001) / 03bf2e2 (plan-002)
+- 日期: 2026-07-21
+- 备注：
+  - plan-001: 后端工具框架 — IToolExecutor 接口 + ToolRegistry + 7个工具实现（Read/Write/Edit/LS/Glob/Grep/Bash）+ ToolModule 注册 + tool/list IPC handler。dotnet build 0错误。
+  - plan-002: AgentLoop 工具执行集成 + 前端工具 UI — 替换占位代码实现完整工具调用循环，前端 ToolCallCard 组件 + 事件处理 + sendMessage 传入 tools/workingFolder。tsc+build+dotnet 全部通过。
 
 ## 迭代五：项目注册 + 会话历史
 - 状态：未开始
