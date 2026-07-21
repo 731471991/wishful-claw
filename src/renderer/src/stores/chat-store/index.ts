@@ -77,6 +77,8 @@ export const useChatStore = create<ChatStore>()(
           params
         )
         if (result.started) {
+          // Rename assistant message ID to match runId so handleEnvelope can find it
+          state.updateMessage(sessionId, assistantMessage.id, { id: result.runId })
           state.setStreamingMessageId(sessionId, result.runId)
         }
       } catch (err) {
