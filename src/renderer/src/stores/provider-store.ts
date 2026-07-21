@@ -64,7 +64,7 @@ function normalizeModelKey(modelId: string): string {
 
 /** Default reasoning effort levels for thinking models that don't specify their own. */
 const DEFAULT_REASONING_EFFORT_LEVELS: ReasoningEffortLevel[] = ['medium', 'high', 'xhigh']
-const DEFAULT_REASONING_EFFORT: ReasoningEffortLevel = 'high'
+const DEFAULT_REASONING_EFFORT: ReasoningEffortLevel = 'medium'
 
 /**
  * Ensure a thinking model has reasoning effort levels configured.
