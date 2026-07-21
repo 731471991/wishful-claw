@@ -1,9 +1,10 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { AppThemePreset } from '@renderer/lib/theme-presets'
 import { DEFAULT_APP_THEME_PRESET } from '@renderer/lib/theme-presets'
 import type { AppLanguage } from '@renderer/lib/i18n-language'
 import { detectSystemLanguage } from '@renderer/lib/i18n-language'
+import { settingsStorage } from '@renderer/lib/ipc/settings-storage'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -39,6 +40,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'wishful-claw-settings',
+      storage: createJSONStorage(() => settingsStorage),
       partialize: (state) => ({
         language: state.language,
         theme: state.theme,
