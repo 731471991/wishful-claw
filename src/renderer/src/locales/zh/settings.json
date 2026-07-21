@@ -115,6 +115,7 @@
       "noModels": "无可用模型",
       "testSuccess": "连接测试成功",
       "testFailed": "连接测试失败",
+      "testing": "检查中...",
       "connectionSuccess": "连接成功",
       "protocolType": "协议类型",
       "cacheTtl": "缓存 TTL",

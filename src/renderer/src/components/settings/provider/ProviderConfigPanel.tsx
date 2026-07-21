@@ -8,7 +8,6 @@ import {
   Loader2,
   Trash2,
   RefreshCw,
-  Server,
   CheckCircle2,
   XCircle,
   Pencil,
@@ -51,6 +50,7 @@ import {
 } from './constants'
 import { ModelFormDialog } from './ModelFormDialog'
 import { ThinkingConfigDialog } from './ThinkingConfigDialog'
+import { ProviderIcon, ModelIcon } from '../provider-icons'
 
 function getCapabilityIndicators(model: AIModelConfig): Array<{
   key: string
@@ -187,7 +187,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
       <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
         <div className="flex items-center gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border/60">
-            <Server className="size-5 text-muted-foreground" />
+            <ProviderIcon builtinId={provider.builtinId} size={20} />
           </span>
           <div>
             <h3 className="text-sm font-semibold">{provider.name}</h3>
@@ -283,8 +283,8 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               disabled={!authReady || testing}
               onClick={handleTest}
             >
-              {testing ? <Loader2 className="size-3 animate-spin" /> : <Server className="size-3" />}
-              {testing ? ts('common.status.testing') : tc('actions.test')}
+              {testing ? <Loader2 className="size-3 animate-spin" /> : null}
+              {testing ? ts('provider.config.testing') : tc('actions.test')}
             </Button>
           </div>
         </section>
@@ -440,7 +440,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                       className="group flex items-center gap-3 border-b border-border/60 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/30"
                     >
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/50 ring-1 ring-border/50">
-                        <Server className="size-4 text-muted-foreground" />
+                        <ModelIcon icon={model.icon} modelId={model.id} providerBuiltinId={provider.builtinId} size={18} />
                       </div>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2">

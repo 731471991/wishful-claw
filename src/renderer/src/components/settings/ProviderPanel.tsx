@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, Trash2, Server } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
+import { ProviderIcon } from '@renderer/components/settings/provider-icons'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
@@ -78,7 +79,7 @@ function ProviderPanel(): React.JSX.Element {
               )}
             />
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border/60">
-              <Server className={cn('size-4 text-muted-foreground', muted && 'opacity-50')} />
+              <ProviderIcon builtinId={provider.builtinId} size={16} className={cn(muted && 'opacity-50')} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-medium">{provider.name}</span>
