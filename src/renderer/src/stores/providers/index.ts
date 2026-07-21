@@ -19,6 +19,8 @@ import { bigmodelPreset, bigmodelCodingPreset } from '@renderer/stores/providers
 import { volcenginePreset } from '@renderer/stores/providers/volcengine'
 import { xaiPreset } from '@renderer/stores/providers/x-ai'
 import { routinAiPreset, routinAiPlanPreset } from '@renderer/stores/providers/routin-ai'
+import { codexOAuthPreset } from '@renderer/stores/providers/codex-oauth'
+import { copilotOAuthPreset } from '@renderer/stores/providers/copilot-oauth'
 import type { BuiltinProviderPreset } from '@renderer/stores/providers/types'
 
 export const builtinProviderPresets: BuiltinProviderPreset[] = [
@@ -47,5 +49,7 @@ export const builtinProviderPresets: BuiltinProviderPreset[] = [
   volcenginePreset,
   xaiPreset,
   routinAiPreset,
-  routinAiPlanPreset
+  routinAiPlanPreset,
+  codexOAuthPreset,
+  copilotOAuthPreset
 ]

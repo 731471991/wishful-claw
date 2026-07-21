@@ -2,6 +2,9 @@ import type { BuiltinProviderPreset } from './types'
 
 // 对齐 github.com/MoonshotAI/kimi-cli 当前版本（coding 端点有客户端白名单，UA 需可识别）。
 // 不换成新 CLI 的 kimi-code-cli/<ver>：那个客户端还会携带 X-Msh-* 设备头，我们不发。
+const KIMI_CLI_USER_AGENT = 'KimiCLI/1.49.0'
+const KIMI_OAUTH_HOST = 'https://auth.kimi.com'
+const KIMI_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098'
 
 // Price fields below are USD per 1M tokens; Kimi publishes CNY prices, so values are converted.
 export const moonshotCodingPreset: BuiltinProviderPreset = {
@@ -14,7 +17,30 @@ export const moonshotCodingPreset: BuiltinProviderPreset = {
   homepage: 'https://www.kimi.com',
   apiKeyUrl: 'https://www.kimi.com/code/console?from=membership',
   defaultEnabled: false,
-  requiresApiKey: true,
+  requiresApiKey: false,
+  authMode: 'oauth',
+  userAgent: KIMI_CLI_USER_AGENT,
+  oauthConfig: {
+    authorizeUrl: '',
+    tokenUrl: `${KIMI_OAUTH_HOST}/api/oauth/token`,
+    deviceCodeUrl: `${KIMI_OAUTH_HOST}/api/oauth/device_authorization`,
+    clientId: KIMI_CLIENT_ID,
+    clientIdLocked: true,
+    flowType: 'device_code',
+    tokenRequestHeaders: {
+      Accept: 'application/json',
+      'User-Agent': KIMI_CLI_USER_AGENT
+    },
+    refreshRequestHeaders: {
+      Accept: 'application/json',
+      'User-Agent': KIMI_CLI_USER_AGENT
+    },
+    deviceCodeRequestHeaders: {
+      Accept: 'application/json',
+      'User-Agent': KIMI_CLI_USER_AGENT
+    },
+    usePkce: false
+  },
   ui: { hideOAuthSettings: true },
   defaultModels: [
     // Kimi K3（Kimi Code 套餐，2026-07-16）。请求参数对齐官方 kimi-code CLI

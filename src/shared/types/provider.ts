@@ -106,6 +106,109 @@ export interface ProviderUiConfig {
   hideOAuthSettings?: boolean
 }
 
+// ─── OAuth ───
+
+export type OAuthFlowType = 'authorization_code' | 'device_code'
+export type OAuthRequestMode = 'form' | 'json'
+
+export interface OAuthConfig {
+  authorizeUrl: string
+  tokenUrl: string
+  clientId: string
+  clientIdLocked?: boolean
+  scope?: string
+  flowType?: OAuthFlowType
+  /** Base GitHub / OAuth host, used to derive endpoints when individual URLs are not overridden */
+  host?: string
+  /** API host used for token exchange endpoints (e.g. https://api.github.com or GHE api/v3) */
+  apiHost?: string
+  /** Device code endpoint for OAuth device flow */
+  deviceCodeUrl?: string
+  /** Copilot / provider-specific token exchange endpoint used after OAuth login */
+  tokenExchangeUrl?: string
+  /** Use system proxy for OAuth token exchanges */
+  useSystemProxy?: boolean
+  includeScopeInTokenRequest?: boolean
+  tokenRequestMode?: OAuthRequestMode
+  tokenRequestHeaders?: Record<string, string>
+  refreshRequestMode?: OAuthRequestMode
+  refreshRequestHeaders?: Record<string, string>
+  refreshScope?: string
+  deviceCodeRequestMode?: OAuthRequestMode
+  deviceCodeRequestHeaders?: Record<string, string>
+  redirectPath?: string
+  redirectPort?: number
+  extraParams?: Record<string, string>
+  usePkce?: boolean
+}
+
+export interface OAuthToken {
+  accessToken: string
+  refreshToken?: string
+  expiresAt?: number
+  scope?: string
+  tokenType?: string
+  accountId?: string
+  idToken?: string
+  deviceId?: string
+  copilotAccessToken?: string
+  copilotTokenType?: string
+  copilotExpiresAt?: number
+  copilotRefreshAt?: number
+  copilotApiUrl?: string
+  copilotChatEnabled?: boolean
+  copilotSku?: string
+  copilotTelemetry?: string
+}
+
+export interface AccountRateLimit {
+  /** When the rate-limit was first observed (epoch ms) */
+  limitedAt: number
+  /** When the rate-limit window is expected to reset (epoch ms). Accounts auto-revive once now >= resetAt. */
+  resetAt: number
+  /** Origin of the rate-limit marker */
+  reason: 'http-429' | 'codex-quota'
+  /** For Codex quota markers, which window saturated */
+  windowType?: 'primary' | 'secondary'
+  /** Human-readable detail (shown in UI tooltip) */
+  message?: string
+}
+
+export interface ProviderOAuthAccount {
+  /** Stable UUID used as the account key */
+  id: string
+  /** Required — primary display label and dedup key on import */
+  email: string
+  /** Optional user-friendly nickname */
+  label?: string
+  oauth: OAuthToken
+  /** Set when the account is temporarily rate-limited; cleared once resetAt elapses */
+  rateLimit?: AccountRateLimit
+  createdAt: number
+  lastUsedAt?: number
+}
+
+// ─── Channel Auth ───
+
+export interface ChannelConfig {
+  vcodeUrl: string
+  tokenUrl: string
+  userUrl: string
+  defaultChannelType?: 'sms' | 'email'
+  requiresAppToken?: boolean
+  defaultAppId?: string
+  appIdLocked?: boolean
+}
+
+export interface ChannelAuth {
+  appId: string
+  appToken?: string
+  accessToken?: string
+  accessTokenExpiresAt?: number
+  channelType?: 'sms' | 'email'
+  userInfo?: Record<string, unknown>
+}
+
 // ─── AI Model Config ───
 
 export interface AIModelConfig {
@@ -217,6 +320,18 @@ export interface AIProvider {
   defaultModel?: string
   /** Authentication mode for this provider */
   authMode?: AuthMode
+  /** OAuth token payload (if authMode === 'oauth') */
+  oauth?: OAuthToken
+  /** Multi-account list. Priority order = array order. First entry is the default. */
+  oauthAccounts?: ProviderOAuthAccount[]
+  /** Currently selected account id. Falls back to the first usable entry in oauthAccounts. */
+  activeAccountId?: string
+  /** OAuth configuration for this provider */
+  oauthConfig?: OAuthConfig
+  /** Channel auth data (if authMode === 'channel') */
+  channel?: ChannelAuth
+  /** Channel auth configuration */
+  channelConfig?: ChannelConfig
   /** Optional request overrides (headers/body) for this provider */
   requestOverrides?: RequestOverrides
   /** Optional prompt name to use for Responses instructions */
@@ -255,6 +370,10 @@ export interface BuiltinProviderPreset {
   defaultModel?: string
   /** Authentication mode for this provider */
   authMode?: AuthMode
+  /** OAuth configuration (when authMode === 'oauth') */
+  oauthConfig?: OAuthConfig
+  /** Channel auth configuration (when authMode === 'channel') */
+  channelConfig?: ChannelConfig
   /** Optional request overrides (headers/body) for this provider */
   requestOverrides?: RequestOverrides
   /** Optional prompt name to use for Responses instructions */
