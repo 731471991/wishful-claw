@@ -8,7 +8,7 @@ import { cn } from '@renderer/lib/utils'
 export function InputArea() {
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const isStreaming = useChatStore((s) => s.isStreaming)
+  const isStreaming = useChatStore((s) => !!s.streamingMessageId)
   const sendMessage = useChatStore((s) => s.sendMessage)
   const cancelStream = useChatStore((s) => s.cancelStream)
   const clearActivities = useActivityStore((s) => s.clearActivities)

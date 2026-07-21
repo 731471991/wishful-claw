@@ -1,0 +1,364 @@
+import { nanoid } from 'nanoid'
+import type { StateCreator } from 'zustand'
+import type { Session, CreateSessionOptions, ChatMessage } from './types'
+import { dbCreateSession, dbDeleteSession, dbUpdateSession } from './db-helpers'
+
+export interface SessionSlice {
+  sessions: Session[]
+  sessionsById: Record<string, number>
+  activeSessionId: string | null
+
+  createSession: (
+    mode: Session['mode'],
+    projectId?: string | null,
+    options?: CreateSessionOptions
+  ) => string
+  deleteSession: (id: string) => void
+  setActiveSession: (id: string | null) => void
+  updateSessionTitle: (id: string, title: string) => void
+  updateSessionIcon: (id: string, icon: string) => void
+  updateSessionMode: (id: string, mode: Session['mode']) => void
+  clearSessionMessages: (sessionId: string) => void
+  togglePinSession: (sessionId: string) => void
+  duplicateSession: (sessionId: string) => string | null
+  restoreSession: (session: Session) => void
+  clearAllSessions: () => void
+
+  // Message operations
+  addMessage: (sessionId: string, msg: ChatMessage) => void
+  beginUserTurn: (
+    sessionId: string,
+    userMsg: ChatMessage | null,
+    assistantMsg: ChatMessage | null,
+    streamingMessageId: string | null
+  ) => void
+  updateMessage: (sessionId: string, msgId: string, patch: Partial<ChatMessage>) => void
+  removeMessageById: (sessionId: string, msgId: string) => boolean
+  appendTextDelta: (sessionId: string, msgId: string, text: string) => void
+  appendThinkingDelta: (sessionId: string, msgId: string, thinking: string) => void
+  removeLastAssistantMessage: (sessionId: string) => boolean
+  removeLastUserMessage: (sessionId: string) => void
+  truncateMessagesFrom: (sessionId: string, fromIndex: number) => void
+  replaceSessionMessages: (sessionId: string, messages: ChatMessage[]) => void
+
+  // Helpers
+  getActiveSession: () => Session | undefined
+  getSessionMessages: (sessionId: string) => ChatMessage[]
+}
+
+function syncSessionsById(state: { sessions: Session[]; sessionsById: Record<string, number> }): void {
+  state.sessionsById = {}
+  for (let i = 0; i < state.sessions.length; i++) {
+    state.sessionsById[state.sessions[i].id] = i
+  }
+}
+
+function findSessionIndex(sessions: Session[], id: string): number {
+  return sessions.findIndex((s) => s.id === id)
+}
+
+export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', never]], [], SessionSlice> = (set, get) => ({
+  sessions: [],
+  sessionsById: {},
+  activeSessionId: null,
+
+  createSession: (mode, projectId, options) => {
+    const id = nanoid()
+    const now = Date.now()
+    const preserveProjectless = options?.preserveProjectless === true
+
+    let targetProjectId = preserveProjectless
+      ? (projectId ?? null)
+      : (projectId ?? get()['activeProjectId' as keyof SessionSlice] as string | null ?? null)
+
+    // Try to find a default project if none specified
+    if (!targetProjectId && !preserveProjectless) {
+      const projects = (get() as unknown as { projects: Array<{ id: string; pluginId?: string }> }).projects
+      targetProjectId = projects?.find((p) => !p.pluginId)?.id ?? projects?.[0]?.id ?? null
+    }
+
+    const newSession: Session = {
+      id,
+      title: 'New Conversation',
+      mode,
+      messages: [],
+      messageCount: 0,
+      messagesLoaded: true,
+      loadedRangeStart: 0,
+      loadedRangeEnd: 0,
+      lastKnownMessageCount: 0,
+      createdAt: now,
+      updatedAt: now,
+      projectId: targetProjectId ?? undefined,
+      workingFolder: options?.workingFolder ?? undefined,
+      sshConnectionId: options?.sshConnectionId ?? undefined,
+      planId: options?.planId ?? undefined,
+      modelSelectionMode: 'inherit'
+    }
+
+    set((state) => {
+      state.sessions.push(newSession)
+      syncSessionsById(state)
+      state.activeSessionId = id
+    })
+
+    dbCreateSession(newSession)
+    return id
+  },
+
+  deleteSession: (id) => {
+    set((state) => {
+      const idx = findSessionIndex(state.sessions, id)
+      if (idx !== -1) {
+        state.sessions.splice(idx, 1)
+        syncSessionsById(state)
+      }
+      if (state.activeSessionId === id) {
+        state.activeSessionId = state.sessions[0]?.id ?? null
+      }
+    })
+    dbDeleteSession(id)
+  },
+
+  setActiveSession: (id) => {
+    set({ activeSessionId: id })
+  },
+
+  updateSessionTitle: (id, title) => {
+    const now = Date.now()
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === id)
+      if (session) {
+        session.title = title
+        session.updatedAt = now
+      }
+    })
+    dbUpdateSession(id, { title, updatedAt: now })
+  },
+
+  updateSessionIcon: (id, icon) => {
+    const now = Date.now()
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === id)
+      if (session) {
+        session.icon = icon
+        session.updatedAt = now
+      }
+    })
+    dbUpdateSession(id, { icon, updatedAt: now })
+  },
+
+  updateSessionMode: (id, mode) => {
+    const now = Date.now()
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === id)
+      if (session) {
+        session.mode = mode
+        session.updatedAt = now
+      }
+    })
+    dbUpdateSession(id, { mode, updatedAt: now })
+  },
+
+  clearSessionMessages: (sessionId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (session) {
+        session.messages = []
+        session.messageCount = 0
+        session.updatedAt = Date.now()
+      }
+    })
+  },
+
+  togglePinSession: (sessionId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (session) {
+        session.pinned = !session.pinned
+        session.updatedAt = Date.now()
+      }
+    })
+  },
+
+  duplicateSession: (sessionId) => {
+    const session = get().sessions.find((s) => s.id === sessionId)
+    if (!session) return null
+    const newId = nanoid()
+    const now = Date.now()
+    const copy: Session = {
+      ...session,
+      id: newId,
+      title: `${session.title} (copy)`,
+      messages: session.messages.map((m) => ({ ...m, id: `${m.id}_copy_${nanoid(6)}` })),
+      createdAt: now,
+      updatedAt: now,
+      pinned: false
+    }
+    set((state) => {
+      state.sessions.push(copy)
+      syncSessionsById(state)
+      state.activeSessionId = newId
+    })
+    dbCreateSession(copy)
+    return newId
+  },
+
+  restoreSession: (session) => {
+    set((state) => {
+      const existing = state.sessions.find((s) => s.id === session.id)
+      if (existing) {
+        Object.assign(existing, session)
+      } else {
+        state.sessions.push(session)
+        syncSessionsById(state)
+      }
+    })
+  },
+
+  clearAllSessions: () => {
+    set((state) => {
+      state.sessions = []
+      state.sessionsById = {}
+      state.activeSessionId = null
+    })
+  },
+
+  addMessage: (sessionId, msg) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (session) {
+        session.messages.push(msg)
+        session.messageCount = session.messages.length
+        session.updatedAt = Date.now()
+      }
+    })
+  },
+
+  beginUserTurn: (sessionId, userMsg, assistantMsg, streamingMessageId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      if (userMsg) {
+        session.messages.push(userMsg)
+      }
+      if (assistantMsg) {
+        session.messages.push(assistantMsg)
+      }
+      session.messageCount = session.messages.length
+      session.updatedAt = Date.now()
+      if (streamingMessageId) {
+        ;(state as unknown as { streamingMessages: Record<string, string> }).streamingMessages[sessionId] = streamingMessageId
+        ;(state as unknown as { streamingMessageId: string | null }).streamingMessageId = streamingMessageId
+      }
+    })
+  },
+
+  updateMessage: (sessionId, msgId, patch) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      const msg = session.messages.find((m) => m.id === msgId)
+      if (msg) {
+        Object.assign(msg, patch)
+      }
+    })
+  },
+
+  removeMessageById: (sessionId, msgId) => {
+    let removed = false
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      const idx = session.messages.findIndex((m) => m.id === msgId)
+      if (idx !== -1) {
+        session.messages.splice(idx, 1)
+        session.messageCount = session.messages.length
+        removed = true
+      }
+    })
+    return removed
+  },
+
+  appendTextDelta: (sessionId, msgId, text) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      const msg = session.messages.find((m) => m.id === msgId)
+      if (msg) {
+        msg.text += text
+      }
+    })
+  },
+
+  appendThinkingDelta: (sessionId, msgId, thinking) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      const msg = session.messages.find((m) => m.id === msgId)
+      if (msg) {
+        msg.thinking = (msg.thinking ?? '') + thinking
+      }
+    })
+  },
+
+  removeLastAssistantMessage: (sessionId) => {
+    let removed = false
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      for (let i = session.messages.length - 1; i >= 0; i--) {
+        if (session.messages[i].role === 'assistant') {
+          session.messages.splice(i, 1)
+          session.messageCount = session.messages.length
+          removed = true
+          break
+        }
+      }
+    })
+    return removed
+  },
+
+  removeLastUserMessage: (sessionId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      for (let i = session.messages.length - 1; i >= 0; i--) {
+        if (session.messages[i].role === 'user') {
+          session.messages.splice(i, 1)
+          session.messageCount = session.messages.length
+          break
+        }
+      }
+    })
+  },
+
+  truncateMessagesFrom: (sessionId, fromIndex) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      session.messages = session.messages.slice(0, fromIndex)
+      session.messageCount = session.messages.length
+    })
+  },
+
+  replaceSessionMessages: (sessionId, messages) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      session.messages = messages
+      session.messageCount = messages.length
+      session.updatedAt = Date.now()
+    })
+  },
+
+  getActiveSession: () => {
+    const state = get()
+    return state.sessions.find((s) => s.id === state.activeSessionId)
+  },
+
+  getSessionMessages: (sessionId) => {
+    const session = get().sessions.find((s) => s.id === sessionId)
+    return session?.messages ?? []
+  }
+})

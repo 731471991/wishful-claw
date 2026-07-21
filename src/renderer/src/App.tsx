@@ -10,7 +10,6 @@ import { initializeI18n, changeI18nLanguage } from '@renderer/locales'
 import { SplashPage } from '@renderer/components/SplashPage'
 import { MainLayout } from '@renderer/components/layout/MainLayout'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
-import { ChatPage } from '@renderer/components/chat/ChatPage'
 
 // Initialize provider store — ensures builtin presets exist
 initProviderStore()
@@ -42,11 +41,6 @@ function App(): React.JSX.Element | null {
       <TooltipProvider delayDuration={0}>
         {view === 'splash' && <SplashPage />}
         {view === 'main' && <MainLayout />}
-        {view === 'chat' && (
-          <div className="h-screen w-screen">
-            <ChatPage />
-          </div>
-        )}
         {view === 'settings' && <SettingsPage />}
         <Toaster position="bottom-left" theme="system" richColors />
       </TooltipProvider>
