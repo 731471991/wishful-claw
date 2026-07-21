@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
+import { useSettingsStore } from '@renderer/stores/settings-store'
+import { buildSystemPrompt } from '@renderer/lib/agent/system-prompt'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -38,15 +40,6 @@ export function useChatActions() {
         console.error('[ChatActions] No model selected')
         return
       }
-      const provider = {
-        id: activeProvider.id,
-        name: activeProvider.name,
-        type: activeProvider.type,
-        apiKey: activeProvider.apiKey,
-        baseUrl: activeProvider.baseUrl,
-        model: modelId
-      }
-
       const chatStore = useChatStore.getState()
       const targetSessionId = sessionId ?? chatStore.activeSessionId
       if (!targetSessionId) {
@@ -69,6 +62,24 @@ export function useChatActions() {
 
       // Fetch tool definitions
       const tools = await getToolDefinitions()
+
+      // Build system prompt with context
+      const settings = useSettingsStore.getState()
+      const systemPrompt = buildSystemPrompt({
+        workingFolder,
+        language: settings.language,
+        toolDefs: tools ?? undefined
+      })
+
+      const provider = {
+        id: activeProvider.id,
+        name: activeProvider.name,
+        type: activeProvider.type,
+        apiKey: activeProvider.apiKey,
+        baseUrl: activeProvider.baseUrl,
+        model: modelId,
+        systemPrompt
+      }
 
       await sendMessage({
         provider,
