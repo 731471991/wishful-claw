@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ChatMessage } from '@renderer/stores/chat-store'
@@ -7,6 +8,7 @@ import { cn } from '@renderer/lib/utils'
 import { ToolCallCard } from './ToolCallCard'
 
 export function AssistantMessage({ message }: { message: ChatMessage }) {
+  const { t } = useTranslation()
   const [showThinking, setShowThinking] = useState(false)
   const hasThinking = !!(message.thinking && message.thinking.length > 0)
 
@@ -21,7 +23,7 @@ export function AssistantMessage({ message }: { message: ChatMessage }) {
               className="flex w-full items-center gap-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {showThinking ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-              <span>Thinking{message.isStreaming ? '...' : ''}</span>
+              <span>{t('chat.message.thinking')}{message.isStreaming ? '...' : ''}</span>
             </button>
             {showThinking && (
               <div className="px-3 pb-2 text-xs text-muted-foreground whitespace-pre-wrap break-words">
@@ -50,7 +52,7 @@ export function AssistantMessage({ message }: { message: ChatMessage }) {
             </div>
           ) : message.isStreaming ? (
             <div className="flex items-center gap-1 py-1">
-              <span className="text-sm text-muted-foreground">Generating</span>
+              <span className="text-sm text-muted-foreground">{t('chat.message.generating')}</span>
               <span className="inline-flex gap-0.5">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: '0ms' }} />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: '150ms' }} />
@@ -75,10 +77,10 @@ export function AssistantMessage({ message }: { message: ChatMessage }) {
         {/* Usage info */}
         {message.usage && !message.isStreaming && (
           <div className="flex gap-3 text-xs text-muted-foreground">
-            {message.usage.inputTokens > 0 && <span>in: {message.usage.inputTokens}</span>}
-            {message.usage.outputTokens > 0 && <span>out: {message.usage.outputTokens}</span>}
-            {message.timing && <span>{(message.timing.totalMs / 1000).toFixed(1)}s</span>}
-            {message.timing?.tps && <span>{message.timing.tps.toFixed(1)} tok/s</span>}
+            {message.usage.inputTokens > 0 && <span>{t('chat.message.inTokens')}: {message.usage.inputTokens}</span>}
+            {message.usage.outputTokens > 0 && <span>{t('chat.message.outTokens')}: {message.usage.outputTokens}</span>}
+            {message.timing && <span>{(message.timing.totalMs / 1000).toFixed(1)}{t('chat.message.seconds')}</span>}
+            {message.timing?.tps && <span>{message.timing.tps.toFixed(1)} {t('chat.message.tokensPerSecond')}</span>}
           </div>
         )}
       </div>

@@ -186,6 +186,15 @@
     "startAcp": "开始 ACP 会话",
     "startAcpDesc": "先澄清目标、背景、约束和验收标准，再做架构设计与任务分派，最后再进入实现。",
     "homeTitleAcp": "ACP 模式",
-    "homeDescAcp": "ACP 模式下先把目标、背景、约束和验收标准问清楚，再进行架构设计与任务拆分，最后才进入编码。"
+    "homeDescAcp": "ACP 模式下先把目标、背景、约束和验收标准问清楚，再进行架构设计与任务拆分，最后才进入编码。",
+    "stop": "停止"
+  },
+  "message": {
+    "thinking": "思考中",
+    "generating": "生成中",
+    "inTokens": "输入",
+    "outTokens": "输出",
+    "seconds": "秒",
+    "tokensPerSecond": "tok/s"
   }
 }

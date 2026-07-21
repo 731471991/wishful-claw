@@ -186,10 +186,35 @@ internal static partial class AnthropicMessagesProvider
         writer.WriteStartArray();
         foreach (var tool in tools.EnumerateArray())
         {
-            if (tool.ValueKind == JsonValueKind.Object)
+            if (tool.ValueKind != JsonValueKind.Object)
+                continue;
+
+            // Anthropic format: { name, description, input_schema }
+            // Transform inputSchema -> input_schema if needed
+            if (tool.TryGetProperty("input_schema", out _))
             {
+                // Already in Anthropic format
                 tool.WriteTo(writer);
+                continue;
             }
+
+            writer.WriteStartObject();
+            if (tool.TryGetProperty("name", out var name))
+            {
+                writer.WritePropertyName("name");
+                name.WriteTo(writer);
+            }
+            if (tool.TryGetProperty("description", out var desc))
+            {
+                writer.WritePropertyName("description");
+                desc.WriteTo(writer);
+            }
+            if (tool.TryGetProperty("inputSchema", out var inputSchema))
+            {
+                writer.WritePropertyName("input_schema");
+                inputSchema.WriteTo(writer);
+            }
+            writer.WriteEndObject();
         }
         writer.WriteEndArray();
     }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Send, Square } from 'lucide-react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
@@ -30,6 +31,7 @@ export function InputArea({
   sessionId,
   attachedFooter
 }: InputAreaProps = {}): React.JSX.Element {
+  const { t } = useTranslation()
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const storeIsStreaming = useChatStore((s) =>
@@ -88,7 +90,7 @@ export function InputArea({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
+              placeholder={t('chat.home.placeholder')}
               rows={1}
               className={cn(
                 'w-full resize-none bg-transparent text-sm',
@@ -111,7 +113,7 @@ export function InputArea({
                 <button
                   onClick={handleStop}
                   className="flex size-8 items-center justify-center rounded-lg bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90"
-                  title="Stop"
+                  title={t('chat.input.stop', { defaultValue: 'Stop' })}
                 >
                   <Square className="size-3.5" />
                 </button>
@@ -120,7 +122,7 @@ export function InputArea({
                   onClick={() => void handleSubmit()}
                   disabled={!input.trim()}
                   className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-                  title="Send"
+                  title={t('chat.home.send')}
                 >
                   <Send className="size-3.5" />
                 </button>

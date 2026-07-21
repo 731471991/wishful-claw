@@ -186,6 +186,15 @@
     "startAcp": "Start an ACP session",
     "startAcpDesc": "First clarify the goal, background, constraints, and acceptance criteria. Then design the architecture and delegate tasks before writing code.",
     "homeTitleAcp": "ACP mode",
-    "homeDescAcp": "In ACP mode, begin by clarifying goals, background, constraints, and acceptance criteria. Then propose an architecture and task breakdown before implementation."
+    "homeDescAcp": "In ACP mode, begin by clarifying goals, background, constraints, and acceptance criteria. Then propose an architecture and task breakdown before implementation.",
+    "stop": "Stop"
+  },
+  "message": {
+    "thinking": "Thinking",
+    "generating": "Generating",
+    "inTokens": "in",
+    "outTokens": "out",
+    "seconds": "s",
+    "tokensPerSecond": "tok/s"
   }
 }

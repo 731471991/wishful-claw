@@ -341,10 +341,41 @@ internal static class OpenAIChatProvider
         writer.WriteStartArray();
         foreach (var tool in tools.EnumerateArray())
         {
-            if (tool.ValueKind == JsonValueKind.Object)
+            if (tool.ValueKind != JsonValueKind.Object)
+                continue;
+
+            // Transform from { name, description, inputSchema } to OpenAI format:
+            // { type: "function", function: { name, description, parameters: inputSchema } }
+            // If the tool already has "type" field, it's already in the correct format.
+            if (tool.TryGetProperty("type", out _) && tool.TryGetProperty("function", out _))
             {
                 tool.WriteTo(writer);
+                continue;
             }
+
+            writer.WriteStartObject();
+            writer.WriteString("type", "function");
+            writer.WritePropertyName("function");
+            writer.WriteStartObject();
+
+            if (tool.TryGetProperty("name", out var name))
+            {
+                writer.WritePropertyName("name");
+                name.WriteTo(writer);
+            }
+            if (tool.TryGetProperty("description", out var desc))
+            {
+                writer.WritePropertyName("description");
+                desc.WriteTo(writer);
+            }
+            if (tool.TryGetProperty("inputSchema", out var inputSchema))
+            {
+                writer.WritePropertyName("parameters");
+                inputSchema.WriteTo(writer);
+            }
+
+            writer.WriteEndObject(); // function
+            writer.WriteEndObject(); // tool
         }
         writer.WriteEndArray();
     }
