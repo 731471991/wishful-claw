@@ -27,7 +27,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   mulberry: {
     id: 'mulberry',
     label: '黑曜灰',
-    description: '高对比黑白灰，克制而专注',
+    description: '黑白灰高对比配色，主机库清爽，终端保持克制和清晰',
     swatches: ['#18181b', '#71717a', '#fafafa'],
     preview: {
       light: {
@@ -121,7 +121,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   studio: {
     id: 'studio',
     label: '远航蓝',
-    description: '蓝灰工作调，适合长时间编码',
+    description: '蓝灰工作台配色，适合长时间编码、会话管理和主机维护',
     swatches: ['#3558e8', '#7aa7ff', '#f08f61'],
     preview: {
       light: {
@@ -213,7 +213,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   graphite: {
     id: 'graphite',
     label: '石墨工具',
-    description: '中性石墨色，降低干扰保持层次',
+    description: '中性石墨配色，减少干扰，突出专业工具的层级和边界',
     swatches: ['#2a7b73', '#7fd4c9', '#7b8798'],
     preview: {
       light: {
@@ -305,8 +305,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   ocean: {
     id: 'ocean',
-    label: '深海',
-    description: '蓝绿深度色调，空间层次分明',
+    label: '深海青',
+    description: '青蓝纵深配色，让终端、状态面板和文件区更有空间感',
     swatches: ['#0f8aa6', '#4cc9f0', '#8be3ff'],
     preview: {
       light: {
@@ -397,8 +397,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   forest: {
     id: 'forest',
-    label: '森林绿',
-    description: '柔和绿色调，适合持续工作',
+    label: '松林绿',
+    description: '柔和绿色配色，适合持续盯着终端、日志和远端任务',
     swatches: ['#2f8b57', '#6fd39a', '#98e0a0'],
     preview: {
       light: {
@@ -489,8 +489,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   dawn: {
     id: 'dawn',
-    label: '暖黎明',
-    description: '暖铜橙色调，明亮而有温度',
+    label: '暖曦橙',
+    description: '暖铜橙配色，浅色更有温度，深色更沉稳',
     swatches: ['#ca6a33', '#ffb27d', '#ffd8a8'],
     preview: {
       light: {
