@@ -70,7 +70,21 @@
     "projectCreated": "项目已创建",
     "folderUpdated": "工作文件夹已更新",
     "folderUpdateFailed": "选择文件夹失败",
-    "selectFolderLater": "右键菜单可选择工作文件夹"
+    "selectFolderLater": "右键菜单可选择工作文件夹",
+    "searchLabel": "搜索",
+    "drawLabel": "绘图",
+    "automationLabel": "自动化",
+    "extensionsLabel": "扩展功能",
+    "expand": "展开侧边栏",
+    "projects": "项目",
+    "conversations": "会话",
+    "resources": "资源",
+    "skills": "技能",
+    "souls": "人格",
+    "sync": "同步",
+    "translate": "翻译",
+    "codegraph": "代码图",
+    "comingSoon": "即将推出"
   },
   "sectionExecution": {
     "title": "执行"

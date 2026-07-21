@@ -70,7 +70,21 @@
     "projectCreated": "Project created",
     "folderUpdated": "Working folder updated",
     "folderUpdateFailed": "Failed to select folder",
-    "selectFolderLater": "Select working folder from right-click menu"
+    "selectFolderLater": "Select working folder from right-click menu",
+    "searchLabel": "Search",
+    "drawLabel": "Draw",
+    "automationLabel": "Automation",
+    "extensionsLabel": "Extensions",
+    "expand": "Expand sidebar",
+    "projects": "Projects",
+    "conversations": "Conversations",
+    "resources": "Resources",
+    "skills": "Skills",
+    "souls": "Souls",
+    "sync": "Sync",
+    "translate": "Translate",
+    "codegraph": "Code Graph",
+    "comingSoon": "coming soon"
   },
   "sectionExecution": {
     "title": "Execution"
