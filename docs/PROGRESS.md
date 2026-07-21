@@ -21,8 +21,9 @@
 - 备注：28 个内置预设完整对齐 OpenCowork（含 OAuth/Channel），Provider CRUD + 连通性测试 + 模型拉取，前端设置页面（Provider/通用/i18n），验证通过
 
 ## 迭代三：Agent Loop + 对话
-- 状态：未开始
-- Plan: —
+- 状态：进行中
+- 分支：dev/iter-3
+- Plan: docs/plans/plan_003/
 - VERDICT: —
 - Tag: —
 - Commit: —
