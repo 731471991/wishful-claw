@@ -14,6 +14,8 @@ interface ProviderState {
   providers: AIProvider[]
   activeProviderId: string | null
   activeModelId: string
+  activeFastProviderId: string | null
+  activeFastModelId: string
   defaultModel: string | null
 
   // ── Selectors ──
@@ -27,6 +29,9 @@ interface ProviderState {
   deleteProvider: (id: string) => void
   setActiveProvider: (id: string) => void
   setActiveModel: (modelId: string) => void
+  setActiveFastProvider: (id: string) => void
+  setActiveFastModel: (modelId: string) => void
+  getFastProviderConfig: () => { providerId: string | null; model: string } | null
   setDefaultModel: (modelId: string) => void
 
   // ── Model management ──
@@ -204,6 +209,8 @@ export const useProviderStore = create<ProviderState>()(
       providers: [],
       activeProviderId: null,
       activeModelId: '',
+      activeFastProviderId: null,
+      activeFastModelId: '',
       defaultModel: null,
 
       getActiveProvider: () => {
@@ -254,6 +261,18 @@ export const useProviderStore = create<ProviderState>()(
       setActiveProvider: (id) => set({ activeProviderId: id }),
 
       setActiveModel: (modelId) => set({ activeModelId: modelId }),
+
+      setActiveFastProvider: (id) => set({ activeFastProviderId: id }),
+
+      setActiveFastModel: (modelId) => set({ activeFastModelId: modelId }),
+
+      getFastProviderConfig: () => {
+        const { activeFastProviderId, activeFastModelId, providers } = get()
+        if (!activeFastProviderId) return null
+        const provider = providers.find((p) => p.id === activeFastProviderId)
+        if (!provider) return null
+        return { providerId: activeFastProviderId, model: activeFastModelId || provider.defaultModel || '' }
+      },
 
       setDefaultModel: (modelId) => set({ defaultModel: modelId }),
 
@@ -390,6 +409,36 @@ export function isProviderAvailableForModelSelection(
 ): boolean {
   if (!provider?.enabled) return false
   return isProviderAuthReady(provider)
+}
+
+export function modelSupportsBuiltinSearch(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return false
+  const requestType = model.type ?? providerType
+  return (
+    (requestType === 'anthropic' || requestType === 'openai-responses') &&
+    model.supportsBuiltinSearch === true
+  )
+}
+
+export function modelSupportsResponsesWebsocket(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return false
+  const requestType = model.type ?? providerType
+  return requestType === 'openai-responses' && model.supportsWebsocket === true
+}
+
+export function modelSupportsResponsesImageGeneration(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return false
+  const requestType = model.type ?? providerType
+  return requestType === 'openai-responses' && model.supportsImageGeneration === true
 }
 
 /**

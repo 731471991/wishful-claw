@@ -18,6 +18,9 @@ export interface SessionSlice {
   updateSessionTitle: (id: string, title: string) => void
   updateSessionIcon: (id: string, icon: string) => void
   updateSessionMode: (id: string, mode: Session['mode']) => void
+  setSessionModelManual: (sessionId: string, providerId: string, modelId: string) => void
+  setSessionModelAuto: (sessionId: string) => void
+  setSessionModelInherit: (sessionId: string) => void
   clearSessionMessages: (sessionId: string) => void
   togglePinSession: (sessionId: string) => void
   duplicateSession: (sessionId: string) => string | null
@@ -350,6 +353,41 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       session.messageCount = messages.length
       session.updatedAt = Date.now()
     })
+  },
+
+  setSessionModelManual: (sessionId, providerId, modelId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      session.providerId = providerId
+      session.modelId = modelId
+      session.modelSelectionMode = 'manual'
+      session.updatedAt = Date.now()
+    })
+    const session = get().sessions.find((s) => s.id === sessionId)
+    if (session) void dbUpdateSession(sessionId, { providerId, modelId, modelSelectionMode: 'manual' })
+  },
+
+  setSessionModelAuto: (sessionId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      session.modelSelectionMode = 'auto'
+      session.updatedAt = Date.now()
+    })
+    void dbUpdateSession(sessionId, { modelSelectionMode: 'auto' })
+  },
+
+  setSessionModelInherit: (sessionId) => {
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      session.modelSelectionMode = 'inherit'
+      session.providerId = undefined
+      session.modelId = undefined
+      session.updatedAt = Date.now()
+    })
+    void dbUpdateSession(sessionId, { modelSelectionMode: 'inherit', providerId: undefined, modelId: undefined })
   },
 
   getActiveSession: () => {

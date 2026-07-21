@@ -1,18 +1,54 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { Check, Search } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
+import {
+  Check,
+  Search,
+  Eye,
+  Wrench,
+  Brain,
+  Settings2,
+  MonitorSmartphone,
+  Loader2,
+  Globe2
+} from 'lucide-react'
 import {
   isProviderAvailableForModelSelection,
   useProviderStore,
-  modelSupportsVision
+  modelSupportsVision,
+  modelSupportsBuiltinSearch,
+  modelSupportsResponsesWebsocket,
+  modelSupportsResponsesImageGeneration
 } from '@renderer/stores/provider-store'
-import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@renderer/components/ui/hover-card'
-import { ProviderIcon, ModelIcon } from '@renderer/components/settings/provider-icons'
-import { cn } from '@renderer/lib/utils'
-import type { AIProvider, AIModelConfig } from '@shared/types/provider'
-import { useTranslation } from 'react-i18next'
+import {
+  useSettingsStore,
+  getReasoningEffortKey,
+  resolveReasoningEffortForModel
+} from '@renderer/stores/settings-store'
+import { useChatStore, type SessionModelSelectionMode } from '@renderer/stores/chat-store'
+import { useChannelStore } from '@renderer/stores/channel-store'
+import { useQuotaStore } from '@renderer/stores/quota-store'
+import { useUIStore } from '@renderer/stores/ui-store'
 
-// ─── Helpers (from OpenCowork) ───
+import { useTranslation } from 'react-i18next'
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
+
+import {
+  ProviderIcon,
+  ModelIcon,
+  AutoModelIcon
+} from '@renderer/components/settings/provider-icons'
+import { cn } from '@renderer/lib/utils'
+import type {
+  AIModelConfig,
+  AIProvider,
+  ReasoningEffortLevel,
+  ThinkingConfig
+} from '@shared/types/provider'
+import { isResponsesImageGenerationEnabled } from '@renderer/lib/api/responses-image-generation'
+import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
+import { ReasoningEffortSlider } from './ReasoningEffortSlider'
 
 function formatContextLength(length?: number): string | null {
   if (!length) return null
@@ -22,19 +58,122 @@ function formatContextLength(length?: number): string | null {
   return String(length)
 }
 
-function selectModel(
-  provider: AIProvider,
-  modelId: string,
-  setOpen: (v: boolean) => void
-): void {
-  const pid = provider.id
-  const providerStore = useProviderStore.getState()
-  if (pid !== providerStore.activeProviderId) providerStore.setActiveProvider(pid)
-  providerStore.setActiveModel(modelId)
-  setOpen(false)
+const MIN_ANTHROPIC_THINKING_BUDGET = 1024
+const DEFAULT_ANTHROPIC_THINKING_BUDGET = 10000
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// ─── Capability tags (simplified from OpenCowork) ───
+function formatTokenCount(value?: number): string {
+  const formatted = formatContextLength(value)
+  return formatted ? `${formatted} tokens` : '-'
+}
+
+function formatPrice(value?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '-'
+  return `$${value.toFixed(2)}/M tokens`
+}
+
+function readAnthropicThinkingBudget(model?: AIModelConfig): number | null {
+  const thinking = model?.thinkingConfig?.bodyParams.thinking
+  if (!isRecord(thinking)) return null
+  const value = thinking.budget_tokens
+  const numeric =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : null
+}
+
+function clampThinkingBudget(value: number, maxOutputTokens?: number): number {
+  const upperBound = Math.max(
+    MIN_ANTHROPIC_THINKING_BUDGET,
+    Math.floor((maxOutputTokens ?? 64_000) - 1)
+  )
+  return Math.min(upperBound, Math.max(MIN_ANTHROPIC_THINKING_BUDGET, Math.floor(value)))
+}
+
+function buildAnthropicThinkingConfigWithBudget(
+  config: ThinkingConfig | undefined,
+  budget: number
+): ThinkingConfig {
+  const nextConfig: ThinkingConfig = {
+    ...(config ?? { bodyParams: {} }),
+    bodyParams: { ...(config?.bodyParams ?? {}) }
+  }
+  const rawThinking = nextConfig.bodyParams.thinking
+  nextConfig.bodyParams.thinking = {
+    ...(isRecord(rawThinking) ? rawThinking : {}),
+    type: 'enabled',
+    budget_tokens: budget
+  }
+  delete nextConfig.bodyParams.enable_thinking
+  return nextConfig
+}
+
+function SettingSection({
+  accent,
+  title,
+  children,
+  className
+}: {
+  accent: string
+  title: string
+  children: React.ReactNode
+  className?: string
+}): React.JSX.Element {
+  return (
+    <section className={cn('space-y-2.5', className)}>
+      <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+        <span className={cn('h-4 w-0.5 rounded-full', accent)} />
+        <span>{title}</span>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function PillToggle({
+  enabled,
+  onClick,
+  label,
+  description,
+  compact = false,
+  activeClassName = 'bg-violet-500 border-violet-500'
+}: {
+  enabled: boolean
+  onClick: () => void
+  label: string
+  description?: string
+  compact?: boolean
+  activeClassName?: string
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      title={compact ? label : undefined}
+      className={cn(
+        'flex items-center justify-between rounded-md text-xs transition-colors',
+        compact ? 'min-w-0 flex-1 gap-1.5 px-2 py-2' : 'w-full gap-3 px-2.5 py-2',
+        enabled ? 'bg-muted/50 text-foreground' : 'text-foreground/75 hover:bg-muted/45'
+      )}
+      onClick={onClick}
+    >
+      <span className="flex min-w-0 flex-col text-left">
+        <span className={cn('font-medium', compact && 'truncate')}>{label}</span>
+        {description && !compact && (
+          <span className="text-[10px] text-muted-foreground">{description}</span>
+        )}
+      </span>
+      <span
+        className={cn(
+          'shrink-0 rounded-full border-2 transition-colors',
+          compact ? 'size-3.5' : 'ml-3 size-4',
+          enabled ? activeClassName : 'border-muted-foreground/30'
+        )}
+      />
+    </button>
+  )
+}
 
 function ModelCapabilityTags({
   model,
@@ -44,7 +183,7 @@ function ModelCapabilityTags({
 }: {
   model: AIModelConfig
   providerType?: AIProvider['type']
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: (key: string) => string
   showContext?: boolean
 }): React.JSX.Element {
   const ctx = formatContextLength(model.contextLength)
@@ -52,17 +191,20 @@ function ModelCapabilityTags({
     <div className="flex items-center gap-1 flex-wrap">
       {modelSupportsVision(model, providerType) && (
         <span className="inline-flex items-center gap-0.5 rounded-sm bg-emerald-500/10 px-1 py-px text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
-          {t('topbar.vision', { defaultValue: 'Vision' })}
+          <Eye className="size-2.5" />
+          {t('topbar.vision')}
         </span>
       )}
       {model.supportsFunctionCall && (
         <span className="inline-flex items-center gap-0.5 rounded-sm bg-blue-500/10 px-1 py-px text-[9px] font-medium text-blue-600 dark:text-blue-400">
-          {t('topbar.tools', { defaultValue: 'Tools' })}
+          <Wrench className="size-2.5" />
+          {t('topbar.tools')}
         </span>
       )}
       {model.supportsThinking && (
         <span className="inline-flex items-center gap-0.5 rounded-sm bg-violet-500/10 px-1 py-px text-[9px] font-medium text-violet-600 dark:text-violet-400">
-          {t('topbar.thinking', { defaultValue: 'Thinking' })}
+          <Brain className="size-2.5" />
+          {t('topbar.thinking')}
         </span>
       )}
       {showContext && ctx && (
@@ -74,51 +216,795 @@ function ModelCapabilityTags({
   )
 }
 
-// ─── Provider group type ───
+function ModelHoverDetails({
+  model,
+  tSettings
+}: {
+  model: AIModelConfig
+  tSettings: (key: string, opts?: Record<string, unknown>) => string
+}): React.JSX.Element | null {
+  const contextRows = [
+    {
+      label: tSettings('provider.contextLength'),
+      value: formatTokenCount(model.contextLength)
+    },
+    {
+      label: tSettings('provider.maxOutputTokens'),
+      value: formatTokenCount(model.maxOutputTokens)
+    }
+  ].filter((row) => row.value !== '-')
+
+  const priceRows = [
+    { label: tSettings('provider.inputPrice'), value: formatPrice(model.inputPrice) },
+    { label: tSettings('provider.outputPrice'), value: formatPrice(model.outputPrice) },
+    {
+      label: tSettings('provider.cacheCreationPrice'),
+      value: formatPrice(model.cacheCreationPrice)
+    },
+    { label: tSettings('provider.cacheHitPrice'), value: formatPrice(model.cacheHitPrice) }
+  ].filter((row) => row.value !== '-')
+
+  if (contextRows.length === 0 && priceRows.length === 0) return null
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-border/60 pt-2">
+      {contextRows.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {contextRows.map((row) => (
+            <div key={row.label} className="min-w-0 rounded-md bg-muted/35 px-2 py-1.5">
+              <div className="truncate text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                {row.label}
+              </div>
+              <div className="mt-0.5 truncate text-[11px] font-semibold text-foreground/90">
+                {row.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {priceRows.length > 0 && (
+        <div className="space-y-1.5 rounded-md bg-muted/25 px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2 text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
+            <span>{tSettings('provider.pricing')}</span>
+            <span className="normal-case tracking-normal">{tSettings('provider.pricingUnit')}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {priceRows.map((row) => (
+              <div key={row.label} className="flex min-w-0 items-center justify-between gap-2">
+                <span className="truncate text-[10px] text-muted-foreground">{row.label}</span>
+                <span className="shrink-0 text-[10px] font-semibold text-foreground/85">
+                  {row.value.replace('/M tokens', '')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface ProviderGroup {
   provider: AIProvider
   models: AIModelConfig[]
 }
 
-// ─── Main ModelSwitcher (from OpenCowork, simplified) ───
-//
-// Removed from OpenCowork version:
-// - Auto model selection / routing
-// - Fast route model selection
-// - Session-level model override (sessionId prop)
-// - Quota indicators (codex/copilot)
-// - Settings popover (thinking, fast mode, cache TTL, builtin search, websocket)
-// - Reasoning effort slider
-// - Channel store integration
+interface ModelSwitcherSessionSnapshot {
+  id: string
+  pluginId?: string
+  providerId?: string
+  modelId?: string
+  modelSelectionMode?: SessionModelSelectionMode
+}
 
-export function ModelSwitcher(): React.JSX.Element {
+function supportsPriorityServiceTier(model: AIModelConfig | undefined): boolean {
+  return !!model?.serviceTier
+}
+
+function selectModel(
+  provider: AIProvider,
+  modelId: string,
+  scopedSessionId: string | null,
+  setOpen: (v: boolean) => void
+): void {
+  const pid = provider.id
+  const session = scopedSessionId
+    ? useChatStore.getState().sessions.find((item) => item.id === scopedSessionId)
+    : null
+
+  if (session) {
+    useChatStore.getState().setSessionModelManual(session.id, pid, modelId)
+    if (session.pluginId) {
+      void useChannelStore
+        .getState()
+        .updateChannel(session.pluginId, { providerId: pid, model: modelId })
+    }
+  } else {
+    const providerStore = useProviderStore.getState()
+    if (pid !== providerStore.activeProviderId) providerStore.setActiveProvider(pid)
+    providerStore.setActiveModel(modelId)
+    useSettingsStore.getState().updateSettings({ mainModelSelectionMode: 'manual' })
+  }
+  setOpen(false)
+}
+
+function selectFastModel(
+  provider: AIProvider,
+  modelId: string,
+  activeFastProviderId: string | null,
+  setActiveFastProvider: (id: string) => void,
+  setActiveFastModel: (id: string) => void,
+  setOpen: (v: boolean) => void
+): void {
+  const pid = provider.id
+  if (pid !== activeFastProviderId) setActiveFastProvider(pid)
+  setActiveFastModel(modelId)
+  setOpen(false)
+}
+
+function selectAutoModel(scopedSessionId: string | null, setOpen: (v: boolean) => void): void {
+  const session = scopedSessionId
+    ? useChatStore.getState().sessions.find((item) => item.id === scopedSessionId)
+    : null
+  if (session && !session.pluginId) {
+    useChatStore.getState().setSessionModelAuto(session.id)
+  } else {
+    useSettingsStore.getState().updateSettings({ mainModelSelectionMode: 'auto' })
+  }
+  setOpen(false)
+}
+
+function selectFollowGlobalModel(
+  scopedSessionId: string | null,
+  setOpen: (v: boolean) => void
+): void {
+  const session = scopedSessionId
+    ? useChatStore.getState().sessions.find((item) => item.id === scopedSessionId)
+    : null
+  if (session) {
+    useChatStore.getState().setSessionModelInherit(session.id)
+    if (session.pluginId) {
+      void useChannelStore.getState().updateChannel(session.pluginId, {
+        providerId: null,
+        model: null
+      })
+    }
+  }
+  setOpen(false)
+}
+
+/** Settings popover shown next to model icon */
+function ModelSettingsPopover({
+  model,
+  providerId,
+  providerType,
+  providerWebsocketMode,
+  side = 'top',
+  t,
+  tChat,
+  tSettings
+}: {
+  model: AIModelConfig | undefined
+  providerId?: string | null
+  providerType?: AIProvider['type']
+  providerWebsocketMode?: AIProvider['websocketMode']
+  side?: 'top' | 'bottom'
+  t: (key: string) => string
+  tChat: (key: string, opts?: Record<string, unknown>) => string
+  tSettings: (key: string, opts?: Record<string, unknown>) => string
+}): React.JSX.Element | null {
+  const requestType = model?.type ?? providerType
+  const supportsThinking = model?.supportsThinking ?? false
+  const supportsFastMode = supportsPriorityServiceTier(model)
+  const supportsResponsesWebsocket = modelSupportsResponsesWebsocket(model, providerType)
+  const supportsResponsesImageGeneration = modelSupportsResponsesImageGeneration(
+    model,
+    providerType
+  )
+  const levels = model?.thinkingConfig?.reasoningEffortLevels
+  const thinkingEnabled = useSettingsStore((s) => s.thinkingEnabled)
+  const fastModeEnabled = useSettingsStore((s) => s.fastModeEnabled)
+  const reasoningEffort = useSettingsStore((s) => s.reasoningEffort)
+  const reasoningEffortByModel = useSettingsStore((s) => s.reasoningEffortByModel)
+  const effortKey = getReasoningEffortKey(providerId, model?.id)
+  const effectiveReasoningEffort = resolveReasoningEffortForModel({
+    reasoningEffort,
+    reasoningEffortByModel,
+    providerId,
+    modelId: model?.id,
+    thinkingConfig: model?.thinkingConfig
+  })
+
+  const toggleThinking = useCallback(() => {
+    const store = useSettingsStore.getState()
+    if (!store.thinkingEnabled && levels) {
+      store.updateSettings({ thinkingEnabled: true, reasoningEffort: effectiveReasoningEffort })
+    } else {
+      store.updateSettings({ thinkingEnabled: !store.thinkingEnabled })
+    }
+  }, [levels, effectiveReasoningEffort])
+
+  const setEffort = useCallback(
+    (level: ReasoningEffortLevel) => {
+      const store = useSettingsStore.getState()
+      store.updateSettings({
+        reasoningEffort: level,
+        reasoningEffortByModel: effortKey
+          ? { ...store.reasoningEffortByModel, [effortKey]: level }
+          : store.reasoningEffortByModel,
+        thinkingEnabled: true
+      })
+    },
+    [effortKey]
+  )
+
+  const supportsAnthropicCacheTtl = requestType === 'anthropic'
+  const anthropicCacheTtl = model?.cacheTtl ?? '5m'
+
+  const supportsBuiltinSearch = modelSupportsBuiltinSearch(model, providerType)
+  const builtinSearchEnabled = supportsBuiltinSearch && model?.enableBuiltinSearch === true
+
+  const hasConfigControls =
+    supportsThinking ||
+    supportsFastMode ||
+    supportsResponsesWebsocket ||
+    supportsResponsesImageGeneration ||
+    supportsAnthropicCacheTtl ||
+    supportsBuiltinSearch
+
+  const supportsAnthropicThinkingBudget =
+    supportsThinking && requestType === 'anthropic' && !!model?.thinkingConfig
+  const thinkingBudgetMax = Math.max(
+    MIN_ANTHROPIC_THINKING_BUDGET,
+    Math.floor((model?.maxOutputTokens ?? 64_000) - 1)
+  )
+  const thinkingBudget = clampThinkingBudget(
+    readAnthropicThinkingBudget(model) ?? DEFAULT_ANTHROPIC_THINKING_BUDGET,
+    model?.maxOutputTokens
+  )
+
+  const updateAnthropicThinkingBudget = useCallback(
+    (value: number) => {
+      if (!model?.id) return
+      const budget = clampThinkingBudget(value, model.maxOutputTokens)
+      const providerStore = useProviderStore.getState()
+      const targetProviderId = providerId ?? providerStore.activeProviderId
+      if (!targetProviderId) return
+
+      providerStore.updateModel(targetProviderId, model.id, {
+        supportsThinking: true,
+        thinkingConfig: buildAnthropicThinkingConfigWithBudget(model.thinkingConfig, budget)
+      })
+      useSettingsStore.getState().updateSettings({ thinkingEnabled: true })
+    },
+    [model, providerId]
+  )
+
+  const updateAnthropicCacheTtl = useCallback(
+    (ttl: '5m' | '1h') => {
+      if (!model?.id) return
+      const providerStore = useProviderStore.getState()
+      const targetProviderId = providerId ?? providerStore.activeProviderId
+      if (!targetProviderId) return
+      providerStore.updateModel(targetProviderId, model.id, { cacheTtl: ttl })
+    },
+    [model, providerId]
+  )
+
+  const toggleBuiltinSearch = useCallback(() => {
+    if (!model?.id) return
+    const providerStore = useProviderStore.getState()
+    const targetProviderId = providerId ?? providerStore.activeProviderId
+    if (!targetProviderId) return
+    providerStore.updateModel(targetProviderId, model.id, {
+      enableBuiltinSearch: !builtinSearchEnabled
+    })
+  }, [model, providerId, builtinSearchEnabled])
+
+  const websocketEnabled =
+    (model?.websocketMode ?? providerWebsocketMode ?? 'disabled') !== 'disabled'
+  const responsesImageGenerationEnabled = isResponsesImageGenerationEnabled(
+    model?.responsesImageGeneration
+  )
+
+  const toggleResponsesWebsocket = useCallback(() => {
+    if (!model?.id) return
+    const providerStore = useProviderStore.getState()
+    const targetProviderId = providerId ?? providerStore.activeProviderId
+    if (!targetProviderId) return
+    providerStore.updateModel(targetProviderId, model.id, {
+      websocketMode: websocketEnabled ? 'disabled' : 'auto'
+    })
+  }, [model, providerId, websocketEnabled])
+
+  const toggleResponsesImageGeneration = useCallback(() => {
+    if (!model?.id) return
+    const providerStore = useProviderStore.getState()
+    const targetProviderId = providerId ?? providerStore.activeProviderId
+    if (!targetProviderId) return
+    providerStore.updateModel(targetProviderId, model.id, {
+      responsesImageGeneration: {
+        ...(model.responsesImageGeneration ?? {}),
+        enabled: !responsesImageGenerationEnabled
+      }
+    })
+  }, [model, providerId, responsesImageGenerationEnabled])
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="inline-flex h-8 w-7 items-center justify-center rounded-r-lg border-l border-border/30 text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-foreground"
+          aria-label={t('topbar.modelSettings')}
+          title={t('topbar.modelSettings')}
+        >
+          <Settings2 className="size-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[388px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border-border/70 bg-popover/95 p-0 shadow-2xl backdrop-blur"
+        align="start"
+        side={side}
+        sideOffset={8}
+        collisionPadding={12}
+      >
+        <div
+          className="space-y-4 overflow-y-auto p-4"
+          style={{ maxHeight: 'min(32rem, var(--radix-popover-content-available-height))' }}
+        >
+          {!model && (
+            <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+              {tChat('input.noModelSettings')}
+            </div>
+          )}
+
+          {model && (
+            <>
+              <SettingSection accent="bg-emerald-500" title={tSettings('provider.modelConfig')}>
+                {!hasConfigControls && (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">
+                    {tChat('input.noModelSettings')}
+                  </div>
+                )}
+
+                {supportsThinking && (!levels || levels.length === 0) && (
+                  <PillToggle
+                    enabled={thinkingEnabled}
+                    onClick={toggleThinking}
+                    label={t('topbar.deepThinking')}
+                    description={
+                      thinkingEnabled
+                        ? tChat('input.thinkingLevel', {
+                            level: String(effectiveReasoningEffort).toUpperCase()
+                          })
+                        : tChat('input.thinkingOff')
+                    }
+                  />
+                )}
+
+                {supportsThinking && levels && levels.length > 0 && (
+                  <div className="mx-2 space-y-1.5 py-1">
+                    <div
+                      className={cn(
+                        'rounded-lg px-2.5 pb-1 pt-1.5 transition-colors',
+                        thinkingEnabled
+                          ? 'bg-zinc-950/[0.035] dark:bg-white/[0.035]'
+                          : 'bg-muted/20 dark:bg-white/[0.02]'
+                      )}
+                    >
+                      <ReasoningEffortSlider
+                        levels={levels}
+                        value={effectiveReasoningEffort}
+                        onChange={setEffort}
+                        dimmed={!thinkingEnabled}
+                        fasterLabel={t('topbar.faster')}
+                        smarterLabel={t('topbar.smarter')}
+                        ariaLabel={t('topbar.reasoningEffort')}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition-colors',
+                        'hover:bg-muted/45 dark:hover:bg-white/[0.04]',
+                        thinkingEnabled ? 'text-foreground' : 'text-muted-foreground'
+                      )}
+                      onClick={toggleThinking}
+                    >
+                      <span
+                        className={cn(
+                          'flex size-5 shrink-0 items-center justify-center rounded-full',
+                          thinkingEnabled
+                            ? 'bg-violet-500/12 text-violet-600 dark:text-violet-300'
+                            : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        <Brain className="size-3" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">
+                          {t('topbar.deepThinking')}
+                        </span>
+                        <span className="block truncate text-[10px] text-muted-foreground">
+                          {thinkingEnabled
+                            ? tChat('input.thinkingLevel', {
+                                level: String(effectiveReasoningEffort).toUpperCase()
+                              })
+                            : tChat('input.thinkingOff')}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          'flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors',
+                          thinkingEnabled
+                            ? 'border-emerald-500 bg-emerald-500 text-white'
+                            : 'border-muted-foreground/30'
+                        )}
+                      >
+                        {thinkingEnabled && <Check className="size-3" />}
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                {supportsAnthropicThinkingBudget && (
+                  <div className="px-2 py-1.5">
+                    <div className="mb-2 flex items-end justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">
+                          {tSettings('provider.thinkingBudget')}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">budget_tokens</div>
+                      </div>
+                      <span className="text-xs font-semibold text-foreground">
+                        {thinkingBudget.toLocaleString()}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={MIN_ANTHROPIC_THINKING_BUDGET}
+                      max={thinkingBudgetMax}
+                      step={1}
+                      value={thinkingBudget}
+                      onChange={(e) => updateAnthropicThinkingBudget(Number(e.target.value))}
+                      className="w-full accent-violet-500"
+                    />
+                    <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                      <span>{MIN_ANTHROPIC_THINKING_BUDGET.toLocaleString()}</span>
+                      <span>{thinkingBudgetMax.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {supportsAnthropicCacheTtl && (
+                  <div className="px-2 py-1.5">
+                    <div className="mb-2 flex items-end justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-semibold text-foreground">
+                          {tSettings('provider.cacheTtl')}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {tSettings('provider.cacheTtlHint')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {(['5m', '1h'] as const).map((ttl) => {
+                        const active = anthropicCacheTtl === ttl
+                        return (
+                          <button
+                            key={ttl}
+                            type="button"
+                            className={cn(
+                              'rounded-md border px-2 py-1.5 text-xs font-medium transition-colors',
+                              active
+                                ? 'border-sky-400 bg-sky-500/10 text-sky-600 dark:text-sky-300'
+                                : 'border-border text-muted-foreground hover:bg-muted/50'
+                            )}
+                            onClick={() => updateAnthropicCacheTtl(ttl)}
+                          >
+                            {ttl}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {supportsBuiltinSearch && (
+                  <PillToggle
+                    enabled={builtinSearchEnabled}
+                    onClick={toggleBuiltinSearch}
+                    label={t('topbar.builtinSearch')}
+                    description={
+                      builtinSearchEnabled
+                        ? t('topbar.builtinSearchOn')
+                        : t('topbar.builtinSearchOff')
+                    }
+                    activeClassName="bg-teal-500 border-teal-500"
+                  />
+                )}
+
+                {(supportsFastMode ||
+                  supportsResponsesWebsocket ||
+                  supportsResponsesImageGeneration) && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {supportsFastMode && (
+                      <PillToggle
+                        compact
+                        enabled={fastModeEnabled}
+                        onClick={() =>
+                          useSettingsStore
+                            .getState()
+                            .updateSettings({ fastModeEnabled: !fastModeEnabled })
+                        }
+                        label={t('topbar.fastMode')}
+                        activeClassName="bg-amber-500 border-amber-500"
+                      />
+                    )}
+
+                    {supportsResponsesWebsocket && (
+                      <PillToggle
+                        compact
+                        enabled={websocketEnabled}
+                        onClick={toggleResponsesWebsocket}
+                        label={tSettings('provider.responsesWebsocket')}
+                        activeClassName="bg-sky-500 border-sky-500"
+                      />
+                    )}
+
+                    {supportsResponsesImageGeneration && (
+                      <PillToggle
+                        compact
+                        enabled={responsesImageGenerationEnabled}
+                        onClick={toggleResponsesImageGeneration}
+                        label={tSettings('provider.responsesImageGeneration')}
+                        activeClassName="bg-emerald-500 border-emerald-500"
+                      />
+                    )}
+                  </div>
+                )}
+              </SettingSection>
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+export function ModelSwitcher({
+  modelRoute = 'main',
+  sessionId
+}: {
+  modelRoute?: 'main' | 'fast'
+  /**
+   * Session this composer writes to. `null` means a new/draft session (home or
+   * project home) — selections should target the global model so the freshly
+   * created session inherits them. When omitted, falls back to the active session.
+   */
+  sessionId?: string | null
+}): React.JSX.Element {
   const { t } = useTranslation('layout')
+  const { t: tChat } = useTranslation('chat')
+  const { t: tSettings } = useTranslation('settings')
+  const isFastRoute = modelRoute === 'fast'
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const autoModelRef = useRef<HTMLButtonElement>(null)
   const activeModelRef = useRef<HTMLButtonElement>(null)
   const hasAutoScrolledToSelectionRef = useRef(false)
-
   const activeProviderId = useProviderStore((s) => s.activeProviderId)
   const activeModelId = useProviderStore((s) => s.activeModelId)
+  const activeFastProviderId = useProviderStore((s) => s.activeFastProviderId)
+  const activeFastModelId = useProviderStore((s) => s.activeFastModelId)
   const providers = useProviderStore((s) => s.providers)
+  const setActiveFastProvider = useProviderStore((s) => s.setActiveFastProvider)
+  const setActiveFastModel = useProviderStore((s) => s.setActiveFastModel)
+  const fastSelection = useProviderStore(
+    useShallow((s) => {
+      if (!isFastRoute) return { providerId: null as string | null, modelId: '' }
+      const config = s.getFastProviderConfig()
+      return {
+        providerId: config?.providerId ?? null,
+        modelId: config?.model ?? ''
+      }
+    })
+  )
+  const quotaByKey = useQuotaStore((s) => s.quotaByKey)
+  const fallbackActiveSessionId = useChatStore((s) => s.activeSessionId)
+  const activeSessionId = sessionId !== undefined ? sessionId : fallbackActiveSessionId
+  const activeSession = useChatStore(
+    useShallow((s): ModelSwitcherSessionSnapshot | null => {
+      if (!activeSessionId) return null
+      const indexed = s.sessionsById[activeSessionId]
+      const session =
+        indexed !== undefined && s.sessions[indexed]?.id === activeSessionId
+          ? s.sessions[indexed]
+          : s.sessions.find((item) => item.id === activeSessionId)
+      if (!session) return null
+      return {
+        id: session.id,
+        pluginId: session.pluginId,
+        providerId: session.providerId,
+        modelId: session.modelId,
+        modelSelectionMode: session.modelSelectionMode
+      }
+    })
+  )
+  const activeChannelModelBinding = useChannelStore(
+    useShallow((s) => {
+      if (!activeSession?.pluginId) return { providerId: null, modelId: null }
+      const channel = s.channels.find((item) => item.id === activeSession.pluginId)
+      return {
+        providerId: channel?.providerId ?? null,
+        modelId: channel?.model ?? null
+      }
+    })
+  )
+  const mainModelSelectionMode = useSettingsStore((s) => s.mainModelSelectionMode)
+  const { autoSelection, autoRoutingState } = useUIStore(
+    useShallow((s) => ({
+      autoSelection: activeSessionId
+        ? (s.autoModelSelectionsBySession[activeSessionId] ?? null)
+        : null,
+      autoRoutingState: activeSessionId
+        ? (s.autoModelRoutingStatesBySession[activeSessionId] ?? 'idle')
+        : 'idle'
+    }))
+  )
 
   const enabledProviders = useMemo(
     () => (open ? providers.filter((p) => isProviderAvailableForModelSelection(p)) : []),
     [open, providers]
   )
-
-  // Resolve display provider + model
-  const displayProviderId = activeProviderId ?? providers[0]?.id ?? null
+  const sessionModelSelection = resolveSessionModelSelection({
+    session: activeSession,
+    providers,
+    activeProviderId,
+    activeModelId,
+    globalMode: mainModelSelectionMode,
+    channelProviderId: activeChannelModelBinding.providerId,
+    channelModelId: activeChannelModelBinding.modelId
+  })
+  const displayProviderId = isFastRoute
+    ? (fastSelection.providerId ?? activeFastProviderId ?? activeProviderId)
+    : sessionModelSelection.providerId
+  const displayModelId = isFastRoute
+    ? fastSelection.modelId || activeFastModelId || activeModelId
+    : sessionModelSelection.modelId
   const displayProvider = providers.find((p) => p.id === displayProviderId)
-  const displayModelId = activeModelId || displayProvider?.defaultModel || ''
   const displayModel = displayProvider?.models.find((m) => m.id === displayModelId)
+  const isAutoModeActive = !isFastRoute && sessionModelSelection.isAutoModeActive
+  const isExplicitAutoActive =
+    !isFastRoute &&
+    (activeSession
+      ? !activeSession.pluginId && sessionModelSelection.mode === 'auto'
+      : mainModelSelectionMode === 'auto')
+  const isFollowGlobalActive =
+    !isFastRoute && Boolean(activeSession) && sessionModelSelection.mode === 'inherit'
+  const autoResolvedProvider = autoSelection?.providerId
+    ? providers.find((provider) => provider.id === autoSelection.providerId)
+    : null
+  const autoResolvedModel = autoResolvedProvider?.models.find(
+    (model) => model.id === autoSelection?.modelId
+  )
+  const settingsProviderId = isAutoModeActive ? autoResolvedProvider?.id : displayProvider?.id
+  const settingsModel = isAutoModeActive ? (autoResolvedModel ?? undefined) : displayModel
+  const settingsPopoverSide = activeSession ? 'top' : 'bottom'
+  const triggerLabel = isAutoModeActive
+    ? autoRoutingState === 'routing'
+      ? t('topbar.autoModel')
+      : (autoSelection?.modelName ?? t('topbar.autoModel'))
+    : (displayModel?.name ?? displayModelId ?? t('topbar.noModel'))
+  const triggerAriaLabel = isAutoModeActive
+    ? autoRoutingState === 'routing'
+      ? t('topbar.autoModelRoutingShort')
+      : t('topbar.autoModel')
+    : (displayModel?.name ?? displayModelId ?? t('topbar.noModel'))
+  const triggerProviderName = isAutoModeActive
+    ? (autoResolvedProvider?.name ?? t('topbar.autoModel'))
+    : (displayProvider?.name ?? null)
+  const triggerModel = isAutoModeActive ? (autoResolvedModel ?? null) : (displayModel ?? null)
+  const triggerProviderType = isAutoModeActive ? autoResolvedProvider?.type : displayProvider?.type
+  const triggerDetail = isAutoModeActive
+    ? autoRoutingState === 'routing'
+      ? t('topbar.autoModelRouting')
+      : autoSelection?.modelName
+        ? t('topbar.autoModelTooltip', {
+            route: t(
+              autoSelection.target === 'main' ? 'topbar.autoModelMain' : 'topbar.autoModelFast'
+            ),
+            model: autoSelection.modelName,
+            taskType: autoSelection.taskType ?? t('topbar.autoModelTaskTypeUnknown'),
+            confidence: autoSelection.confidence ?? t('topbar.autoModelConfidenceUnknown'),
+            complexity: autoSelection.complexity
+              ? t(`topbar.autoModelComplexity.${autoSelection.complexity}`)
+              : '',
+            risk: autoSelection.risk ? t(`topbar.autoModelRisk.${autoSelection.risk}`) : '',
+            reason: autoSelection.fallbackReason
+              ? t(`topbar.autoModelFallback.${autoSelection.fallbackReason}`, {
+                  defaultValue: autoSelection.fallbackReason
+                })
+              : ''
+          })
+        : t('topbar.autoModelTooltipIdle')
+    : displayModelId && displayModel?.name && displayModel.name !== displayModelId
+      ? displayModelId
+      : null
 
-  const triggerLabel = displayModel?.name ?? displayModelId ?? t('topbar.noModel', { defaultValue: 'Select model' })
-  const triggerProviderName = displayProvider?.name ?? null
+  const codexQuota = useMemo(() => {
+    if (!displayProvider || displayProvider.builtinId !== 'codex-oauth') return null
+    const quota =
+      quotaByKey[displayProvider.id] ||
+      (displayProvider.builtinId ? quotaByKey[displayProvider.builtinId] : undefined) ||
+      quotaByKey['codex'] ||
+      null
+    return quota?.type === 'codex' ? quota : null
+  }, [displayProvider, quotaByKey])
+
+  const copilotQuota = useMemo(() => {
+    if (!displayProvider || displayProvider.builtinId !== 'copilot-oauth') return null
+    const quota =
+      quotaByKey[displayProvider.id] ||
+      (displayProvider.builtinId ? quotaByKey[displayProvider.builtinId] : undefined) ||
+      quotaByKey['copilot'] ||
+      null
+    return quota?.type === 'copilot' ? quota : null
+  }, [displayProvider, quotaByKey])
+
+  const formatPercent = (value?: number): string => {
+    if (value === undefined || Number.isNaN(value)) return '0%'
+    return `${Math.round(value)}%`
+  }
+
+  const formatResetAt = (value?: string): string => {
+    if (!value) return ''
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+    if (['invalid date', 'null', 'undefined', 'nan'].includes(trimmed.toLowerCase())) return ''
+
+    const tryParse = (input: string | number): Date | null => {
+      const candidate = new Date(input)
+      return Number.isNaN(candidate.getTime()) ? null : candidate
+    }
+
+    let parsed: Date | null = null
+
+    if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+      const numericValue = Number(trimmed)
+      if (Number.isFinite(numericValue)) {
+        const timestamp = numericValue < 1e12 ? numericValue * 1000 : numericValue
+        parsed = tryParse(timestamp)
+      }
+    }
+
+    if (!parsed) {
+      const normalized = trimmed
+        .replace(/\[(?:[^\]]+)\]$/, '')
+        .replace(
+          /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)$/,
+          '$1T$2'
+        )
+        .replace(/(\.\d{3})\d+(?=(?:Z|[+-]\d{2}:?\d{2})$)/i, '$1')
+        .replace(/ UTC$/i, 'Z')
+
+      parsed = tryParse(trimmed) ?? (normalized !== trimmed ? tryParse(normalized) : null)
+    }
+
+    if (!parsed) return ''
+
+    return parsed.toLocaleString([], {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
 
   const groups = useMemo<ProviderGroup[]>(() => {
     if (!open) return []
@@ -127,7 +1013,7 @@ export function ModelSwitcher(): React.JSX.Element {
       .map((provider) => {
         const models = provider.models.filter((m) => {
           if (!m.enabled) return false
-          if ((m.category ?? 'chat') !== 'chat') return false
+          if (isFastRoute && (m.category ?? 'chat') !== 'chat') return false
           if (!q) return true
           const name = (m.name || m.id).toLowerCase()
           return name.includes(q) || provider.name.toLowerCase().includes(q)
@@ -135,8 +1021,7 @@ export function ModelSwitcher(): React.JSX.Element {
         return { provider, models }
       })
       .filter((g) => g.models.length > 0)
-  }, [enabledProviders, open, search])
-
+  }, [enabledProviders, isFastRoute, open, search])
   const selectedGroup = useMemo(
     () =>
       selectedProviderId
@@ -155,36 +1040,45 @@ export function ModelSwitcher(): React.JSX.Element {
       hasAutoScrolledToSelectionRef.current = false
       return
     }
+
     const timer = setTimeout(() => {
       setSearch('')
       searchRef.current?.focus()
     }, 50)
+
     return () => clearTimeout(timer)
   }, [open])
 
-  // Auto-scroll to active model
   useEffect(() => {
     if (
       !open ||
       !selectedGroup ||
+      isAutoModeActive ||
       search.trim() ||
       hasAutoScrolledToSelectionRef.current
     ) {
       return
     }
+
     const timer = setTimeout(() => {
       const target = activeModelRef.current
       const container = listRef.current
       if (!target || !container) return
+
       const containerRect = container.getBoundingClientRect()
       const targetRect = target.getBoundingClientRect()
       const offsetTop = targetRect.top - containerRect.top + container.scrollTop
       const scrollTop = offsetTop - container.clientHeight / 2 + targetRect.height / 2
-      container.scrollTo({ top: Math.max(0, scrollTop), behavior: 'auto' })
+
+      container.scrollTo({
+        top: Math.max(0, scrollTop),
+        behavior: 'auto'
+      })
       hasAutoScrolledToSelectionRef.current = true
     }, 0)
+
     return () => clearTimeout(timer)
-  }, [open, search, selectedGroup])
+  }, [open, search, selectedGroup, isAutoModeActive])
 
   return (
     <div className="inline-flex h-8 items-center rounded-lg border border-transparent hover:border-border/50 hover:bg-muted/30 transition-colors">
@@ -195,26 +1089,42 @@ export function ModelSwitcher(): React.JSX.Element {
             <PopoverTrigger asChild>
               <button
                 className="inline-flex size-8 shrink-0 items-center justify-center rounded-l-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                aria-label={triggerLabel}
+                aria-label={triggerAriaLabel}
               >
-                <ModelIcon
-                  icon={displayModel?.icon}
-                  modelId={displayModelId || undefined}
-                  providerBuiltinId={displayProvider?.builtinId}
-                  size={20}
-                />
+                {isAutoModeActive ? (
+                  autoRoutingState === 'routing' ? (
+                    <Loader2 size={16} className="animate-spin text-amber-500" />
+                  ) : (
+                    <AutoModelIcon size={18} />
+                  )
+                ) : (
+                  <ModelIcon
+                    icon={displayModel?.icon}
+                    modelId={displayModelId ?? undefined}
+                    providerBuiltinId={displayProvider?.builtinId}
+                    size={20}
+                  />
+                )}
               </button>
             </PopoverTrigger>
           </HoverCardTrigger>
           <HoverCardContent side="top" align="start" className="w-72 p-3">
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/45">
-                <ModelIcon
-                  icon={displayModel?.icon}
-                  modelId={displayModelId || undefined}
-                  providerBuiltinId={displayProvider?.builtinId}
-                  size={20}
-                />
+                {isAutoModeActive ? (
+                  autoRoutingState === 'routing' ? (
+                    <Loader2 size={16} className="animate-spin text-amber-500" />
+                  ) : (
+                    <AutoModelIcon size={18} />
+                  )
+                ) : (
+                  <ModelIcon
+                    icon={displayModel?.icon}
+                    modelId={displayModelId ?? undefined}
+                    providerBuiltinId={displayProvider?.builtinId}
+                    size={20}
+                  />
+                )}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-foreground">{triggerLabel}</div>
@@ -225,14 +1135,20 @@ export function ModelSwitcher(): React.JSX.Element {
                 )}
               </div>
             </div>
-            {displayModel && (
+            {triggerDetail && (
+              <div className="mt-2 break-words text-[11px] leading-4 text-muted-foreground/85">
+                {triggerDetail}
+              </div>
+            )}
+            {triggerModel && (
               <div className="mt-2 border-t border-border/60 pt-2">
                 <ModelCapabilityTags
-                  model={displayModel}
-                  providerType={displayProvider?.type}
+                  model={triggerModel}
+                  providerType={triggerProviderType}
                   t={t}
                   showContext={false}
                 />
+                <ModelHoverDetails model={triggerModel} tSettings={tSettings} />
               </div>
             )}
           </HoverCardContent>
@@ -248,26 +1164,127 @@ export function ModelSwitcher(): React.JSX.Element {
               ref={searchRef}
               type="text"
               className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/40"
-              placeholder={t('topbar.searchModel', { defaultValue: 'Search model...' })}
+              placeholder={t('topbar.searchModel')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          {!isFastRoute && activeSession && (
+            <div className="border-b p-1">
+              <button
+                className={cn(
+                  'flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left hover:bg-muted/60 transition-colors group',
+                  isFollowGlobalActive && 'bg-primary/5'
+                )}
+                onClick={() => selectFollowGlobalModel(activeSessionId, setOpen)}
+              >
+                <span className="mt-0.5 flex size-5 items-center justify-center shrink-0">
+                  {isFollowGlobalActive ? (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-primary/10">
+                      <Check className="size-3 text-primary" />
+                    </span>
+                  ) : (
+                    <Globe2 size={18} />
+                  )}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span
+                    className={cn(
+                      'truncate text-xs',
+                      isFollowGlobalActive
+                        ? 'font-semibold text-primary'
+                        : 'text-foreground/80 group-hover:text-foreground'
+                    )}
+                  >
+                    {t('topbar.followGlobalModel', {
+                      defaultValue: 'Follow global model'
+                    })}
+                  </span>
+                  <span className="line-clamp-2 text-[10px] text-muted-foreground">
+                    {t('topbar.followGlobalModelDesc', {
+                      defaultValue: 'Use the global main model setting for this session.'
+                    })}
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
+          {!isFastRoute && !activeSession?.pluginId && (
+            <div className="border-b p-1">
+              <button
+                ref={autoModelRef}
+                className={cn(
+                  'flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left hover:bg-muted/60 transition-colors group',
+                  isExplicitAutoActive && 'bg-primary/5'
+                )}
+                onClick={() => selectAutoModel(activeSessionId, setOpen)}
+              >
+                <span className="mt-0.5 flex size-5 items-center justify-center shrink-0">
+                  {isExplicitAutoActive ? (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-primary/10">
+                      <Check className="size-3 text-primary" />
+                    </span>
+                  ) : (
+                    <AutoModelIcon size={18} />
+                  )}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span
+                    className={cn(
+                      'truncate text-xs',
+                      isExplicitAutoActive
+                        ? 'font-semibold text-primary'
+                        : 'text-foreground/80 group-hover:text-foreground'
+                    )}
+                  >
+                    {t('topbar.autoModel')}
+                  </span>
+                  <span className="line-clamp-2 text-[10px] text-muted-foreground">
+                    {autoRoutingState === 'routing'
+                      ? t('topbar.autoModelRouting')
+                      : autoSelection?.modelName
+                        ? t('topbar.autoModelTooltip', {
+                            route: t(
+                              autoSelection.target === 'main'
+                                ? 'topbar.autoModelMain'
+                                : 'topbar.autoModelFast'
+                            ),
+                            model: autoSelection.modelName,
+                            taskType:
+                              autoSelection.taskType ?? t('topbar.autoModelTaskTypeUnknown'),
+                            confidence:
+                              autoSelection.confidence ?? t('topbar.autoModelConfidenceUnknown'),
+                            complexity: autoSelection.complexity
+                              ? t(`topbar.autoModelComplexity.${autoSelection.complexity}`)
+                              : '',
+                            risk: autoSelection.risk
+                              ? t(`topbar.autoModelRisk.${autoSelection.risk}`)
+                              : '',
+                            reason: autoSelection.fallbackReason
+                              ? t(`topbar.autoModelFallback.${autoSelection.fallbackReason}`, {
+                                  defaultValue: autoSelection.fallbackReason
+                                })
+                              : ''
+                          })
+                        : t('topbar.autoModelDesc')}
+                  </span>
+                </div>
+              </button>
+            </div>
+          )}
           <div className="p-1">
             <div className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
-              {t('topbar.providers', { defaultValue: 'Providers' })}
+              {t('topbar.providers')}
             </div>
             <div className="max-h-[328px] overflow-y-auto">
               {groups.length === 0 ? (
                 <div className="px-3 py-6 text-center text-xs text-muted-foreground/50">
-                  {enabledProviders.length === 0
-                    ? t('topbar.noProviders', { defaultValue: 'No providers configured' })
-                    : t('topbar.noModels', { defaultValue: 'No models found' })}
+                  {enabledProviders.length === 0 ? t('topbar.noProviders') : t('topbar.noModels')}
                 </div>
               ) : (
                 groups.map(({ provider, models }) => {
                   const isSelected = provider.id === selectedGroup?.provider.id
-                  const isDisplayProvider = provider.id === displayProviderId
+                  const isDisplayProvider = provider.id === displayProviderId && !isAutoModeActive
                   return (
                     <Popover
                       key={provider.id}
@@ -314,7 +1331,7 @@ export function ModelSwitcher(): React.JSX.Element {
                             {provider.name}
                           </span>
                           <span className="shrink-0 text-[10px] text-muted-foreground/50">
-                            {t('topbar.modelsCount', { count: models.length, defaultValue: '{{count}} models' })}
+                            {t('topbar.modelsCount', { count: models.length })}
                           </span>
                         </div>
                         <div
@@ -323,7 +1340,9 @@ export function ModelSwitcher(): React.JSX.Element {
                         >
                           {models.map((m) => {
                             const isActive =
-                              provider.id === displayProviderId && m.id === displayModelId
+                              !isAutoModeActive &&
+                              provider.id === displayProviderId &&
+                              m.id === displayModelId
                             return (
                               <button
                                 key={`${provider.id}-${m.id}`}
@@ -332,7 +1351,18 @@ export function ModelSwitcher(): React.JSX.Element {
                                   'flex w-full items-start gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/60 group',
                                   isActive && 'bg-primary/5'
                                 )}
-                                onClick={() => selectModel(provider, m.id, setOpen)}
+                                onClick={() =>
+                                  isFastRoute
+                                    ? selectFastModel(
+                                        provider,
+                                        m.id,
+                                        activeFastProviderId,
+                                        setActiveFastProvider,
+                                        setActiveFastModel,
+                                        setOpen
+                                      )
+                                    : selectModel(provider, m.id, activeSessionId, setOpen)
+                                }
                               >
                                 <span className="mt-0.5 shrink-0">
                                   {isActive ? (
@@ -378,6 +1408,133 @@ export function ModelSwitcher(): React.JSX.Element {
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Quota Indicator */}
+      {codexQuota && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/30 border border-border/10 cursor-help hover:bg-muted/50 transition-colors mx-1">
+              <MonitorSmartphone className="size-3 text-emerald-500" />
+              <div className="flex flex-col leading-none gap-0.5">
+                <div className="h-1 w-10 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all"
+                    style={{ width: `${Math.min(100, codexQuota.primary?.usedPercent ?? 0)}%` }}
+                  />
+                </div>
+                <span className="text-[9px] text-muted-foreground/60 font-medium">
+                  {formatPercent(codexQuota.primary?.usedPercent)}
+                </span>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="p-3 w-48 space-y-2">
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {tSettings('provider.codexQuotaPrimary')}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold">
+                  {formatPercent(codexQuota.primary?.usedPercent)}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {formatResetAt(codexQuota.primary?.resetAt)}
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500"
+                  style={{ width: `${Math.min(100, codexQuota.primary?.usedPercent ?? 0)}%` }}
+                />
+              </div>
+            </div>
+            {codexQuota.secondary && (
+              <div className="space-y-1 pt-1 border-t">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {tSettings('provider.codexQuotaSecondary')}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold">
+                    {formatPercent(codexQuota.secondary.usedPercent)}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500"
+                    style={{ width: `${Math.min(100, codexQuota.secondary.usedPercent ?? 0)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      )}
+      {copilotQuota && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/30 border border-border/10 cursor-help hover:bg-muted/50 transition-colors mx-1">
+              <MonitorSmartphone className="size-3 text-sky-500" />
+              <div className="flex flex-col leading-none gap-0.5">
+                <span className="text-[9px] text-muted-foreground/70 font-medium">
+                  {copilotQuota.sku || 'copilot'}
+                </span>
+                <span className="text-[9px] text-muted-foreground/50">
+                  {copilotQuota.chatEnabled
+                    ? tSettings('provider.copilotChatEnabled')
+                    : tSettings('provider.copilotChatDisabled')}
+                </span>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="p-3 w-56 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                {tSettings('provider.copilotQuotaSku')}
+              </span>
+              <span className="text-xs font-bold">{copilotQuota.sku || '-'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                {tSettings('provider.copilotQuotaChat')}
+              </span>
+              <span className="text-xs font-bold">
+                {copilotQuota.chatEnabled
+                  ? tSettings('provider.copilotChatEnabled')
+                  : tSettings('provider.copilotChatDisabled')}
+              </span>
+            </div>
+            {copilotQuota.tokenExpiresAt && (
+              <div className="flex items-center justify-between gap-2 border-t pt-2">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  {tSettings('provider.copilotQuotaTokenExpires')}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {new Date(copilotQuota.tokenExpiresAt).toLocaleString([], {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Settings icon — model config popover */}
+      <ModelSettingsPopover
+        model={settingsModel}
+        providerId={settingsProviderId}
+        providerType={isAutoModeActive ? autoResolvedProvider?.type : displayProvider?.type}
+        providerWebsocketMode={
+          isAutoModeActive ? autoResolvedProvider?.websocketMode : displayProvider?.websocketMode
+        }
+        side={settingsPopoverSide}
+        t={t}
+        tChat={tChat}
+        tSettings={tSettings}
+      />
     </div>
   )
 }
