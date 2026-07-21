@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
+import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
 
 interface ProviderModel {
@@ -8,15 +9,17 @@ interface ProviderModel {
   model: string
 }
 
-export function ModelSwitcher() {
+export function ModelSwitcher(): React.JSX.Element {
   const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<ProviderModel | null>(null)
   const [models, setModels] = useState<ProviderModel[]>([])
+  const [selectedModel, setSelectedModel] = useState<ProviderModel | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
+  const selectedProvider = useUIStore((s) => s.selectedProvider)
+  const setSelectedProvider = useUIStore((s) => s.setSelectedProvider)
+
   useEffect(() => {
-    // Load providers from the store
-    loadProviders()
+    void loadProviders()
   }, [])
 
   useEffect(() => {
@@ -46,40 +49,37 @@ export function ModelSwitcher() {
         }
       }
       setModels(list)
-      if (list.length > 0 && !selected) {
-        selectModel(list[0])
+      if (list.length > 0 && !selectedProvider) {
+        void selectModel(list[0])
       }
     } catch {
-      // ignore
+      // ignore — providers not configured yet
     }
   }
 
-  const selectModel = (m: ProviderModel) => {
-    setSelected(m)
+  const selectModel = async (m: ProviderModel) => {
+    setSelectedModel(m)
     setOpen(false)
-    // Store selection globally for InputArea to use
-    window.__selectedProvider = {
+
+    // Store a basic provider config, then try to fetch the full config
+    setSelectedProvider({
       providerId: m.providerId,
       model: m.model,
       type: 'openai-chat',
       apiKey: '',
       baseUrl: ''
-    }
-    // Re-fetch full provider config
-    fetchProviderConfig(m.providerId)
-  }
+    })
 
-  const fetchProviderConfig = async (providerId: string) => {
     try {
       const result = await window.api.workerRequest<Record<string, unknown>>(
         'provider/get',
-        { id: providerId }
+        { id: m.providerId }
       )
       if (result && typeof result === 'object') {
-        window.__selectedProvider = result
+        setSelectedProvider(result)
       }
     } catch {
-      // ignore
+      // ignore — keep basic config
     }
   }
 
@@ -90,7 +90,7 @@ export function ModelSwitcher() {
         className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs hover:bg-accent transition-colors min-w-[120px]"
       >
         <span className="truncate flex-1 text-left">
-          {selected ? selected.model : 'Select model'}
+          {selectedModel ? selectedModel.model : 'Select model'}
         </span>
         <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
       </button>
@@ -103,17 +103,17 @@ export function ModelSwitcher() {
             models.map((m) => (
               <button
                 key={`${m.providerId}-${m.model}`}
-                onClick={() => selectModel(m)}
+                onClick={() => void selectModel(m)}
                 className={cn(
                   'flex w-full items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-accent transition-colors',
-                  selected?.providerId === m.providerId && selected?.model === m.model && 'bg-accent'
+                  selectedModel?.providerId === m.providerId && selectedModel?.model === m.model && 'bg-accent'
                 )}
               >
                 <div className="flex flex-col items-start min-w-0">
                   <span className="truncate font-medium">{m.model}</span>
                   <span className="text-muted-foreground truncate">{m.providerName}</span>
                 </div>
-                {selected?.providerId === m.providerId && selected?.model === m.model && (
+                {selectedModel?.providerId === m.providerId && selectedModel?.model === m.model && (
                   <Check className="h-3 w-3 shrink-0" />
                 )}
               </button>

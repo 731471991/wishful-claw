@@ -1,0 +1,32 @@
+{
+  "home": {
+    "title": "今天我能帮你做什么？",
+    "subtitle": "开始对话或选择下方快捷提示。",
+    "placeholder": "输入消息...",
+    "send": "发送"
+  },
+  "project": {
+    "placeholder": "在此项目中开始对话...",
+    "send": "发送",
+    "setFolder": "设置工作文件夹",
+    "archive": "归档",
+    "git": "Git",
+    "recentSessions": "最近会话",
+    "noSessions": "暂无会话。发送消息开始对话。",
+    "notFound": "项目未找到",
+    "folderUpdated": "工作文件夹已更新",
+    "folderUpdateFailed": "选择文件夹失败"
+  },
+  "folderSelector": {
+    "title": "选择工作文件夹",
+    "description": "选择本地文件夹或 SSH 连接。",
+    "local": "本地文件夹",
+    "ssh": "SSH（即将推出）",
+    "sshComingSoon": "SSH 支持将在迭代四中提供",
+    "browse": "浏览...",
+    "hint": "工作文件夹决定 Agent 的操作范围。文件操作将限制在此目录内。",
+    "sshPlaceholder": "SSH 连接支持将在迭代四中添加。",
+    "cancel": "取消",
+    "confirm": "确认"
+  }
+}
