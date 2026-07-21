@@ -6,6 +6,7 @@ import { DEFAULT_APP_THEME_PRESET } from '@renderer/lib/theme-presets'
 import type { AppLanguage } from '@renderer/lib/i18n-language'
 import { detectSystemLanguage } from '@renderer/lib/i18n-language'
 import { settingsStorage } from '@renderer/lib/ipc/settings-storage'
+import { useProviderStore } from '@renderer/stores/provider-store'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type MainModelSelectionMode = 'auto' | 'manual'
@@ -101,7 +102,15 @@ export const useSettingsStore = create<SettingsState>()(
         reasoningEffort: state.reasoningEffort,
         reasoningEffortByModel: state.reasoningEffortByModel,
         mainModelSelectionMode: state.mainModelSelectionMode
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        // If manual mode but no model was explicitly selected, fall back to auto
+        if (state?.mainModelSelectionMode === 'manual') {
+          if (!useProviderStore.getState().activeModelId) {
+            useSettingsStore.setState({ mainModelSelectionMode: 'auto' })
+          }
+        }
+      }
     }
   )
 )

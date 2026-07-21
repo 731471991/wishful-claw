@@ -31,7 +31,7 @@ export function InputArea({
   sessionId,
   attachedFooter
 }: InputAreaProps = {}): React.JSX.Element {
-  const { t } = useTranslation()
+  const { t } = useTranslation('chat')
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const storeIsStreaming = useChatStore((s) =>
@@ -90,7 +90,7 @@ export function InputArea({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={t('chat.home.placeholder')}
+              placeholder={t('home.placeholder')}
               rows={1}
               className={cn(
                 'w-full resize-none bg-transparent text-sm',
@@ -113,7 +113,7 @@ export function InputArea({
                 <button
                   onClick={handleStop}
                   className="flex size-8 items-center justify-center rounded-lg bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90"
-                  title={t('chat.input.stop', { defaultValue: 'Stop' })}
+                  title={t('input.stop')}
                 >
                   <Square className="size-3.5" />
                 </button>
@@ -122,7 +122,7 @@ export function InputArea({
                   onClick={() => void handleSubmit()}
                   disabled={!input.trim()}
                   className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-                  title={t('chat.home.send')}
+                  title={t('home.send')}
                 >
                   <Send className="size-3.5" />
                 </button>

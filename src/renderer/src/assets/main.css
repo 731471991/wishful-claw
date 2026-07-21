@@ -191,3 +191,11 @@
 * {
   scroll-behavior: smooth;
 }
+
+/* ── Title bar drag region ── */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}

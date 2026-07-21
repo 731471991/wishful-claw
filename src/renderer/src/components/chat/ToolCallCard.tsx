@@ -7,7 +7,7 @@ interface ToolCallCardProps {
 }
 
 export function ToolCallCard({ toolCall }: ToolCallCardProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('chat')
   const [expanded, setExpanded] = useState(false)
 
   const statusColor =
@@ -37,7 +37,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
           {toolCall.name}
         </span>
         <span className={`text-xs ${statusColor}`}>
-          {toolCall.status === 'running' ? t('chat.tool.running', 'running') : toolCall.status}
+          {toolCall.status === 'running' ? t('tool.running') : toolCall.status}
         </span>
         <span className="ml-auto text-xs text-[var(--text-tertiary,#9ca3af)]">
           {expanded ? '▼' : '▶'}
@@ -51,7 +51,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
           {Object.keys(toolCall.input).length > 0 && (
             <div className="mb-2">
               <div className="text-xs font-medium text-[var(--text-secondary,#6b7280)] mb-1">
-                {t('chat.tool.input', 'Input')}
+                {t('tool.input')}
               </div>
               <pre className="text-xs font-mono bg-[var(--bg-code,#f3f4f6)] rounded p-2 overflow-x-auto max-h-48">
                 {JSON.stringify(toolCall.input, null, 2)}
@@ -63,7 +63,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
           {toolCall.output && (
             <div>
               <div className="text-xs font-medium text-[var(--text-secondary,#6b7280)] mb-1">
-                {t('chat.tool.output', 'Output')}
+                {t('tool.output')}
               </div>
               <pre className={`text-xs font-mono rounded p-2 overflow-x-auto max-h-64 ${
                 toolCall.status === 'error'

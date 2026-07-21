@@ -23,14 +23,14 @@ export function TitleBar({
   const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
 
   return (
-    <header className="flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
+    <header className="titlebar-drag flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
       <div className="flex items-center gap-1 px-2">
         {showSidebarToggle && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={toggleLeftSidebar}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 {leftSidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
               </button>
@@ -49,7 +49,7 @@ export function TitleBar({
           <TooltipTrigger asChild>
             <button
               onClick={toggleRightPanel}
-              className={`flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground ${
+              className={`titlebar-no-drag flex size-7 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground ${
                 rightPanelOpen ? 'text-foreground bg-accent' : 'text-muted-foreground'
               }`}
             >
