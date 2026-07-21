@@ -217,6 +217,20 @@ function ensureBuiltinPresets(): void {
       updates.activeModelId = defaultModel.id
     }
   }
+  // If activeProviderId is set but activeModelId is empty, resolve a default model
+  if (state.activeProviderId && !state.activeModelId) {
+    const provider = nextProviders.find((p) => p.id === state.activeProviderId)
+    if (provider) {
+      const defaultModel =
+        provider.models.find((m) => m.id === provider.defaultModel) ??
+        provider.models.find((m) => m.enabled && (!m.category || m.category === 'chat')) ??
+        provider.models.find((m) => m.enabled) ??
+        provider.models[0]
+      if (defaultModel) {
+        updates.activeModelId = defaultModel.id
+      }
+    }
+  }
   if (Object.keys(updates).length > 0) {
     useProviderStore.setState(updates)
   }

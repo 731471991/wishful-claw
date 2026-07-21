@@ -1970,7 +1970,7 @@ export function InputArea({
     useSettingsStore.getState().updateSettings({ webSearchEnabled: newEnabled })
     updateWebSearchToolRegistration(newEnabled)
   }, [])
-  const openSettingsPage = useUIStore((s) => s.openSettingsPage)
+  const openSettings = useUIStore((s) => s.openSettings)
   const openFilePreview = useUIStore((s) => s.openFilePreview)
   const mode = useUIStore((s) => s.mode)
   // Only select fields actually used — avoids re-renders on every streaming message delta
@@ -3877,7 +3877,7 @@ export function InputArea({
           </span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => openSettingsPage('permission')}>
+        <DropdownMenuItem onSelect={() => openSettings('permission')}>
           <span className="text-xs">{t('permission.manageWhitelist')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -4213,7 +4213,7 @@ export function InputArea({
         <button
           type="button"
           className="mb-2 flex w-full items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-left text-xs text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
-          onClick={() => openSettingsPage('provider')}
+          onClick={() => openSettings('provider')}
         >
           <AlertTriangle className="size-3.5 shrink-0" />
           <span>{t('input.noApiKey')}</span>
