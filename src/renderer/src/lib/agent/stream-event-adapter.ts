@@ -7,7 +7,7 @@ import {
 
 export type ChatStreamEvent = Extract<
   AgentStreamEvent,
-  { type: 'loop_start' | 'loop_end' | 'text_delta' | 'thinking_delta' | 'thinking_encrypted' | 'message_end' | 'error' }
+  { type: 'loop_start' | 'loop_end' | 'text_delta' | 'thinking_delta' | 'thinking_encrypted' | 'message_end' | 'error' | 'tool_call_start' | 'tool_call_result' }
 >
 
 export type ActivityPanelEvent = Extract<

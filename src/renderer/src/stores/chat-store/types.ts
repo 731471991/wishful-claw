@@ -6,6 +6,17 @@ export type SessionMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
 export type SessionModelSelectionMode = 'inherit' | 'auto' | 'manual'
 
 // ─── Chat Message ───
+export interface ToolCallInfo {
+  id: string
+  name: string
+  input: Record<string, unknown>
+  status: 'running' | 'completed' | 'error'
+  output?: string
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -15,6 +26,7 @@ export interface ChatMessage {
   usage?: TokenUsageWire
   timing?: RequestTimingWire
   error?: string
+  toolCalls?: ToolCallInfo[]
   createdAt: number
 }
 

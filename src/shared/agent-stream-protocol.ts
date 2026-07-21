@@ -131,6 +131,8 @@ export const CHAT_STREAM_EVENTS: ReadonlySet<string> = new Set([
   'thinking_encrypted',
   'message_end',
   'error',
+  'tool_call_start',
+  'tool_call_result',
 ])
 
 /** Events that should be displayed in the activity panel. */

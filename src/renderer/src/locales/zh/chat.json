@@ -28,5 +28,10 @@
     "sshPlaceholder": "SSH 连接支持将在迭代四中添加。",
     "cancel": "取消",
     "confirm": "确认"
+  },
+  "tool": {
+    "running": "执行中",
+    "input": "输入",
+    "output": "输出"
   }
 }

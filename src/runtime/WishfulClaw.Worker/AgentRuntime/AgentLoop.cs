@@ -196,14 +196,22 @@ internal static class AgentLoop
                     return;
                 }
 
+                var startedAt = NowMs();
+
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
                     new AgentRuntimeStreamEvent(
                         "tool_call_start",
-                        ToolCallId: toolCall.Id,
-                        ToolName: toolCall.Name));
-
-                var startedAt = NowMs();
+                        ToolCall: new AgentRuntimeToolCallState(
+                            toolCall.Id,
+                            toolCall.Name,
+                            toolCall.Input,
+                            "running",
+                            null,
+                            null,
+                            false,
+                            startedAt,
+                            null)));
                 string toolOutput;
                 bool isToolError = false;
 
@@ -237,7 +245,7 @@ internal static class AgentLoop
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
                     new AgentRuntimeStreamEvent(
-                        "tool_call_end",
+                        "tool_call_result",
                         ToolCallId: toolCall.Id,
                         ToolName: toolCall.Name,
                         ToolCall: new AgentRuntimeToolCallState(

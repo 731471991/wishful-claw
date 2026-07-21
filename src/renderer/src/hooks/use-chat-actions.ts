@@ -7,6 +7,20 @@ export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
 }
 
+// Cache tool definitions to avoid fetching on every message
+let cachedTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null
+
+async function getToolDefinitions(): Promise<typeof cachedTools> {
+  if (cachedTools) return cachedTools
+  try {
+    const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', {})
+    cachedTools = result.tools
+    return cachedTools
+  } catch {
+    return null
+  }
+}
+
 export function useChatActions() {
   const sendMessage = useChatStore((s) => s.sendMessage)
   const cancelStream = useChatStore((s) => s.cancelStream)
@@ -29,17 +43,26 @@ export function useChatActions() {
       // Clear activities for new turn
       useActivityStore.getState().clearActivities()
 
-      // Build messages from session history
+      // Get session's working folder
       const session = chatStore.sessions.find((s) => s.id === targetSessionId)
+      const workingFolder = session?.workingFolder ?? _workingFolder ?? undefined
+
+      // Build messages from session history
       const historyMessages = (session?.messages ?? [])
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .filter((m) => !m.isStreaming)
         .map((m) => ({ role: m.role, content: m.text }))
 
+      // Fetch tool definitions
+      const tools = await getToolDefinitions()
+
       await sendMessage({
         provider,
         messages: [...historyMessages, { role: 'user', content: text }],
-        sessionId: targetSessionId
+        sessionId: targetSessionId,
+        tools: tools ?? undefined,
+        workingFolder,
+        maxIterations: 10
       })
 
       void opts

@@ -28,5 +28,10 @@
     "sshPlaceholder": "SSH connection support will be added in 迭代四.",
     "cancel": "Cancel",
     "confirm": "Confirm"
+  },
+  "tool": {
+    "running": "running",
+    "input": "Input",
+    "output": "Output"
   }
 }

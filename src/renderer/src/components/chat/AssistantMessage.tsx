@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import type { ChatMessage } from '@renderer/stores/chat-store'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { ToolCallCard } from './ToolCallCard'
 
 export function AssistantMessage({ message }: { message: ChatMessage }) {
   const [showThinking, setShowThinking] = useState(false)
@@ -27,6 +28,15 @@ export function AssistantMessage({ message }: { message: ChatMessage }) {
                 {message.thinking}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tool calls */}
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <div className="space-y-1">
+            {message.toolCalls.map((tc) => (
+              <ToolCallCard key={tc.id} toolCall={tc} />
+            ))}
           </div>
         )}
 
