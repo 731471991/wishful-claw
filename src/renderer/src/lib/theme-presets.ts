@@ -26,8 +26,8 @@ export const DEFAULT_APP_THEME_PRESET: AppThemePreset = 'mulberry'
 const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   mulberry: {
     id: 'mulberry',
-    label: '桑葚',
-    description: '极简黑白灰，克制而专注',
+    label: '黑曜灰',
+    description: '高对比黑白灰，克制而专注',
     swatches: ['#18181b', '#71717a', '#fafafa'],
     preview: {
       light: {
@@ -120,8 +120,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   studio: {
     id: 'studio',
-    label: '工作室',
-    description: '深蓝主调，专业开发氛围',
+    label: '远航蓝',
+    description: '蓝灰工作调，适合长时间编码',
     swatches: ['#3558e8', '#7aa7ff', '#f08f61'],
     preview: {
       light: {
@@ -212,8 +212,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   graphite: {
     id: 'graphite',
-    label: '石墨',
-    description: '青灰质感，沉稳护眼',
+    label: '石墨工具',
+    description: '中性石墨色，降低干扰保持层次',
     swatches: ['#2a7b73', '#7fd4c9', '#7b8798'],
     preview: {
       light: {
@@ -305,8 +305,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   ocean: {
     id: 'ocean',
-    label: '海洋',
-    description: '深邃蓝绿，清爽通透',
+    label: '深海',
+    description: '蓝绿深度色调，空间层次分明',
     swatches: ['#0f8aa6', '#4cc9f0', '#8be3ff'],
     preview: {
       light: {
@@ -397,8 +397,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   forest: {
     id: 'forest',
-    label: '森林',
-    description: '自然绿意，宁静舒适',
+    label: '森林绿',
+    description: '柔和绿色调，适合持续工作',
     swatches: ['#2f8b57', '#6fd39a', '#98e0a0'],
     preview: {
       light: {
@@ -489,8 +489,8 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   },
   dawn: {
     id: 'dawn',
-    label: '黎明',
-    description: '暖橙色调，温和明亮',
+    label: '暖黎明',
+    description: '暖铜橙色调，明亮而有温度',
     swatches: ['#ca6a33', '#ffb27d', '#ffd8a8'],
     preview: {
       light: {
