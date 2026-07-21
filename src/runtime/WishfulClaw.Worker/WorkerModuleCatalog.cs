@@ -1,6 +1,7 @@
 using WishfulClaw.Contracts;
 using WishfulClaw.Worker.AgentRuntime;
 using WishfulClaw.Worker.Modules;
+using WishfulClaw.Worker.Tools;
 
 namespace WishfulClaw.Worker;
 
@@ -12,6 +13,7 @@ public static class WorkerModuleCatalog
         new ConfigModule(),
         new ProviderModule(),
         new ProviderTestModule(),
-        new AgentRuntimeModule()
+        new AgentRuntimeModule(),
+        new ToolModule()
     ];
 }
