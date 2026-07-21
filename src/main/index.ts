@@ -124,8 +124,28 @@ app.whenReady().then(() => {
     }
   )
 
+  // Ensure default chat working folder exists (Documents/<date>/Chat)
+  registerMessagePackHandler<void, { path?: string; error?: string }>(
+    'fs:default-chat-working-folder',
+    async () => {
+      try {
+        const folderPath = join(app.getPath('documents'), formatLocalDateFolderName(), 'Chat')
+        await fs.promises.mkdir(folderPath, { recursive: true })
+        return { path: folderPath }
+      } catch (err) {
+        return { error: String(err) }
+      }
+    }
+  )
 
   createWindow()
+
+function formatLocalDateFolderName(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

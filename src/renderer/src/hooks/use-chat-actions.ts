@@ -7,6 +7,9 @@ import { buildSystemPrompt } from '@renderer/lib/agent/system-prompt'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
+  enablePlanMode?: boolean
+  selectedFileReferences?: unknown[]
+  goalObjective?: string
 }
 
 // Cache tool definitions to avoid fetching on every message

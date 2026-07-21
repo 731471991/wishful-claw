@@ -179,8 +179,14 @@ export function ChatHomePage(): React.JSX.Element {
     (text: string, images?: ImageAttachment[], options?: SendMessageOptions): void => {
       void (async () => {
         const chatStore = useChatStore.getState()
-        const chatWorkingFolder =
-          mode === 'chat' ? await ensureDefaultChatWorkingFolder() : undefined
+        let chatWorkingFolder: string | undefined
+        if (mode === 'chat') {
+          try {
+            chatWorkingFolder = await ensureDefaultChatWorkingFolder()
+          } catch {
+            chatWorkingFolder = undefined
+          }
+        }
         const projectIdForSession =
           selectedProjectId &&
           chatStore.projects.some((project) => project.id === selectedProjectId)

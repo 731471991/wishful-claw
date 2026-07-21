@@ -277,6 +277,7 @@
 }
 
 /* ── Composer shell styles ── */
+@layer components {
 .composer-shell {
   position: relative;
   isolation: isolate;
@@ -497,3 +498,4 @@ textarea.composer-aux-textarea {
   background: transparent;
   box-shadow: none;
 }
+} /* end @layer components */

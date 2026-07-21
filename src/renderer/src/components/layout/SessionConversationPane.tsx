@@ -39,7 +39,7 @@ export function SessionConversationPane({
   const activities = useActivityStore((s) => s.activities)
 
   const handleSend = useCallback(
-    (text: string) => {
+    (text: string, _images?: unknown, _options?: unknown) => {
       if (!resolvedSessionId) return
       void sendMessage(text, undefined, undefined, resolvedSessionId)
     },
