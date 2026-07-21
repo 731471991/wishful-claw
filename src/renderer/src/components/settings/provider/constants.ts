@@ -27,10 +27,9 @@ export const PROVIDER_TYPE_OPTIONS_ADD: ProviderType[] = [
   'openai-chat', 'openai-responses', 'anthropic', 'gemini'
 ]
 
-// Options for editing a provider's protocol type (includes openai-images)
+// Options for editing a provider's protocol type — same 4 mainstream options
 export const PROVIDER_TYPE_OPTIONS_EDIT: ProviderType[] = [
-  'openai-chat', 'openai-responses', 'anthropic', 'gemini',
-  'openai-images', 'seedance-video', 'xai-video'
+  'openai-chat', 'openai-responses', 'anthropic', 'gemini'
 ]
 
 // Backward-compatible alias (use specific variants above)
