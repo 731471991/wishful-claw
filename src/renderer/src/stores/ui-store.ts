@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type AppView = 'splash' | 'main' | 'settings'
+export type AppView = 'splash' | 'main' | 'chat' | 'settings'
 
 export type SettingsTab = 'provider' | 'modelManagement' | 'general' | 'about'
 
@@ -17,6 +17,8 @@ interface UIState {
   enterMain: () => void
   openSettings: (tab?: SettingsTab) => void
   closeSettings: () => void
+
+  enterChat: () => void
 }
 
 export const useUIStore = create<UIState>()((set) => ({
@@ -31,5 +33,7 @@ export const useUIStore = create<UIState>()((set) => ({
   openSettings: (tab) =>
     set({ view: 'settings', settingsTab: tab ?? 'provider' }),
 
-  closeSettings: () => set({ view: 'main' })
+  closeSettings: () => set({ view: 'main' }),
+
+  enterChat: () => set({ view: 'chat' })
 }))
