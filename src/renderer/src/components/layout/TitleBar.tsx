@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Settings } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { WindowControls } from './WindowControls'
@@ -21,7 +21,6 @@ export function TitleBar({
   const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar)
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen)
   const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
-  const openSettingsPage = useUIStore((s) => s.openSettingsPage)
 
   return (
     <header className="flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
@@ -58,18 +57,6 @@ export function TitleBar({
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">{t('topbar.toggleRightPanel', { defaultValue: 'Toggle right panel' })}</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => openSettingsPage()}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Settings className="size-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t('navRail.settings', { defaultValue: 'Settings' })}</TooltipContent>
         </Tooltip>
 
         <WindowControls />
