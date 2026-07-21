@@ -59,7 +59,7 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：安装依赖 + 搬入基础设施
+- [x] 步骤1：安装依赖 + 搬入基础设施
   - 安装 `nanoid` `motion`（framer-motion 替代）
   - 新建 `src/renderer/src/components/layout/right-panel-defs.ts` — 从 OpenCowork 搬入（宽度常量 + clamp 函数）
   - 新建 `src/renderer/src/components/animate-ui/transitions.tsx` — 从 OpenCowork 搬入（PageTransition/PanelTransition/FadeIn/SlideIn 等），animationsEnabled 暂时硬编码 true
@@ -70,7 +70,7 @@
   - 新建 `src/renderer/src/lib/settings-route.ts` — 占位
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤2：重构 ui-store — 从 OpenCowork 搬入完整布局状态
+- [x] 步骤2：重构 ui-store — 从 OpenCowork 搬入完整布局状态
   - 修改 `src/renderer/src/stores/ui-store.ts`
     - 从 OpenCowork 搬入完整 UIStore 接口和实现
     - 本次实现：mode/activeNavItem/leftSidebar(leftOpen/width/toggle)/rightPanel(open/toggle/width)/chatView/navigateTo*/settings(skills/souls/sync/resources/draw/translate/tasks/codeGraph page open/close)/shortcutsOpen/conversationGuideOpen
@@ -85,7 +85,7 @@
   - 参考：OpenCowork ui-store.ts 全文
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤3：重构 chat-store — 拆分多文件 + 从 OpenCowork 搬入
+- [x] 步骤3：重构 chat-store — 拆分多文件 + 从 OpenCowork 搬入
   - 拆分为：
     - `src/renderer/src/stores/chat-store/types.ts` — Session/Project/SessionMode/CreateSessionOptions 等类型定义
     - `src/renderer/src/stores/chat-store/session-slice.ts` — Session CRUD（createSession/deleteSession/setActiveSession/updateSessionTitle/clearSessionMessages/togglePinSession/duplicateSession 等）
@@ -104,14 +104,14 @@
   - sendMessage/cancelStream/handleEnvelope 从现有 chat-store 保留，适配到 Session 结构
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤4：创建 use-chat-actions hook — 从 OpenCowork 搬入（精简）
+- [x] 步骤4：创建 use-chat-actions hook — 从 OpenCowork 搬入（精简）
   - 新建 `src/renderer/src/hooks/use-chat-actions.ts`
     - 搬入 sendMessage/stopStreaming/abortSession 等核心 action
     - 适配到 wishful-claw 的 agent/run IPC（不是 OpenCowork 的 agentStream）
     - 砍掉：pendingSessionMessages/backgroundSession/imageAttachments 相关
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤5：创建 WorkspaceSidebar — 从 OpenCowork 搬入（保留结构，精简实现）
+- [x] 步骤5：创建 WorkspaceSidebar — 从 OpenCowork 搬入（保留结构，精简实现）
   - 新建 `src/renderer/src/components/layout/WorkspaceSidebar.tsx`
     - 从 OpenCowork 搬入完整框架
     - 保留：导航图标栏 + New Chat 按钮 + 项目分组会话列表 + 侧边栏折叠 + 拖拽宽度
@@ -124,7 +124,7 @@
     - 目标 ~800行（OpenCowork 2371行，保留约 1/3）
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤6：创建 TitleBar + 其他 layout 组件
+- [x] 步骤6：创建 TitleBar + 其他 layout 组件
   - 新建 `src/renderer/src/components/layout/TitleBar.tsx` — 从 OpenCowork 搬入（标题 + 侧边栏切换 + mode 切换 + WindowControls）
   - 新建 `src/renderer/src/components/layout/CommandPalette.tsx` — 从 OpenCowork 搬入壳子，命令列表精简（New Chat/Settings/Switch Theme 等基本命令）
   - 新建 `src/renderer/src/components/layout/RightPanel.tsx` — 壳子，显示占位内容
@@ -133,14 +133,14 @@
   - 新建 `src/renderer/src/components/layout/RuntimeStatusPanel.tsx` — 占位
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤7：创建 ChatHomePage + ProjectHomePage + WorkingFolderSelectorDialog
+- [x] 步骤7：创建 ChatHomePage + ProjectHomePage + WorkingFolderSelectorDialog
   - 新建 `src/renderer/src/components/chat/ChatHomePage.tsx` — 从 OpenCowork 搬入（欢迎语 + InputArea + 快捷提示 + NewSessionProjectSelector）
   - 新建 `src/renderer/src/components/chat/ProjectHomePage.tsx` — 从 OpenCowork 搬入（项目信息 + InputArea + 工作文件夹）
   - 新建 `src/renderer/src/components/chat/WorkingFolderSelectorDialog.tsx` — 从 OpenCowork 搬入（本地文件夹选择，SSH 部分保留入口但禁用）
   - 新建 `src/renderer/src/components/chat/NewSessionProjectSelector.tsx` — 项目选择器
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤8：重构 MainLayout + App.tsx
+- [x] 步骤8：重构 MainLayout + App.tsx
   - 重构 `src/renderer/src/components/layout/MainLayout.tsx` → 从 OpenCowork Layout.tsx 搬入
     - WorkspaceSidebar + TitleBar + 内容区路由（ChatHomePage/ProjectHomePage/SessionConversationPane/RightPanel）
     - 各功能页面（Skills/Souls/Sync/Draw/Translate/Tasks/CodeGraph）显示占位组件
@@ -152,7 +152,7 @@
   - 修改 `src/preload/index.ts` — 暴露 openFolderDialog
   - 验证：`npm run typecheck` + `electron-vite build` 通过
 
-- [ ] 步骤9：适配已有组件
+- [x] 步骤9：适配已有组件
   - 修改 `src/renderer/src/components/chat/ChatPage.tsx` — 合并到 SessionConversationPane 或适配
   - 修改 `src/renderer/src/components/chat/InputArea.tsx` — 从 ui-store 读 selectedProvider，适配 ChatHomePage/SessionConversationPane 两种场景
   - 修改 `src/renderer/src/components/chat/MessageList.tsx` — 从 chat-store 读活跃会话 messages

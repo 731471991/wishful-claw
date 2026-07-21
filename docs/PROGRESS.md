@@ -21,14 +21,16 @@
 - 备注：28 个内置预设完整对齐 OpenCowork（含 OAuth/Channel），Provider CRUD + 连通性测试 + 模型拉取，前端设置页面（Provider/通用/i18n），验证通过
 
 ## 迭代三：Agent Loop + 对话
-- 状态：已完成
+- 状态：已完成（含前端修复）
 - 分支：dev/iter-3
-- Plan: docs/plans/plan_003/
-- VERDICT: PASS
-- Tag: v0.3.0
-- Commit: d5f0245
+- Plan: docs/plans/plan_003/ + docs/plans/plan_003b/
+- VERDICT: PASS (plan_003) / 步骤1-9完成, 步骤10待验证 (plan_003b)
+- Tag: v0.3.0 (plan_003)
+- Commit: d5f0245 (plan_003) / e18961c (plan_003b 步骤1-9)
 - 日期: 2026-07-21
-- 备注：Agent Loop 融合三项目设计（KodaClaw Step 抽象 + OpenCowork Provider SSE 解析 + OpenClaw.net 记忆回忆预留）。后端 13 个文件，前端 15 个文件。事件双通道分流：聊天流 vs 活动面板。预留子Agent接口和记忆回忆接口。dotnet build + tsc + electron-vite build 全部通过。
+- 备注：
+  - plan_003: Agent Loop 后端 + 前端流式对话（v0.3.0 已验证通过）
+  - plan_003b: 前端框架修复 — 搬入 OpenCowork 完整布局（NavRail+WorkspaceSidebar+TitleBar+CommandPalette+RightPanel+SessionConversationPane+ChatHomePage+ProjectHomePage），保留所有功能入口+接口预留，chat-store 拆分7文件+immer中间件。步骤1-9 typecheck 通过，步骤10集成验证待执行。
 
 ## 迭代四：工具链（最小集）
 - 状态：未开始
