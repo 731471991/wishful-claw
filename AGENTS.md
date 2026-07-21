@@ -88,6 +88,59 @@ Agent 通用框架，不含任何业务逻辑。
 | KodaClaw | `D:\gy\koda-claw\koda-claw` | 记忆系统（products/KodaClaw/src/.../Workspace/）、人格系统（.../Prompt/、persona-presets.json）、PromptBuilder |
 | OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆（src/OpenClaw.Agent/AgentRuntime.cs TryInjectRecallAsync）、记忆工具（.../Tools/Memory*Tool.cs）、上下文预算（.../Memory/ContextBudgetPlanner.cs） |
 
+## 参考源码适配规范
+
+### 核心原则：迁移 + 适配 + 做减法，不是从零重写
+
+从 OpenCowork / KodaClaw / OpenClaw.net 搬代码时，**搬过来，改名字，去杂质，留骨架**。不要看到参考代码就理解为"功能不要了"然后从零写一个简版。
+
+### 前端适配（重点）
+
+前端页面**直接参考 OpenCowork 的 React 前端**，做减法，不是重新造：
+
+1. **整体结构照搬**：布局、导航、路由、状态管理的骨架从 OpenCowork 搬过来，去掉不需要的功能模块
+2. **入口和导航必须保留**：即使某个迭代只做一个功能（如会话页），也要保留侧边栏/导航栏的入口结构。砍掉的是功能页面，不是导航框架。不能出现"只有一个光秃秃的页面，入口都没有"的情况
+3. **组件复用**：OpenCowork 的通用组件（按钮、对话框、输入框、列表项等）直接搬入，改命名空间和样式变量。不要自己从头写 UI 组件
+4. **做减法的正确姿势**：
+   - OpenCowork 有 10 个页面，MVP 只要 3 个 → 搬 3 个，导航里保留 3 个入口，其余注释或移除路由
+   - OpenCowork 的会话页有 20 个功能按钮，MVP 只要发送消息 → 保留发送框 + 消息列表，去掉多余的按钮，但页面布局结构不变
+   - **不是**：自己写一个新的会话页，只放一个输入框和一个列表，然后说"迭代完成"
+5. **样式变量统一**：搬入后把 OpenCowork 的主题变量名替换为 WishfulClaw 的命名
+
+### 后端适配
+
+1. **命名空间统一**：所有搬入的代码命名空间改为 `WishfulClaw.*`，不保留原项目命名空间
+2. **分层归属**：搬入的代码按 AGENTS.md 的分层约定放入对应项目（Core / Workspace / Worker / Contracts）
+3. **清理私货**：OpenCowork 中的 routin.ai 相关硬编码、特定中转商配置等必须清除
+4. **接口适配**：原项目中的接口和实现可能耦合较紧，搬入时通过 Contracts 层解耦
+
+### 大文件拆分
+
+参考项目中的单文件如果过大（如 OpenCowork 的 `OpenAIChatRuntime.cs` 3828 行），搬入时**必须拆分**：
+
+1. 按职责拆分为多个文件，每个文件 200~500 行为宜
+2. 拆分后保持逻辑等价，不改变行为，只改组织结构
+3. 拆分粒度示例（以 AgentLoop 为例）：
+   - `AgentLoopEngine.cs` — 循环主体（状态机 + 流程控制）
+   - `AgentLoopContext.cs` — 单次循环的上下文数据
+   - `AgentLoopEvents.cs` — 事件定义和触发
+   - `ToolCallProcessor.cs` — 工具调用处理
+   - `StreamProcessor.cs` — 流式响应处理
+4. 拆分时建立 partial class 或独立 class，不要为了拆而拆导致过度碎片化
+
+### 迭代交付标准
+
+每个迭代交付时，功能必须**完整可用**，不能是半成品：
+
+- 有入口（能从导航/菜单进入）
+- 有反馈（操作后有可见响应）
+- 有闭环（功能流程走得通，不是断头路）
+- 编译通过 + 能启动 + 核心流程能跑
+
+**反例**：迭代目标是"会话功能"，交付物只有一个光秃秃的聊天页面，没有侧边栏、没有会话列表、没有入口，然后说"迭代完成"
+
+**正例**：迭代目标是"会话功能"，交付物有侧边栏（会话列表 + 新建按钮）、主区域（消息流 + 输入框）、可以从入口进入、能发消息能收到回复，只是没有高级功能（如附件、代码高亮等）
+
 ## 开发约定
 
 - C# 文件名使用 PascalCase
