@@ -8,7 +8,7 @@ import { createProjectSlice, type ProjectSlice } from './project-slice'
 import { createStreamingSlice, type StreamingSlice } from './streaming-slice'
 import type { ChatMessage } from './types'
 
-export type { Session, Project, ChatMessage, SessionMode, CreateSessionOptions, SessionPromptSnapshot } from './types'
+export type { Session, Project, ChatMessage, SessionMode, CreateSessionOptions, SessionPromptSnapshot, ToolCallInfo } from './types'
 export type { SessionSlice } from './session-slice'
 export type { ProjectSlice } from './project-slice'
 export type { StreamingSlice } from './streaming-slice'

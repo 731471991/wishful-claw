@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
-import { useUIStore } from '@renderer/stores/ui-store'
+import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 
 export interface SendMessageOptions {
@@ -27,10 +27,24 @@ export function useChatActions() {
 
   const handleSendMessage = useCallback(
     async (text: string, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
-      const provider = useUIStore.getState().selectedProvider
-      if (!provider) {
+      const providerStore = useProviderStore.getState()
+      const activeProvider = providerStore.getActiveProvider()
+      if (!activeProvider) {
         console.error('[ChatActions] No provider selected')
         return
+      }
+      const modelId = providerStore.defaultModel ?? activeProvider.defaultModel ?? activeProvider.models.find((m) => m.enabled)?.id
+      if (!modelId) {
+        console.error('[ChatActions] No model selected')
+        return
+      }
+      const provider = {
+        id: activeProvider.id,
+        name: activeProvider.name,
+        type: activeProvider.type,
+        apiKey: activeProvider.apiKey,
+        baseUrl: activeProvider.baseUrl,
+        model: modelId
       }
 
       const chatStore = useChatStore.getState()

@@ -1,12 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FolderOpen, GitBranch, Archive, Plus } from 'lucide-react'
+import { FolderOpen, GitBranch, Archive } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useChatStore, type Project } from '@renderer/stores/chat-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatActions } from '@renderer/hooks/use-chat-actions'
-import { ModelSwitcher } from './ModelSwitcher'
-import { cn } from '@renderer/lib/utils'
+import { InputArea } from './InputArea'
 import { toast } from 'sonner'
 
 export function ProjectHomePage(): React.JSX.Element {
@@ -20,29 +19,20 @@ export function ProjectHomePage(): React.JSX.Element {
   const navigateToArchive = useUIStore((s) => s.navigateToArchive)
   const navigateToGit = useUIStore((s) => s.navigateToGit)
   const { sendMessage } = useChatActions()
-  const [input, setInput] = useState('')
 
   const project: Project | undefined = projects.find((p) => p.id === activeProjectId)
   const projectSessions = sessions
     .filter((s) => s.projectId === activeProjectId)
     .sort((a, b) => b.updatedAt - a.updatedAt)
 
-  const handleSend = useCallback(async (text?: string) => {
-    const content = (text ?? input).trim()
+  const handleSend = useCallback(async (text: string) => {
+    const content = text.trim()
     if (!content || !activeProjectId) return
 
     const sessionId = createSession('chat', activeProjectId)
-    setInput('')
     navigateToSession(sessionId)
     await sendMessage(content, undefined, undefined, sessionId)
-  }, [input, activeProjectId, createSession, navigateToSession, sendMessage])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      void handleSend()
-    }
-  }
+  }, [activeProjectId, createSession, navigateToSession, sendMessage])
 
   const handleChangeFolder = useCallback(async () => {
     if (!activeProjectId) return
@@ -66,114 +56,90 @@ export function ProjectHomePage(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6">
-        {/* Project header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FolderOpen className="size-6 text-primary/70" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{project.name}</h1>
-              {project.workingFolder && (
-                <p className="mt-0.5 text-xs text-muted-foreground/60" title={project.workingFolder}>
-                  {project.workingFolder}
-                </p>
-              )}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <div className="flex flex-1 flex-col overflow-auto px-6 pb-14 pt-6">
+        <div className="mx-auto w-full max-w-[760px]">
+          {/* Project header */}
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FolderOpen className="size-6 text-primary/70" />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">{project.name}</h1>
+                {project.workingFolder && (
+                  <p className="mt-0.5 text-xs text-muted-foreground/60" title={project.workingFolder}>
+                    {project.workingFolder}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-1">
-            {!project.workingFolder && (
+            <div className="flex items-center gap-1">
+              {!project.workingFolder && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleChangeFolder}
+                      className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      <FolderOpen className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{t('project.setFolder', { defaultValue: 'Set working folder' })}</TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={handleChangeFolder}
+                    onClick={() => navigateToArchive(project.id)}
                     className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                   >
-                    <FolderOpen className="size-4" />
+                    <Archive className="size-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">{t('project.setFolder', { defaultValue: 'Set working folder' })}</TooltipContent>
+                <TooltipContent side="bottom">{t('project.archive', { defaultValue: 'Archive' })}</TooltipContent>
               </Tooltip>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigateToArchive(project.id)}
-                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <Archive className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t('project.archive', { defaultValue: 'Archive' })}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigateToGit(project.id)}
-                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <GitBranch className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t('project.git', { defaultValue: 'Git' })}</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Input area */}
-        <div className="mb-6">
-          <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-3 shadow-sm">
-            <ModelSwitcher />
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('project.placeholder', { defaultValue: 'Start a conversation in this project...' })}
-              rows={1}
-              className={cn(
-                'flex-1 resize-none bg-transparent px-2 py-2 text-sm',
-                'placeholder:text-muted-foreground focus:outline-none',
-                'max-h-[200px]'
-              )}
-              style={{ minHeight: '40px' }}
-            />
-            <button
-              onClick={() => void handleSend()}
-              disabled={!input.trim()}
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {t('project.send', { defaultValue: 'Send' })}
-            </button>
-          </div>
-        </div>
-
-        {/* Recent sessions in project */}
-        <div>
-          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/50">
-            {t('project.recentSessions', { defaultValue: 'Recent sessions' })}
-          </h2>
-          {projectSessions.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <Plus className="size-6 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/60">
-                {t('project.noSessions', { defaultValue: 'No sessions yet. Send a message to start.' })}
-              </p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => navigateToGit(project.id)}
+                    className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <GitBranch className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{t('project.git', { defaultValue: 'Git' })}</TooltipContent>
+              </Tooltip>
             </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {projectSessions.slice(0, 10).map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => navigateToSession(session.id)}
-                  className="flex items-center justify-between rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/30"
-                >
-                  <span className="truncate text-xs font-medium">{session.title}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground/40">
-                    {session.messageCount} messages
-                  </span>
-                </button>
-              ))}
+          </div>
+
+          {/* Input area (composer shell) */}
+          <InputArea
+            sessionId={null}
+            onSend={handleSend}
+            isStreaming={false}
+            attachedFooter
+          />
+
+          {/* Recent sessions in project */}
+          {projectSessions.length > 0 && (
+            <div className="mt-6">
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/50">
+                {t('project.recentSessions', { defaultValue: 'Recent sessions' })}
+              </h2>
+              <div className="flex flex-col gap-1">
+                {projectSessions.slice(0, 10).map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => navigateToSession(session.id)}
+                    className="flex items-center justify-between rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/30"
+                  >
+                    <span className="truncate text-xs font-medium">{session.title}</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground/40">
+                      {session.messageCount} messages
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

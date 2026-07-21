@@ -8,7 +8,6 @@ import {
   Ghost,
   RefreshCw,
   PenTool,
-  CheckSquare,
   GitBranch,
   Plus,
   Search,
@@ -22,7 +21,6 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  FolderPlus,
   Archive,
   Image,
   CalendarDays
@@ -39,7 +37,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -222,7 +219,6 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
   const renameProject = useChatStore((s) => s.renameProject)
   const togglePinProject = useChatStore((s) => s.togglePinProject)
   const updateProjectDirectory = useChatStore((s) => s.updateProjectDirectory)
-  const createSession = useChatStore((s) => s.createSession)
   const navigateToProject = useUIStore((s) => s.navigateToProject)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
   const navigateToArchive = useUIStore((s) => s.navigateToArchive)
@@ -278,9 +274,11 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
   }, [project.id, updateProjectDirectory, t])
 
   const handleNewSessionInProject = useCallback(() => {
-    createSession('chat', project.id)
-    navigateToSession(null)
-  }, [createSession, project.id, navigateToSession])
+    // Don't create a session — navigate to project home.
+    // Session is created when the user sends a message.
+    setActiveProjectHome(project.id)
+    navigateToProject(project.id)
+  }, [project.id, setActiveProjectHome, navigateToProject])
 
   if (isEditing) {
     return (
@@ -470,11 +468,11 @@ export function WorkspaceSidebar(): React.JSX.Element {
 
   const sessions = useChatStore((s) => s.sessions)
   const projects = useChatStore((s) => s.projects)
-  const createSession = useChatStore((s) => s.createSession)
+  const setActiveProjectHome = useChatStore((s) => s.setActiveProjectHome)
   const createProject = useChatStore((s) => s.createProject)
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery] = useState('')
   const [extensionsOpen, setExtensionsOpen] = useState(false)
 
   // Auto-expand the active project
@@ -530,10 +528,12 @@ export function WorkspaceSidebar(): React.JSX.Element {
   }, [])
 
   const handleNewChat = useCallback(() => {
-    createSession('chat', null, { preserveProjectless: true })
+    // Don't create a session yet — just navigate to home.
+    // The session is created when the user actually sends a message.
+    setActiveProjectHome(null)
     setActiveNavItem('chat')
     navigateToHome()
-  }, [createSession, setActiveNavItem, navigateToHome])
+  }, [setActiveProjectHome, setActiveNavItem, navigateToHome])
 
   const handleNewProject = useCallback(async () => {
     try {

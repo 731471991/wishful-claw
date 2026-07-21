@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Sparkles, Code, Lightbulb, FileText } from 'lucide-react'
 import { useChatStore } from '@renderer/stores/chat-store'
@@ -73,8 +73,7 @@ export function ChatHomePage(): React.JSX.Element {
             {/* Quick prompts */}
             <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
               {QUICK_PROMPTS.map((prompt) => {
-                const Icon = prompt.icon
-                return (
+                  return (
                   <button
                     key={prompt.label}
                     type="button"
