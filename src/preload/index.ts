@@ -45,7 +45,11 @@ const api = {
 
   // Listen for main → renderer push events (e.g. window:maximized)
   on: <T = unknown>(channel: string, callback: (payload: T) => void): (() => void) =>
-    onMessagePackEvent<T>(channel, callback)
+    onMessagePackEvent<T>(channel, callback),
+
+  // Listen for agent stream events (agent/stream channel)
+  onAgentStream: (callback: (payload: unknown) => void): (() => void) =>
+    onMessagePackEvent('agent/stream', callback)
 }
 
 if (process.contextIsolated) {

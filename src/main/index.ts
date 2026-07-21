@@ -5,6 +5,7 @@ import { getNativeWorker } from './lib/native-worker'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
+import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -102,6 +103,9 @@ app.whenReady().then(() => {
   // Register AI provider persistence handlers
   registerAiProviderHandlers()
   registerSettingsHandlers()
+
+  // Agent stream event forwarder (worker → renderer)
+  registerAgentStreamForwarder()
 
   createWindow()
 

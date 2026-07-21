@@ -269,7 +269,7 @@ class NativeWorkerManager {
 
     const eventFrame = decoded as NativeWorkerEventFrame
     if (typeof eventFrame.event === 'string' && eventFrame.event) {
-      this.events.emit(eventFrame.event, eventFrame.params)
+      this.events.emit(eventFrame.event, extractEventParameters(eventFrame.event, decoded))
       return
     }
 
@@ -371,4 +371,21 @@ export function getNativeWorker(): NativeWorkerManager {
 
 export function latchNativeWorkerShutdown(): void {
   // Placeholder for graceful shutdown
+}
+
+function extractEventParameters(eventName: string, decoded: Record<string, unknown>): unknown {
+  if ('params' in decoded) return decoded.params
+  if (eventName !== 'agent/stream') return undefined
+
+  // agent/stream events are MessagePack-encoded envelopes where the fields
+  // (v, runId, sessionId, seq, events) are at the top level alongside the
+  // event name, not wrapped in a params field.
+  const envelope = {
+    v: decoded.v,
+    runId: decoded.runId,
+    sessionId: decoded.sessionId,
+    seq: decoded.seq,
+    events: decoded.events
+  }
+  return envelope
 }

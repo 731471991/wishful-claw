@@ -56,4 +56,9 @@ public sealed class WorkerRequestContext : IWorkerRequestContext
     {
         return _emitMessagePackEventAsync(messagePackEvent, CancellationToken);
     }
+
+    public ValueTask EmitMessagePackEventAsync(string eventName, ReadOnlyMemory<byte> payload)
+    {
+        return _emitMessagePackEventAsync(new WorkerMessagePackEvent(eventName, payload), CancellationToken);
+    }
 }

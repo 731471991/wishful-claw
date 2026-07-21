@@ -17,4 +17,6 @@ public interface IWorkerRequestContext
     ValueTask EmitEventAsync<T>(string eventName, T parameters, JsonTypeInfo<T> typeInfo);
 
     ValueTask EmitEventIgnoringCancellationAsync<T>(string eventName, T parameters, JsonTypeInfo<T> typeInfo);
+
+    ValueTask EmitMessagePackEventAsync(string eventName, ReadOnlyMemory<byte> payload);
 }
