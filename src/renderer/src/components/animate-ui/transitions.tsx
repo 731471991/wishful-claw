@@ -1,6 +1,9 @@
 import { AnimatePresence, motion, HTMLMotionProps } from 'motion/react'
-import { ReactNode, ElementType, forwardRef } from 'react'
+import { ReactNode, ElementType, forwardRef, type JSX } from 'react'
 import { cn } from '@renderer/lib/utils'
+import { useSettingsStore } from '@renderer/stores/settings-store'
+
+// ─── Types ───
 
 type TransitionDirection = 'up' | 'down' | 'left' | 'right'
 
@@ -17,6 +20,8 @@ interface SlideProps extends BaseTransitionProps {
   offset?: number
 }
 
+// ─── Spring Configs ───
+
 export const spring = {
   stiff: { type: 'spring', stiffness: 400, damping: 30 },
   smooth: { type: 'spring', stiffness: 300, damping: 30, mass: 0.8 },
@@ -28,11 +33,18 @@ const ease = {
   inOut: [0.4, 0, 0.2, 1]
 } as const
 
-// Animations are always enabled for now. Later iterations can add a settings toggle.
-const animationsEnabled = true
+// ─── Components ───
 
+/**
+ * FadeIn - Simple opacity transition
+ */
 export const FadeIn = forwardRef<HTMLDivElement, BaseTransitionProps>(
-  ({ children, className, delay = 0, duration = 0.2, as: Component = motion.div, ...props }, ref) => {
+  (
+    { children, className, delay = 0, duration = 0.2, as: Component = motion.div, ...props },
+    ref
+  ) => {
+    const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
+
     return (
       <Component
         ref={ref}
@@ -50,8 +62,24 @@ export const FadeIn = forwardRef<HTMLDivElement, BaseTransitionProps>(
 )
 FadeIn.displayName = 'FadeIn'
 
+/**
+ * SlideIn - Slide and fade from a direction
+ */
 export const SlideIn = forwardRef<HTMLDivElement, SlideProps>(
-  ({ children, className, direction = 'up', offset = 10, delay = 0, as: Component = motion.div, ...props }, ref) => {
+  (
+    {
+      children,
+      className,
+      direction = 'up',
+      offset = 10,
+      delay = 0,
+      as: Component = motion.div,
+      ...props
+    },
+    ref
+  ) => {
+    const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
+
     const getInitial = (): { opacity: number; x?: number; y?: number } => {
       switch (direction) {
         case 'up':
@@ -64,13 +92,18 @@ export const SlideIn = forwardRef<HTMLDivElement, SlideProps>(
           return { opacity: 0, x: -offset }
       }
     }
+
     return (
       <Component
         ref={ref}
         initial={animationsEnabled ? getInitial() : false}
         animate={{ opacity: 1, x: 0, y: 0 }}
         exit={animationsEnabled ? getInitial() : undefined}
-        transition={animationsEnabled ? { type: 'spring', stiffness: 400, damping: 30, delay } : { duration: 0 }}
+        transition={
+          animationsEnabled
+            ? { type: 'spring', stiffness: 400, damping: 30, delay }
+            : { duration: 0 }
+        }
         className={className}
         {...props}
       >
@@ -81,8 +114,13 @@ export const SlideIn = forwardRef<HTMLDivElement, SlideProps>(
 )
 SlideIn.displayName = 'SlideIn'
 
+/**
+ * ScaleIn - Scale up from center
+ */
 export const ScaleIn = forwardRef<HTMLDivElement, BaseTransitionProps>(
   ({ children, className, delay = 0, as: Component = motion.div, ...props }, ref) => {
+    const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
+
     return (
       <Component
         ref={ref}
@@ -100,14 +138,30 @@ export const ScaleIn = forwardRef<HTMLDivElement, BaseTransitionProps>(
 )
 ScaleIn.displayName = 'ScaleIn'
 
+/**
+ * PageTransition - Full page/panel replacement transition
+ *
+ * Default: fade + slight rise on enter, quick fade on exit. Designed for
+ * `<AnimatePresence mode="wait">` — exit is opacity-only and short so page
+ * switches stay snappy. Callers can override any motion prop via `...props`.
+ */
 export const PageTransition = forwardRef<HTMLDivElement, BaseTransitionProps>(
-  ({ children, className, delay = 0, duration = 0.18, as: Component = motion.div, ...props }, ref) => {
+  (
+    { children, className, delay = 0, duration = 0.18, as: Component = motion.div, ...props },
+    ref
+  ) => {
+    const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
+
     return (
       <Component
         ref={ref}
         initial={animationsEnabled ? { opacity: 0, y: 8 } : false}
         animate={{ opacity: 1, y: 0 }}
-        exit={animationsEnabled ? { opacity: 0, transition: { duration: 0.12, ease: ease.out } } : undefined}
+        exit={
+          animationsEnabled
+            ? { opacity: 0, transition: { duration: 0.12, ease: ease.out } }
+            : undefined
+        }
         transition={animationsEnabled ? { duration, delay, ease: ease.out } : { duration: 0 }}
         className={cn('size-full', className)}
         {...props}
@@ -119,13 +173,32 @@ export const PageTransition = forwardRef<HTMLDivElement, BaseTransitionProps>(
 )
 PageTransition.displayName = 'PageTransition'
 
-export const StaggerContainer = ({ children, className, delay = 0.05 }: { children: ReactNode; className?: string; delay?: number }) => {
+/**
+ * StaggerContainer - Orchestrate children animations
+ */
+export const StaggerContainer = ({
+  children,
+  className,
+  delay = 0.05
+}: {
+  children: ReactNode
+  className?: string
+  delay?: number
+}): JSX.Element => {
   return (
     <motion.div
       initial="hidden"
       animate="show"
       exit="hidden"
-      variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: delay } } }}
+      variants={{
+        hidden: { opacity: 0 },
+        show: {
+          opacity: 1,
+          transition: {
+            staggerChildren: delay
+          }
+        }
+      }}
       className={className}
     >
       {children}
@@ -133,10 +206,22 @@ export const StaggerContainer = ({ children, className, delay = 0.05 }: { childr
   )
 }
 
-export const StaggerItem = ({ children, className }: { children: ReactNode; className?: string }) => {
+/**
+ * StaggerItem - Child of StaggerContainer
+ */
+export const StaggerItem = ({
+  children,
+  className
+}: {
+  children: ReactNode
+  className?: string
+}): JSX.Element => {
   return (
     <motion.div
-      variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: spring.smooth } }}
+      variants={{
+        hidden: { opacity: 0, y: 10 },
+        show: { opacity: 1, y: 0, transition: spring.smooth }
+      }}
       className={className}
     >
       {children}
@@ -144,8 +229,27 @@ export const StaggerItem = ({ children, className }: { children: ReactNode; clas
   )
 }
 
-export const PanelTransition = forwardRef<HTMLDivElement, BaseTransitionProps & { side?: 'left' | 'right'; disabled?: boolean }>(
-  ({ children, className, side = 'right', disabled = false, delay = 0, as: Component = motion.div, ...props }, ref) => {
+/**
+ * PanelTransition - Smooth width and opacity transition for side panels
+ * Ensures siblings resize smoothly
+ */
+export const PanelTransition = forwardRef<
+  HTMLDivElement,
+  BaseTransitionProps & { side?: 'left' | 'right'; disabled?: boolean }
+>(
+  (
+    {
+      children,
+      className,
+      side = 'right',
+      disabled = false,
+      delay = 0,
+      as: Component = motion.div,
+      ...props
+    },
+    ref
+  ) => {
+    const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
     const shouldDisable = disabled || !animationsEnabled
     const xInitial = side === 'right' ? 20 : -20
 
@@ -163,7 +267,13 @@ export const PanelTransition = forwardRef<HTMLDivElement, BaseTransitionProps & 
         initial={{ width: 0, opacity: 0, x: xInitial }}
         animate={{ width: 'auto', opacity: 1, x: 0 }}
         exit={{ width: 0, opacity: 0, x: xInitial }}
-        transition={{ type: 'spring', stiffness: 350, damping: 30, delay, opacity: { duration: 0.2 } }}
+        transition={{
+          type: 'spring',
+          stiffness: 350,
+          damping: 30,
+          delay,
+          opacity: { duration: 0.2 }
+        }}
         className={cn('overflow-hidden', className)}
         {...props}
       >
@@ -174,4 +284,5 @@ export const PanelTransition = forwardRef<HTMLDivElement, BaseTransitionProps & 
 )
 PanelTransition.displayName = 'PanelTransition'
 
+// Re-export AnimatePresence for convenience
 export { AnimatePresence }

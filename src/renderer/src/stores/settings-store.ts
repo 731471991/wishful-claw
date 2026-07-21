@@ -10,6 +10,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type MainModelSelectionMode = 'auto' | 'manual'
+export type LiveOutputAnimationStyle = 'agile' | 'elegant'
 
 export function getReasoningEffortKey(
   providerId?: string | null,
@@ -62,6 +63,12 @@ interface GeneralSettings {
   reasoningEffort: ReasoningEffortLevel
   reasoningEffortByModel: Record<string, ReasoningEffortLevel>
   mainModelSelectionMode: MainModelSelectionMode
+
+  // Animation & display settings (from OpenCowork)
+  animationsEnabled: boolean
+  liveOutputAnimationStyle: LiveOutputAnimationStyle
+  devMode: boolean
+  toolResultFormat: 'toon' | 'json'
 }
 
 interface SettingsState extends GeneralSettings {
@@ -85,6 +92,12 @@ export const useSettingsStore = create<SettingsState>()(
       reasoningEffortByModel: {},
       mainModelSelectionMode: 'auto',
 
+      // Animation & display defaults
+      animationsEnabled: true,
+      liveOutputAnimationStyle: 'agile',
+      devMode: false,
+      toolResultFormat: 'toon',
+
       updateSettings: (partial) => set(partial)
     }),
     {
@@ -101,13 +114,36 @@ export const useSettingsStore = create<SettingsState>()(
         fastModeEnabled: state.fastModeEnabled,
         reasoningEffort: state.reasoningEffort,
         reasoningEffortByModel: state.reasoningEffortByModel,
-        mainModelSelectionMode: state.mainModelSelectionMode
+        mainModelSelectionMode: state.mainModelSelectionMode,
+        animationsEnabled: state.animationsEnabled,
+        liveOutputAnimationStyle: state.liveOutputAnimationStyle,
+        devMode: state.devMode,
+        toolResultFormat: state.toolResultFormat
       }),
       onRehydrateStorage: () => (state) => {
-        // If manual mode but no model was explicitly selected, fall back to auto
-        if (state?.mainModelSelectionMode === 'manual') {
-          if (!useProviderStore.getState().activeModelId) {
-            useSettingsStore.setState({ mainModelSelectionMode: 'auto' })
+        if (state) {
+          // If manual mode but no model was explicitly selected, fall back to auto
+          if (state.mainModelSelectionMode === 'manual') {
+            if (!useProviderStore.getState().activeModelId) {
+              useSettingsStore.setState({ mainModelSelectionMode: 'auto' })
+            }
+          }
+          // Ensure animation settings have valid defaults
+          if (state.animationsEnabled === undefined) {
+            state.animationsEnabled = true
+          }
+          if (
+            state.liveOutputAnimationStyle === undefined ||
+            (state.liveOutputAnimationStyle !== 'agile' &&
+              state.liveOutputAnimationStyle !== 'elegant')
+          ) {
+            state.liveOutputAnimationStyle = 'agile'
+          }
+          if (state.devMode === undefined) {
+            state.devMode = false
+          }
+          if (state.toolResultFormat === undefined) {
+            state.toolResultFormat = 'toon'
           }
         }
       }

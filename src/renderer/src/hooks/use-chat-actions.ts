@@ -125,3 +125,11 @@ export function subscribePendingSessionMessages(sessionId: string, callback: (co
   void callback
   return () => {}
 }
+
+export async function sendImplementPlan(_sessionId: string, _planId: string): Promise<void> {
+  // TODO: implement plan execution
+}
+
+export async function sendImplementPlanInNewSession(_projectId: string | null, _planId: string): Promise<void> {
+  // TODO: implement plan execution in new session
+}
