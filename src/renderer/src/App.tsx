@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Toaster } from 'sonner'
+import { Toaster } from '@renderer/components/ui/sonner'
 import { ThemeProvider } from '@renderer/components/theme-provider'
 import { ThemeRuntimeSync } from '@renderer/components/ThemeRuntimeSync'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
@@ -42,7 +42,7 @@ function App(): React.JSX.Element | null {
         {view === 'splash' && <SplashPage />}
         {view === 'main' && <MainLayout />}
         {view === 'settings' && <SettingsPage />}
-        <Toaster position="bottom-right" />
+        <Toaster position="bottom-left" theme="system" richColors />
       </TooltipProvider>
     </ThemeProvider>
   )
