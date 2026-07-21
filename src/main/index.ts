@@ -41,6 +41,9 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
+  if (!app.isPackaged) { mainWindow.webContents.openDevTools() }
+  mainWindow.webContents.on("console-message", (_e, level, message, line, src) => { console.log(`[renderer:${["LOG","WARN","ERROR"][level] ?? "LOG"}] ${message} (${src}:${line})`) })
+  mainWindow.webContents.on("render-process-gone", (_e, details) => { console.error("[renderer:CRASH]", details.reason, details.exitCode) })
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }

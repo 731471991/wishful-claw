@@ -76,6 +76,20 @@ export class AgentStreamReceiver {
     ipcClient.send('agent:session-visibility', { sessionId, visible })
   }
 
+  // wishful-claw compatibility bridge
+  // Our code calls start(callback) with an envelope-level callback,
+  // while OpenCowork API uses attach() + subscribeAll(event-level).
+  private envelopeCallbacks = new Set<(envelope: AgentStreamEnvelope) => void>()
+
+  start(callback: (envelope: AgentStreamEnvelope) => void): void {
+    this.attach()
+    this.envelopeCallbacks.add(callback)
+  }
+
+  stop(): void {
+    this.envelopeCallbacks.clear()
+  }
+
   private acceptEnvelope(
     envelope: AgentStreamEnvelope,
     metrics?: { byteLength: number; decodeMs: number }
@@ -105,6 +119,11 @@ export class AgentStreamReceiver {
 
     for (const event of envelope.events) {
       this.dispatch(envelope.runId, envelope.sessionId, event)
+    }
+
+    // Notify envelope-level callbacks (wishful-claw compatibility)
+    for (const cb of this.envelopeCallbacks) {
+      cb(envelope)
     }
 
     if (envelope.events.some((e) => e.type === 'loop_end' || e.type === 'error')) {
