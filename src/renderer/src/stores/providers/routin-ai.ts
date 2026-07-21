@@ -10,7 +10,7 @@ export const routinAiPreset: BuiltinProviderPreset = {
   defaultBaseUrl: 'https://api.routin.ai/v1',
   homepage: 'https://routin.ai',
   apiKeyUrl: 'https://routin.ai/dashboard/api-keys',
-  defaultEnabled: true,
+  defaultEnabled: false,
   defaultModel: 'deepseek-v4-flash',
   // 与 openai.ts/azure-openai.ts/codex-oauth.ts/anthropic.ts today 的清理保持一致：
   // gpt-5-codex/gpt-5.1-codex/gpt-5.1-codex-max/gpt-5.1-codex-mini/gpt-5.2-codex 已于
@@ -1775,7 +1775,7 @@ export const routinAiPlanPreset: BuiltinProviderPreset = {
   defaultBaseUrl: 'https://api.routin.ai/plan/v1',
   homepage: 'https://routin.ai',
   apiKeyUrl: 'https://routin.ai/dashboard/api-keys',
-  defaultEnabled: true,
+  defaultEnabled: false,
   defaultModel: 'gpt-5.4',
   defaultModels: ROUTIN_AI_PLAN_MODEL_ORDER.map((id) => {
     const config = routinAiModelById.get(id)
