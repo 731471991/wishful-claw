@@ -214,7 +214,7 @@
       "jsonFormatError": "JSON 格式错误",
       "disabledJsonFormatError": "禁用参数 JSON 格式错误",
       "reasoningEffort": "推理强度级别",
-      "reasoningEffortDesc": "选择模型支持的推理强度选项（如 OpenAI o1 的 reasoning_effort）",
+      "reasoningEffortDesc": "选中后，聊天栏会显示档位切换；不选则仅显示 Think 开关",
       "defaultEffort": "默认推理强度",
       "forceTemp": "强制 Temperature",
       "forceTempDesc": "某些模型在思考模式下要求固定 temperature（如 1），留空则不强制",

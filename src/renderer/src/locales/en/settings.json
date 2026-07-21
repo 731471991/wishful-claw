@@ -214,7 +214,7 @@
       "jsonFormatError": "JSON format error",
       "disabledJsonFormatError": "Disabled params JSON format error",
       "reasoningEffort": "Reasoning Effort Levels",
-      "reasoningEffortDesc": "Select reasoning effort options supported by the model (e.g. OpenAI o1 reasoning_effort)",
+      "reasoningEffortDesc": "When selected, the chat bar shows an effort level switcher; otherwise only a Think toggle is shown",
       "defaultEffort": "Default Reasoning Effort",
       "forceTemp": "Force Temperature",
       "forceTempDesc": "Some models require a fixed temperature in thinking mode (e.g. 1), leave empty to skip",
