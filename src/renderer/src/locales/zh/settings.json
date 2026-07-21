@@ -2,7 +2,7 @@
   "title": "设置",
   "tabs": {
     "general": {
-      "label": "通用",
+      "label": "通用设置",
       "desc": "主题、外观和偏好设置"
     },
     "provider": {
@@ -14,7 +14,7 @@
       "desc": "版本信息"
     },
     "groups": {
-      "general": "通用",
+      "general": "基础",
       "aiService": "AI 服务",
       "about": "关于"
     }
