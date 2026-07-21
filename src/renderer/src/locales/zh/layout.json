@@ -4,12 +4,12 @@
     "enterSettings": "AI 服务商设置",
     "hero": "你的 AI Agent 编程助手。融合 OpenCowork 的工具链、KodaClaw 的记忆与人格系统，以及 OpenClaw 的主动回忆机制。",
     "features": {
-      "localFirst": "本地优先",
-      "localFirstDesc": "数据存储在本地，断网可用，隐私安全。",
-      "extensible": "可扩展",
-      "extensibleDesc": "Provider 无关架构，自带 API 即可使用。",
-      "intelligent": "智能化",
-      "intelligentDesc": "主动记忆回忆，持久化人格系统。"
+      "localFirst": "本地工具，真实上下文",
+      "localFirstDesc": "本地工具，真实上下文。Agent 可以直接操作文件、终端、项目和工作区。",
+      "extensible": "多 Agent 协作",
+      "extensibleDesc": "创建专属助手，委派任务，保持人工参与的协作流程。",
+      "intelligent": "人格与记忆",
+      "intelligentDesc": "选择 SOUL.md 人格设定，让每次对话都从合适的协作风格开始。"
     }
   },
   "main": {

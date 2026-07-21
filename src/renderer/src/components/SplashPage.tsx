@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { BrainCircuit, ArrowRight, ShieldCheck, Sparkles, Settings } from 'lucide-react'
+import { BrainCircuit, ArrowRight, Wrench, Users, Settings } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -48,7 +48,7 @@ export function SplashPage(): React.JSX.Element {
           <div className="space-y-5">
             <div className="grid grid-cols-[34px_1fr] gap-4">
               <div className="flex size-8 items-center justify-center rounded-md border bg-background">
-                <ShieldCheck className="size-4 text-muted-foreground" />
+                <Wrench className="size-4 text-muted-foreground" />
               </div>
               <div className="space-y-1">
                 <h2 className="text-base font-semibold">{t('splash.features.localFirst')}</h2>
@@ -58,7 +58,7 @@ export function SplashPage(): React.JSX.Element {
 
             <div className="grid grid-cols-[34px_1fr] gap-4">
               <div className="flex size-8 items-center justify-center rounded-md border bg-background">
-                <Sparkles className="size-4 text-muted-foreground" />
+                <Users className="size-4 text-muted-foreground" />
               </div>
               <div className="space-y-1">
                 <h2 className="text-base font-semibold">{t('splash.features.intelligent')}</h2>

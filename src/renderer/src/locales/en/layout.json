@@ -4,12 +4,12 @@
     "enterSettings": "AI Provider Settings",
     "hero": "Your AI Agent programming assistant. Combining OpenCowork's toolchain, KodaClaw's memory and personality system, and OpenClaw's active recall mechanism.",
     "features": {
-      "localFirst": "Local First",
-      "localFirstDesc": "Data stored locally, works offline, privacy-safe.",
-      "extensible": "Extensible",
-      "extensibleDesc": "Provider-agnostic architecture, bring your own API.",
-      "intelligent": "Intelligent",
-      "intelligentDesc": "Active memory recall, persistent personality."
+      "localFirst": "Local tools, real context",
+      "localFirstDesc": "Agents can work with files, terminals, projects, memory, and workspace context on your machine.",
+      "extensible": "Multi-agent collaboration",
+      "extensibleDesc": "Create focused assistants, delegate tasks, and keep a human-in-the-loop workflow.",
+      "intelligent": "Identity and memory",
+      "intelligentDesc": "Choose a SOUL.md persona so every conversation starts from the right collaboration style."
     }
   },
   "main": {
