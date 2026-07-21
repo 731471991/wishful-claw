@@ -297,8 +297,12 @@ export const useProviderStore = create<ProviderState>()(
             const merged = models.map(m => {
               const existing = existingById.get(m.id)
               if (existing) {
-                // Keep existing model data, but update from fetched if new fields exist
-                return { ...existing, ...m, thinkingConfig: existing.thinkingConfig ?? m.thinkingConfig }
+                // Merge thinkingConfig: preserve user customizations but fill in missing
+                // fields (e.g. reasoningEffortLevels) from the enriched version
+                const mergedThinking = existing.thinkingConfig
+                  ? { ...m.thinkingConfig, ...existing.thinkingConfig }
+                  : m.thinkingConfig
+                return { ...existing, ...m, thinkingConfig: mergedThinking }
               }
               // New model — enrich with builtin metadata
               return enrichDiscoveredModel(m)
