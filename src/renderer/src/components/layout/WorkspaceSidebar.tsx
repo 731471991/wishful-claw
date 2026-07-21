@@ -3,13 +3,11 @@ import { useTranslation } from 'react-i18next'
 import {
   MessageSquare,
   Settings,
-  Plug,
   FolderTree,
   Sparkles,
   Ghost,
   RefreshCw,
   PenTool,
-  Languages,
   CheckSquare,
   GitBranch,
   Plus,
@@ -53,14 +51,12 @@ interface NavItemConfig {
 
 const NAV_ITEMS: NavItemConfig[] = [
   { id: 'chat', icon: MessageSquare, labelKey: 'nav.chat', labelDefault: 'Chat', implemented: true },
-  { id: 'channels', icon: Plug, labelKey: 'nav.channels', labelDefault: 'Channels', implemented: false, iterLabel: '迭代四' },
+  { id: 'tasks', icon: CheckSquare, labelKey: 'nav.tasks', labelDefault: 'Tasks', implemented: false, iterLabel: '后续' },
   { id: 'resources', icon: FolderTree, labelKey: 'nav.resources', labelDefault: 'Resources', implemented: false, iterLabel: '后续' },
   { id: 'skills', icon: Sparkles, labelKey: 'nav.skills', labelDefault: 'Skills', implemented: false, iterLabel: '后续' },
   { id: 'souls', icon: Ghost, labelKey: 'nav.souls', labelDefault: 'Souls', implemented: false, iterLabel: '迭代七' },
   { id: 'sync', icon: RefreshCw, labelKey: 'nav.sync', labelDefault: 'Sync', implemented: false, iterLabel: '后续' },
   { id: 'draw', icon: PenTool, labelKey: 'nav.draw', labelDefault: 'Draw', implemented: false, iterLabel: '后续' },
-  { id: 'translate', icon: Languages, labelKey: 'nav.translate', labelDefault: 'Translate', implemented: false, iterLabel: '后续' },
-  { id: 'tasks', icon: CheckSquare, labelKey: 'nav.tasks', labelDefault: 'Tasks', implemented: false, iterLabel: '后续' },
   { id: 'codegraph', icon: GitBranch, labelKey: 'nav.codegraph', labelDefault: 'Code Graph', implemented: false, iterLabel: '后续' }
 ]
 
@@ -104,7 +100,6 @@ function NavRail(): React.JSX.Element {
   const activeNavItem = useUIStore((s) => s.activeNavItem)
   const setActiveNavItem = useUIStore((s) => s.setActiveNavItem)
   const openSettings = useUIStore((s) => s.openSettings)
-  const createSession = useChatStore((s) => s.createSession)
   const navigateToHome = useUIStore((s) => s.navigateToHome)
 
   const handleNavClick = useCallback((item: NavItemConfig) => {
@@ -112,36 +107,15 @@ function NavRail(): React.JSX.Element {
       setActiveNavItem('chat')
       navigateToHome()
     } else {
-      // For unimplemented items, just set active nav (shows placeholder page)
       setActiveNavItem(item.id)
       toast.info(`${item.labelDefault} — ${item.iterLabel ?? 'coming soon'}`)
     }
   }, [setActiveNavItem, navigateToHome])
 
-  const handleNewChat = useCallback(() => {
-    createSession('chat', null, { preserveProjectless: true })
-    navigateToHome()
-  }, [createSession, navigateToHome])
-
   return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-sidebar py-2">
-      {/* New Chat button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={handleNewChat}
-            className="mb-2 flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90"
-          >
-            <Plus className="size-5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right">{t('sidebar.newChat', { defaultValue: 'New Chat' })}</TooltipContent>
-      </Tooltip>
-
-      <div className="h-px w-6 bg-border/50" />
-
-      {/* Nav items */}
-      <div className="mt-2 flex flex-1 flex-col items-center gap-1 overflow-y-auto">
+    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2">
+      {/* Top nav items */}
+      <div className="flex flex-col items-center gap-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
           const isActive = activeNavItem === item.id
@@ -153,33 +127,29 @@ function NavRail(): React.JSX.Element {
                   className={cn(
                     'flex size-9 items-center justify-center rounded-lg transition-all duration-200',
                     isActive
-                      ? 'bg-sidebar-accent text-foreground'
-                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground',
-                    !item.implemented && 'opacity-50'
+                      ? 'bg-primary/10 text-primary shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
                   <Icon className="size-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="flex items-center gap-2">
-                <span>{t(item.labelKey, { defaultValue: item.labelDefault })}</span>
-                {!item.implemented && item.iterLabel && (
-                  <span className="text-[10px] text-muted-foreground">({item.iterLabel})</span>
-                )}
-              </TooltipContent>
+              <TooltipContent side="right">{t(item.labelKey, { defaultValue: item.labelDefault })}</TooltipContent>
             </Tooltip>
           )
         })}
       </div>
 
-      {/* Bottom: Settings */}
-      <div className="flex flex-col items-center gap-1 pt-2">
-        <div className="h-px w-6 bg-border/50" />
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Bottom: Settings + Version */}
+      <div className="flex flex-col items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={() => openSettings('provider')}
-              className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-foreground"
+              className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
             >
               <Settings className="size-5" />
             </button>
