@@ -13,6 +13,7 @@ export type { BuiltinProviderPreset }
 interface ProviderState {
   providers: AIProvider[]
   activeProviderId: string | null
+  activeModelId: string
   defaultModel: string | null
 
   // ── Selectors ──
@@ -25,6 +26,7 @@ interface ProviderState {
   updateProvider: (id: string, updates: Partial<AIProvider>) => void
   deleteProvider: (id: string) => void
   setActiveProvider: (id: string) => void
+  setActiveModel: (modelId: string) => void
   setDefaultModel: (modelId: string) => void
 
   // ── Model management ──
@@ -201,6 +203,7 @@ export const useProviderStore = create<ProviderState>()(
     (set, get) => ({
       providers: [],
       activeProviderId: null,
+      activeModelId: '',
       defaultModel: null,
 
       getActiveProvider: () => {
@@ -249,6 +252,8 @@ export const useProviderStore = create<ProviderState>()(
       },
 
       setActiveProvider: (id) => set({ activeProviderId: id }),
+
+      setActiveModel: (modelId) => set({ activeModelId: modelId }),
 
       setDefaultModel: (modelId) => set({ defaultModel: modelId }),
 
@@ -356,6 +361,36 @@ export const useProviderStore = create<ProviderState>()(
     }
   )
 )
+
+
+// ── Helper functions (from OpenCowork, simplified) ──
+
+export function modelSupportsVision(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return providerType === 'openai-images'
+  const requestType = model.type ?? providerType
+  return Boolean(
+    model.supportsVision || model.category === 'image' || requestType === 'openai-images'
+  )
+}
+
+export function isProviderAuthReady(provider: AIProvider | null | undefined): boolean {
+  if (!provider) return false
+  const authMode = provider.authMode ?? 'apiKey'
+  if (authMode === 'apiKey') {
+    return provider.requiresApiKey === false || provider.apiKey.trim().length > 0
+  }
+  return false
+}
+
+export function isProviderAvailableForModelSelection(
+  provider: AIProvider | null | undefined
+): boolean {
+  if (!provider?.enabled) return false
+  return isProviderAuthReady(provider)
+}
 
 /**
  * Initialize provider store — call once on app startup.
