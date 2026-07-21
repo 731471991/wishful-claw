@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
-import type { AIProvider, AIModelConfig, BuiltinProviderPreset, ProviderType } from '../../../shared/types/provider'
+import type { AIProvider, AIModelConfig, BuiltinProviderPreset, ProviderType, ReasoningEffortLevel } from '../../../shared/types/provider'
 import { builtinProviderPresets } from '@renderer/stores/providers'
 import { aiProviderStorage } from '@renderer/lib/ipc/ai-provider-storage'
 
@@ -62,17 +62,41 @@ function normalizeModelKey(modelId: string): string {
   return modelId.trim().toLowerCase()
 }
 
+/** Default reasoning effort levels for thinking models that don't specify their own. */
+const DEFAULT_REASONING_EFFORT_LEVELS: ReasoningEffortLevel[] = ['medium', 'high', 'xhigh']
+const DEFAULT_REASONING_EFFORT: ReasoningEffortLevel = 'high'
+
+/**
+ * Ensure a thinking model has reasoning effort levels configured.
+ * If supportsThinking is true but reasoningEffortLevels is missing/empty,
+ * fill in the default levels so the UI shows a usable effort selector
+ * without requiring manual configuration.
+ */
+function ensureDefaultReasoningEffort(model: AIModelConfig): AIModelConfig {
+  if (!model.supportsThinking) return model
+  if (model.thinkingConfig?.reasoningEffortLevels?.length) return model
+  return {
+    ...model,
+    thinkingConfig: {
+      ...(model.thinkingConfig ?? { bodyParams: {} }),
+      reasoningEffortLevels: [...DEFAULT_REASONING_EFFORT_LEVELS],
+      defaultReasoningEffort: model.thinkingConfig?.defaultReasoningEffort ?? DEFAULT_REASONING_EFFORT
+    }
+  }
+}
+
 /**
  * Global registry of all builtin models across all presets, keyed by normalized model ID.
  * This allows matching models from any provider (including custom/relay providers)
  * against builtin metadata (thinkingConfig, icon, pricing, etc.).
+ * Thinking models without explicit reasoning effort levels get sensible defaults.
  */
 const builtinModelRegistry = new Map<string, AIModelConfig>()
 for (const preset of builtinProviderPresets) {
   for (const model of preset.defaultModels) {
     const key = normalizeModelKey(model.id)
     if (!builtinModelRegistry.has(key)) {
-      builtinModelRegistry.set(key, { ...model })
+      builtinModelRegistry.set(key, ensureDefaultReasoningEffort({ ...model }))
     }
   }
 }
@@ -93,8 +117,13 @@ function resolveBuiltinModelFallback(modelId: string): AIModelConfig | undefined
  */
 function enrichDiscoveredModel(raw: AIModelConfig): AIModelConfig {
   const fallback = resolveBuiltinModelFallback(raw.id)
-  if (!fallback) return raw
-  return { ...fallback, ...raw }
+  if (!fallback) return ensureDefaultReasoningEffort(raw)
+  const merged = { ...fallback, ...raw }
+  // If raw overrode thinkingConfig without reasoningEffortLevels, restore from fallback
+  if (merged.supportsThinking && !merged.thinkingConfig?.reasoningEffortLevels?.length) {
+    return ensureDefaultReasoningEffort(merged)
+  }
+  return merged
 }
 
 function createCustomProvider(name: string, type: ProviderType, baseUrl: string): AIProvider {
