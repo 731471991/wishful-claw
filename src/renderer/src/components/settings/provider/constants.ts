@@ -22,10 +22,20 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   'vertex-ai': 'Vertex AI'
 }
 
-export const PROVIDER_TYPE_OPTIONS: ProviderType[] = [
+// Options for the "Add Provider" dialog (no openai-images)
+export const PROVIDER_TYPE_OPTIONS_ADD: ProviderType[] = [
+  'openai-chat', 'openai-responses', 'anthropic', 'gemini',
+  'seedance-video', 'xai-video'
+]
+
+// Options for editing a provider's protocol type (includes openai-images)
+export const PROVIDER_TYPE_OPTIONS_EDIT: ProviderType[] = [
   'openai-chat', 'openai-responses', 'anthropic', 'gemini',
   'openai-images', 'seedance-video', 'xai-video'
 ]
+
+// Backward-compatible alias (use specific variants above)
+export const PROVIDER_TYPE_OPTIONS = PROVIDER_TYPE_OPTIONS_ADD
 
 export const MIN_COMPRESSION_THRESHOLD = 0.3
 export const MAX_COMPRESSION_THRESHOLD = 0.9

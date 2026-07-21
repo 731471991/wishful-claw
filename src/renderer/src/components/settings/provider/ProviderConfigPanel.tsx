@@ -46,7 +46,7 @@ import type {
 } from '../../../../../shared/types/provider'
 import { cn } from '@renderer/lib/utils'
 import {
-  PROVIDER_TYPE_OPTIONS,
+  PROVIDER_TYPE_OPTIONS_EDIT,
   toRoundedTokenThousands
 } from './constants'
 import { ModelFormDialog } from './ModelFormDialog'
@@ -322,7 +322,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PROVIDER_TYPE_OPTIONS.map((t) => (
+                {PROVIDER_TYPE_OPTIONS_EDIT.map((t) => (
                   <SelectItem key={t} value={t} className="text-xs">
                     {ts(`provider.providerTypes.${t}`)}
                   </SelectItem>
