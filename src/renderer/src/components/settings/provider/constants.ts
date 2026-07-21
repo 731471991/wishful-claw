@@ -1,0 +1,50 @@
+import type { ProviderType, ReasoningEffortLevel } from '../../../../../shared/types/provider'
+
+export const REASONING_EFFORT_OPTIONS: ReasoningEffortLevel[] = [
+  'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'
+]
+
+export const MODEL_ICON_OPTIONS = [
+  'openai', 'claude', 'anthropic', 'gemini', 'deepseek', 'qwen',
+  'chatglm', 'minimax', 'kimi', 'moonshot', 'grok', 'meta',
+  'llama', 'mistral', 'baidu', 'hunyuan', 'nvidia', 'stepfun',
+  'doubao', 'ollama', 'siliconcloud', 'mimo', 'bigmodel'
+] as const
+
+export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
+  'anthropic': 'Anthropic',
+  'openai-chat': 'OpenAI Chat (兼容)',
+  'openai-responses': 'OpenAI Responses',
+  'openai-images': 'OpenAI Images',
+  'seedance-video': 'Seedance Video (Volcengine)',
+  'xai-video': 'xAI Video',
+  'gemini': 'Gemini',
+  'vertex-ai': 'Vertex AI'
+}
+
+// Options for the "Add Provider" dialog — only mainstream chat protocols
+export const PROVIDER_TYPE_OPTIONS_ADD: ProviderType[] = [
+  'openai-chat', 'openai-responses', 'anthropic', 'gemini'
+]
+
+// Options for editing a provider's protocol type — same 4 mainstream options
+export const PROVIDER_TYPE_OPTIONS_EDIT: ProviderType[] = [
+  'openai-chat', 'openai-responses', 'anthropic', 'gemini'
+]
+
+// Backward-compatible alias (use specific variants above)
+export const PROVIDER_TYPE_OPTIONS = PROVIDER_TYPE_OPTIONS_ADD
+
+export const MIN_COMPRESSION_THRESHOLD = 0.3
+export const MAX_COMPRESSION_THRESHOLD = 0.9
+export const DEFAULT_COMPRESSION_THRESHOLD = 0.8
+
+export function clampCompressionThreshold(value: number): number {
+  return Math.min(MAX_COMPRESSION_THRESHOLD, Math.max(MIN_COMPRESSION_THRESHOLD, value))
+}
+
+export function toRoundedTokenThousands(value: number): string {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
+  if (value >= 1000) return `${Math.round(value / 1000)}K`
+  return String(value)
+}

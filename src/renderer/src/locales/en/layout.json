@@ -1,0 +1,21 @@
+{
+  "splash": {
+    "enterMain": "Enter Main",
+    "enterSettings": "AI Provider Settings",
+    "hero": "Your AI Agent programming assistant. Combining OpenCowork's toolchain, KodaClaw's memory and personality system, and OpenClaw's active recall mechanism.",
+    "features": {
+      "localFirst": "Local First",
+      "localFirstDesc": "Data stored locally, works offline, privacy-safe.",
+      "extensible": "Extensible",
+      "extensibleDesc": "Provider-agnostic architecture, bring your own API.",
+      "intelligent": "Intelligent",
+      "intelligentDesc": "Active memory recall, persistent personality."
+    }
+  },
+  "main": {
+    "chat": "Chat",
+    "settings": "Settings",
+    "placeholder": "Main page placeholder — Agent chat will be implemented in future iterations",
+    "settingsHint": "Click the settings button in the bottom-left to configure AI providers"
+  }
+}

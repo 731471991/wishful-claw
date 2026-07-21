@@ -1,0 +1,243 @@
+{
+  "title": "设置",
+  "tabs": {
+    "general": {
+      "label": "通用设置",
+      "desc": "主题、外观和偏好设置"
+    },
+    "provider": {
+      "label": "AI 服务商",
+      "desc": "配置 API Key、Base URL，测试连通性"
+    },
+    "about": {
+      "label": "关于",
+      "desc": "版本信息"
+    },
+    "groups": {
+      "general": "基础",
+      "aiService": "AI 服务",
+      "about": "关于"
+    }
+  },
+  "general": {
+    "title": "通用",
+    "subtitle": "主题、外观和偏好设置",
+    "theme": {
+      "label": "主题模式",
+      "desc": "选择浅色或深色主题，或跟随系统设置",
+      "light": "浅色",
+      "dark": "深色",
+      "system": "跟随系统"
+    },
+    "preset": {
+      "label": "配色方案",
+      "desc": "选择全局配色预设，影响所有界面元素",
+      "current": "当前",
+      "global": "全局",
+      "presets": {
+        "mulberry": {
+          "label": "黑曜灰",
+          "desc": "黑白灰高对比配色，主机库清爽，终端保持克制和清晰。"
+        },
+        "studio": {
+          "label": "远航蓝",
+          "desc": "蓝灰工作台配色，适合长时间编码、会话管理和主机维护。"
+        },
+        "graphite": {
+          "label": "石墨工具",
+          "desc": "中性石墨配色，减少干扰，突出专业工具的层级和边界。"
+        },
+        "ocean": {
+          "label": "深海青",
+          "desc": "青蓝纵深配色，让终端、状态面板和文件区更有空间感。"
+        },
+        "forest": {
+          "label": "松林绿",
+          "desc": "柔和绿色配色，适合持续盯着终端、日志和远端任务。"
+        },
+        "dawn": {
+          "label": "暖曦橙",
+          "desc": "暖铜橙配色，浅色更有温度，深色更沉稳。"
+        }
+      }
+    },
+    "appearance": {
+      "label": "外观",
+      "desc": "字体和界面尺寸",
+      "font": {
+        "label": "字体",
+        "desc": "界面显示字体"
+      },
+      "fontSize": {
+        "label": "字号",
+        "desc": "界面字体大小 (px)"
+      },
+      "backgroundColor": {
+        "label": "背景颜色",
+        "desc": "自定义应用背景色，留空使用默认"
+      },
+      "fontOptions": {
+        "default": "系统默认"
+      }
+    }
+  },
+  "provider": {
+    "list": {
+      "searchPlaceholder": "搜索服务商",
+      "addTooltip": "添加自定义服务商",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "noProviders": "暂无服务商",
+      "models": "模型",
+      "deleteProvider": "删除服务商",
+      "selectProvider": "选择左侧的服务商进行配置",
+      "providerDeleted": "服务商已删除",
+      "deleteProviderConfirm": "服务商已删除"
+    },
+    "add": {
+      "title": "添加自定义服务商",
+      "desc": "添加一个不在内置列表中的 AI 服务商",
+      "name": "服务商名称",
+      "namePlaceholder": "My Provider",
+      "type": "协议类型",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "baseUrlHint": "API 的基础地址，通常以 /v1 结尾",
+      "added": "已添加 {{name}}"
+    },
+    "config": {
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "输入 API Key",
+      "apiKeyNotRequired": "不需要 API Key",
+      "baseUrl": "Base URL",
+      "connectionTest": "连接测试",
+      "testModel": "测试模型",
+      "noModels": "无可用模型",
+      "testSuccess": "连接测试成功",
+      "testFailed": "连接测试失败",
+      "testing": "检查中...",
+      "connectionSuccess": "连接成功",
+      "protocolType": "协议类型",
+      "cacheTtl": "缓存 TTL",
+      "cacheTtlHint": "Anthropic 缓存生存时间，模型级配置可覆盖",
+      "models": {
+        "label": "模型列表",
+        "count": "共 {{total}} 个模型，{{enabled}} 个已启用",
+        "searchPlaceholder": "搜索模型...",
+        "noModels": "暂无模型，点击 + 添加或拉取模型",
+        "noResults": "无匹配结果",
+        "fetchModels": "拉取模型",
+        "fetchSuccess": "已拉取 {{count}} 个模型",
+        "fetchEmpty": "未拉取到模型",
+        "fetchFailed": "拉取模型失败",
+        "addModel": "添加模型",
+        "editModel": "编辑模型",
+        "modelDeleted": "模型已删除",
+        "thinkingConfig": "思考配置",
+        "editThinking": "编辑思考配置",
+        "configureThinking": "配置思考模式"
+      }
+    },
+    "modelForm": {
+      "addTitle": "添加模型",
+      "editTitle": "编辑模型",
+      "editDesc": "修改 {{name}} 的配置",
+      "addDesc": "配置新模型的参数和能力",
+      "id": "模型 ID",
+      "idPlaceholder": "gpt-4o-mini",
+      "name": "显示名称",
+      "namePlaceholder": "GPT-4o Mini",
+      "typeOverride": "协议覆盖",
+      "typeOverrideHint": "不选则跟随服务商协议 ({{type}})",
+      "typeOverridePlaceholder": "跟随服务商协议",
+      "followProvider": "跟随服务商协议",
+      "category": "模型分类",
+      "categoryDesc": "该模型的使用方式",
+      "categoryChat": "对话",
+      "categorySpeech": "语音",
+      "categoryEmbedding": "嵌入",
+      "categoryImage": "图像",
+      "categoryVideo": "视频",
+      "contextLength": "上下文长度",
+      "maxOutputTokens": "最大输出 Token",
+      "compressionThreshold": "上下文压缩触发比例",
+      "compressionThresholdDesc": "当上下文使用量达到此比例时触发压缩（{{min}}-{{max}}%）",
+      "pricing": "定价",
+      "pricingUnit": "USD / 百万 Token",
+      "inputPrice": "输入价格",
+      "outputPrice": "输出价格",
+      "cacheCreationPrice": "缓存写入价格",
+      "cacheHitPrice": "缓存命中价格",
+      "premiumMultiplier": "Premium 请求倍率",
+      "availablePlans": "可用计划",
+      "availablePlansPlaceholder": "pro, pro+, business",
+      "icon": "模型图标",
+      "iconAuto": "auto",
+      "responsesConfig": "Responses 配置",
+      "responseSummary": "推理摘要",
+      "summaryNone": "不设置",
+      "summaryAuto": "自动",
+      "summaryConcise": "简洁",
+      "summaryDetailed": "详细",
+      "websocket": "WebSocket 传输",
+      "supportsWebsocket": "支持 WebSocket",
+      "supportsWebsocketDesc": "启用 Responses API 的 WebSocket 传输",
+      "supportsImageGeneration": "支持图像生成",
+      "supportsImageGenerationDesc": "注入 image_generation 服务端工具",
+      "systemPromptCache": "系统提示词缓存",
+      "cacheTtl": "缓存 TTL",
+      "capabilities": "能力",
+      "supportsVision": "支持视觉",
+      "supportsFunctionCall": "支持函数调用",
+      "supportsComputerUse": "支持 Computer Use",
+      "enableComputerUse": "启用 Computer Use",
+      "supportsFastMode": "支持快速模式",
+      "supportsFastModeDesc": "使用 priority service tier",
+      "supportsBuiltinSearch": "支持内置搜索",
+      "supportsBuiltinSearchDesc": "Anthropic web_search / OpenAI Responses web_search",
+      "enableBuiltinSearch": "启用内置搜索",
+      "enableBuiltinSearchDesc": "默认注入搜索工具",
+      "modelAdded": "模型已添加",
+      "modelUpdated": "模型已更新"
+    },
+    "thinking": {
+      "title": "思考模式配置",
+      "desc": "配置 {{name}} 的思考/推理模式参数",
+      "enable": "启用思考模式",
+      "bodyParams": "启用时的请求参数",
+      "bodyParamsDesc": "启用思考模式时注入到请求 body 的额外参数（JSON 对象）",
+      "disabledBodyParams": "禁用时的请求参数",
+      "disabledBodyParamsDesc": "关闭思考模式时注入到请求 body 的参数（留空则不注入）",
+      "disabledBodyParamsPlaceholder": "留空表示不注入",
+      "jsonMustBeObject": "JSON 必须是一个对象",
+      "disabledJsonMustBeObject": "禁用参数 JSON 必须是一个对象",
+      "jsonFormatError": "JSON 格式错误",
+      "disabledJsonFormatError": "禁用参数 JSON 格式错误",
+      "reasoningEffort": "推理强度级别",
+      "reasoningEffortDesc": "选中后，聊天栏会显示档位切换；不选则仅显示 Think 开关",
+      "defaultEffort": "默认推理强度",
+      "forceTemp": "强制 Temperature",
+      "forceTempDesc": "某些模型在思考模式下要求固定 temperature（如 1），留空则不强制",
+      "forceTempPlaceholder": "留空不强制",
+      "saved": "思考配置已保存"
+    },
+    "providerTypes": {
+      "anthropic": "Anthropic",
+      "openai-chat": "OpenAI Chat (兼容)",
+      "openai-responses": "OpenAI Responses",
+      "openai-images": "OpenAI Images",
+      "seedance-video": "Seedance Video (Volcengine)",
+      "xai-video": "xAI Video",
+      "gemini": "Gemini",
+      "vertex-ai": "Vertex AI"
+    }
+  },
+  "about": {
+    "title": "关于 Wishful Claw",
+    "version": "版本: v0.2.0-dev",
+    "description": "Wishful Claw 是一个 AI Agent 编程助手，融合三个开源项目的优点：",
+    "openCowork": "OpenCowork — Agent Loop / 工具链 / Provider / 架构",
+    "kodaClaw": "KodaClaw — 记忆系统 / 人格系统设计",
+    "openClaw": "OpenClaw — 记忆主动回忆机制"
+  }
+}

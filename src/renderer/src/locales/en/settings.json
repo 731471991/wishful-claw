@@ -1,0 +1,243 @@
+{
+  "title": "Settings",
+  "tabs": {
+    "general": {
+      "label": "General",
+      "desc": "Theme, appearance and preferences"
+    },
+    "provider": {
+      "label": "AI Providers",
+      "desc": "Configure API keys, base URLs, test connectivity"
+    },
+    "about": {
+      "label": "About",
+      "desc": "Version info"
+    },
+    "groups": {
+      "general": "General",
+      "aiService": "AI Service",
+      "about": "About"
+    }
+  },
+  "general": {
+    "title": "General",
+    "subtitle": "Theme, appearance and preferences",
+    "theme": {
+      "label": "Theme Mode",
+      "desc": "Choose light, dark, or follow system",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "preset": {
+      "label": "Color Scheme",
+      "desc": "Choose a global color preset affecting all UI elements",
+      "current": "Current",
+      "global": "Global",
+      "presets": {
+        "mulberry": {
+          "label": "Obsidian Gray",
+          "desc": "High-contrast black, white, and gray palette with a clean host library and restrained terminal surface."
+        },
+        "studio": {
+          "label": "Harbor Blue",
+          "desc": "A blue-gray workspace palette for long coding sessions, session management, and host maintenance."
+        },
+        "graphite": {
+          "label": "Graphite Tool",
+          "desc": "A neutral graphite palette that lowers distraction while keeping tool hierarchy and borders clear."
+        },
+        "ocean": {
+          "label": "Deep Ocean",
+          "desc": "A teal-blue depth palette that gives terminals, status panes, and file areas stronger spatial layering."
+        },
+        "forest": {
+          "label": "Forest Green",
+          "desc": "A soft green palette for sustained terminal, log, and remote task work."
+        },
+        "dawn": {
+          "label": "Warm Dawn",
+          "desc": "A warm copper-orange palette with more temperature in light mode and a grounded dark mode."
+        }
+      }
+    },
+    "appearance": {
+      "label": "Appearance",
+      "desc": "Font and interface size",
+      "font": {
+        "label": "Font",
+        "desc": "Interface display font"
+      },
+      "fontSize": {
+        "label": "Font Size",
+        "desc": "Interface font size (px)"
+      },
+      "backgroundColor": {
+        "label": "Background Color",
+        "desc": "Custom app background color, leave empty for default"
+      },
+      "fontOptions": {
+        "default": "System Default"
+      }
+    }
+  },
+  "provider": {
+    "list": {
+      "searchPlaceholder": "Search providers",
+      "addTooltip": "Add custom provider",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "noProviders": "No providers",
+      "models": "models",
+      "deleteProvider": "Delete provider",
+      "selectProvider": "Select a provider from the left to configure",
+      "providerDeleted": "Provider deleted",
+      "deleteProviderConfirm": "Provider deleted"
+    },
+    "add": {
+      "title": "Add Custom Provider",
+      "desc": "Add an AI provider not in the built-in list",
+      "name": "Provider Name",
+      "namePlaceholder": "My Provider",
+      "type": "Protocol Type",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "baseUrlHint": "Base address of the API, usually ending with /v1",
+      "added": "Added {{name}}"
+    },
+    "config": {
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter API Key",
+      "apiKeyNotRequired": "API Key not required",
+      "baseUrl": "Base URL",
+      "connectionTest": "Connection Test",
+      "testModel": "Test model",
+      "noModels": "No models available",
+      "testSuccess": "Connection test succeeded",
+      "testFailed": "Connection test failed",
+      "testing": "Checking...",
+      "connectionSuccess": "Connected",
+      "protocolType": "Protocol Type",
+      "cacheTtl": "Cache TTL",
+      "cacheTtlHint": "Anthropic cache time-to-live, model-level config can override",
+      "models": {
+        "label": "Models",
+        "count": "{{total}} models, {{enabled}} enabled",
+        "searchPlaceholder": "Search models...",
+        "noModels": "No models yet, click + to add or fetch",
+        "noResults": "No matching results",
+        "fetchModels": "Fetch Models",
+        "fetchSuccess": "Fetched {{count}} models",
+        "fetchEmpty": "No models fetched",
+        "fetchFailed": "Failed to fetch models",
+        "addModel": "Add model",
+        "editModel": "Edit model",
+        "modelDeleted": "Model deleted",
+        "thinkingConfig": "Thinking config",
+        "editThinking": "Edit thinking config",
+        "configureThinking": "Configure thinking mode"
+      }
+    },
+    "modelForm": {
+      "addTitle": "Add Model",
+      "editTitle": "Edit Model",
+      "editDesc": "Modify configuration for {{name}}",
+      "addDesc": "Configure parameters and capabilities for a new model",
+      "id": "Model ID",
+      "idPlaceholder": "gpt-4o-mini",
+      "name": "Display Name",
+      "namePlaceholder": "GPT-4o Mini",
+      "typeOverride": "Protocol Override",
+      "typeOverrideHint": "Leave empty to follow provider protocol ({{type}})",
+      "typeOverridePlaceholder": "Follow provider protocol",
+      "followProvider": "Follow provider protocol",
+      "category": "Model Category",
+      "categoryDesc": "How this model is used",
+      "categoryChat": "Chat",
+      "categorySpeech": "Speech",
+      "categoryEmbedding": "Embedding",
+      "categoryImage": "Image",
+      "categoryVideo": "Video",
+      "contextLength": "Context Length",
+      "maxOutputTokens": "Max Output Tokens",
+      "compressionThreshold": "Context Compression Trigger Ratio",
+      "compressionThresholdDesc": "Trigger compression when context usage reaches this ratio ({{min}}-{{max}}%)",
+      "pricing": "Pricing",
+      "pricingUnit": "USD / Million Tokens",
+      "inputPrice": "Input Price",
+      "outputPrice": "Output Price",
+      "cacheCreationPrice": "Cache Write Price",
+      "cacheHitPrice": "Cache Read Price",
+      "premiumMultiplier": "Premium Request Multiplier",
+      "availablePlans": "Available Plans",
+      "availablePlansPlaceholder": "pro, pro+, business",
+      "icon": "Model Icon",
+      "iconAuto": "auto",
+      "responsesConfig": "Responses Configuration",
+      "responseSummary": "Reasoning Summary",
+      "summaryNone": "Not set",
+      "summaryAuto": "Auto",
+      "summaryConcise": "Concise",
+      "summaryDetailed": "Detailed",
+      "websocket": "WebSocket Transport",
+      "supportsWebsocket": "Supports WebSocket",
+      "supportsWebsocketDesc": "Enable WebSocket transport for Responses API",
+      "supportsImageGeneration": "Supports Image Generation",
+      "supportsImageGenerationDesc": "Inject image_generation server tool",
+      "systemPromptCache": "System Prompt Cache",
+      "cacheTtl": "Cache TTL",
+      "capabilities": "Capabilities",
+      "supportsVision": "Vision",
+      "supportsFunctionCall": "Function Call",
+      "supportsComputerUse": "Computer Use",
+      "enableComputerUse": "Enable Computer Use",
+      "supportsFastMode": "Fast Mode",
+      "supportsFastModeDesc": "Use priority service tier",
+      "supportsBuiltinSearch": "Builtin Search",
+      "supportsBuiltinSearchDesc": "Anthropic web_search / OpenAI Responses web_search",
+      "enableBuiltinSearch": "Enable Builtin Search",
+      "enableBuiltinSearchDesc": "Inject search tool by default",
+      "modelAdded": "Model added",
+      "modelUpdated": "Model updated"
+    },
+    "thinking": {
+      "title": "Thinking Mode Configuration",
+      "desc": "Configure thinking/reasoning parameters for {{name}}",
+      "enable": "Enable Thinking Mode",
+      "bodyParams": "Request Parameters When Enabled",
+      "bodyParamsDesc": "Extra parameters injected into request body when thinking is enabled (JSON object)",
+      "disabledBodyParams": "Request Parameters When Disabled",
+      "disabledBodyParamsDesc": "Parameters injected into request body when thinking is disabled (leave empty to skip)",
+      "disabledBodyParamsPlaceholder": "Leave empty to skip",
+      "jsonMustBeObject": "JSON must be an object",
+      "disabledJsonMustBeObject": "Disabled params JSON must be an object",
+      "jsonFormatError": "JSON format error",
+      "disabledJsonFormatError": "Disabled params JSON format error",
+      "reasoningEffort": "Reasoning Effort Levels",
+      "reasoningEffortDesc": "When selected, the chat bar shows an effort level switcher; otherwise only a Think toggle is shown",
+      "defaultEffort": "Default Reasoning Effort",
+      "forceTemp": "Force Temperature",
+      "forceTempDesc": "Some models require a fixed temperature in thinking mode (e.g. 1), leave empty to skip",
+      "forceTempPlaceholder": "Leave empty to skip",
+      "saved": "Thinking config saved"
+    },
+    "providerTypes": {
+      "anthropic": "Anthropic",
+      "openai-chat": "OpenAI Chat (Compatible)",
+      "openai-responses": "OpenAI Responses",
+      "openai-images": "OpenAI Images",
+      "seedance-video": "Seedance Video (Volcengine)",
+      "xai-video": "xAI Video",
+      "gemini": "Gemini",
+      "vertex-ai": "Vertex AI"
+    }
+  },
+  "about": {
+    "title": "About Wishful Claw",
+    "version": "Version: v0.2.0-dev",
+    "description": "Wishful Claw is an AI Agent programming assistant combining the strengths of three open-source projects:",
+    "openCowork": "OpenCowork — Agent Loop / Toolchain / Provider / Architecture",
+    "kodaClaw": "KodaClaw — Memory System / Personality System Design",
+    "openClaw": "OpenClaw — Active Memory Recall Mechanism"
+  }
+}

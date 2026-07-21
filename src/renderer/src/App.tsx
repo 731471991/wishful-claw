@@ -1,71 +1,51 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import { Toaster } from '@renderer/components/ui/sonner'
+import { ThemeProvider } from '@renderer/components/theme-provider'
+import { ThemeRuntimeSync } from '@renderer/components/ThemeRuntimeSync'
+import { TooltipProvider } from '@renderer/components/ui/tooltip'
+import { useUIStore } from '@renderer/stores/ui-store'
+import { useSettingsStore } from '@renderer/stores/settings-store'
+import { initProviderStore } from '@renderer/stores/provider-store'
+import { initializeI18n, changeI18nLanguage } from '@renderer/locales'
+import { SplashPage } from '@renderer/components/SplashPage'
+import { MainLayout } from '@renderer/components/layout/MainLayout'
+import { SettingsPage } from '@renderer/components/settings/SettingsPage'
 
-export function App() {
-  const [result, setResult] = useState<string>('—')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+// Initialize provider store — ensures builtin presets exist
+initProviderStore()
 
-  const handlePing = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const res = await window.api.ping()
-      setResult(`ok=${res.ok}, pid=${res.pid}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      setResult('FAILED')
-    } finally {
-      setIsLoading(false)
-    }
+function App(): React.JSX.Element | null {
+  const view = useUIStore((s) => s.view)
+  const language = useSettingsStore((s) => s.language)
+  const [i18nReady, setI18nReady] = useState(false)
+
+  // Initialize i18n on mount
+  useEffect(() => {
+    initializeI18n().then(() => setI18nReady(true))
   }, [])
 
+  // Sync language changes
+  useEffect(() => {
+    if (i18nReady) {
+      changeI18nLanguage(language)
+    }
+  }, [language, i18nReady])
+
+  if (!i18nReady) {
+    return null
+  }
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        gap: '24px'
-      }}
-    >
-      <h1 style={{ fontSize: '2rem', fontWeight: 600 }}>Wishful Claw</h1>
-      <p style={{ color: '#888' }}>迭代一：项目骨架 — Ping/Pong 验证</p>
-
-      <button
-        onClick={handlePing}
-        disabled={isLoading}
-        style={{
-          padding: '12px 32px',
-          fontSize: '1rem',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
-          background: isLoading ? '#444' : '#6c5ce7',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          transition: 'background 0.2s'
-        }}
-      >
-        {isLoading ? 'Pinging...' : 'Ping Worker'}
-      </button>
-
-      <div
-        style={{
-          padding: '16px 24px',
-          background: '#16213e',
-          borderRadius: '8px',
-          fontFamily: 'monospace',
-          fontSize: '0.95rem',
-          minWidth: '300px',
-          textAlign: 'center'
-        }}
-      >
-        <div style={{ color: '#888', marginBottom: '4px' }}>Response:</div>
-        <div style={{ color: error ? '#e74c3c' : '#55efc4' }}>
-          {error ? `Error: ${error}` : result}
-        </div>
-      </div>
-    </div>
+    <ThemeProvider defaultTheme="dark">
+      <ThemeRuntimeSync />
+      <TooltipProvider delayDuration={0}>
+        {view === 'splash' && <SplashPage />}
+        {view === 'main' && <MainLayout />}
+        {view === 'settings' && <SettingsPage />}
+        <Toaster position="bottom-left" theme="system" richColors />
+      </TooltipProvider>
+    </ThemeProvider>
   )
 }
+
+export default App
