@@ -5,6 +5,8 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
+    "dev:full": "dotnet build src/runtime/WishfulClaw.sln && electron-vite dev",
+    "build:worker": "dotnet build src/runtime/WishfulClaw.sln",
     "start": "electron-vite preview",
     "build": "electron-vite build",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
