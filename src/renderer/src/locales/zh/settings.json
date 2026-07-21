@@ -222,7 +222,7 @@
       "saved": "思考配置已保存"
     },
     "providerTypes": {
-      "anthropic": "Anthropic Messages",
+      "anthropic": "Anthropic",
       "openai-chat": "OpenAI Chat (兼容)",
       "openai-responses": "OpenAI Responses",
       "openai-images": "OpenAI Images",

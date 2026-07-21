@@ -222,7 +222,7 @@
       "saved": "Thinking config saved"
     },
     "providerTypes": {
-      "anthropic": "Anthropic Messages",
+      "anthropic": "Anthropic",
       "openai-chat": "OpenAI Chat (Compatible)",
       "openai-responses": "OpenAI Responses",
       "openai-images": "OpenAI Images",

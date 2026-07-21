@@ -12,7 +12,7 @@ export const MODEL_ICON_OPTIONS = [
 ] as const
 
 export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
-  'anthropic': 'Anthropic Messages',
+  'anthropic': 'Anthropic',
   'openai-chat': 'OpenAI Chat (兼容)',
   'openai-responses': 'OpenAI Responses',
   'openai-images': 'OpenAI Images',
