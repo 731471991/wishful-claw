@@ -155,10 +155,10 @@ export function ChatHomePage(): React.JSX.Element {
   }, [])
 
   const handleCreateProjectWithDirectory = React.useCallback(
-    async (folderPath: string, connectionId: string | null): Promise<void> => {
+    async (folderPath: string, connectionId: string | null, projectName?: string): Promise<void> => {
       const chatStore = useChatStore.getState()
       const projectId = await chatStore.createProject({
-        name: deriveProjectNameFromFolder(
+        name: projectName?.trim() || deriveProjectNameFromFolder(
           folderPath,
           t('input.newProject', { defaultValue: 'New project' })
         ),
@@ -351,9 +351,9 @@ export function ChatHomePage(): React.JSX.Element {
         onOpenChange={setCreateProjectDialogOpen}
         createMode
         projectName={t('input.newProject', { defaultValue: 'New project' })}
-        onSelectLocalFolder={(folderPath) => handleCreateProjectWithDirectory(folderPath, null)}
-        onSelectSshFolder={(folderPath, connectionId) =>
-          handleCreateProjectWithDirectory(folderPath, connectionId)
+        onSelectLocalFolder={(folderPath, projectName) => handleCreateProjectWithDirectory(folderPath, null, projectName)}
+        onSelectSshFolder={(folderPath, connectionId, projectName) =>
+          handleCreateProjectWithDirectory(folderPath, connectionId, projectName)
         }
       />
     </div>

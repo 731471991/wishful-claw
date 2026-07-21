@@ -57,8 +57,8 @@ interface WorkingFolderSelectorDialogProps {
   projectName?: string
   createMode?: boolean
   preferredSection?: 'local' | 'ssh'
-  onSelectLocalFolder: (folderPath: string) => void | Promise<void>
-  onSelectSshFolder: (folderPath: string, connectionId: string) => void | Promise<void>
+  onSelectLocalFolder: (folderPath: string, projectName?: string) => void | Promise<void>
+  onSelectSshFolder: (folderPath: string, connectionId: string, projectName?: string) => void | Promise<void>
 }
 
 export function WorkingFolderSelectorDialog({
@@ -87,6 +87,7 @@ export function WorkingFolderSelectorDialog({
   const [activeSection, setActiveSection] = React.useState<'local' | 'ssh'>(preferredSection)
   const [pendingSelection, setPendingSelection] = React.useState<PendingSelection | null>(null)
   const [creatingProject, setCreatingProject] = React.useState(false)
+  const [customProjectName, setCustomProjectName] = React.useState('')
 
   const loadDesktopDirectories = React.useCallback(async (): Promise<void> => {
     setDesktopDirectoriesLoading(true)
@@ -124,6 +125,7 @@ export function WorkingFolderSelectorDialog({
   React.useEffect(() => {
     if (!open) return
     setCreatingProject(false)
+    setCustomProjectName('')
     if (createMode) {
       setPendingSelection(null)
       return
@@ -162,9 +164,10 @@ export function WorkingFolderSelectorDialog({
   const suggestedProjectName = projectName?.trim() || 'New Project'
   const showLocalSection = activeSection === 'local'
   const showSshSection = activeSection === 'ssh'
-  const displayedProjectName = pendingSelection
+  const autoProjectName = pendingSelection
     ? deriveProjectNameFromFolder(pendingSelection.folderPath, suggestedProjectName)
     : suggestedProjectName
+  const displayedProjectName = customProjectName.trim() || autoProjectName
   const preferredDirectoryLabel =
     preferredDirectory || t('input.systemDefaultLocation', { defaultValue: 'System default' })
 
@@ -262,13 +265,14 @@ export function WorkingFolderSelectorDialog({
     if (!createMode || !pendingSelection || creatingProject) return
     setCreatingProject(true)
     try {
+      const finalProjectName = customProjectName.trim() || autoProjectName
       if (pendingSelection.kind === 'ssh') {
-        await onSelectSshFolder(pendingSelection.folderPath, pendingSelection.connectionId)
+        await onSelectSshFolder(pendingSelection.folderPath, pendingSelection.connectionId, finalProjectName)
       } else {
         updateSettings({
           lastProjectDirectory: deriveBaseDirectoryFromSelectedFolder(pendingSelection.folderPath)
         })
-        await onSelectLocalFolder(pendingSelection.folderPath)
+        await onSelectLocalFolder(pendingSelection.folderPath, finalProjectName)
       }
       onOpenChange(false)
     } finally {
