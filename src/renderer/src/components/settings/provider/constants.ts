@@ -22,10 +22,9 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   'vertex-ai': 'Vertex AI'
 }
 
-// Options for the "Add Provider" dialog (no openai-images)
+// Options for the "Add Provider" dialog — only mainstream chat protocols
 export const PROVIDER_TYPE_OPTIONS_ADD: ProviderType[] = [
-  'openai-chat', 'openai-responses', 'anthropic', 'gemini',
-  'seedance-video', 'xai-video'
+  'openai-chat', 'openai-responses', 'anthropic', 'gemini'
 ]
 
 // Options for editing a provider's protocol type (includes openai-images)
