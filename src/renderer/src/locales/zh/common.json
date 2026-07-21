@@ -40,5 +40,17 @@
     "computerUse": "支持 Computer Use",
     "computerUseEnabled": "Computer Use 已启用",
     "thinking": "支持思考"
+  },
+  "confirmDelete": {
+    "deleteProvider": {
+      "title": "删除服务商",
+      "description": "确定要删除该服务商吗？此操作不可撤销。",
+      "action": "删除"
+    },
+    "deleteModel": {
+      "title": "删除模型",
+      "description": "确定要删除该模型吗？此操作不可撤销。",
+      "action": "删除"
+    }
   }
 }

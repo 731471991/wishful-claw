@@ -51,6 +51,16 @@ import {
 import { ModelFormDialog } from './ModelFormDialog'
 import { ThinkingConfigDialog } from './ThinkingConfigDialog'
 import { ProviderIcon, ModelIcon } from '../provider-icons'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@renderer/components/ui/alert-dialog'
 
 function getCapabilityIndicators(model: AIModelConfig): Array<{
   key: string
@@ -107,6 +117,8 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
   const [editingModel, setEditingModel] = useState<AIModelConfig | null>(null)
   const [editingThinkingModel, setEditingThinkingModel] = useState<AIModelConfig | null>(null)
   const [modelSearch, setModelSearch] = useState('')
+  const [showDeleteProvider, setShowDeleteProvider] = useState(false)
+  const [deleteModelTarget, setDeleteModelTarget] = useState<AIModelConfig | null>(null)
   const [testModelId, setTestModelId] = useState(
     provider.models.find((m) => m.enabled)?.id ?? provider.models[0]?.id ?? ''
   )
@@ -202,10 +214,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-              onClick={() => {
-                deleteProvider(provider.id)
-                toast.success(ts('provider.list.providerDeleted'))
-              }}
+              onClick={() => setShowDeleteProvider(true)}
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -541,7 +550,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 rounded-full p-0 text-muted-foreground/40 transition-all hover:bg-background hover:text-destructive group-hover:opacity-100 sm:opacity-0"
-                          onClick={() => { deleteModel(provider.id, model.id); toast.success(ts('provider.config.models.modelDeleted')) }}
+                          onClick={() => setDeleteModelTarget(model)}
                         >
                           <Trash2 className="size-3.5" />
                         </Button>
@@ -587,6 +596,58 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
           }}
         />
       )}
+
+      {/* Delete provider confirmation */}
+      <AlertDialog open={showDeleteProvider} onOpenChange={setShowDeleteProvider}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tc('confirmDelete.deleteProvider.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tc('confirmDelete.deleteProvider.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                deleteProvider(provider.id)
+                toast.success(ts('provider.list.providerDeleted'))
+                setShowDeleteProvider(false)
+              }}
+            >
+              {tc('confirmDelete.deleteProvider.action')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete model confirmation */}
+      <AlertDialog open={!!deleteModelTarget} onOpenChange={(v) => { if (!v) setDeleteModelTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tc('confirmDelete.deleteModel.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tc('confirmDelete.deleteModel.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteModelTarget) {
+                  deleteModel(provider.id, deleteModelTarget.id)
+                  toast.success(ts('provider.config.models.modelDeleted'))
+                }
+                setDeleteModelTarget(null)
+              }}
+            >
+              {tc('confirmDelete.deleteModel.action')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

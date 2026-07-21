@@ -16,9 +16,20 @@ import type { AIProvider } from '../../../../shared/types/provider'
 import { cn } from '@renderer/lib/utils'
 import { AddProviderDialog } from './provider/AddProviderDialog'
 import { ProviderConfigPanel } from './provider/ProviderConfigPanel'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@renderer/components/ui/alert-dialog'
 
 function ProviderPanel(): React.JSX.Element {
   const { t } = useTranslation(['settings', 'common'])
+  const { t: tc } = useTranslation('common')
   const providers = useProviderStore((s) => s.providers)
   const deleteProvider = useProviderStore((s) => s.deleteProvider)
 
@@ -27,6 +38,7 @@ function ProviderPanel(): React.JSX.Element {
   )
   const [searchQuery, setSearchQuery] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null)
 
   const resolvedSelectedId =
     selectedId && providers.some((p) => p.id === selectedId)
@@ -104,9 +116,7 @@ function ProviderPanel(): React.JSX.Element {
             className="gap-2 text-xs text-destructive focus:text-destructive"
             disabled={Boolean(provider.builtinId)}
             onSelect={() => {
-              deleteProvider(provider.id)
-              if (selectedId === provider.id) setSelectedId(null)
-              toast.success(t('provider.list.providerDeleted'))
+              setDeleteTarget(provider)
             }}
           >
             <Trash2 className="size-3.5" />
@@ -183,6 +193,33 @@ function ProviderPanel(): React.JSX.Element {
       </div>
 
       <AddProviderDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tc('confirmDelete.deleteProvider.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tc('confirmDelete.deleteProvider.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteProvider(deleteTarget.id)
+                  if (selectedId === deleteTarget.id) setSelectedId(null)
+                  toast.success(t('provider.list.providerDeleted'))
+                }
+                setDeleteTarget(null)
+              }}
+            >
+              {tc('confirmDelete.deleteProvider.action')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
