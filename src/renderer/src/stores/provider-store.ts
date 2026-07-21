@@ -55,6 +55,48 @@ function createProviderFromPreset(preset: BuiltinProviderPreset): AIProvider {
   }
 }
 
+/**
+ * Normalize a model ID for case-insensitive matching.
+ */
+function normalizeModelKey(modelId: string): string {
+  return modelId.trim().toLowerCase()
+}
+
+/**
+ * Global registry of all builtin models across all presets, keyed by normalized model ID.
+ * This allows matching models from any provider (including custom/relay providers)
+ * against builtin metadata (thinkingConfig, icon, pricing, etc.).
+ */
+const builtinModelRegistry = new Map<string, AIModelConfig>()
+for (const preset of builtinProviderPresets) {
+  for (const model of preset.defaultModels) {
+    const key = normalizeModelKey(model.id)
+    if (!builtinModelRegistry.has(key)) {
+      builtinModelRegistry.set(key, { ...model })
+    }
+  }
+}
+
+/**
+ * Look up a model in the builtin registry by model ID.
+ * Returns a partial AIModelConfig with metadata (thinkingConfig, icon, pricing, etc.)
+ * or undefined if no match is found.
+ */
+function resolveBuiltinModelFallback(modelId: string): AIModelConfig | undefined {
+  return builtinModelRegistry.get(normalizeModelKey(modelId))
+}
+
+/**
+ * Merge a raw discovered model with builtin metadata.
+ * Builtin metadata (thinkingConfig, icon, supportsThinking, pricing, etc.) is used
+ * as the base; discovered values (id, name, enabled) override.
+ */
+function enrichDiscoveredModel(raw: AIModelConfig): AIModelConfig {
+  const fallback = resolveBuiltinModelFallback(raw.id)
+  if (!fallback) return raw
+  return { ...fallback, ...raw }
+}
+
 function createCustomProvider(name: string, type: ProviderType, baseUrl: string): AIProvider {
   return {
     id: nanoid(),
@@ -218,9 +260,22 @@ export const useProviderStore = create<ProviderState>()(
 
       setModels: (providerId, models) => {
         set(state => ({
-          providers: state.providers.map(p =>
-            p.id === providerId ? { ...p, models } : p
-          )
+          providers: state.providers.map(p => {
+            if (p.id !== providerId) return p
+            // Preserve user customizations for existing models (thinkingConfig, enabled, etc.)
+            // while enriching newly discovered models with builtin metadata
+            const existingById = new Map(p.models.map(m => [m.id, m]))
+            const merged = models.map(m => {
+              const existing = existingById.get(m.id)
+              if (existing) {
+                // Keep existing model data, but update from fetched if new fields exist
+                return { ...existing, ...m, thinkingConfig: existing.thinkingConfig ?? m.thinkingConfig }
+              }
+              // New model — enrich with builtin metadata
+              return enrichDiscoveredModel(m)
+            })
+            return { ...p, models: merged }
+          })
         }))
       },
 
@@ -247,7 +302,8 @@ export const useProviderStore = create<ProviderState>()(
         if (!result.ok) {
           throw new Error(result.error ?? 'Failed to fetch models')
         }
-        return result.models ?? []
+        // Enrich discovered models with builtin metadata (thinkingConfig, icon, pricing, etc.)
+        return (result.models ?? []).map(enrichDiscoveredModel)
       }
     }),
     {
