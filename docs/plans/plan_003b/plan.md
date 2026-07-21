@@ -163,7 +163,7 @@
   - 新建 `src/renderer/src/locales/en/chat.json` + `zh/chat.json` — 从 OpenCowork 搬入
   - 验证：`npm run typecheck` + `electron-vite build` 通过
 
-- [ ] 步骤10：集成验证
+- [x] 步骤10：集成验证
   - 启动应用 → SplashPage → 主布局
   - NavRail 图标 + WorkspaceSidebar + New Chat
   - 新建会话 → ChatHomePage → 发消息 → 流式回复 → 活动面板
