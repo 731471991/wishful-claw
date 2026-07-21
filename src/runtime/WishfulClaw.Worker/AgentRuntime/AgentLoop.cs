@@ -5,6 +5,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
+using WishfulClaw.Worker.Tools;
 
 namespace WishfulClaw.Worker.AgentRuntime;
 
@@ -181,21 +183,95 @@ internal static class AgentLoop
                 break;
             }
 
-            // ── Placeholder: tool execution (iteration 4) ──
-            // For now, just emit iteration_end and stop
+            // ── Tool execution (iteration 4) ──
+            var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+            var toolResults = new List<AgentRuntimeToolResult>();
+            var registry = ToolModuleState.Registry;
+
+            foreach (var toolCall in turn.ToolCalls)
+            {
+                if (state.IsCancellationRequested)
+                {
+                    await EmitLoopEndAsync(state, context, "aborted");
+                    return;
+                }
+
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_call_start",
+                        ToolCallId: toolCall.Id,
+                        ToolName: toolCall.Name));
+
+                var startedAt = NowMs();
+                string toolOutput;
+                bool isToolError = false;
+
+                if (registry is not null && registry.TryGetExecutor(toolCall.Name, out var executor))
+                {
+                    try
+                    {
+                        var toolContext = new ToolExecutionContext(workingFolder, state.SessionId, state.RunId, state.CancellationToken);
+                        var result = await executor.ExecuteAsync(toolCall.Input, toolContext);
+                        toolOutput = result.Content;
+                        isToolError = result.IsError;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        toolOutput = $"Tool execution failed: {ex.Message}";
+                        isToolError = true;
+                    }
+                }
+                else
+                {
+                    toolOutput = $"Unknown tool: {toolCall.Name}";
+                    isToolError = true;
+                }
+
+                var completedAt = NowMs();
+
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_call_end",
+                        ToolCallId: toolCall.Id,
+                        ToolName: toolCall.Name,
+                        ToolCall: new AgentRuntimeToolCallState(
+                            toolCall.Id,
+                            toolCall.Name,
+                            toolCall.Input,
+                            isToolError ? "error" : "completed",
+                            AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
+                            isToolError ? toolOutput : null,
+                            false,
+                            startedAt,
+                            completedAt)));
+
+                toolResults.Add(new AgentRuntimeToolResult(
+                    toolCall.Id,
+                    AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
+                    isToolError ? true : null));
+
+                WorkerLog.Debug(
+                    $"agent tool executed runId={state.RunId} tool={toolCall.Name} " +
+                    $"id={toolCall.Id} error={isToolError} outputLen={toolOutput.Length}");
+            }
+
+            // Add tool results as a user message to the conversation
+            var toolResultsMessage = AgentRuntimeChatMessage.UserToolResults(toolResults);
+            conversation.Add(toolResultsMessage);
+            wireConversation.Add(CreateToolResultsWireMessage(toolResults));
+
             await AgentRuntimeTools.EmitAsync(
                 state, context,
                 new AgentRuntimeStreamEvent(
                     "iteration_end",
                     StopReason: "tool_use",
-                    ToolResults: Array.Empty<AgentRuntimeToolResult>()));
-
-            WorkerLog.Debug(
-                $"agent loop tool calls detected but not executed (iteration 3) " +
-                $"runId={state.RunId} count={turn.ToolCalls.Count}");
-
-            completed = true;
-            break;
+                    ToolResults: toolResults.ToArray()));
         }
 
         await EmitLoopEndAsync(
@@ -610,4 +686,41 @@ internal static class AgentLoop
             model.StartsWith("o3", StringComparison.OrdinalIgnoreCase) ||
             model.StartsWith("o4", StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Creates a wire-format user message containing tool results.
+    /// </summary>
+    internal static JsonElement CreateToolResultsWireMessage(List<AgentRuntimeToolResult> toolResults)
+    {
+        return AgentRuntimeProviderSupport.CreateObjectElement(writer =>
+        {
+            writer.WriteString("id", NewMessageId());
+            writer.WriteString("role", "user");
+            writer.WritePropertyName("content");
+            writer.WriteStartArray();
+            foreach (var result in toolResults)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("type", "tool_result");
+                writer.WriteString("toolUseId", result.ToolUseId);
+                if (result.Content.ValueKind == JsonValueKind.String)
+                {
+                    writer.WriteString("content", result.Content.GetString());
+                }
+                else
+                {
+                    writer.WritePropertyName("content");
+                    result.Content.WriteTo(writer);
+                }
+                if (result.IsError is true)
+                {
+                    writer.WriteBoolean("isError", true);
+                }
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+            writer.WriteNumber("createdAt", NowMs());
+        });
+    }
+
 }
