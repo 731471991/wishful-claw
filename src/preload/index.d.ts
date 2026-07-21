@@ -9,9 +9,9 @@ declare global {
       workerRequest: <T = unknown>(method: string, params?: unknown) => Promise<T>
       on: <T = unknown>(channel: string, callback: (payload: T) => void) => () => void
       onAgentStream: (callback: (payload: unknown) => void) => () => void
+      /** Open a native folder selection dialog. Returns { folderPath, canceled }. */
+      openFolderDialog: () => Promise<{ folderPath: string | null; canceled: boolean }>
     }
-    __selectedProvider?: Record<string, unknown>
-    __sessionId?: string
   }
 }
 

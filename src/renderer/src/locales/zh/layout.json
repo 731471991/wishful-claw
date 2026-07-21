@@ -14,8 +14,82 @@
   },
   "main": {
     "chat": "对话",
-    "settings": "设置",
-    "placeholder": "主页面占位 — 后续迭代将实现 Agent 对话",
-    "settingsHint": "点击左下角设置按钮配置 AI 服务商"
+    "settings": "设置"
+  },
+  "nav": {
+    "chat": "对话",
+    "channels": "频道",
+    "resources": "资源",
+    "skills": "技能",
+    "souls": "人格",
+    "sync": "同步",
+    "draw": "绘图",
+    "translate": "翻译",
+    "tasks": "任务",
+    "codegraph": "代码图"
+  },
+  "navRail": {
+    "settings": "设置"
+  },
+  "title": {
+    "chat": "对话",
+    "project": "项目",
+    "session": "会话",
+    "archive": "归档",
+    "git": "Git",
+    "channels": "频道",
+    "settings": "设置"
+  },
+  "topbar": {
+    "toggleSidebar": "切换侧边栏",
+    "toggleRightPanel": "切换右侧面板"
+  },
+  "sidebar": {
+    "newChat": "新对话",
+    "newProject": "新建项目",
+    "search": "搜索会话...",
+    "collapse": "收起侧边栏",
+    "unassigned": "未分组",
+    "noSessions": "暂无会话",
+    "noSessionsYet": "暂无会话。点击\"新对话\"开始。",
+    "noResults": "未找到结果",
+    "rename": "重命名",
+    "duplicate": "复制",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "clearMessages": "清空消息",
+    "deleteSession": "删除会话",
+    "deleteProject": "删除项目",
+    "newSessionInProject": "在此项目新建会话",
+    "changeFolder": "更改工作文件夹",
+    "archive": "归档",
+    "git": "Git",
+    "conversationCleared": "对话已清空",
+    "sessionDuplicated": "会话已复制",
+    "projectDeleted": "项目已删除",
+    "projectCreated": "项目已创建",
+    "folderUpdated": "工作文件夹已更新",
+    "folderUpdateFailed": "选择文件夹失败",
+    "selectFolderLater": "右键菜单可选择工作文件夹"
+  },
+  "sectionExecution": {
+    "title": "执行"
+  },
+  "commandPalette": {
+    "newChat": "新对话",
+    "settings": "打开设置",
+    "toggleSidebar": "切换侧边栏",
+    "toggleRightPanel": "切换右侧面板",
+    "shortcuts": "快捷键",
+    "placeholder": "输入命令...",
+    "noResults": "无结果"
+  },
+  "placeholder": {
+    "iteration": "计划于",
+    "comingSoon": "此功能尚未实现，将在后续迭代中提供。"
+  },
+  "layout": {
+    "noSessionSelected": "未选择会话",
+    "conversationCleared": "对话已清空"
   }
 }

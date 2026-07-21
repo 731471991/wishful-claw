@@ -2,16 +2,36 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, Square } from 'lucide-react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
+import { useChatActions } from '@renderer/hooks/use-chat-actions'
 import { ModelSwitcher } from './ModelSwitcher'
 import { cn } from '@renderer/lib/utils'
 
-export function InputArea() {
+interface InputAreaProps {
+  /** Override send handler (used by SessionConversationPane) */
+  onSend?: (text: string) => void
+  /** Override streaming state */
+  isStreaming?: boolean
+  /** Override stop handler */
+  onStop?: () => void
+  /** Session ID for context */
+  sessionId?: string
+}
+
+export function InputArea({
+  onSend: onSendOverride,
+  isStreaming: isStreamingOverride,
+  onStop: onStopOverride,
+  sessionId
+}: InputAreaProps = {}): React.JSX.Element {
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const isStreaming = useChatStore((s) => s.isStreaming)
-  const sendMessage = useChatStore((s) => s.sendMessage)
-  const cancelStream = useChatStore((s) => s.cancelStream)
+  const storeIsStreaming = useChatStore((s) =>
+    sessionId ? Boolean(s.streamingMessages[sessionId]) : !!s.streamingMessageId
+  )
+  const { sendMessage, stopStreaming } = useChatActions()
   const clearActivities = useActivityStore((s) => s.clearActivities)
+
+  const isStreaming = isStreamingOverride ?? storeIsStreaming
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -27,17 +47,25 @@ export function InputArea() {
     setInput('')
     clearActivities()
 
-    await sendMessage({
-      provider: window.__selectedProvider ?? {},
-      messages: [{ role: 'user', content: text }],
-      sessionId: window.__sessionId ?? 'default'
-    })
+    if (onSendOverride) {
+      onSendOverride(text)
+    } else {
+      await sendMessage(text, undefined, undefined, sessionId)
+    }
+  }
+
+  const handleStop = () => {
+    if (onStopOverride) {
+      onStopOverride()
+    } else {
+      void stopStreaming()
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
+      void handleSubmit()
     }
   }
 
@@ -65,7 +93,7 @@ export function InputArea() {
 
           {isStreaming ? (
             <button
-              onClick={cancelStream}
+              onClick={handleStop}
               className="rounded-xl bg-destructive p-2.5 text-destructive-foreground hover:bg-destructive/90 transition-colors"
               title="Stop"
             >
@@ -73,7 +101,7 @@ export function InputArea() {
             </button>
           ) : (
             <button
-              onClick={handleSubmit}
+              onClick={() => void handleSubmit()}
               disabled={!input.trim()}
               className="rounded-xl bg-primary p-2.5 text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Send"

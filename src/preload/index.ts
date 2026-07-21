@@ -49,7 +49,11 @@ const api = {
 
   // Listen for agent stream events (agent/stream channel)
   onAgentStream: (callback: (payload: unknown) => void): (() => void) =>
-    onMessagePackEvent('agent/stream', callback)
+    onMessagePackEvent('agent/stream', callback),
+
+  // Open native folder selection dialog
+  openFolderDialog: (): Promise<{ folderPath: string | null; canceled: boolean }> =>
+    invokeMessagePackBinary<{ folderPath: string | null; canceled: boolean }>('dialog:openFolder', {})
 }
 
 if (process.contextIsolated) {

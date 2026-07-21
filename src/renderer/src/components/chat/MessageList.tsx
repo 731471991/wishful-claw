@@ -3,7 +3,10 @@ import { AssistantMessage } from './AssistantMessage'
 import { UserMessage } from './UserMessage'
 
 export function MessageList() {
-  const messages = useChatStore((s) => s.messages)
+  const messages = useChatStore((s) => {
+    const session = s.sessions.find((sess) => sess.id === s.activeSessionId)
+    return session?.messages ?? []
+  })
 
   if (messages.length === 0) {
     return (

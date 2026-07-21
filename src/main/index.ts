@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'path'
 
 import { getNativeWorker } from './lib/native-worker'
@@ -106,6 +106,22 @@ app.whenReady().then(() => {
 
   // Agent stream event forwarder (worker → renderer)
   registerAgentStreamForwarder()
+
+  // Dialog: open folder selector
+  registerMessagePackHandler<Record<string, unknown>, { folderPath: string | null; canceled: boolean }>(
+    'dialog:openFolder',
+    async (_args, event) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win!, {
+        properties: ['openDirectory']
+      })
+      return {
+        folderPath: result.canceled ? null : result.filePaths[0] ?? null,
+        canceled: result.canceled
+      }
+    }
+  )
+
 
   createWindow()
 
