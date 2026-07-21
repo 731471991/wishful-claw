@@ -7,21 +7,28 @@ import { ModelSwitcher } from './ModelSwitcher'
 import { cn } from '@renderer/lib/utils'
 
 interface InputAreaProps {
-  /** Override send handler (used by SessionConversationPane) */
+  /** Override send handler (used by ChatHomePage / SessionConversationPane) */
   onSend?: (text: string) => void
   /** Override streaming state */
   isStreaming?: boolean
   /** Override stop handler */
   onStop?: () => void
   /** Session ID for context */
-  sessionId?: string
+  sessionId?: string | null
+  /** Working folder to display */
+  workingFolder?: string
+  /** Hide working folder indicator */
+  hideWorkingFolderIndicator?: boolean
+  /** Attached to bottom (no bottom padding) */
+  attachedFooter?: boolean
 }
 
 export function InputArea({
   onSend: onSendOverride,
   isStreaming: isStreamingOverride,
   onStop: onStopOverride,
-  sessionId
+  sessionId,
+  attachedFooter
 }: InputAreaProps = {}): React.JSX.Element {
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -50,7 +57,7 @@ export function InputArea({
     if (onSendOverride) {
       onSendOverride(text)
     } else {
-      await sendMessage(text, undefined, undefined, sessionId)
+      await sendMessage(text, undefined, undefined, sessionId ?? undefined)
     }
   }
 
@@ -70,12 +77,12 @@ export function InputArea({
   }
 
   return (
-    <div className="border-t border-border px-4 py-3">
+    <div className={cn('px-4', attachedFooter ? 'pb-0' : 'pb-4')}>
       <div className="mx-auto max-w-3xl">
-        <div className="flex items-end gap-2">
-          <ModelSwitcher />
-
-          <div className="flex-1 relative">
+        {/* Composer shell */}
+        <div className="composer-shell relative flex flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-sm transition-[box-shadow,border-color] duration-200 focus-within:ring-1 focus-within:ring-ring">
+          {/* Text input area */}
+          <div className="px-3 pt-3">
             <textarea
               ref={textareaRef}
               value={input}
@@ -84,31 +91,42 @@ export function InputArea({
               placeholder="Type a message..."
               rows={1}
               className={cn(
-                'w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm',
-                'placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring',
-                'max-h-[200px]'
+                'w-full resize-none bg-transparent text-sm',
+                'placeholder:text-muted-foreground focus:outline-none',
+                'max-h-[200px] min-h-[40px]'
               )}
             />
           </div>
 
-          {isStreaming ? (
-            <button
-              onClick={handleStop}
-              className="rounded-xl bg-destructive p-2.5 text-destructive-foreground hover:bg-destructive/90 transition-colors"
-              title="Stop"
-            >
-              <Square className="h-4 w-4" />
-            </button>
-          ) : (
-            <button
-              onClick={() => void handleSubmit()}
-              disabled={!input.trim()}
-              className="rounded-xl bg-primary p-2.5 text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title="Send"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          )}
+          {/* Bottom toolbar */}
+          <div className="composer-toolbar relative z-20 mt-1 flex shrink-0 items-center justify-between gap-2 px-2 pb-2">
+            {/* Left: Model switcher */}
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <ModelSwitcher />
+            </div>
+
+            {/* Right: Send / Stop */}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {isStreaming ? (
+                <button
+                  onClick={handleStop}
+                  className="flex size-8 items-center justify-center rounded-lg bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90"
+                  title="Stop"
+                >
+                  <Square className="size-3.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => void handleSubmit()}
+                  disabled={!input.trim()}
+                  className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Send"
+                >
+                  <Send className="size-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

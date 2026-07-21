@@ -4,8 +4,7 @@ import { Sparkles, Code, Lightbulb, FileText } from 'lucide-react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatActions } from '@renderer/hooks/use-chat-actions'
-import { ModelSwitcher } from './ModelSwitcher'
-import { cn } from '@renderer/lib/utils'
+import { InputArea } from './InputArea'
 
 interface QuickPrompt {
   icon: React.ComponentType<{ className?: string }>
@@ -25,88 +24,69 @@ export function ChatHomePage(): React.JSX.Element {
   const createSession = useChatStore((s) => s.createSession)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
   const { sendMessage } = useChatActions()
-  const [input, setInput] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleSend = useCallback(async (text?: string) => {
-    const content = (text ?? input).trim()
+  const handleSend = useCallback(async (text: string) => {
+    const content = text.trim()
     if (!content) return
 
-    // Create a new session
     const sessionId = createSession('chat', null, { preserveProjectless: true })
-    setInput('')
     navigateToSession(sessionId)
-
-    // Send the message
     await sendMessage(content, undefined, undefined, sessionId)
-  }, [input, createSession, navigateToSession, sendMessage])
+  }, [createSession, navigateToSession, sendMessage])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      void handleSend()
+  const handleQuickPrompt = useCallback((prompt: string) => {
+    const textarea = document.querySelector('textarea')
+    if (textarea instanceof HTMLTextAreaElement) {
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        'value'
+      )?.set
+      nativeSetter?.call(textarea, prompt)
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+      textarea.focus()
     }
-  }
+  }, [])
 
   return (
-    <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-4">
-      <div className="w-full max-w-2xl">
-        {/* Hero */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t('home.title', { defaultValue: 'How can I help you today?' })}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t('home.subtitle', { defaultValue: 'Start a conversation or pick a quick prompt below.' })}
-          </p>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <div className="flex flex-1 flex-col overflow-auto px-6 pb-14 pt-8">
+        <div className="flex flex-1 items-start justify-center pt-8 lg:items-center lg:pt-0">
+          <div className="w-full max-w-[760px]">
+            {/* Hero */}
+            <div className="mb-6 flex flex-col items-center gap-3 text-center sm:mb-7">
+              <p className="max-w-[760px] text-[30px] font-semibold tracking-tight text-foreground/92 sm:text-[42px]">
+                {t('home.title', { defaultValue: 'How can I help you today?' })}
+              </p>
+              <p className="max-w-[560px] text-sm leading-6 text-muted-foreground/72">
+                {t('home.subtitle', { defaultValue: 'Start a conversation or pick a quick prompt below.' })}
+              </p>
+            </div>
 
-        {/* Input area */}
-        <div className="mb-6">
-          <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-3 shadow-sm">
-            <ModelSwitcher />
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('home.placeholder', { defaultValue: 'Type your message...' })}
-              rows={1}
-              className={cn(
-                'flex-1 resize-none bg-transparent px-2 py-2 text-sm',
-                'placeholder:text-muted-foreground focus:outline-none',
-                'max-h-[200px]'
-              )}
-              style={{ minHeight: '40px' }}
+            {/* Input area (composer shell) */}
+            <InputArea
+              sessionId={null}
+              onSend={handleSend}
+              isStreaming={false}
+              attachedFooter
             />
-            <button
-              onClick={() => void handleSend()}
-              disabled={!input.trim()}
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {t('home.send', { defaultValue: 'Send' })}
-            </button>
-          </div>
-        </div>
 
-        {/* Quick prompts */}
-        <div className="grid grid-cols-2 gap-2">
-          {QUICK_PROMPTS.map((prompt) => {
-            const Icon = prompt.icon
-            return (
-              <button
-                key={prompt.label}
-                onClick={() => {
-                  setInput(prompt.prompt)
-                  textareaRef.current?.focus()
-                }}
-                className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/50 px-3 py-2.5 text-left text-xs transition-colors hover:border-border hover:bg-accent/40"
-              >
-                <Icon className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-muted-foreground">{prompt.label}</span>
-              </button>
-            )
-          })}
+            {/* Quick prompts */}
+            <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
+              {QUICK_PROMPTS.map((prompt) => {
+                const Icon = prompt.icon
+                return (
+                  <button
+                    key={prompt.label}
+                    type="button"
+                    className="rounded-md border border-border/60 bg-background/40 px-3 py-1.5 text-[11px] text-muted-foreground/72 transition-colors hover:bg-muted/40 hover:text-foreground"
+                    onClick={() => handleQuickPrompt(prompt.prompt)}
+                  >
+                    {prompt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
