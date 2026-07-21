@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Monitor, MoonStar, SunMedium } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import {
@@ -9,6 +10,8 @@ import {
 } from '@renderer/lib/theme-presets'
 import { cn } from '@renderer/lib/utils'
 import { useSettingsStore, type ThemeMode } from '@renderer/stores/settings-store'
+import { LANGUAGE_OPTIONS } from '@renderer/lib/i18n-language'
+import { changeI18nLanguage } from '@renderer/locales'
 import { Input } from '@renderer/components/ui/input'
 import {
   Select,
@@ -18,14 +21,8 @@ import {
   SelectValue
 } from '@renderer/components/ui/select'
 
-const MODE_OPTIONS: Array<{ value: ThemeMode; icon: typeof SunMedium; label: string }> = [
-  { value: 'light', icon: SunMedium, label: '浅色' },
-  { value: 'dark', icon: MoonStar, label: '深色' },
-  { value: 'system', icon: Monitor, label: '跟随系统' }
-]
-
 const FONT_OPTIONS = [
-  { label: '系统默认', value: '__default__' },
+  { label: '__default__', value: '__default__' },
   { label: 'Inter', value: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
   { label: 'Segoe UI', value: "'Segoe UI', system-ui, -apple-system, sans-serif" },
   { label: 'Noto Sans', value: "'Noto Sans', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif" },
@@ -76,12 +73,20 @@ function PresetCard({
   preset,
   active,
   mode,
-  onClick
+  onClick,
+  label,
+  description,
+  currentLabel,
+  globalLabel
 }: {
   preset: ThemePresetDefinition
   active: boolean
   mode: AppThemeMode
   onClick: () => void
+  label: string
+  description: string
+  currentLabel: string
+  globalLabel: string
 }): React.JSX.Element {
   return (
     <button
@@ -96,12 +101,12 @@ function PresetCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-foreground">{preset.label}</div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{preset.description}</p>
+          <div className="truncate text-sm font-semibold text-foreground">{label}</div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
         </div>
         {active && (
           <span className="shrink-0 rounded-full bg-primary px-2 py-1 text-[0.65rem] font-semibold text-primary-foreground">
-            当前
+            {currentLabel}
           </span>
         )}
       </div>
@@ -111,35 +116,67 @@ function PresetCard({
       <div className="mt-3 flex items-center justify-between gap-3">
         <PresetSwatches preset={preset} />
         <span className="text-[0.66rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          全局
+          {globalLabel}
         </span>
       </div>
     </button>
   )
 }
 
-export function GeneralPanel(): React.JSX.Element {
+function GeneralPanel(): React.JSX.Element {
+  const { t } = useTranslation('settings')
   const settings = useSettingsStore()
   const { resolvedTheme } = useTheme()
   const resolvedMode = resolveAppThemeMode(
     settings.theme === 'system' ? resolvedTheme : settings.theme
   )
 
+  const MODE_OPTIONS: Array<{ value: ThemeMode; icon: typeof SunMedium; label: string }> = [
+    { value: 'light', icon: SunMedium, label: t('general.theme.light') },
+    { value: 'dark', icon: MoonStar, label: t('general.theme.dark') },
+    { value: 'system', icon: Monitor, label: t('general.theme.system') }
+  ]
+
   const clampFontSize = (value: number): number => Math.min(20, Math.max(12, value))
+
+  const handleLanguageChange = (value: string): void => {
+    settings.updateSettings({ language: value as typeof settings.language })
+    changeI18nLanguage(value)
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-8 pb-16 pt-10">
       {/* Title */}
       <div>
-        <h2 className="text-lg font-semibold">通用</h2>
-        <p className="text-sm text-muted-foreground">主题、外观和偏好设置</p>
+        <h2 className="text-lg font-semibold">{t('general.title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('general.subtitle')}</p>
       </div>
+
+      {/* Language */}
+      <section className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-foreground">Language / 语言</div>
+          <p className="text-xs text-muted-foreground">Interface language</p>
+        </div>
+        <Select value={settings.language} onValueChange={handleLanguageChange}>
+          <SelectTrigger className="w-60 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </section>
 
       {/* Theme mode */}
       <section className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-foreground">主题模式</div>
-          <p className="text-xs text-muted-foreground">选择浅色或深色主题，或跟随系统设置</p>
+          <div className="text-sm font-medium text-foreground">{t('general.theme.label')}</div>
+          <p className="text-xs text-muted-foreground">{t('general.theme.desc')}</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {MODE_OPTIONS.map((option) => {
@@ -168,8 +205,8 @@ export function GeneralPanel(): React.JSX.Element {
       {/* Theme preset */}
       <section className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-foreground">配色方案</div>
-          <p className="text-xs text-muted-foreground">选择全局配色预设，影响所有界面元素</p>
+          <div className="text-sm font-medium text-foreground">{t('general.preset.label')}</div>
+          <p className="text-xs text-muted-foreground">{t('general.preset.desc')}</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {APP_THEME_PRESETS.map((preset) => (
@@ -179,6 +216,10 @@ export function GeneralPanel(): React.JSX.Element {
               active={settings.themePreset === preset.id}
               mode={resolvedMode}
               onClick={() => settings.updateSettings({ themePreset: preset.id as AppThemePreset })}
+              label={t(`general.preset.presets.${preset.id}.label`)}
+              description={t(`general.preset.presets.${preset.id}.desc`)}
+              currentLabel={t('general.preset.current')}
+              globalLabel={t('general.preset.global')}
             />
           ))}
         </div>
@@ -187,15 +228,15 @@ export function GeneralPanel(): React.JSX.Element {
       {/* Appearance */}
       <section className="space-y-4">
         <div>
-          <label className="text-sm font-medium">外观</label>
-          <p className="text-xs text-muted-foreground">字体和界面尺寸</p>
+          <label className="text-sm font-medium">{t('general.appearance.label')}</label>
+          <p className="text-xs text-muted-foreground">{t('general.appearance.desc')}</p>
         </div>
 
         {/* Font family */}
         <div className="space-y-2">
           <div>
-            <label className="text-xs font-medium">字体</label>
-            <p className="text-xs text-muted-foreground">界面显示字体</p>
+            <label className="text-xs font-medium">{t('general.appearance.font.label')}</label>
+            <p className="text-xs text-muted-foreground">{t('general.appearance.font.desc')}</p>
           </div>
           <Select
             value={settings.fontFamily || '__default__'}
@@ -209,7 +250,7 @@ export function GeneralPanel(): React.JSX.Element {
             <SelectContent>
               {FONT_OPTIONS.map((option) => (
                 <SelectItem key={option.label} value={option.value} className="text-xs">
-                  {option.label}
+                  {option.label === '__default__' ? t('general.appearance.fontOptions.default') : option.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -220,8 +261,8 @@ export function GeneralPanel(): React.JSX.Element {
         <div className="space-y-2">
           <div className="flex items-center justify-between max-w-lg">
             <div>
-              <label className="text-xs font-medium">字号</label>
-              <p className="text-xs text-muted-foreground">界面字体大小 (px)</p>
+              <label className="text-xs font-medium">{t('general.appearance.fontSize.label')}</label>
+              <p className="text-xs text-muted-foreground">{t('general.appearance.fontSize.desc')}</p>
             </div>
             <span className="text-xs text-muted-foreground">{settings.fontSize}px</span>
           </div>
@@ -252,8 +293,8 @@ export function GeneralPanel(): React.JSX.Element {
         {/* Background color */}
         <div className="space-y-2">
           <div>
-            <label className="text-xs font-medium">背景颜色</label>
-            <p className="text-xs text-muted-foreground">自定义应用背景色，留空使用默认</p>
+            <label className="text-xs font-medium">{t('general.appearance.backgroundColor.label')}</label>
+            <p className="text-xs text-muted-foreground">{t('general.appearance.backgroundColor.desc')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input
@@ -266,7 +307,7 @@ export function GeneralPanel(): React.JSX.Element {
               type="text"
               value={settings.backgroundColor}
               onChange={(e) => settings.updateSettings({ backgroundColor: e.target.value.trim() })}
-              placeholder="留空使用默认"
+              placeholder=""
               className="max-w-40 text-xs"
             />
             <button
@@ -274,7 +315,7 @@ export function GeneralPanel(): React.JSX.Element {
               className="h-8 rounded-md border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent"
               onClick={() => settings.updateSettings({ backgroundColor: '' })}
             >
-              重置
+              {t('general.appearance.backgroundColor.label') === '背景颜色' ? '重置' : 'Reset'}
             </button>
           </div>
         </div>
@@ -282,3 +323,5 @@ export function GeneralPanel(): React.JSX.Element {
     </div>
   )
 }
+
+export { GeneralPanel }

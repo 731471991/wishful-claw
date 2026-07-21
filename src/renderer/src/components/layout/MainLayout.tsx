@@ -1,11 +1,12 @@
+import { useTranslation } from 'react-i18next'
 import { MessageSquare, Settings } from 'lucide-react'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore } from '@renderer/stores/ui-store'
 
-
 function NavRail(): React.JSX.Element {
+  const { t } = useTranslation('layout')
   const openSettings = useUIStore((s) => s.openSettings)
 
   return (
@@ -20,7 +21,7 @@ function NavRail(): React.JSX.Element {
               <MessageSquare className="size-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">对话</TooltipContent>
+          <TooltipContent side="right">{t('main.chat')}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -38,7 +39,7 @@ function NavRail(): React.JSX.Element {
               <Settings className="size-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">设置</TooltipContent>
+          <TooltipContent side="right">{t('main.settings')}</TooltipContent>
         </Tooltip>
         <span className="text-[9px] text-muted-foreground/40 select-none">v0.2.0</span>
       </div>
@@ -47,6 +48,8 @@ function NavRail(): React.JSX.Element {
 }
 
 function MainContent(): React.JSX.Element {
+  const { t } = useTranslation('layout')
+
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
       {/* Title bar */}
@@ -58,12 +61,8 @@ function MainContent(): React.JSX.Element {
       {/* Main area — placeholder for future chat / agent loop */}
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            主页面占位 — 后续迭代将实现 Agent 对话
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground/60">
-            点击左下角设置按钮配置 AI 服务商
-          </p>
+          <p className="text-sm text-muted-foreground">{t('main.placeholder')}</p>
+          <p className="mt-2 text-xs text-muted-foreground/60">{t('main.settingsHint')}</p>
         </div>
       </div>
     </div>

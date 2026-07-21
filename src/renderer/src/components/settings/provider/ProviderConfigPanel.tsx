@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Plus,
   Search,
@@ -45,7 +46,6 @@ import type {
 } from '../../../../../shared/types/provider'
 import { cn } from '@renderer/lib/utils'
 import {
-  PROVIDER_TYPE_LABELS,
   PROVIDER_TYPE_OPTIONS,
   toRoundedTokenThousands
 } from './constants'
@@ -55,38 +55,41 @@ import { ThinkingConfigDialog } from './ThinkingConfigDialog'
 function getCapabilityIndicators(model: AIModelConfig): Array<{
   key: string
   icon: React.ComponentType<{ className?: string }>
-  label: string
+  labelKey: string
 }> {
-  const indicators: Array<{ key: string; icon: React.ComponentType<{ className?: string }>; label: string }> = []
+  const indicators: Array<{ key: string; icon: React.ComponentType<{ className?: string }>; labelKey: string }> = []
   if (model.category === 'image') {
-    indicators.push({ key: 'category-image', icon: ImageIcon, label: '图像' })
+    indicators.push({ key: 'category-image', icon: ImageIcon, labelKey: 'capabilities.image' })
   } else if (model.category === 'speech') {
-    indicators.push({ key: 'category-speech', icon: Mic, label: '语音' })
+    indicators.push({ key: 'category-speech', icon: Mic, labelKey: 'capabilities.speech' })
   } else if (model.category === 'embedding') {
-    indicators.push({ key: 'category-embedding', icon: Shapes, label: '嵌入' })
+    indicators.push({ key: 'category-embedding', icon: Shapes, labelKey: 'capabilities.embedding' })
   } else if (model.category === 'video') {
-    indicators.push({ key: 'category-video', icon: Video, label: '视频' })
+    indicators.push({ key: 'category-video', icon: Video, labelKey: 'capabilities.video' })
   }
   if (model.supportsVision) {
-    indicators.push({ key: 'vision', icon: Eye, label: '支持视觉' })
+    indicators.push({ key: 'vision', icon: Eye, labelKey: 'capabilities.vision' })
   }
   if (model.supportsFunctionCall !== false) {
-    indicators.push({ key: 'function', icon: Code2, label: '支持函数调用' })
+    indicators.push({ key: 'function', icon: Code2, labelKey: 'capabilities.functionCall' })
   }
   if (model.supportsComputerUse) {
     indicators.push({
       key: 'computer-use',
       icon: MonitorSmartphone,
-      label: model.enableComputerUse ? 'Computer Use 已启用' : '支持 Computer Use'
+      labelKey: model.enableComputerUse ? 'capabilities.computerUseEnabled' : 'capabilities.computerUse'
     })
   }
   if (model.supportsThinking) {
-    indicators.push({ key: 'thinking', icon: Sparkles, label: '支持思考' })
+    indicators.push({ key: 'thinking', icon: Sparkles, labelKey: 'capabilities.thinking' })
   }
   return indicators
 }
 
 export function ProviderConfigPanel({ provider }: { provider: AIProvider }): React.JSX.Element {
+  const { t: ts } = useTranslation('settings')
+  const { t: tc } = useTranslation('common')
+  
   const updateProvider = useProviderStore((s) => s.updateProvider)
   const deleteProvider = useProviderStore((s) => s.deleteProvider)
   const addModel = useProviderStore((s) => s.addModel)
@@ -135,14 +138,14 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
       const result = await testConnection(provider, testModelId)
       setTestResult(result)
       if (result.ok) {
-        toast.success('连接测试成功')
+        toast.success(ts('provider.config.testSuccess'))
       } else {
-        toast.error('连接测试失败', { description: result.error })
+        toast.error(ts('provider.config.testFailed'), { description: result.error })
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err)
       setTestResult({ ok: false, error })
-      toast.error('连接测试失败', { description: error })
+      toast.error(ts('provider.config.testFailed'), { description: error })
     } finally {
       setTesting(false)
     }
@@ -153,13 +156,13 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
     try {
       const models = await fetchModels(provider)
       if (models.length === 0) {
-        toast.info('未拉取到模型')
+        toast.info(ts('provider.config.models.fetchEmpty'))
       } else {
         setModels(provider.id, models)
-        toast.success(`已拉取 ${models.length} 个模型`)
+        toast.success(ts('provider.config.models.fetchSuccess', { count: models.length }))
       }
     } catch (err) {
-      toast.error('拉取模型失败', {
+      toast.error(ts('provider.config.models.fetchFailed'), {
         description: err instanceof Error ? err.message : String(err)
       })
     } finally {
@@ -170,10 +173,10 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
   const handleSaveModel = (model: AIModelConfig): void => {
     if (editingModel) {
       updateModel(provider.id, editingModel.id, model)
-      toast.success('模型已更新')
+      toast.success(ts('provider.modelForm.modelUpdated'))
     } else {
       addModel(provider.id, model)
-      toast.success('模型已添加')
+      toast.success(ts('provider.modelForm.modelAdded'))
     }
     setEditingModel(null)
   }
@@ -189,7 +192,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
           <div>
             <h3 className="text-sm font-semibold">{provider.name}</h3>
             <p className="text-[11px] text-muted-foreground">
-              {PROVIDER_TYPE_LABELS[provider.type] ?? provider.type}
+              {ts(`provider.providerTypes.${provider.type}`)}
             </p>
           </div>
         </div>
@@ -201,7 +204,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
               onClick={() => {
                 deleteProvider(provider.id)
-                toast.success('服务商已删除')
+                toast.success(ts('provider.list.providerDeleted'))
               }}
             >
               <Trash2 className="size-3.5" />
@@ -219,13 +222,13 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
         {/* API Key */}
         <section className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">API Key</label>
+            <label className="text-sm font-medium">{ts('provider.config.apiKey')}</label>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Input
                 type={showKey ? 'text' : 'password'}
-                placeholder={provider.requiresApiKey === false ? '不需要 API Key' : '输入 API Key'}
+                placeholder={provider.requiresApiKey === false ? ts('provider.config.apiKeyNotRequired') : ts('provider.config.apiKeyPlaceholder')}
                 value={provider.apiKey}
                 onChange={(e) => updateProvider(provider.id, { apiKey: e.target.value })}
                 disabled={provider.requiresApiKey === false}
@@ -245,7 +248,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
 
         {/* Base URL */}
         <section className="mt-4 space-y-2">
-          <label className="text-sm font-medium">Base URL</label>
+          <label className="text-sm font-medium">{ts('provider.config.baseUrl')}</label>
           <Input
             placeholder="https://api.openai.com/v1"
             value={provider.baseUrl}
@@ -256,11 +259,11 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
 
         {/* Connection check */}
         <section className="mt-4 space-y-2">
-          <label className="text-sm font-medium">连接测试</label>
+          <label className="text-sm font-medium">{ts('provider.config.connectionTest')}</label>
           <div className="flex items-center gap-2">
             <Select value={testModelId} onValueChange={setTestModelId}>
               <SelectTrigger className="flex-1 text-xs">
-                <SelectValue placeholder={provider.models[0]?.id || '无可用模型'} />
+                <SelectValue placeholder={provider.models[0]?.id || ts('provider.config.noModels')} />
               </SelectTrigger>
               <SelectContent>
                 {(provider.models.some((m) => m.enabled)
@@ -281,7 +284,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               onClick={handleTest}
             >
               {testing ? <Loader2 className="size-3 animate-spin" /> : <Server className="size-3" />}
-              {testing ? '测试中...' : '测试'}
+              {testing ? ts('common.status.testing') : tc('actions.test')}
             </Button>
           </div>
         </section>
@@ -302,7 +305,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               <XCircle className="size-4 shrink-0" />
             )}
             <span className="min-w-0 truncate">
-              {testResult.ok ? '连接成功' : testResult.error ?? '连接失败'}
+              {testResult.ok ? ts('provider.config.connectionSuccess') : testResult.error ?? ts('provider.config.testFailed')}
             </span>
           </div>
         )}
@@ -310,7 +313,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
         {/* Protocol type (for custom providers) */}
         {!provider.builtinId && (
           <section className="mt-5 space-y-2">
-            <label className="text-sm font-medium">协议类型</label>
+            <label className="text-sm font-medium">{ts('provider.config.protocolType')}</label>
             <Select
               value={provider.type}
               onValueChange={(v) => updateProvider(provider.id, { type: v as ProviderType })}
@@ -321,7 +324,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               <SelectContent>
                 {PROVIDER_TYPE_OPTIONS.map((t) => (
                   <SelectItem key={t} value={t} className="text-xs">
-                    {PROVIDER_TYPE_LABELS[t]}
+                    {ts(`provider.providerTypes.${t}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -332,7 +335,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
         {/* Anthropic cache TTL (provider-level) */}
         {provider.type === 'anthropic' && (
           <section className="mt-5 space-y-2">
-            <label className="text-sm font-medium">缓存 TTL</label>
+            <label className="text-sm font-medium">{ts('provider.config.cacheTtl')}</label>
             <Select
               value={provider.cacheTtl ?? '5m'}
               onValueChange={(v) => updateProvider(provider.id, { cacheTtl: v as '5m' | '1h' })}
@@ -345,7 +348,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                 <SelectItem value="1h">1h</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">Anthropic 缓存生存时间，模型级配置可覆盖</p>
+            <p className="text-[11px] text-muted-foreground">{ts('provider.config.cacheTtlHint')}</p>
           </section>
         )}
 
@@ -357,9 +360,9 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
           <div className="space-y-3">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
-                <label className="text-sm font-medium">模型列表</label>
+                <label className="text-sm font-medium">{ts('provider.config.models.label')}</label>
                 <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-                  共 {provider.models.length} 个模型，{enabledModelCount} 个已启用
+                  {ts('provider.config.models.count', { total: provider.models.length, enabled: enabledModelCount })}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 self-start rounded-full border bg-background px-2 py-1 text-[11px] text-muted-foreground">
@@ -373,7 +376,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
               <div className="relative flex-1 lg:max-w-xs">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="搜索模型..."
+                  placeholder={ts("provider.config.models.searchPlaceholder")}
                   value={modelSearch}
                   onChange={(e) => setModelSearch(e.target.value)}
                   className="h-9 border-0 bg-background pl-8 text-xs shadow-none"
@@ -389,7 +392,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                       disabled={!hasDisabledModels}
                       onClick={() => handleSetAllModelsEnabled(true)}
                     >
-                      全部启用
+                      {tc('actions.enableAll')}
                     </Button>
                     <Button
                       variant="outline" size="sm"
@@ -397,7 +400,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                       disabled={!hasEnabledModels}
                       onClick={() => handleSetAllModelsEnabled(false)}
                     >
-                      全部禁用
+                      {tc('actions.disableAll')}
                     </Button>
                   </>
                 )}
@@ -408,7 +411,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                   disabled={fetchingModels}
                 >
                   {fetchingModels ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-                  拉取模型
+                  {ts('provider.config.models.fetchModels')}
                 </Button>
                 <Button
                   variant="outline" size="sm"
@@ -425,7 +428,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
           <div className="flex min-h-[320px] max-h-[420px] flex-col overflow-hidden rounded-xl border bg-background">
             {filteredModels.length === 0 ? (
               <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted-foreground">
-                {provider.models.length === 0 ? '暂无模型，点击 + 添加或拉取模型' : '无匹配结果'}
+                {provider.models.length === 0 ? ts('provider.config.models.noModels') : ts('provider.config.models.noResults')}
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
@@ -483,7 +486,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                           )}
                           {capabilityIndicators.length > 0 && (
                             <span className="flex items-center gap-1 text-muted-foreground/60">
-                              {capabilityIndicators.map(({ key, icon: Icon, label }) => (
+                              {capabilityIndicators.map(({ key, icon: Icon, labelKey }) => (
                                 <Tooltip key={`${model.id}-${key}`}>
                                   <TooltipTrigger asChild>
                                     <span className="inline-flex size-5 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
@@ -491,7 +494,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent side="top" className="text-[11px]">
-                                    {label}
+                                    {tc(labelKey)}
                                   </TooltipContent>
                                 </Tooltip>
                               ))}
@@ -511,7 +514,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                               <Pencil className="size-3.5" />
                             </button>
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="text-[11px]">编辑模型</TooltipContent>
+                          <TooltipContent side="top" className="text-[11px]">{ts('provider.config.models.editModel')}</TooltipContent>
                         </Tooltip>
                         {/* Thinking config */}
                         <Tooltip>
@@ -530,7 +533,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="text-[11px]">
-                            {model.supportsThinking ? '编辑思考配置' : '配置思考模式'}
+                            {model.supportsThinking ? ts('provider.config.models.editThinking') : ts('provider.config.models.configureThinking')}
                           </TooltipContent>
                         </Tooltip>
                         {/* Delete model */}
@@ -538,7 +541,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 rounded-full p-0 text-muted-foreground/40 transition-all hover:bg-background hover:text-destructive group-hover:opacity-100 sm:opacity-0"
-                          onClick={() => { deleteModel(provider.id, model.id); toast.success('模型已删除') }}
+                          onClick={() => { deleteModel(provider.id, model.id); toast.success(ts('provider.config.models.modelDeleted')) }}
                         >
                           <Trash2 className="size-3.5" />
                         </Button>
@@ -578,7 +581,7 @@ export function ProviderConfigPanel({ provider }: { provider: AIProvider }): Rea
                 supportsThinking,
                 thinkingConfig: supportsThinking ? thinkingConfig : undefined
               })
-              toast.success('思考配置已保存')
+              toast.success(ts('provider.thinking.saved'))
             }
             setEditingThinkingModel(null)
           }}

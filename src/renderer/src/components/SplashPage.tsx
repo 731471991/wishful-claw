@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next'
 import { BrainCircuit, ArrowRight, ShieldCheck, Sparkles, Settings } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore } from '@renderer/stores/ui-store'
 
 export function SplashPage(): React.JSX.Element {
+  const { t } = useTranslation('layout')
   const enterMain = useUIStore((s) => s.enterMain)
   const openSettings = useUIStore((s) => s.openSettings)
 
@@ -22,7 +24,7 @@ export function SplashPage(): React.JSX.Element {
             onClick={() => openSettings('provider')}
           >
             <Settings className="size-3.5" />
-            AI 服务商设置
+            {t('splash.enterSettings')}
           </Button>
           <WindowControls />
         </div>
@@ -39,10 +41,7 @@ export function SplashPage(): React.JSX.Element {
           {/* Title & subtitle */}
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold">Wishful Claw</h1>
-            <p className="text-sm leading-6 text-muted-foreground">
-              你的 AI Agent 编程助手。融合 OpenCowork 的工具链、KodaClaw 的记忆与人格系统，
-              以及 OpenClaw 的主动回忆机制。
-            </p>
+            <p className="text-sm leading-6 text-muted-foreground">{t('splash.hero')}</p>
           </div>
 
           {/* Feature points */}
@@ -52,10 +51,8 @@ export function SplashPage(): React.JSX.Element {
                 <ShieldCheck className="size-4 text-muted-foreground" />
               </div>
               <div className="space-y-1">
-                <h2 className="text-base font-semibold">本地优先</h2>
-                <p className="text-sm text-muted-foreground">
-                  数据存储在本地，断网可用，隐私安全。
-                </p>
+                <h2 className="text-base font-semibold">{t('splash.features.localFirst')}</h2>
+                <p className="text-sm text-muted-foreground">{t('splash.features.localFirstDesc')}</p>
               </div>
             </div>
 
@@ -64,10 +61,8 @@ export function SplashPage(): React.JSX.Element {
                 <Sparkles className="size-4 text-muted-foreground" />
               </div>
               <div className="space-y-1">
-                <h2 className="text-base font-semibold">智能记忆</h2>
-                <p className="text-sm text-muted-foreground">
-                  Agent 主动检索和写入记忆，跨会话保持上下文连续。
-                </p>
+                <h2 className="text-base font-semibold">{t('splash.features.intelligent')}</h2>
+                <p className="text-sm text-muted-foreground">{t('splash.features.intelligentDesc')}</p>
               </div>
             </div>
           </div>
@@ -76,7 +71,7 @@ export function SplashPage(): React.JSX.Element {
           <div className="pt-2">
             <Button className="h-11 min-w-36 px-6" onClick={enterMain}>
               <ArrowRight className="size-4" />
-              进入主页
+              {t('splash.enterMain')}
             </Button>
           </div>
         </div>

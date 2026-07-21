@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Search, Trash2, Server } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
@@ -15,7 +16,8 @@ import { cn } from '@renderer/lib/utils'
 import { AddProviderDialog } from './provider/AddProviderDialog'
 import { ProviderConfigPanel } from './provider/ProviderConfigPanel'
 
-export function ProviderPanel(): React.JSX.Element {
+function ProviderPanel(): React.JSX.Element {
+  const { t } = useTranslation(['settings', 'common'])
   const providers = useProviderStore((s) => s.providers)
   const deleteProvider = useProviderStore((s) => s.deleteProvider)
 
@@ -81,7 +83,7 @@ export function ProviderPanel(): React.JSX.Element {
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-medium">{provider.name}</span>
               <span className="mt-0.5 block truncate text-[10px] text-muted-foreground/70">
-                {enabledModelCount}/{provider.models.length} 模型
+                {enabledModelCount}/{provider.models.length} {t('provider.list.models')}
               </span>
             </span>
             <span
@@ -103,11 +105,11 @@ export function ProviderPanel(): React.JSX.Element {
             onSelect={() => {
               deleteProvider(provider.id)
               if (selectedId === provider.id) setSelectedId(null)
-              toast.success('服务商已删除')
+              toast.success(t('provider.list.providerDeleted'))
             }}
           >
             <Trash2 className="size-3.5" />
-            删除服务商
+            {t('provider.list.deleteProvider')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -123,7 +125,7 @@ export function ProviderPanel(): React.JSX.Element {
             <div className="relative flex-1">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
               <Input
-                placeholder="搜索服务商"
+                placeholder={t('provider.list.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 bg-background pl-7 text-xs shadow-none"
@@ -134,7 +136,7 @@ export function ProviderPanel(): React.JSX.Element {
               size="sm"
               className="h-8 w-8 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-foreground"
               onClick={() => setDialogOpen(true)}
-              title="添加自定义服务商"
+              title={t('provider.list.addTooltip')}
             >
               <Plus className="size-4" />
             </Button>
@@ -145,7 +147,7 @@ export function ProviderPanel(): React.JSX.Element {
               {enabledProviders.length > 0 && (
                 <div className="px-2 pb-1 pt-1">
                   <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/55">
-                    已启用
+                    {t('provider.list.enabled')}
                   </p>
                   {enabledProviders.map((p) => renderProviderListItem(p, false))}
                 </div>
@@ -153,14 +155,14 @@ export function ProviderPanel(): React.JSX.Element {
               {disabledProviders.length > 0 && (
                 <div className="px-2 pb-1 pt-3">
                   <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/55">
-                    已禁用
+                    {t('provider.list.disabled')}
                   </p>
                   {disabledProviders.map((p) => renderProviderListItem(p, true))}
                 </div>
               )}
               {enabledProviders.length === 0 && disabledProviders.length === 0 && (
                 <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-                  暂无服务商
+                  {t('provider.list.noProviders')}
                 </div>
               )}
             </div>
@@ -173,7 +175,7 @@ export function ProviderPanel(): React.JSX.Element {
             <ProviderConfigPanel provider={selectedProvider} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              选择左侧的服务商进行配置
+              {t('provider.list.selectProvider')}
             </div>
           )}
         </div>
@@ -183,3 +185,5 @@ export function ProviderPanel(): React.JSX.Element {
     </div>
   )
 }
+
+export { ProviderPanel }

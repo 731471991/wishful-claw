@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Server, Info, Settings } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
@@ -7,68 +8,35 @@ import { ProviderPanel } from '@renderer/components/settings/ProviderPanel'
 import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { cn } from '@renderer/lib/utils'
 
-const menuGroups: Array<{
-  label: string
-  items: { id: SettingsTab; icon: React.ReactNode; label: string; desc: string }[]
-}> = [
-  {
-    label: '通用',
-    items: [
-      {
-        id: 'general',
-        icon: <Settings className="size-4" />,
-        label: '通用',
-        desc: '主题、外观和偏好设置'
-      }
-    ]
-  },
-  {
-    label: 'AI 服务',
-    items: [
-      {
-        id: 'provider',
-        icon: <Server className="size-4" />,
-        label: 'AI 服务商',
-        desc: '配置 API Key、Base URL，测试连通性'
-      }
-    ]
-  },
-  {
-    label: '关于',
-    items: [
-      {
-        id: 'about',
-        icon: <Info className="size-4" />,
-        label: '关于',
-        desc: '版本信息'
-      }
-    ]
-  }
-]
-
-function AboutPanel(): React.JSX.Element {
-  return (
-    <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
-      <h1 className="mb-2 text-xl font-semibold">关于 Wishful Claw</h1>
-      <p className="text-sm text-muted-foreground">版本: v0.2.0-dev</p>
-      <div className="mt-6 space-y-3 text-sm text-muted-foreground">
-        <p>
-          Wishful Claw 是一个 AI Agent 编程助手，融合三个开源项目的优点：
-        </p>
-        <ul className="ml-4 list-disc space-y-1">
-          <li>OpenCowork — Agent Loop / 工具链 / Provider / 架构</li>
-          <li>KodaClaw — 记忆系统 / 人格系统设计</li>
-          <li>OpenClaw — 记忆主动回忆机制</li>
-        </ul>
-      </div>
-    </div>
-  )
-}
-
-export function SettingsPage(): React.JSX.Element {
+function SettingsPage(): React.JSX.Element {
+  const { t } = useTranslation('settings')
   const settingsTab = useUIStore((s) => s.settingsTab)
   const setSettingsTab = useUIStore((s) => s.setSettingsTab)
   const closeSettings = useUIStore((s) => s.closeSettings)
+
+  const menuGroups: Array<{
+    label: string
+    items: { id: SettingsTab; icon: React.ReactNode; label: string }[]
+  }> = [
+    {
+      label: t('tabs.groups.general'),
+      items: [
+        { id: 'general', icon: <Settings className="size-4" />, label: t('tabs.general.label') }
+      ]
+    },
+    {
+      label: t('tabs.groups.aiService'),
+      items: [
+        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') }
+      ]
+    },
+    {
+      label: t('tabs.groups.about'),
+      items: [
+        { id: 'about', icon: <Info className="size-4" />, label: t('tabs.about.label') }
+      ]
+    }
+  ]
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -80,12 +48,12 @@ export function SettingsPage(): React.JSX.Element {
             size="icon"
             className="size-7 shrink-0 rounded-md text-muted-foreground hover:text-foreground"
             onClick={closeSettings}
-            title="返回"
+            title={t('title')}
           >
             <ArrowLeft className="size-4" />
           </Button>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-foreground/92">设置</div>
+            <div className="truncate text-sm font-semibold text-foreground/92">{t('title')}</div>
           </div>
           <WindowControls />
         </header>
@@ -157,3 +125,24 @@ export function SettingsPage(): React.JSX.Element {
     </TooltipProvider>
   )
 }
+
+function AboutPanel(): React.JSX.Element {
+  const { t } = useTranslation('settings')
+
+  return (
+    <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
+      <h1 className="mb-2 text-xl font-semibold">{t('about.title')}</h1>
+      <p className="text-sm text-muted-foreground">{t('about.version')}</p>
+      <div className="mt-6 space-y-3 text-sm text-muted-foreground">
+        <p>{t('about.description')}</p>
+        <ul className="ml-4 list-disc space-y-1">
+          <li>{t('about.openCowork')}</li>
+          <li>{t('about.kodaClaw')}</li>
+          <li>{t('about.openClaw')}</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+export { SettingsPage }

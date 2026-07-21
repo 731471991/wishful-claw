@@ -1,0 +1,44 @@
+{
+  "appName": "Wishful Claw",
+  "appDescription": "AI Agent Programming Assistant",
+  "actions": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "reset": "Reset",
+    "close": "Close",
+    "back": "Back",
+    "search": "Search",
+    "refresh": "Refresh",
+    "test": "Test",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enableAll": "Enable All",
+    "disableAll": "Disable All"
+  },
+  "status": {
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "testing": "Testing...",
+    "loading": "Loading...",
+    "success": "Success",
+    "failed": "Failed",
+    "notFound": "Not Found"
+  },
+  "capabilities": {
+    "image": "Image",
+    "speech": "Speech",
+    "embedding": "Embedding",
+    "video": "Video",
+    "vision": "Vision",
+    "functionCall": "Function Call",
+    "computerUse": "Computer Use",
+    "computerUseEnabled": "Computer Use Enabled",
+    "thinking": "Thinking"
+  }
+}

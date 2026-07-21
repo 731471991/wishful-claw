@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Button } from '@renderer/components/ui/button'
+import { useTranslation } from 'react-i18next'
+import { Button} from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { Switch } from '@renderer/components/ui/switch'
 import {
@@ -57,6 +58,8 @@ export function ThinkingConfigDialog({
       model.thinkingConfig?.reasoningEffortLevels?.[0] ??
       'medium'
   )
+  const { t: ts } = useTranslation('settings')
+  const { t: tc } = useTranslation('common')
   const [jsonError, setJsonError] = useState('')
 
   const toggleReasoningEffortLevel = (level: ReasoningEffortLevel): void => {
@@ -86,7 +89,7 @@ export function ThinkingConfigDialog({
     try {
       const parsed = JSON.parse(bodyParamsJson)
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        setJsonError('JSON 必须是一个对象')
+        setJsonError(ts('provider.thinking.jsonMustBeObject'))
         return
       }
       const config: ThinkingConfig = { bodyParams: parsed }
@@ -94,12 +97,12 @@ export function ThinkingConfigDialog({
         try {
           const disabledParsed = JSON.parse(disabledBodyParamsJson)
           if (typeof disabledParsed !== 'object' || disabledParsed === null || Array.isArray(disabledParsed)) {
-            setJsonError('禁用参数 JSON 必须是一个对象')
+            setJsonError(ts('provider.thinking.disabledJsonMustBeObject'))
             return
           }
           config.disabledBodyParams = disabledParsed
         } catch {
-          setJsonError('禁用参数 JSON 格式错误')
+          setJsonError(ts('provider.thinking.disabledJsonFormatError'))
           return
         }
       }
@@ -116,7 +119,7 @@ export function ThinkingConfigDialog({
       onSave(true, config)
       onOpenChange(false)
     } catch {
-      setJsonError('JSON 格式错误')
+      setJsonError(ts('provider.thinking.jsonFormatError'))
     }
   }
 
@@ -124,21 +127,21 @@ export function ThinkingConfigDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>思考模式配置</DialogTitle>
-          <DialogDescription>配置 {model.name} 的思考/推理模式参数</DialogDescription>
+          <DialogTitle>{ts('provider.thinking.title')}</DialogTitle>
+          <DialogDescription>{ts('provider.thinking.desc', { name: model.name })}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">启用思考模式</label>
+            <label className="text-sm font-medium">{ts('provider.thinking.enable')}</label>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
           {enabled && (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium">启用时的请求参数</label>
+                <label className="text-sm font-medium">{ts('provider.thinking.bodyParams')}</label>
                 <p className="text-[11px] text-muted-foreground">
-                  启用思考模式时注入到请求 body 的额外参数（JSON 对象）
+                  {ts('provider.thinking.bodyParamsDesc')}
                 </p>
                 <textarea
                   value={bodyParamsJson}
@@ -148,23 +151,23 @@ export function ThinkingConfigDialog({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">禁用时的请求参数</label>
+                <label className="text-sm font-medium">{ts('provider.thinking.disabledBodyParams')}</label>
                 <p className="text-[11px] text-muted-foreground">
-                  关闭思考模式时注入到请求 body 的参数（留空则不注入）
+                  {ts('provider.thinking.disabledBodyParamsDesc')}
                 </p>
                 <textarea
                   value={disabledBodyParamsJson}
                   onChange={(e) => { setDisabledBodyParamsJson(e.target.value); setJsonError('') }}
                   className="w-full h-24 rounded-md border bg-muted/30 px-3 py-2 font-mono text-xs resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                   spellCheck={false}
-                  placeholder="留空表示不注入"
+                  placeholder={ts('provider.thinking.disabledBodyParamsPlaceholder')}
                 />
               </div>
               {jsonError && <p className="text-[11px] text-destructive">{jsonError}</p>}
               <div className="space-y-2">
-                <label className="text-sm font-medium">推理强度级别</label>
+                <label className="text-sm font-medium">{ts('provider.thinking.reasoningEffort')}</label>
                 <p className="text-[11px] text-muted-foreground">
-                  选择模型支持的推理强度选项（如 OpenAI o1 的 reasoning_effort）
+                  {ts('provider.thinking.reasoningEffortDesc')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {REASONING_EFFORT_OPTIONS.map((level) => {
@@ -189,7 +192,7 @@ export function ThinkingConfigDialog({
               </div>
               {reasoningEffortLevels.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">默认推理强度</label>
+                  <label className="text-sm font-medium">{ts('provider.thinking.defaultEffort')}</label>
                   <Select
                     value={defaultReasoningEffort}
                     onValueChange={(value) => setDefaultReasoningEffort(value as ReasoningEffortLevel)}
@@ -208,13 +211,13 @@ export function ThinkingConfigDialog({
                 </div>
               )}
               <div className="space-y-2">
-                <label className="text-sm font-medium">强制 Temperature</label>
+                <label className="text-sm font-medium">{ts('provider.thinking.forceTemp')}</label>
                 <p className="text-[11px] text-muted-foreground">
-                  某些模型在思考模式下要求固定 temperature（如 1），留空则不强制
+                  {ts('provider.thinking.forceTempDesc')}
                 </p>
                 <Input
                   type="number" step="0.1" min="0" max="2"
-                  placeholder="留空不强制"
+                  placeholder={ts('provider.thinking.forceTempPlaceholder')}
                   value={forceTemp}
                   onChange={(e) => setForceTemp(e.target.value)}
                   className="w-32 text-xs"
@@ -224,8 +227,8 @@ export function ThinkingConfigDialog({
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button size="sm" onClick={handleSave}>保存</Button>
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>{tc('actions.cancel')}</Button>
+            <Button size="sm" onClick={handleSave}>{tc('actions.save')}</Button>
           </div>
         </div>
       </DialogContent>

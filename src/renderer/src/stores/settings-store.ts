@@ -2,10 +2,15 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { AppThemePreset } from '@renderer/lib/theme-presets'
 import { DEFAULT_APP_THEME_PRESET } from '@renderer/lib/theme-presets'
+import type { AppLanguage } from '@renderer/lib/i18n-language'
+import { detectSystemLanguage } from '@renderer/lib/i18n-language'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 interface GeneralSettings {
+  // Language
+  language: AppLanguage
+
   // Theme
   theme: ThemeMode
   themePreset: AppThemePreset
@@ -23,6 +28,7 @@ interface SettingsState extends GeneralSettings {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
+      language: detectSystemLanguage(),
       theme: 'dark',
       themePreset: DEFAULT_APP_THEME_PRESET,
       fontFamily: '',
@@ -34,6 +40,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'wishful-claw-settings',
       partialize: (state) => ({
+        language: state.language,
         theme: state.theme,
         themePreset: state.themePreset,
         fontFamily: state.fontFamily,

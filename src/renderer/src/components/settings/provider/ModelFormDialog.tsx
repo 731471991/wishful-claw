@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Server } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
@@ -24,7 +25,6 @@ import type {
 } from '../../../../../shared/types/provider'
 import { cn } from '@renderer/lib/utils'
 import {
-  PROVIDER_TYPE_LABELS,
   PROVIDER_TYPE_OPTIONS,
   MODEL_ICON_OPTIONS,
   MIN_COMPRESSION_THRESHOLD,
@@ -46,6 +46,8 @@ export function ModelFormDialog({
   initial?: AIModelConfig
   onSave: (model: AIModelConfig) => void
 }): React.JSX.Element {
+  const { t: ts } = useTranslation('settings')
+  const { t: tc } = useTranslation('common')
   const isEdit = !!initial
 
   const [id, setId] = useState('')
@@ -78,7 +80,6 @@ export function ModelFormDialog({
   const [enableSystemPromptCache, setEnableSystemPromptCache] = useState(true)
   const [cacheTtl, setCacheTtl] = useState<'5m' | '1h'>('5m')
 
-  // Reset form state whenever the dialog opens or the initial model changes
   useEffect(() => {
     if (!open) return
     setId(initial?.id ?? '')
@@ -191,7 +192,6 @@ export function ModelFormDialog({
       model.supportsImageGeneration = supportsImageGeneration
     }
 
-    // preserve thinking config if editing
     if (initial?.supportsThinking) model.supportsThinking = initial.supportsThinking
     if (initial?.thinkingConfig) model.thinkingConfig = initial.thinkingConfig
 
@@ -203,18 +203,20 @@ export function ModelFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? '编辑模型' : '添加模型'}</DialogTitle>
+          <DialogTitle>{isEdit ? ts('provider.modelForm.editTitle') : ts('provider.modelForm.addTitle')}</DialogTitle>
           <DialogDescription>
-            {isEdit ? `修改 ${initial?.name} 的配置` : '配置新模型的参数和能力'}
+            {isEdit
+              ? ts('provider.modelForm.editDesc', { name: initial?.name })
+              : ts('provider.modelForm.addDesc')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           {/* ID + Name */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">模型 ID *</label>
+              <label className="text-xs font-medium">{ts('provider.modelForm.id')} *</label>
               <Input
-                placeholder="gpt-4o-mini"
+                placeholder={ts('provider.modelForm.idPlaceholder')}
                 value={id}
                 onChange={(e) => setId(e.target.value)}
                 disabled={isEdit}
@@ -223,9 +225,9 @@ export function ModelFormDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">显示名称</label>
+              <label className="text-xs font-medium">{ts('provider.modelForm.name')}</label>
               <Input
-                placeholder="GPT-4o Mini"
+                placeholder={ts('provider.modelForm.namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus={isEdit}
@@ -236,20 +238,20 @@ export function ModelFormDialog({
 
           {/* Protocol type override */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium">协议覆盖</label>
+            <label className="text-xs font-medium">{ts('provider.modelForm.typeOverride')}</label>
             <p className="text-[11px] text-muted-foreground">
               {providerType
-                ? `不选则跟随服务商协议 (${PROVIDER_TYPE_LABELS[providerType]})`
-                : '不选则跟随服务商协议'}
+                ? ts('provider.modelForm.typeOverrideHint', { type: ts(`provider.providerTypes.${providerType}`) })
+                : ts('provider.modelForm.typeOverridePlaceholder')}
             </p>
             <Select value={typeOverride} onValueChange={(v) => setTypeOverride(v as ProviderType | 'none')}>
               <SelectTrigger className="text-xs">
-                <SelectValue placeholder="跟随服务商协议" />
+                <SelectValue placeholder={ts('provider.modelForm.followProvider')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none" className="text-xs">跟随服务商协议</SelectItem>
+                <SelectItem value="none" className="text-xs">{ts('provider.modelForm.followProvider')}</SelectItem>
                 {PROVIDER_TYPE_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t} className="text-xs">{PROVIDER_TYPE_LABELS[t]}</SelectItem>
+                  <SelectItem key={t} value={t} className="text-xs">{ts(`provider.providerTypes.${t}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -257,18 +259,18 @@ export function ModelFormDialog({
 
           {/* Model category */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium">模型分类</label>
-            <p className="text-[11px] text-muted-foreground">该模型的使用方式</p>
+            <label className="text-xs font-medium">{ts('provider.modelForm.category')}</label>
+            <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.categoryDesc')}</p>
             <Select value={category} onValueChange={(v) => setCategory(v as ModelCategory)}>
               <SelectTrigger className="text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="chat" className="text-xs">对话</SelectItem>
-                <SelectItem value="speech" className="text-xs">语音</SelectItem>
-                <SelectItem value="embedding" className="text-xs">嵌入</SelectItem>
-                <SelectItem value="image" className="text-xs">图像</SelectItem>
-                <SelectItem value="video" className="text-xs">视频</SelectItem>
+                <SelectItem value="chat" className="text-xs">{ts('provider.modelForm.categoryChat')}</SelectItem>
+                <SelectItem value="speech" className="text-xs">{ts('provider.modelForm.categorySpeech')}</SelectItem>
+                <SelectItem value="embedding" className="text-xs">{ts('provider.modelForm.categoryEmbedding')}</SelectItem>
+                <SelectItem value="image" className="text-xs">{ts('provider.modelForm.categoryImage')}</SelectItem>
+                <SelectItem value="video" className="text-xs">{ts('provider.modelForm.categoryVideo')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -276,7 +278,7 @@ export function ModelFormDialog({
           {/* Context + Max output */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">上下文长度</label>
+              <label className="text-xs font-medium">{ts('provider.modelForm.contextLength')}</label>
               <Input
                 type="number"
                 placeholder="128000"
@@ -286,7 +288,7 @@ export function ModelFormDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium">最大输出 Token</label>
+              <label className="text-xs font-medium">{ts('provider.modelForm.maxOutputTokens')}</label>
               <Input
                 type="number"
                 placeholder="4096"
@@ -299,9 +301,12 @@ export function ModelFormDialog({
 
           {/* Context compression threshold */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium">上下文压缩触发比例</label>
+            <label className="text-xs font-medium">{ts('provider.modelForm.compressionThreshold')}</label>
             <p className="text-[11px] text-muted-foreground">
-              当上下文使用量达到此比例时触发压缩（{Math.round(MIN_COMPRESSION_THRESHOLD * 100)}-{Math.round(MAX_COMPRESSION_THRESHOLD * 100)}%）
+              {ts('provider.modelForm.compressionThresholdDesc', {
+                min: Math.round(MIN_COMPRESSION_THRESHOLD * 100),
+                max: Math.round(MAX_COMPRESSION_THRESHOLD * 100)
+              })}
             </p>
             <Input
               type="number"
@@ -317,11 +322,11 @@ export function ModelFormDialog({
           {/* Pricing */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium">
-              定价 <span className="text-muted-foreground font-normal">(USD / 百万 Token)</span>
+              {ts('provider.modelForm.pricing')} <span className="text-muted-foreground font-normal">({ts('provider.modelForm.pricingUnit')})</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">输入价格</p>
+                <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.inputPrice')}</p>
                 <Input
                   type="number" step="0.01" placeholder="0.00"
                   value={inputPrice}
@@ -330,7 +335,7 @@ export function ModelFormDialog({
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">输出价格</p>
+                <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.outputPrice')}</p>
                 <Input
                   type="number" step="0.01" placeholder="0.00"
                   value={outputPrice}
@@ -339,7 +344,7 @@ export function ModelFormDialog({
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">缓存写入价格</p>
+                <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.cacheCreationPrice')}</p>
                 <Input
                   type="number" step="0.01" placeholder="0.00"
                   value={cacheCreationPrice}
@@ -348,7 +353,7 @@ export function ModelFormDialog({
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">缓存命中价格</p>
+                <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.cacheHitPrice')}</p>
                 <Input
                   type="number" step="0.01" placeholder="0.00"
                   value={cacheHitPrice}
@@ -359,7 +364,7 @@ export function ModelFormDialog({
             </div>
             <div className="grid grid-cols-2 gap-3 pt-2">
               <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">Premium 请求倍率</p>
+                <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.premiumMultiplier')}</p>
                 <Input
                   type="number" step="0.01" placeholder="1"
                   value={premiumRequestMultiplier}
@@ -368,9 +373,9 @@ export function ModelFormDialog({
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[11px] text-muted-foreground">可用计划</p>
+                <p className="text-[11px] text-muted-foreground">{ts('provider.modelForm.availablePlans')}</p>
                 <Input
-                  placeholder="pro, pro+, business"
+                  placeholder={ts('provider.modelForm.availablePlansPlaceholder')}
                   value={availablePlans}
                   onChange={(e) => setAvailablePlans(e.target.value)}
                   className="text-xs"
@@ -381,7 +386,7 @@ export function ModelFormDialog({
 
           {/* Icon */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium">模型图标</label>
+            <label className="text-xs font-medium">{ts('provider.modelForm.icon')}</label>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
@@ -393,7 +398,7 @@ export function ModelFormDialog({
                     : 'border-border hover:border-muted-foreground/50 hover:bg-muted/40'
                 )}
               >
-                <span className="text-[10px] text-muted-foreground">auto</span>
+                <span className="text-[10px] text-muted-foreground">{ts('provider.modelForm.iconAuto')}</span>
               </button>
               {MODEL_ICON_OPTIONS.map((key) => (
                 <button
@@ -416,10 +421,10 @@ export function ModelFormDialog({
 
           {/* Responses config */}
           <div className="space-y-2">
-            <label className="text-xs font-medium">Responses 配置</label>
+            <label className="text-xs font-medium">{ts('provider.modelForm.responsesConfig')}</label>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">推理摘要</span>
+                <span className="text-xs text-muted-foreground">{ts('provider.modelForm.responseSummary')}</span>
                 <Select
                   value={responseSummary}
                   onValueChange={(v) => setResponseSummary(v as 'auto' | 'concise' | 'detailed' | 'none')}
@@ -428,17 +433,17 @@ export function ModelFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none" className="text-[11px]">不设置</SelectItem>
-                    <SelectItem value="auto" className="text-[11px]">自动</SelectItem>
-                    <SelectItem value="concise" className="text-[11px]">简洁</SelectItem>
-                    <SelectItem value="detailed" className="text-[11px]">详细</SelectItem>
+                    <SelectItem value="none" className="text-[11px]">{ts('provider.modelForm.summaryNone')}</SelectItem>
+                    <SelectItem value="auto" className="text-[11px]">{ts('provider.modelForm.summaryAuto')}</SelectItem>
+                    <SelectItem value="concise" className="text-[11px]">{ts('provider.modelForm.summaryConcise')}</SelectItem>
+                    <SelectItem value="detailed" className="text-[11px]">{ts('provider.modelForm.summaryDetailed')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {isResponsesModel && (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">WebSocket 传输</span>
+                    <span className="text-xs text-muted-foreground">{ts('provider.modelForm.websocket')}</span>
                     <Switch
                       checked={supportsWebsocket && websocketMode === 'auto'}
                       disabled={!supportsWebsocket}
@@ -447,27 +452,27 @@ export function ModelFormDialog({
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">支持 WebSocket</span>
-                      <span className="text-[11px] text-muted-foreground/70">启用 Responses API 的 WebSocket 传输</span>
+                      <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsWebsocket')}</span>
+                      <span className="text-[11px] text-muted-foreground/70">{ts('provider.modelForm.supportsWebsocketDesc')}</span>
                     </div>
                     <Switch checked={supportsWebsocket} onCheckedChange={setSupportsWebsocket} />
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">支持图像生成</span>
-                      <span className="text-[11px] text-muted-foreground/70">注入 image_generation 服务端工具</span>
+                      <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsImageGeneration')}</span>
+                      <span className="text-[11px] text-muted-foreground/70">{ts('provider.modelForm.supportsImageGenerationDesc')}</span>
                     </div>
                     <Switch checked={supportsImageGeneration} onCheckedChange={setSupportsImageGeneration} />
                   </div>
                 </>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">系统提示词缓存</span>
+                <span className="text-xs text-muted-foreground">{ts('provider.modelForm.systemPromptCache')}</span>
                 <Switch checked={enableSystemPromptCache} onCheckedChange={setEnableSystemPromptCache} />
               </div>
               {isAnthropicModel && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">缓存 TTL</span>
+                  <span className="text-xs text-muted-foreground">{ts('provider.modelForm.cacheTtl')}</span>
                   <Select value={cacheTtl} onValueChange={(v) => setCacheTtl(v as '5m' | '1h')}>
                     <SelectTrigger className="w-20 h-7 text-[11px]">
                       <SelectValue />
@@ -484,22 +489,22 @@ export function ModelFormDialog({
 
           {/* Capabilities */}
           <div className="space-y-2">
-            <label className="text-xs font-medium">能力</label>
+            <label className="text-xs font-medium">{ts('provider.modelForm.capabilities')}</label>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">支持视觉</span>
+                <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsVision')}</span>
                 <Switch checked={supportsVision} onCheckedChange={setSupportsVision} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">支持函数调用</span>
+                <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsFunctionCall')}</span>
                 <Switch checked={supportsFunctionCall} onCheckedChange={setSupportsFunctionCall} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">支持 Computer Use</span>
+                <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsComputerUse')}</span>
                 <Switch checked={supportsComputerUse} onCheckedChange={setSupportsComputerUse} />
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">启用 Computer Use</span>
+                <span className="text-xs text-muted-foreground">{ts('provider.modelForm.enableComputerUse')}</span>
                 <Switch
                   checked={supportsComputerUse && enableComputerUse}
                   disabled={!supportsComputerUse}
@@ -509,8 +514,8 @@ export function ModelFormDialog({
               {(isResponsesModel || isOpenAiChatModel) && (
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">支持快速模式</span>
-                    <span className="text-[11px] text-muted-foreground/70">使用 priority service tier</span>
+                    <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsFastMode')}</span>
+                    <span className="text-[11px] text-muted-foreground/70">{ts('provider.modelForm.supportsFastModeDesc')}</span>
                   </div>
                   <Switch checked={supportsFastMode} onCheckedChange={setSupportsFastMode} />
                 </div>
@@ -519,15 +524,15 @@ export function ModelFormDialog({
                 <>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">支持内置搜索</span>
-                      <span className="text-[11px] text-muted-foreground/70">Anthropic web_search / OpenAI Responses web_search</span>
+                      <span className="text-xs text-muted-foreground">{ts('provider.modelForm.supportsBuiltinSearch')}</span>
+                      <span className="text-[11px] text-muted-foreground/70">{ts('provider.modelForm.supportsBuiltinSearchDesc')}</span>
                     </div>
                     <Switch checked={supportsBuiltinSearch} onCheckedChange={setSupportsBuiltinSearch} />
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground">启用内置搜索</span>
-                      <span className="text-[11px] text-muted-foreground/70">默认注入搜索工具</span>
+                      <span className="text-xs text-muted-foreground">{ts('provider.modelForm.enableBuiltinSearch')}</span>
+                      <span className="text-[11px] text-muted-foreground/70">{ts('provider.modelForm.enableBuiltinSearchDesc')}</span>
                     </div>
                     <Switch
                       checked={supportsBuiltinSearch && enableBuiltinSearch}
@@ -541,9 +546,9 @@ export function ModelFormDialog({
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>{tc('actions.cancel')}</Button>
             <Button size="sm" disabled={!id.trim()} onClick={handleSave}>
-              {isEdit ? '保存' : '添加'}
+              {isEdit ? tc('actions.save') : tc('actions.add')}
             </Button>
           </div>
         </div>

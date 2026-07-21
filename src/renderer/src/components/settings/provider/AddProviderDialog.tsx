@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
@@ -18,7 +19,7 @@ import {
 } from '@renderer/components/ui/select'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import type { ProviderType } from '../../../../../shared/types/provider'
-import { PROVIDER_TYPE_LABELS, PROVIDER_TYPE_OPTIONS } from './constants'
+import { PROVIDER_TYPE_OPTIONS } from './constants'
 
 export function AddProviderDialog({
   open,
@@ -27,6 +28,8 @@ export function AddProviderDialog({
   open: boolean
   onOpenChange: (v: boolean) => void
 }): React.JSX.Element {
+  const { t: ts } = useTranslation('settings')
+  const { t: tc } = useTranslation('common')
   const addCustomProvider = useProviderStore((s) => s.addCustomProvider)
   const [name, setName] = useState('')
   const [type, setType] = useState<ProviderType>('openai-chat')
@@ -35,7 +38,7 @@ export function AddProviderDialog({
   const handleAdd = (): void => {
     if (!name.trim()) return
     addCustomProvider(name.trim(), type, baseUrl.trim())
-    toast.success(`已添加 ${name.trim()}`)
+    toast.success(ts('provider.add.added', { name: name.trim() }))
     setName('')
     setBaseUrl('')
     setType('openai-chat')
@@ -46,44 +49,46 @@ export function AddProviderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>添加自定义服务商</DialogTitle>
-          <DialogDescription>添加一个不在内置列表中的 AI 服务商</DialogDescription>
+          <DialogTitle>{ts('provider.add.title')}</DialogTitle>
+          <DialogDescription>{ts('provider.add.desc')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">服务商名称</label>
+            <label className="text-sm font-medium">{ts('provider.add.name')}</label>
             <Input
-              placeholder="My Provider"
+              placeholder={ts('provider.add.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">协议类型</label>
+            <label className="text-sm font-medium">{ts('provider.add.type')}</label>
             <Select value={type} onValueChange={(v) => setType(v as ProviderType)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PROVIDER_TYPE_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>{PROVIDER_TYPE_LABELS[t]}</SelectItem>
+                {PROVIDER_TYPE_OPTIONS.map((tKey) => (
+                  <SelectItem key={tKey} value={tKey}>
+                    {ts(`provider.providerTypes.${tKey}`)}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Base URL</label>
+            <label className="text-sm font-medium">{ts('provider.add.baseUrl')}</label>
             <Input
-              placeholder="https://api.example.com/v1"
+              placeholder={ts('provider.add.baseUrlPlaceholder')}
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">API 的基础地址，通常以 /v1 结尾</p>
+            <p className="text-xs text-muted-foreground">{ts('provider.add.baseUrlHint')}</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button disabled={!name.trim()} onClick={handleAdd}>添加</Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>{tc('actions.cancel')}</Button>
+            <Button disabled={!name.trim()} onClick={handleAdd}>{tc('actions.add')}</Button>
           </div>
         </div>
       </DialogContent>
