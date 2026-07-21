@@ -44,7 +44,7 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：后端 — 流式协议数据模型
+- [x] 步骤1：后端 — 流式协议数据模型
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AgentRuntimeModels.cs`
     - AgentRuntimeStreamEvent（扁平 record，字段 camelCase 与前端对齐）
     - AgentRuntimeStreamEnvelope（v / runId / sessionId / seq / events[]）
@@ -55,7 +55,7 @@
   - 参考：OpenCowork AgentRuntimeModels.cs + AgentRuntimeProviderModels.cs
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤2：后端 — AgentStreamMessagePackEmitter
+- [x] 步骤2：后端 — AgentStreamMessagePackEmitter
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AgentStreamMessagePackEmitter.cs`
     - Encode(AgentRuntimeStreamEnvelope) → WorkerMessagePackEvent
     - 手写 MessagePack 编码（使用已有的 MessagePackWriter）
@@ -64,7 +64,7 @@
   - 参考：OpenCowork AgentStreamMessagePackEmitter.cs
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤3：后端 — AgentRuntimeTools + RunState
+- [x] 步骤3：后端 — AgentRuntimeTools + RunState
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AgentRuntimeTools.cs`
     - RunAsync：创建 RunState → 后台 Task.Run 执行 Loop → 立即返回 {started, runId}
     - Cancel：通过 runId 查找 RunState，调用 Cancel()
@@ -75,7 +75,7 @@
   - 参考：OpenCowork AgentRuntimeTools.cs（去掉 SubAgent/Team/Reverse）
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤4：后端 — AgentLoop（主循环）
+- [x] 步骤4：后端 — AgentLoop（主循环）
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AgentLoop.cs`
     - ExecuteLoopAsync：主循环
       - 每次迭代：检查 cancellation → 检查上下文压缩 → EmitAsync(iteration_start) → ExecuteTurnAsync → 如果无 tool_calls → 结束 → 如果有 tool_calls → 迭代三不执行工具，直接结束并返回
@@ -84,7 +84,7 @@
   - 设计参考：KodaClaw StepAsync（Step 抽象 + 状态检查）、OpenCowork ExecuteLoopAsync（循环结构）
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤5：后端 — OpenAIChatProvider
+- [x] 步骤5：后端 — OpenAIChatProvider
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/OpenAIChatProvider.cs`
     - ExecuteTurnAsync：构建请求体 → POST /chat/completions (stream=true) → 解析 SSE
     - BuildRequestBody：messages + model + temperature + max_tokens + stream + tools(可选)
@@ -96,7 +96,7 @@
   - 参考：OpenCowork OpenAIChatRuntime.cs 中的 openai-chat 部分
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤6：后端 — AnthropicMessagesProvider（partial class 多文件）
+- [x] 步骤6：后端 — AnthropicMessagesProvider（partial class 多文件）
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AnthropicMessagesProvider.cs` — 入口 ExecuteTurnAsync
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AnthropicMessagesEventParser.cs` — SSE 解析
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/AnthropicMessagesInputWriter.cs` — 请求体构建
@@ -106,7 +106,7 @@
   - 参考：OpenCowork AgentRuntimeAnthropicMessages*.cs
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤7：后端 — ContextCompression + ProviderSupport + AgentRuntimeModule
+- [x] 步骤7：后端 — ContextCompression + ProviderSupport + AgentRuntimeModule
   - 新建 `src/runtime/WishfulClaw.Worker/AgentRuntime/ContextCompression.cs`
     - 简化版：token 超阈值（80% context window）时，保留 system + 最近 N 条消息，旧消息截断
     - 不做 LLM 摘要（后续迭代加），EmitAsync 事件
@@ -116,7 +116,7 @@
   - 修改 `WorkerModuleCatalog.cs` — 添加 AgentRuntimeModule
   - 验证：`dotnet build` 通过，Worker 能启动
 
-- [ ] 步骤8：前端 — 共享协议类型 + MessagePack 编解码
+- [x] 步骤8：前端 — 共享协议类型 + MessagePack 编解码
   - 新建 `src/shared/agent-stream-protocol.ts` — 类型定义
     - AgentStreamEnvelope / AgentStreamEvent
     - 聊天流事件类型：loop_start/end, text_delta, thinking_delta, message_end, error
@@ -126,7 +126,7 @@
   - 参考：OpenCowork agent-stream-protocol.ts + agent-stream-codec.ts
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤9：前端 — Main 进程事件转发
+- [x] 步骤9：前端 — Main 进程事件转发
   - 修改 `src/main/lib/native-worker.ts`
     - handleResponseFrame：检测 `event` 字段，区分 response 和 event 帧
     - event 帧：emit 到 EventEmitter（'agent/stream'）
@@ -138,7 +138,7 @@
   - 参考：OpenCowork native-worker.ts 的 handleResponseFrame
   - 验证：`npm run typecheck` + `electron-vite build` 通过
 
-- [ ] 步骤10：前端 — AgentStreamReceiver + 事件分发
+- [x] 步骤10：前端 — AgentStreamReceiver + 事件分发
   - 新建 `src/renderer/src/lib/ipc/agent-stream-receiver.ts`
     - 监听 IPC 通道，解码 MessagePack envelope
     - 按 runId 订阅，分发事件
@@ -147,7 +147,7 @@
     - **事件分流**：聊天流事件 → chatStore，活动面板事件 → activityStore
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤11：前端 — chat-store + activity-store（Zustand）
+- [x] 步骤11：前端 — chat-store + activity-store（Zustand）
   - 新建 `src/renderer/src/stores/chat-store.ts`（精简版）
     - 状态：messages[], isStreaming, currentRunId, error
     - 动作：sendMessage, cancelStream, appendTextDelta, appendThinkingDelta, finalizeMessage
@@ -159,7 +159,7 @@
     - 处理活动面板事件
   - 验证：`npm run typecheck` 通过
 
-- [ ] 步骤12：前端 — 对话 UI（左聊天 + 右活动面板）
+- [x] 步骤12：前端 — 对话 UI（左聊天 + 右活动面板）
   - 新建 `src/renderer/src/components/chat/ChatPage.tsx` — 页面容器（左右布局）
   - 新建 `src/renderer/src/components/chat/MessageList.tsx` — 消息列表
   - 新建 `src/renderer/src/components/chat/AssistantMessage.tsx` — 助手消息（Markdown + 思考折叠 + 流式光标）
@@ -175,7 +175,7 @@
   - 依赖：react-markdown + remark-gfm
   - 验证：`npm run typecheck` + `electron-vite build` 通过
 
-- [ ] 步骤13：集成验证
+- [x] 步骤13：集成验证
   - 启动应用 → 选择 Provider 和模型 → 输入消息 → 流式看到回复 → 取消
   - 活动面板显示迭代进度
   - 验证思考模型（如果配置了支持 thinking 的模型）
