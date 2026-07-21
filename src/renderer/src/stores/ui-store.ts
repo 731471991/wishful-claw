@@ -303,6 +303,16 @@ interface UIStore {
   toggleFileSelection: (filePath: string) => void
   clearSelectedFiles: () => void
 
+  // File preview
+  openFilePreview: (
+    filePath: string,
+    viewMode?: 'split' | 'inline',
+    sshConnectionId?: string | null,
+    sessionId?: string | null,
+    targetLine?: number,
+    targetColumn?: number
+  ) => void
+
   // Hovering state
   isHoveringRightPanel: boolean
   setIsHoveringRightPanel: (hovering: boolean) => void
@@ -526,6 +536,12 @@ export const useUIStore = create<UIStore>((set, get) => ({
         : [...state.selectedFiles, filePath]
     })),
   clearSelectedFiles: () => set({ selectedFiles: [] }),
+
+  // File preview (stub — opens file via shell)
+  openFilePreview: (filePath) => {
+    // Stub: will be implemented with proper preview panel later
+    console.log('[UIStore] openFilePreview stub:', filePath)
+  },
 
   // Hovering state
   isHoveringRightPanel: false,

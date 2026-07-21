@@ -198,8 +198,27 @@ function ensureBuiltinPresets(): void {
     changed = true
   }
 
+  const state = useProviderStore.getState()
+  const updates: Partial<ProviderState> = {}
   if (changed) {
-    useProviderStore.setState({ providers: nextProviders })
+    updates.providers = nextProviders
+  }
+  // If no active provider is set, pick the first available one
+  if (!state.activeProviderId && nextProviders.length > 0) {
+    const firstProvider = nextProviders[0]
+    updates.activeProviderId = firstProvider.id
+    // Pick default model
+    const defaultModel =
+      firstProvider.models.find((m) => m.id === firstProvider.defaultModel) ??
+      firstProvider.models.find((m) => m.enabled && (!m.category || m.category === 'chat')) ??
+      firstProvider.models.find((m) => m.enabled) ??
+      firstProvider.models[0]
+    if (defaultModel) {
+      updates.activeModelId = defaultModel.id
+    }
+  }
+  if (Object.keys(updates).length > 0) {
+    useProviderStore.setState(updates)
   }
 }
 
