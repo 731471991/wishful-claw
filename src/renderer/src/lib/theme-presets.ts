@@ -1,7 +1,10 @@
+import type { ITheme } from '@xterm/xterm'
+
 export type AppThemeMode = 'light' | 'dark'
 export type AppThemePreset = 'mulberry' | 'studio' | 'graphite' | 'ocean' | 'forest' | 'dawn'
+export type SshTerminalThemePreset = AppThemePreset
 
-export type ThemeCssVars = Record<`--${string}`, string>
+type ThemeCssVars = Record<`--${string}`, string>
 
 type ThemePreviewPalette = {
   rail: string
@@ -12,22 +15,117 @@ type ThemePreviewPalette = {
   text: string
 }
 
+export type SshChromePalette = {
+  libraryFrameStart: string
+  libraryFrameEnd: string
+  libraryBorder: string
+  libraryText: string
+  connectFrame: string
+  connectBorder: string
+  connectText: string
+  terminalFrame: string
+  terminalBorder: string
+  terminalText: string
+  canvas: string
+  canvasSubtle: string
+  terminalCanvas: string
+  panel: string
+  panelStrong: string
+  panelBorder: string
+  surface: string
+  surfaceStrong: string
+  text: string
+  muted: string
+  accent: string
+  accentSoft: string
+  accentContrast: string
+  success: string
+  successSoft: string
+  warning: string
+  warningSoft: string
+  danger: string
+  dangerSoft: string
+  badge: string
+  libraryPill: string
+  libraryPillActive: string
+  libraryPillText: string
+  libraryPillActiveText: string
+  connectPill: string
+  connectPillActive: string
+  connectPillText: string
+  connectPillActiveText: string
+  terminalPill: string
+  terminalPillActive: string
+  terminalPillText: string
+  terminalPillActiveText: string
+}
+
 export type ThemePresetDefinition = {
   id: AppThemePreset
-  label: string
-  description: string
+  labelKey: string
+  descriptionKey: string
   swatches: [string, string, string]
   preview: Record<AppThemeMode, ThemePreviewPalette>
   cssVars: Record<AppThemeMode, ThemeCssVars>
+  terminal: Record<AppThemeMode, ITheme>
+  ssh: Record<AppThemeMode, SshChromePalette>
 }
 
 export const DEFAULT_APP_THEME_PRESET: AppThemePreset = 'mulberry'
+export const DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = DEFAULT_APP_THEME_PRESET
+
+function createTerminalTheme(colors: {
+  background: string
+  foreground: string
+  selectionBackground: string
+  cursor?: string
+  black: string
+  red: string
+  green: string
+  yellow: string
+  blue: string
+  magenta: string
+  cyan: string
+  white: string
+  brightBlack: string
+  brightRed: string
+  brightGreen: string
+  brightYellow: string
+  brightBlue: string
+  brightMagenta: string
+  brightCyan: string
+  brightWhite: string
+}): ITheme {
+  return {
+    background: colors.background,
+    foreground: colors.foreground,
+    cursor: colors.cursor ?? colors.foreground,
+    cursorAccent: colors.background,
+    selectionBackground: colors.selectionBackground,
+    black: colors.black,
+    red: colors.red,
+    green: colors.green,
+    yellow: colors.yellow,
+    blue: colors.blue,
+    magenta: colors.magenta,
+    cyan: colors.cyan,
+    white: colors.white,
+    brightBlack: colors.brightBlack,
+    brightRed: colors.brightRed,
+    brightGreen: colors.brightGreen,
+    brightYellow: colors.brightYellow,
+    brightBlue: colors.brightBlue,
+    brightMagenta: colors.brightMagenta,
+    brightCyan: colors.brightCyan,
+    brightWhite: colors.brightWhite
+  }
+}
 
 const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
   mulberry: {
     id: 'mulberry',
-    label: '黑曜灰',
-    description: '黑白灰高对比配色，主机库清爽，终端保持克制和清晰',
+    labelKey: 'general.themePreset.presets.mulberry.label',
+    descriptionKey: 'general.themePreset.presets.mulberry.desc',
     swatches: ['#18181b', '#71717a', '#fafafa'],
     preview: {
       light: {
@@ -45,7 +143,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         accent: '#fafafa',
         accentSoft: '#303030',
         text: '#fafafa'
-      },
+      }
     },
     cssVars: {
       light: {
@@ -81,6 +179,47 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent-foreground': '#18181b',
         '--sidebar-border': '#d9dbe2',
         '--sidebar-ring': '#a1a1aa',
+        '--workspace-titlebar-bg': '#ffffff',
+        '--workspace-titlebar-border': '#e6e6ea',
+        '--workspace-titlebar-button-hover': '#f0f0f2',
+        '--workspace-titlebar-toolgroup-bg': '#f7f7f8',
+        '--workspace-titlebar-toolgroup-border': '#dedee3',
+        '--workspace-titlebar-toolbutton-hover': '#ededf0',
+        '--workspace-titlebar-toolbutton-active': '#e4e5e9',
+        '--workspace-sidebar-divider': '#d9dbe2',
+        '--workspace-sidebar-section-border': '#e0e1e6',
+        '--workspace-sidebar-row-hover-bg': '#e8e9ed',
+        '--workspace-sidebar-row-hover-border': '#d8dae1',
+        '--workspace-sidebar-row-active-bg': '#dedfe5',
+        '--workspace-sidebar-row-active-border': '#cfd2da',
+        '--workspace-sidebar-row-active-shadow': '0 10px 18px -16px rgba(24, 24, 27, 0.12)',
+        '--activity-card-bg': '#ffffff',
+        '--activity-card-border': '#dedee3',
+        '--activity-card-divider': '#ececf0',
+        '--activity-card-header-hover': '#f0f0f2',
+        '--activity-card-shadow': '0 14px 28px -22px rgba(24, 24, 27, 0.12)',
+        '--composer-shell-top': '#ffffff',
+        '--composer-shell-bottom': '#ffffff',
+        '--composer-shell-border': '#dedee3',
+        '--composer-shell-border-focus': 'color-mix(in srgb, #a1a1aa 28%, #dedee3)',
+        '--composer-shell-shadow':
+          '0 14px 30px -24px rgba(24, 24, 27, 0.12), 0 1px 2px rgba(24, 24, 27, 0.06)',
+        '--composer-shell-shadow-focus':
+          '0 18px 34px -24px rgba(24, 24, 27, 0.14), 0 0 0 3px rgba(161, 161, 170, 0.12)',
+        '--composer-toolbar-border': '#ededf0',
+        '--composer-panel-bg': '#ffffff',
+        '--composer-panel-border': '#dedee3',
+        '--composer-panel-shadow':
+          '0 20px 36px -28px rgba(24, 24, 27, 0.12), 0 1px 2px rgba(24, 24, 27, 0.06)',
+        '--composer-control-bg-hover': '#f0f0f2',
+        '--composer-control-active-text': '#09090b',
+        '--composer-send-start': '#18181b',
+        '--composer-send-end': '#18181b',
+        '--composer-send-foreground': '#fafafa',
+        '--composer-chip-border': '#dedee3',
+        '--composer-chip-text': '#52525b',
+        '--composer-chip-hover': '#f0f0f2',
+        '--composer-drop-bg': '#e8e9ed'
       },
       dark: {
         '--background': '#191919',
@@ -115,13 +254,190 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent-foreground': '#fafafa',
         '--sidebar-border': '#303030',
         '--sidebar-ring': '#71717a',
+        '--workspace-titlebar-bg': '#191919',
+        '--workspace-titlebar-border': '#303030',
+        '--workspace-titlebar-button-hover': '#303030',
+        '--workspace-titlebar-toolgroup-bg': '#242424',
+        '--workspace-titlebar-toolgroup-border': '#3a3a3a',
+        '--workspace-titlebar-toolbutton-hover': '#303030',
+        '--workspace-titlebar-toolbutton-active': '#3a3a3a',
+        '--workspace-sidebar-divider': '#303030',
+        '--workspace-sidebar-section-border': '#303030',
+        '--workspace-sidebar-row-hover-bg': '#303030',
+        '--workspace-sidebar-row-hover-border': '#3a3a3a',
+        '--workspace-sidebar-row-active-bg': '#3a3a3a',
+        '--workspace-sidebar-row-active-border': '#4a4a4a',
+        '--workspace-sidebar-row-active-shadow': '0 14px 24px -22px rgba(0, 0, 0, 0.32)',
+        '--activity-card-bg': '#242424',
+        '--activity-card-border': '#3a3a3a',
+        '--activity-card-divider': '#303030',
+        '--activity-card-header-hover': '#303030',
+        '--activity-card-shadow': '0 18px 32px -24px rgba(0, 0, 0, 0.36)',
+        '--composer-shell-top': '#303030',
+        '--composer-shell-bottom': '#303030',
+        '--composer-shell-border': '#3a3a3a',
+        '--composer-shell-border-focus': 'color-mix(in srgb, #71717a 28%, #3a3a3a)',
+        '--composer-shell-shadow':
+          '0 18px 32px -24px rgba(0, 0, 0, 0.34), 0 1px 2px rgba(0, 0, 0, 0.2)',
+        '--composer-shell-shadow-focus':
+          '0 22px 36px -24px rgba(0, 0, 0, 0.38), 0 0 0 3px rgba(113, 113, 122, 0.12)',
+        '--composer-toolbar-border': '#3a3a3a',
+        '--composer-panel-bg': '#303030',
+        '--composer-panel-border': '#3a3a3a',
+        '--composer-panel-shadow':
+          '0 22px 40px -28px rgba(0, 0, 0, 0.42), 0 1px 2px rgba(0, 0, 0, 0.22)',
+        '--composer-control-bg-hover': '#3a3a3a',
+        '--composer-control-active-text': '#fafafa',
+        '--composer-send-start': '#fafafa',
+        '--composer-send-end': '#fafafa',
+        '--composer-send-foreground': '#18181b',
+        '--composer-chip-border': '#3a3a3a',
+        '--composer-chip-text': '#d4d4d8',
+        '--composer-chip-hover': '#3a3a3a',
+        '--composer-drop-bg': '#3a3a3a'
+      }
+    },
+    terminal: {
+      light: createTerminalTheme({
+        background: '#ffffff',
+        foreground: '#09090b',
+        selectionBackground: 'rgba(24, 24, 27, 0.12)',
+        cursor: '#18181b',
+        black: '#09090b',
+        red: '#ef4444',
+        green: '#22c55e',
+        yellow: '#eab308',
+        blue: '#3b82f6',
+        magenta: '#a855f7',
+        cyan: '#06b6d4',
+        white: '#e4e4e7',
+        brightBlack: '#71717a',
+        brightRed: '#f87171',
+        brightGreen: '#4ade80',
+        brightYellow: '#facc15',
+        brightBlue: '#60a5fa',
+        brightMagenta: '#c084fc',
+        brightCyan: '#22d3ee',
+        brightWhite: '#ffffff'
+      }),
+      dark: createTerminalTheme({
+        background: '#09090b',
+        foreground: '#fafafa',
+        selectionBackground: 'rgba(250, 250, 250, 0.16)',
+        cursor: '#fafafa',
+        black: '#09090b',
+        red: '#f87171',
+        green: '#4ade80',
+        yellow: '#facc15',
+        blue: '#60a5fa',
+        magenta: '#c084fc',
+        cyan: '#22d3ee',
+        white: '#fafafa',
+        brightBlack: '#71717a',
+        brightRed: '#fca5a5',
+        brightGreen: '#86efac',
+        brightYellow: '#fde047',
+        brightBlue: '#93c5fd',
+        brightMagenta: '#d8b4fe',
+        brightCyan: '#67e8f9',
+        brightWhite: '#ffffff'
+      })
+    },
+    ssh: {
+      light: {
+        libraryFrameStart: '#ffffff',
+        libraryFrameEnd: '#f7f7f8',
+        libraryBorder: '#e6e6ea',
+        libraryText: '#18181b',
+        connectFrame: '#fafafa',
+        connectBorder: '#e4e4e7',
+        connectText: '#52525b',
+        terminalFrame: '#18181b',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#fafafa',
+        canvas: '#fafafa',
+        canvasSubtle: '#ffffff',
+        terminalCanvas: '#ffffff',
+        panel: '#18181b',
+        panelStrong: '#09090b',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#ffffff',
+        surfaceStrong: '#fafafa',
+        text: '#09090b',
+        muted: '#71717a',
+        accent: '#18181b',
+        accentSoft: '#f4f4f5',
+        accentContrast: '#fafafa',
+        success: '#16a34a',
+        successSoft: '#f0fdf4',
+        warning: '#ca8a04',
+        warningSoft: '#fefce8',
+        danger: '#dc2626',
+        dangerSoft: '#fef2f2',
+        badge: '#18181b',
+        libraryPill: '#f4f4f5',
+        libraryPillActive: '#e4e4e7',
+        libraryPillText: '#52525b',
+        libraryPillActiveText: '#18181b',
+        connectPill: '#f4f4f5',
+        connectPillActive: '#e4e4e7',
+        connectPillText: '#52525b',
+        connectPillActiveText: '#18181b',
+        terminalPill: 'rgba(255,255,255,0.08)',
+        terminalPillActive: '#27272a',
+        terminalPillText: '#e4e4e7',
+        terminalPillActiveText: '#fafafa'
       },
+      dark: {
+        libraryFrameStart: '#09090b',
+        libraryFrameEnd: '#18181b',
+        libraryBorder: 'rgba(255,255,255,0.08)',
+        libraryText: '#fafafa',
+        connectFrame: '#09090b',
+        connectBorder: '#27272a',
+        connectText: '#a1a1aa',
+        terminalFrame: '#09090b',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#fafafa',
+        canvas: '#09090b',
+        canvasSubtle: '#111113',
+        terminalCanvas: '#09090b',
+        panel: '#18181b',
+        panelStrong: '#111113',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#18181b',
+        surfaceStrong: '#202024',
+        text: '#fafafa',
+        muted: '#a1a1aa',
+        accent: '#fafafa',
+        accentSoft: '#27272a',
+        accentContrast: '#18181b',
+        success: '#4ade80',
+        successSoft: '#052e16',
+        warning: '#facc15',
+        warningSoft: '#422006',
+        danger: '#f87171',
+        dangerSoft: '#450a0a',
+        badge: '#fafafa',
+        libraryPill: 'rgba(255,255,255,0.08)',
+        libraryPillActive: 'rgba(255,255,255,0.14)',
+        libraryPillText: '#e4e4e7',
+        libraryPillActiveText: '#ffffff',
+        connectPill: '#18181b',
+        connectPillActive: '#27272a',
+        connectPillText: '#a1a1aa',
+        connectPillActiveText: '#fafafa',
+        terminalPill: 'rgba(255,255,255,0.08)',
+        terminalPillActive: '#27272a',
+        terminalPillText: '#e4e4e7',
+        terminalPillActiveText: '#fafafa'
+      }
     }
   },
   studio: {
     id: 'studio',
-    label: '远航蓝',
-    description: '蓝灰工作台配色，适合长时间编码、会话管理和主机维护',
+    labelKey: 'general.themePreset.presets.studio.label',
+    descriptionKey: 'general.themePreset.presets.studio.desc',
     swatches: ['#3558e8', '#7aa7ff', '#f08f61'],
     preview: {
       light: {
@@ -139,7 +455,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         accent: '#79a6ff',
         accentSoft: '#293650',
         text: '#f4f7ff'
-      },
+      }
     },
     cssVars: {
       light: {
@@ -174,6 +490,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#ebf1ff',
         '--sidebar-accent-foreground': '#20305b',
         '--sidebar-border': '#d6dfec',
+        '--sidebar-ring': '#6f84ff'
       },
       dark: {
         '--background': '#101726',
@@ -207,13 +524,150 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#233049',
         '--sidebar-accent-foreground': '#f4f7ff',
         '--sidebar-border': '#33435f',
+        '--sidebar-ring': '#7aa7ff'
+      }
+    },
+    terminal: {
+      light: createTerminalTheme({
+        background: '#f7faff',
+        foreground: '#1d2740',
+        selectionBackground: 'rgba(53, 88, 232, 0.18)',
+        cursor: '#3558e8',
+        black: '#1f2740',
+        red: '#cc4e62',
+        green: '#1f8c57',
+        yellow: '#c98517',
+        blue: '#3558e8',
+        magenta: '#8d63d2',
+        cyan: '#0287a0',
+        white: '#dfe7f7',
+        brightBlack: '#7f8aa5',
+        brightRed: '#e26d81',
+        brightGreen: '#31a36c',
+        brightYellow: '#dda13a',
+        brightBlue: '#5877f0',
+        brightMagenta: '#a989df',
+        brightCyan: '#26a8c0',
+        brightWhite: '#ffffff'
+      }),
+      dark: createTerminalTheme({
+        background: '#151b30',
+        foreground: '#d7e1ff',
+        selectionBackground: 'rgba(121, 157, 255, 0.22)',
+        cursor: '#dbfff0',
+        black: '#151b30',
+        red: '#ff7a93',
+        green: '#35e0a1',
+        yellow: '#f0c56e',
+        blue: '#75a7ff',
+        magenta: '#d4a8ff',
+        cyan: '#7be4f6',
+        white: '#d7e1ff',
+        brightBlack: '#7282a1',
+        brightRed: '#ff9bb0',
+        brightGreen: '#5ff1ba',
+        brightYellow: '#ffd98d',
+        brightBlue: '#93bcff',
+        brightMagenta: '#e1c0ff',
+        brightCyan: '#9df0ff',
+        brightWhite: '#f4f7ff'
+      })
+    },
+    ssh: {
+      light: {
+        libraryFrameStart: '#f8fbff',
+        libraryFrameEnd: '#eef2f6',
+        libraryBorder: '#d6dfec',
+        libraryText: '#172033',
+        connectFrame: '#f0f3f6',
+        connectBorder: '#d8dee6',
+        connectText: '#5b6678',
+        terminalFrame: '#191f35',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#dbe6ff',
+        canvas: '#eef2f6',
+        canvasSubtle: '#f6f8fb',
+        terminalCanvas: '#f7faff',
+        panel: '#161d33',
+        panelStrong: '#11172a',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#ffffff',
+        surfaceStrong: '#f5f8fb',
+        text: '#22304a',
+        muted: '#8291a6',
+        accent: '#2f8cf3',
+        accentSoft: '#deebff',
+        accentContrast: '#ffffff',
+        success: '#1f8c57',
+        successSoft: '#ebf8ef',
+        warning: '#c78413',
+        warningSoft: '#fff4dc',
+        danger: '#d25555',
+        dangerSoft: '#fff0f0',
+        badge: '#2f8cf3',
+        libraryPill: '#e9eef7',
+        libraryPillActive: '#dfe8ff',
+        libraryPillText: '#506078',
+        libraryPillActiveText: '#22315a',
+        connectPill: '#dfe5ea',
+        connectPillActive: '#cfd5dd',
+        connectPillText: '#6a7688',
+        connectPillActiveText: '#2f3851',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#173d34',
+        terminalPillText: '#b7c4e5',
+        terminalPillActiveText: '#4ef0a8'
       },
+      dark: {
+        libraryFrameStart: '#18213a',
+        libraryFrameEnd: '#252340',
+        libraryBorder: 'rgba(255,255,255,0.1)',
+        libraryText: '#eef4ff',
+        connectFrame: '#121927',
+        connectBorder: '#243046',
+        connectText: '#9daccc',
+        terminalFrame: '#111828',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#e7eeff',
+        canvas: '#0f1524',
+        canvasSubtle: '#12192a',
+        terminalCanvas: '#0b1220',
+        panel: '#11182a',
+        panelStrong: '#0c1322',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#171f31',
+        surfaceStrong: '#1c2538',
+        text: '#edf3ff',
+        muted: '#97a5c4',
+        accent: '#79a6ff',
+        accentSoft: '#203763',
+        accentContrast: '#0b1220',
+        success: '#5de0ad',
+        successSoft: '#14251f',
+        warning: '#f0c56e',
+        warningSoft: '#2a2314',
+        danger: '#ff90a4',
+        dangerSoft: '#281620',
+        badge: '#79a6ff',
+        libraryPill: 'rgba(255,255,255,0.08)',
+        libraryPillActive: 'rgba(255,255,255,0.14)',
+        libraryPillText: '#cdd7ef',
+        libraryPillActiveText: '#ffffff',
+        connectPill: '#182233',
+        connectPillActive: '#23324a',
+        connectPillText: '#9daccc',
+        connectPillActiveText: '#f4f7ff',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#1b3c39',
+        terminalPillText: '#c6d2eb',
+        terminalPillActiveText: '#7cf0b6'
+      }
     }
   },
   graphite: {
     id: 'graphite',
-    label: '石墨工具',
-    description: '中性石墨配色，减少干扰，突出专业工具的层级和边界',
+    labelKey: 'general.themePreset.presets.graphite.label',
+    descriptionKey: 'general.themePreset.presets.graphite.desc',
     swatches: ['#2a7b73', '#7fd4c9', '#7b8798'],
     preview: {
       light: {
@@ -231,7 +685,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         accent: '#7cd8cb',
         accentSoft: '#313840',
         text: '#f5f8f7'
-      },
+      }
     },
     cssVars: {
       light: {
@@ -266,6 +720,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#edf2f2',
         '--sidebar-accent-foreground': '#213536',
         '--sidebar-border': '#d5dbdc',
+        '--sidebar-ring': '#68bfb2'
       },
       dark: {
         '--background': '#171b20',
@@ -300,13 +755,190 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent-foreground': '#f5f8f7',
         '--sidebar-border': '#414a50',
         '--sidebar-ring': '#86ddd1',
+        '--workspace-titlebar-bg': '#1d232a',
+        '--workspace-titlebar-border': '#343c40',
+        '--workspace-titlebar-button-hover': '#2a3035',
+        '--workspace-titlebar-toolgroup-bg': '#20262b',
+        '--workspace-titlebar-toolgroup-border': '#394246',
+        '--workspace-titlebar-toolbutton-hover': '#30373c',
+        '--workspace-titlebar-toolbutton-active': '#394145',
+        '--workspace-sidebar-divider': '#343c40',
+        '--workspace-sidebar-section-border': '#31383d',
+        '--workspace-sidebar-row-hover-bg': '#2b3136',
+        '--workspace-sidebar-row-hover-border': '#3b4449',
+        '--workspace-sidebar-row-active-bg': '#343c41',
+        '--workspace-sidebar-row-active-border': '#4a565c',
+        '--workspace-sidebar-row-active-shadow': '0 14px 24px -22px rgba(0, 0, 0, 0.38)',
+        '--activity-card-bg': '#282f37',
+        '--activity-card-border': '#394246',
+        '--activity-card-divider': '#333c40',
+        '--activity-card-header-hover': '#2d3439',
+        '--activity-card-shadow': '0 18px 32px -24px rgba(0, 0, 0, 0.42)',
+        '--composer-shell-top': '#2a3138',
+        '--composer-shell-bottom': '#232931',
+        '--composer-shell-border': '#3b4448',
+        '--composer-shell-border-focus': 'color-mix(in srgb, #86ddd1 26%, #3b4448)',
+        '--composer-shell-shadow':
+          '0 18px 32px -24px rgba(0, 0, 0, 0.44), 0 1px 2px rgba(0, 0, 0, 0.26)',
+        '--composer-shell-shadow-focus':
+          '0 22px 36px -24px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(134, 221, 209, 0.12)',
+        '--composer-toolbar-border': '#394246',
+        '--composer-panel-bg': '#303840',
+        '--composer-panel-border': '#3b4448',
+        '--composer-panel-shadow':
+          '0 22px 40px -28px rgba(0, 0, 0, 0.52), 0 1px 2px rgba(0, 0, 0, 0.28)',
+        '--composer-control-bg-hover': '#313840',
+        '--composer-control-active-text': '#f5f8f7',
+        '--composer-send-start': '#f1f5f4',
+        '--composer-send-end': '#f1f5f4',
+        '--composer-send-foreground': '#182023',
+        '--composer-chip-border': '#394246',
+        '--composer-chip-text': '#c1cbca',
+        '--composer-chip-hover': '#2b3136',
+        '--composer-drop-bg': '#374145'
+      }
+    },
+    terminal: {
+      light: createTerminalTheme({
+        background: '#f5f7f7',
+        foreground: '#1b2124',
+        selectionBackground: 'rgba(42, 123, 115, 0.18)',
+        cursor: '#2a7b73',
+        black: '#1b2124',
+        red: '#c85656',
+        green: '#1f8b76',
+        yellow: '#b98a3d',
+        blue: '#5678ad',
+        magenta: '#7f6b9d',
+        cyan: '#328d86',
+        white: '#dfe6e6',
+        brightBlack: '#768186',
+        brightRed: '#d96b6b',
+        brightGreen: '#36a691',
+        brightYellow: '#caa253',
+        brightBlue: '#6f90c6',
+        brightMagenta: '#9580b3',
+        brightCyan: '#4da9a2',
+        brightWhite: '#ffffff'
+      }),
+      dark: createTerminalTheme({
+        background: '#171c20',
+        foreground: '#e8efee',
+        selectionBackground: 'rgba(124, 216, 203, 0.22)',
+        cursor: '#e8efee',
+        black: '#171c20',
+        red: '#ff9494',
+        green: '#7cd8cb',
+        yellow: '#e4c077',
+        blue: '#93b1ff',
+        magenta: '#beabd8',
+        cyan: '#85e4d8',
+        white: '#e8efee',
+        brightBlack: '#879396',
+        brightRed: '#ffb0b0',
+        brightGreen: '#97e8de',
+        brightYellow: '#f2d596',
+        brightBlue: '#adc5ff',
+        brightMagenta: '#cebce4',
+        brightCyan: '#a7efe7',
+        brightWhite: '#f8fcfb'
+      })
+    },
+    ssh: {
+      light: {
+        libraryFrameStart: '#f7f8f8',
+        libraryFrameEnd: '#eff2f2',
+        libraryBorder: '#d5dbdc',
+        libraryText: '#17191d',
+        connectFrame: '#eff2f2',
+        connectBorder: '#d7dddd',
+        connectText: '#5e6668',
+        terminalFrame: '#1a2023',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#dbe4e3',
+        canvas: '#eff2f2',
+        canvasSubtle: '#f6f8f8',
+        terminalCanvas: '#f5f7f7',
+        panel: '#161d20',
+        panelStrong: '#11171a',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#ffffff',
+        surfaceStrong: '#f5f7f7',
+        text: '#1f2529',
+        muted: '#7b878d',
+        accent: '#2a7b73',
+        accentSoft: '#dcecea',
+        accentContrast: '#ffffff',
+        success: '#287a64',
+        successSoft: '#e8f7f0',
+        warning: '#b98a3d',
+        warningSoft: '#fff5df',
+        danger: '#c85656',
+        dangerSoft: '#fff1f1',
+        badge: '#2a7b73',
+        libraryPill: '#e8ecec',
+        libraryPillActive: '#dcecea',
+        libraryPillText: '#5f6a6d',
+        libraryPillActiveText: '#1c3131',
+        connectPill: '#e2e7e7',
+        connectPillActive: '#d4dbdb',
+        connectPillText: '#657072',
+        connectPillActiveText: '#263133',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#1f3936',
+        terminalPillText: '#cbd7d6',
+        terminalPillActiveText: '#8ce8db'
       },
+      dark: {
+        libraryFrameStart: '#20262b',
+        libraryFrameEnd: '#2b3339',
+        libraryBorder: 'rgba(255,255,255,0.1)',
+        libraryText: '#f5f8f7',
+        connectFrame: '#171b1f',
+        connectBorder: '#354045',
+        connectText: '#aab5b7',
+        terminalFrame: '#161b1f',
+        terminalBorder: 'rgba(255,255,255,0.1)',
+        terminalText: '#eef5f4',
+        canvas: '#171b20',
+        canvasSubtle: '#1b2025',
+        terminalCanvas: '#151a1d',
+        panel: '#20262b',
+        panelStrong: '#191f23',
+        panelBorder: 'rgba(255,255,255,0.1)',
+        surface: '#272d32',
+        surfaceStrong: '#2f363c',
+        text: '#eef5f4',
+        muted: '#a5b0b2',
+        accent: '#7cd8cb',
+        accentSoft: '#223c39',
+        accentContrast: '#0d1617',
+        success: '#88e5ce',
+        successSoft: '#152824',
+        warning: '#e4c077',
+        warningSoft: '#2d2618',
+        danger: '#ffabab',
+        dangerSoft: '#311b1b',
+        badge: '#7cd8cb',
+        libraryPill: 'rgba(255,255,255,0.1)',
+        libraryPillActive: 'rgba(255,255,255,0.16)',
+        libraryPillText: '#dbe5e4',
+        libraryPillActiveText: '#ffffff',
+        connectPill: '#21282c',
+        connectPillActive: '#2d383d',
+        connectPillText: '#b0bbbd',
+        connectPillActiveText: '#f5f8f7',
+        terminalPill: 'rgba(255,255,255,0.08)',
+        terminalPillActive: '#294743',
+        terminalPillText: '#d7e3e2',
+        terminalPillActiveText: '#a9f3e8'
+      }
     }
   },
   ocean: {
     id: 'ocean',
-    label: '深海青',
-    description: '青蓝纵深配色，让终端、状态面板和文件区更有空间感',
+    labelKey: 'general.themePreset.presets.ocean.label',
+    descriptionKey: 'general.themePreset.presets.ocean.desc',
     swatches: ['#0f8aa6', '#4cc9f0', '#8be3ff'],
     preview: {
       light: {
@@ -324,7 +956,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         accent: '#4cc9f0',
         accentSoft: '#183342',
         text: '#eefbff'
-      },
+      }
     },
     cssVars: {
       light: {
@@ -359,6 +991,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#e2f5f8',
         '--sidebar-accent-foreground': '#123844',
         '--sidebar-border': '#c9e1e7',
+        '--sidebar-ring': '#4cbad8'
       },
       dark: {
         '--background': '#081823',
@@ -392,13 +1025,150 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#14303d',
         '--sidebar-accent-foreground': '#eefbff',
         '--sidebar-border': '#254553',
+        '--sidebar-ring': '#72d9ff'
+      }
+    },
+    terminal: {
+      light: createTerminalTheme({
+        background: '#f4fdff',
+        foreground: '#17303a',
+        selectionBackground: 'rgba(15, 138, 166, 0.18)',
+        cursor: '#0f8aa6',
+        black: '#17303a',
+        red: '#d66166',
+        green: '#1fa87d',
+        yellow: '#c99841',
+        blue: '#147db2',
+        magenta: '#5d7fd6',
+        cyan: '#0f8aa6',
+        white: '#dbeff4',
+        brightBlack: '#6c8a95',
+        brightRed: '#ea7a7a',
+        brightGreen: '#36c49a',
+        brightYellow: '#deae5d',
+        brightBlue: '#329ad0',
+        brightMagenta: '#7798eb',
+        brightCyan: '#34afd2',
+        brightWhite: '#ffffff'
+      }),
+      dark: createTerminalTheme({
+        background: '#0b1a23',
+        foreground: '#def7ff',
+        selectionBackground: 'rgba(76, 201, 240, 0.18)',
+        cursor: '#bdf3ff',
+        black: '#0b1a23',
+        red: '#ff8f90',
+        green: '#57e1af',
+        yellow: '#ffd279',
+        blue: '#71c9ff',
+        magenta: '#93b3ff',
+        cyan: '#66e3ff',
+        white: '#def7ff',
+        brightBlack: '#6f92a2',
+        brightRed: '#ffb1b2',
+        brightGreen: '#80f0c7',
+        brightYellow: '#ffe39d',
+        brightBlue: '#93d7ff',
+        brightMagenta: '#b1c6ff',
+        brightCyan: '#8feeff',
+        brightWhite: '#f3fdff'
+      })
+    },
+    ssh: {
+      light: {
+        libraryFrameStart: '#f5fbfc',
+        libraryFrameEnd: '#eef7f8',
+        libraryBorder: '#c9e1e7',
+        libraryText: '#13232a',
+        connectFrame: '#eef7f8',
+        connectBorder: '#d2e3e7',
+        connectText: '#5d747d',
+        terminalFrame: '#0d2230',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#ddf6ff',
+        canvas: '#eef7f8',
+        canvasSubtle: '#f6fbfc',
+        terminalCanvas: '#f4fdff',
+        panel: '#102431',
+        panelStrong: '#0b1a23',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#ffffff',
+        surfaceStrong: '#f4fbfc',
+        text: '#18303a',
+        muted: '#7c939c',
+        accent: '#0f8aa6',
+        accentSoft: '#d7f0f6',
+        accentContrast: '#ffffff',
+        success: '#1c996f',
+        successSoft: '#e7f8f0',
+        warning: '#cc9540',
+        warningSoft: '#fff5e1',
+        danger: '#d66166',
+        dangerSoft: '#fff1f1',
+        badge: '#0f8aa6',
+        libraryPill: '#dff0f4',
+        libraryPillActive: '#d7f0f6',
+        libraryPillText: '#5c7580',
+        libraryPillActiveText: '#123844',
+        connectPill: '#dfecef',
+        connectPillActive: '#cfdee2',
+        connectPillText: '#60767d',
+        connectPillActiveText: '#17313b',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#15424b',
+        terminalPillText: '#c7e2eb',
+        terminalPillActiveText: '#84f0ff'
       },
+      dark: {
+        libraryFrameStart: '#08202d',
+        libraryFrameEnd: '#0c3042',
+        libraryBorder: 'rgba(255,255,255,0.08)',
+        libraryText: '#eefbff',
+        connectFrame: '#081823',
+        connectBorder: '#183443',
+        connectText: '#98b7c3',
+        terminalFrame: '#08151d',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#eefbff',
+        canvas: '#081823',
+        canvasSubtle: '#0b1b25',
+        terminalCanvas: '#07141c',
+        panel: '#0d202b',
+        panelStrong: '#081823',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#102632',
+        surfaceStrong: '#14303d',
+        text: '#eefbff',
+        muted: '#93b1bd',
+        accent: '#4cc9f0',
+        accentSoft: '#153b48',
+        accentContrast: '#07202a',
+        success: '#6ae1b6',
+        successSoft: '#11241d',
+        warning: '#ffd279',
+        warningSoft: '#2a2213',
+        danger: '#ff9fa2',
+        dangerSoft: '#281618',
+        badge: '#4cc9f0',
+        libraryPill: 'rgba(255,255,255,0.08)',
+        libraryPillActive: 'rgba(255,255,255,0.14)',
+        libraryPillText: '#d4eff6',
+        libraryPillActiveText: '#ffffff',
+        connectPill: '#102531',
+        connectPillActive: '#173646',
+        connectPillText: '#9cb7c1',
+        connectPillActiveText: '#eefbff',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#15444d',
+        terminalPillText: '#d3edf5',
+        terminalPillActiveText: '#90f3ff'
+      }
     }
   },
   forest: {
     id: 'forest',
-    label: '松林绿',
-    description: '柔和绿色配色，适合持续盯着终端、日志和远端任务',
+    labelKey: 'general.themePreset.presets.forest.label',
+    descriptionKey: 'general.themePreset.presets.forest.desc',
     swatches: ['#2f8b57', '#6fd39a', '#98e0a0'],
     preview: {
       light: {
@@ -416,7 +1186,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         accent: '#6fd39a',
         accentSoft: '#1d3025',
         text: '#effbf3'
-      },
+      }
     },
     cssVars: {
       light: {
@@ -451,6 +1221,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#edf5ef',
         '--sidebar-accent-foreground': '#1d3a28',
         '--sidebar-border': '#d6e3d8',
+        '--sidebar-ring': '#59b87d'
       },
       dark: {
         '--background': '#0d1913',
@@ -484,13 +1255,150 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#1a2c21',
         '--sidebar-accent-foreground': '#effbf3',
         '--sidebar-border': '#2e4d3b',
+        '--sidebar-ring': '#88e2af'
+      }
+    },
+    terminal: {
+      light: createTerminalTheme({
+        background: '#f7fcf8',
+        foreground: '#1c2a22',
+        selectionBackground: 'rgba(47, 139, 87, 0.16)',
+        cursor: '#2f8b57',
+        black: '#1c2a22',
+        red: '#c86464',
+        green: '#2f8b57',
+        yellow: '#bf963d',
+        blue: '#508f70',
+        magenta: '#758b65',
+        cyan: '#1b9b84',
+        white: '#dfefe4',
+        brightBlack: '#74837a',
+        brightRed: '#dc7c7c',
+        brightGreen: '#48a56f',
+        brightYellow: '#d3ab56',
+        brightBlue: '#6ca98a',
+        brightMagenta: '#8aa17a',
+        brightCyan: '#39b29c',
+        brightWhite: '#ffffff'
+      }),
+      dark: createTerminalTheme({
+        background: '#0d1712',
+        foreground: '#e1f5e6',
+        selectionBackground: 'rgba(111, 211, 154, 0.18)',
+        cursor: '#c3f6d6',
+        black: '#0d1712',
+        red: '#ff9d9d',
+        green: '#6fd39a',
+        yellow: '#ebc777',
+        blue: '#8bd3ae',
+        magenta: '#b8cc7a',
+        cyan: '#73e3c9',
+        white: '#e1f5e6',
+        brightBlack: '#6d8976',
+        brightRed: '#ffbdbd',
+        brightGreen: '#92e3b4',
+        brightYellow: '#f4d996',
+        brightBlue: '#addfc0',
+        brightMagenta: '#cddd9a',
+        brightCyan: '#97efdb',
+        brightWhite: '#f5fdf7'
+      })
+    },
+    ssh: {
+      light: {
+        libraryFrameStart: '#f8fbf8',
+        libraryFrameEnd: '#f2f7f2',
+        libraryBorder: '#d6e3d8',
+        libraryText: '#16221b',
+        connectFrame: '#f2f7f2',
+        connectBorder: '#d7e3d9',
+        connectText: '#607368',
+        terminalFrame: '#13231b',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#e4f7eb',
+        canvas: '#f2f7f2',
+        canvasSubtle: '#f8fbf8',
+        terminalCanvas: '#f7fcf8',
+        panel: '#12231b',
+        panelStrong: '#0d1712',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#ffffff',
+        surfaceStrong: '#f5faf6',
+        text: '#1d2a22',
+        muted: '#7b8d82',
+        accent: '#2f8b57',
+        accentSoft: '#e1f1e6',
+        accentContrast: '#ffffff',
+        success: '#2f8b57',
+        successSoft: '#e8f8ed',
+        warning: '#bf963d',
+        warningSoft: '#fff5e0',
+        danger: '#c86464',
+        dangerSoft: '#fff1f1',
+        badge: '#2f8b57',
+        libraryPill: '#e5efe7',
+        libraryPillActive: '#e1f1e6',
+        libraryPillText: '#67796d',
+        libraryPillActiveText: '#1d3a28',
+        connectPill: '#e3ebe5',
+        connectPillActive: '#d5dfd7',
+        connectPillText: '#63766a',
+        connectPillActiveText: '#20332a',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#1e402c',
+        terminalPillText: '#d4e7da',
+        terminalPillActiveText: '#9ef0bd'
       },
+      dark: {
+        libraryFrameStart: '#12231b',
+        libraryFrameEnd: '#173227',
+        libraryBorder: 'rgba(255,255,255,0.08)',
+        libraryText: '#effcf3',
+        connectFrame: '#0d1913',
+        connectBorder: '#20392d',
+        connectText: '#98af9e',
+        terminalFrame: '#0d1712',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#effcf3',
+        canvas: '#0d1913',
+        canvasSubtle: '#101c15',
+        terminalCanvas: '#0b1410',
+        panel: '#11201a',
+        panelStrong: '#0d1913',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#15241c',
+        surfaceStrong: '#193027',
+        text: '#effcf3',
+        muted: '#93aa99',
+        accent: '#6fd39a',
+        accentSoft: '#173b28',
+        accentContrast: '#0b1d13',
+        success: '#86e3ad',
+        successSoft: '#11231b',
+        warning: '#ebc777',
+        warningSoft: '#2a2415',
+        danger: '#ffaaaa',
+        dangerSoft: '#291717',
+        badge: '#6fd39a',
+        libraryPill: 'rgba(255,255,255,0.08)',
+        libraryPillActive: 'rgba(255,255,255,0.14)',
+        libraryPillText: '#d7e8dc',
+        libraryPillActiveText: '#ffffff',
+        connectPill: '#16271e',
+        connectPillActive: '#20372a',
+        connectPillText: '#9eb5a4',
+        connectPillActiveText: '#effcf3',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#1f412e',
+        terminalPillText: '#daeade',
+        terminalPillActiveText: '#a9f3c5'
+      }
     }
   },
   dawn: {
     id: 'dawn',
-    label: '暖曦橙',
-    description: '暖铜橙配色，浅色更有温度，深色更沉稳',
+    labelKey: 'general.themePreset.presets.dawn.label',
+    descriptionKey: 'general.themePreset.presets.dawn.desc',
     swatches: ['#ca6a33', '#ffb27d', '#ffd8a8'],
     preview: {
       light: {
@@ -508,7 +1416,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         accent: '#ffb27d',
         accentSoft: '#3f291c',
         text: '#fff4eb'
-      },
+      }
     },
     cssVars: {
       light: {
@@ -543,6 +1451,7 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#fbede4',
         '--sidebar-accent-foreground': '#5f3824',
         '--sidebar-border': '#ead6cb',
+        '--sidebar-ring': '#e99568'
       },
       dark: {
         '--background': '#22140e',
@@ -576,14 +1485,158 @@ const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {
         '--sidebar-accent': '#392519',
         '--sidebar-accent-foreground': '#fff4eb',
         '--sidebar-border': '#593924',
+        '--sidebar-ring': '#ffbf90'
+      }
+    },
+    terminal: {
+      light: createTerminalTheme({
+        background: '#fffaf6',
+        foreground: '#33221c',
+        selectionBackground: 'rgba(202, 106, 51, 0.16)',
+        cursor: '#ca6a33',
+        black: '#33221c',
+        red: '#cc6258',
+        green: '#7e9b57',
+        yellow: '#cb9547',
+        blue: '#d17d49',
+        magenta: '#9d745b',
+        cyan: '#b8804b',
+        white: '#f2e3da',
+        brightBlack: '#8c7165',
+        brightRed: '#df7b70',
+        brightGreen: '#96b26c',
+        brightYellow: '#ddac60',
+        brightBlue: '#e6915e',
+        brightMagenta: '#b28b73',
+        brightCyan: '#cf9965',
+        brightWhite: '#ffffff'
+      }),
+      dark: createTerminalTheme({
+        background: '#26160f',
+        foreground: '#ffe9d8',
+        selectionBackground: 'rgba(255, 178, 125, 0.18)',
+        cursor: '#ffd8a8',
+        black: '#26160f',
+        red: '#ff9d8b',
+        green: '#9fd17c',
+        yellow: '#ffd17c',
+        blue: '#ffb27d',
+        magenta: '#d6a07e',
+        cyan: '#ffc18e',
+        white: '#ffe9d8',
+        brightBlack: '#9c7761',
+        brightRed: '#ffb8ab',
+        brightGreen: '#b8e499',
+        brightYellow: '#ffe09c',
+        brightBlue: '#ffc69c',
+        brightMagenta: '#e3b493',
+        brightCyan: '#ffd3ae',
+        brightWhite: '#fff8f2'
+      })
+    },
+    ssh: {
+      light: {
+        libraryFrameStart: '#fdf9f6',
+        libraryFrameEnd: '#f8f2ed',
+        libraryBorder: '#ead6cb',
+        libraryText: '#2b1d19',
+        connectFrame: '#f8f2ed',
+        connectBorder: '#ebdbd1',
+        connectText: '#7b675e',
+        terminalFrame: '#2a1a12',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#ffe8d9',
+        canvas: '#f8f2ed',
+        canvasSubtle: '#fdf9f5',
+        terminalCanvas: '#fffaf6',
+        panel: '#2d1d14',
+        panelStrong: '#26160f',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#ffffff',
+        surfaceStrong: '#fdf7f3',
+        text: '#33231c',
+        muted: '#8d7568',
+        accent: '#ca6a33',
+        accentSoft: '#f9e5da',
+        accentContrast: '#ffffff',
+        success: '#7e9b57',
+        successSoft: '#eef5e5',
+        warning: '#cb9547',
+        warningSoft: '#fff3df',
+        danger: '#cc6258',
+        dangerSoft: '#fff1f0',
+        badge: '#ca6a33',
+        libraryPill: '#f3e8df',
+        libraryPillActive: '#f9e5da',
+        libraryPillText: '#7f665c',
+        libraryPillActiveText: '#5f3824',
+        connectPill: '#efe4dc',
+        connectPillActive: '#e0d3c8',
+        connectPillText: '#7d675b',
+        connectPillActiveText: '#4a3024',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#4b2c1f',
+        terminalPillText: '#f2ddd0',
+        terminalPillActiveText: '#ffd4b0'
       },
+      dark: {
+        libraryFrameStart: '#2d1b13',
+        libraryFrameEnd: '#46291d',
+        libraryBorder: 'rgba(255,255,255,0.08)',
+        libraryText: '#fff4eb',
+        connectFrame: '#22140e',
+        connectBorder: '#4a2d20',
+        connectText: '#d2b29e',
+        terminalFrame: '#1f120d',
+        terminalBorder: 'rgba(255,255,255,0.08)',
+        terminalText: '#fff0e5',
+        canvas: '#22140e',
+        canvasSubtle: '#26160f',
+        terminalCanvas: '#1d110b',
+        panel: '#291810',
+        panelStrong: '#22140e',
+        panelBorder: 'rgba(255,255,255,0.08)',
+        surface: '#312016',
+        surfaceStrong: '#3a261a',
+        text: '#fff4eb',
+        muted: '#d0ae99',
+        accent: '#ffb27d',
+        accentSoft: '#4b2c1f',
+        accentContrast: '#341a0e',
+        success: '#b7d98e',
+        successSoft: '#252113',
+        warning: '#ffd17c',
+        warningSoft: '#332312',
+        danger: '#ffac9f',
+        dangerSoft: '#351815',
+        badge: '#ffb27d',
+        libraryPill: 'rgba(255,255,255,0.08)',
+        libraryPillActive: 'rgba(255,255,255,0.14)',
+        libraryPillText: '#efd8ca',
+        libraryPillActiveText: '#ffffff',
+        connectPill: '#342116',
+        connectPillActive: '#4a2d20',
+        connectPillText: '#e2beaa',
+        connectPillActiveText: '#fff4eb',
+        terminalPill: 'rgba(255,255,255,0.06)',
+        terminalPillActive: '#533122',
+        terminalPillText: '#f2ddcf',
+        terminalPillActiveText: '#ffd9b7'
+      }
     }
-  },
+  }
 }
 
-const APP_THEME_PRESET_IDS: AppThemePreset[] = ['mulberry', 'studio', 'graphite', 'ocean', 'forest', 'dawn']
-export const APP_THEME_PRESETS = APP_THEME_PRESET_IDS.map((id) => PRESET_DEFINITIONS[id])
+const APP_THEME_PRESET_IDS: AppThemePreset[] = [
+  'mulberry',
+  'studio',
+  'graphite',
+  'ocean',
+  'forest',
+  'dawn'
+]
 
+export const APP_THEME_PRESETS = APP_THEME_PRESET_IDS.map((id) => PRESET_DEFINITIONS[id])
 const ALL_THEME_CSS_VAR_KEYS = Array.from(
   new Set(
     APP_THEME_PRESETS.flatMap((preset) =>
@@ -592,12 +1645,26 @@ const ALL_THEME_CSS_VAR_KEYS = Array.from(
   )
 )
 
+export function isAppThemePreset(value: unknown): value is AppThemePreset {
+  return (
+    typeof value === 'string' && Object.prototype.hasOwnProperty.call(PRESET_DEFINITIONS, value)
+  )
+}
+
 export function resolveAppThemeMode(value?: string | null): AppThemeMode {
   return value === 'light' ? 'light' : 'dark'
 }
 
 export function getThemePresetDefinition(preset: AppThemePreset): ThemePresetDefinition {
   return PRESET_DEFINITIONS[preset] ?? PRESET_DEFINITIONS[DEFAULT_APP_THEME_PRESET]
+}
+
+export function getTerminalTheme(preset: AppThemePreset, mode: AppThemeMode): ITheme {
+  return getThemePresetDefinition(preset).terminal[mode]
+}
+
+export function getSshChromePalette(preset: AppThemePreset, mode: AppThemeMode): SshChromePalette {
+  return getThemePresetDefinition(preset).ssh[mode]
 }
 
 export function applyThemePresetCssVars(

@@ -133,3 +133,73 @@ export async function sendImplementPlan(_sessionId: string, _planId: string): Pr
 export async function sendImplementPlanInNewSession(_projectId: string | null, _planId: string): Promise<void> {
   // TODO: implement plan execution in new session
 }
+
+// === Additional exports needed by OpenCowork InputArea ===
+
+export interface PendingSessionMessageItem {
+  id: string
+  sessionId: string
+  role: 'user'
+  content: string
+  createdAt: number
+  draft?: string
+}
+
+export type ManualCompressionResult = 'compressed' | 'skipped' | 'blocked' | 'failed'
+
+const _pendingMessages = new Map<string, PendingSessionMessageItem[]>()
+const _pendingListeners = new Set<() => void>()
+
+export function getPendingSessionMessages(sessionId: string): PendingSessionMessageItem[] {
+  return _pendingMessages.get(sessionId) ?? []
+}
+
+export function isPendingSessionDispatchPaused(_sessionId: string): boolean {
+  return false
+}
+
+export function removePendingSessionMessage(sessionId: string, messageId: string): boolean {
+  const list = _pendingMessages.get(sessionId) ?? []
+  const filtered = list.filter((m) => m.id !== messageId)
+  _pendingMessages.set(sessionId, filtered)
+  _pendingListeners.forEach((fn) => fn())
+  return filtered.length < list.length
+}
+
+export function updatePendingSessionMessageDraft(
+  sessionId: string,
+  messageId: string,
+  draft: string
+): void {
+  const list = _pendingMessages.get(sessionId) ?? []
+  const msg = list.find((m) => m.id === messageId)
+  if (msg) {
+    msg.draft = draft
+    _pendingListeners.forEach((fn) => fn())
+  }
+}
+
+export function quotePendingSessionMessageIntoConversation(
+  _sessionId: string,
+  _messageId: string
+): string | null {
+  return null
+}
+
+export function dispatchNextQueuedMessageForSession(_sessionId: string): boolean {
+  return false
+}
+
+export function hasActiveSessionRunForSession(_sessionId: string): boolean {
+  return false
+}
+
+export function hasPendingSessionMessagesForSession(sessionId: string): boolean {
+  return (_pendingMessages.get(sessionId)?.length ?? 0) > 0
+}
+
+export function resetTeamAutoTrigger(): void {}
+
+export function stopSessionStreaming(sessionId: string): void {
+  abortSession(sessionId)
+}
