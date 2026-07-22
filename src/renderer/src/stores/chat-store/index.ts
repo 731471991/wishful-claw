@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
@@ -8,7 +8,7 @@ import { createProjectSlice, type ProjectSlice } from './project-slice'
 import { createStreamingSlice, type StreamingSlice } from './streaming-slice'
 import type { ChatMessage } from './types'
 
-export type { Session, Project, ChatMessage, SessionMode, CreateSessionOptions, SessionPromptSnapshot } from './types'
+export type { Session, Project, ChatMessage, SessionMode, CreateSessionOptions, SessionPromptSnapshot, ToolCallInfo, SessionModelSelectionMode } from './types'
 export type { SessionSlice } from './session-slice'
 export type { ProjectSlice } from './project-slice'
 export type { StreamingSlice } from './streaming-slice'
@@ -21,6 +21,9 @@ export interface AgentActions {
     messages: Array<{ role: string; content: string }>
     sessionId?: string
     systemPrompt?: string
+    tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
+    workingFolder?: string
+    maxIterations?: number
   }) => Promise<void>
   cancelStream: () => Promise<void>
   handleEnvelope: (envelope: AgentStreamEnvelope) => void
@@ -44,6 +47,12 @@ export const useChatStore = create<ChatStore>()(
 
       const userText = params.messages[params.messages.length - 1]?.content ?? ''
       const now = Date.now()
+      // Generate runId on the renderer side so we can set streamingMessages
+      // BEFORE awaiting the agent/run response. This prevents a race condition
+      // where stream events (including loop_end) arrive before streamingMessages
+      // is populated, causing handleEnvelope to skip processing and leaving
+      // isStreaming stuck forever.
+      const runId = `wc-agent-${now}-${Math.random().toString(36).slice(2, 8)}`
       const userMessage: ChatMessage = {
         id: `user_${now}`,
         role: 'user',
@@ -51,7 +60,7 @@ export const useChatStore = create<ChatStore>()(
         createdAt: now
       }
       const assistantMessage: ChatMessage = {
-        id: `assistant_${now}`,
+        id: runId,
         role: 'assistant',
         text: '',
         thinking: '',
@@ -62,6 +71,10 @@ export const useChatStore = create<ChatStore>()(
       // Add messages to session
       state.beginUserTurn(sessionId, userMessage, assistantMessage, assistantMessage.id)
 
+      // Set streamingMessages BEFORE the await so handleEnvelope can process
+      // events that arrive while we're waiting for the agent/run response.
+      state.setStreamingMessageId(sessionId, runId)
+
       // Auto-generate title from first user message
       const session = state.sessions.find((s) => s.id === sessionId)
       if (session && session.title === 'New Conversation' && userText) {
@@ -69,15 +82,22 @@ export const useChatStore = create<ChatStore>()(
       }
 
       try {
+        // Pass runId to the worker so it uses ours instead of generating one
         const result = await window.api.workerRequest<{ started: boolean; runId: string }>(
           'agent/run',
-          params
+          { ...params, runId }
         )
-        if (result.started) {
-          state.setStreamingMessageId(sessionId, result.runId)
+        if (!result.started) {
+          // Worker rejected the run - clear streaming state
+          state.setStreamingMessageId(sessionId, null)
+          state.updateMessage(sessionId, runId, {
+            isStreaming: false,
+            error: 'Agent run was not started'
+          })
         }
       } catch (err) {
-        state.updateMessage(sessionId, assistantMessage.id, {
+        state.setStreamingMessageId(sessionId, null)
+        state.updateMessage(sessionId, runId, {
           isStreaming: false,
           error: err instanceof Error ? err.message : String(err)
         })
@@ -148,6 +168,41 @@ export const useChatStore = create<ChatStore>()(
               timing: event.timing
             })
             break
+
+          case 'tool_call_start': {
+            const session = state.sessions.find((s) => s.id === targetSessionId)
+            if (session) {
+              const msg = session.messages.find((m) => m.id === envelope.runId)
+              if (msg) {
+                if (!msg.toolCalls) msg.toolCalls = []
+                msg.toolCalls.push({
+                  id: event.toolCall.id,
+                  name: event.toolCall.name,
+                  input: event.toolCall.input,
+                  status: 'running',
+                  startedAt: event.toolCall.startedAt
+                })
+              }
+            }
+            break
+          }
+
+          case 'tool_call_result': {
+            const session = state.sessions.find((s) => s.id === targetSessionId)
+            if (session) {
+              const msg = session.messages.find((m) => m.id === envelope.runId)
+              if (msg && msg.toolCalls) {
+                const tc = msg.toolCalls.find((t) => t.id === event.toolCall.id)
+                if (tc) {
+                  tc.status = event.toolCall.status === 'error' ? 'error' : 'completed'
+                  tc.output = event.toolCall.output
+                  tc.error = event.toolCall.error
+                  tc.completedAt = event.toolCall.completedAt
+                }
+              }
+            }
+            break
+          }
 
           case 'loop_end':
             state.setStreamingMessageId(targetSessionId, null)

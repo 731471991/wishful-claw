@@ -59,21 +59,23 @@
 2. **每步执行前**：如果上一步的 commit 存在，当前就是安全点——搞砸了随时 `git reset --hard` 回来
 3. **大改动前**：先 commit 当前状态，打一个临时标记 `git tag wip-{描述}`，方便回滚
 4. **验证态失败**：`git reset --hard` 回到审查态提交，不要在失败的代码上继续打补丁
-5. **每次 commit 后立即 push**：不要攒着，commit 完就 `git push`。本地 commit 只防误操作，push 到远程才防丢数据
-6. **push 失败不阻塞**：网络问题 push 失败时，记录待推送状态，继续执行后续步骤，不为此停下来问用户
-7. **每天开工**：先 `git pull`，确保本地和远程同步
+5. **Plan 执行期间只 commit 不 push**：每个步骤 commit 后不 push，本地 commit 就是防误操作的检查点
+6. **Plan 完成后才 push**：一个 Plan 的所有步骤都完成并通过验证后，一次性 push 该 Plan 的所有 commit
+7. **push 失败不阻塞**：网络问题 push 失败时，记录待推送状态，继续后续工作，不为此停下来问用户
+8. **每天开工**：先 `git pull`，确保本地和远程同步
 
 ### Push 规则
 
-**原则：commit 即 push，不攒不发问。**
+**原则：Plan 内只 commit，Plan 完成才 push。**
 
 ```
-每次 commit → 自动 git push → 成功则继续 → 失败则记录并继续
+步骤完成 → commit（不 push）→ 下一步 → ... → Plan 所有步骤完成并通过验证 → git push
 ```
 
-- 执行态每步 commit 后 push
-- 规划态/审查态提交文档后 push
-- 验证态合并 main 后 push main + tags
+- Plan 执行期间：每步 commit，不 push
+- Plan 完成并通过验证后：一次性 push 该 Plan 的所有 commit
+- 规划态/审查态提交文档：随当前 Plan 一起 push，不单独 push
+- 验证态合并 main 后：push main + tags
 - push 失败（网络超时、连接重置等）：记录"待推送"，继续干活，不阻塞、不提问
 - 会话结束前：检查是否有未推送的 commit，尝试一次性 push
 
@@ -86,13 +88,13 @@
 | 节点 | 必须停 | 原因 |
 |------|--------|------|
 | 规划验证通过后、执行前 | ✅ | 用户确认计划方向，避免白干 |
-| 验证态出结果后（PASS/FAIL/PARTIAL） | ✅ | 用户判断是否达标、是否进入下一迭代 |
+| 验证态出结果后（PASS/FAIL/PARTIAL） | ✅ | 用户确认 Plan 是否达标，Agent 不得自行判定完成 |
 | 步骤反复失败（同一步骤 3 次未过） | ✅ | 超出自动修复能力，需要用户决策 |
 | 需要用户手动操作（如调整目录结构、填 API Key） | ✅ | AI 无法替代 |
 
 **不需要停的情况：**
-- commit 后是否要 push → 自动 push
-- 步骤完成后是否继续下一步 → 自动继续
+- Plan 内步骤完成后是否继续下一步 → 自动继续
+- Plan 完成后是否 push → 自动 push
 - push 失败后是否继续 → 自动继续
 - 规划文档写完是否进入验证 → 自动进入验证
 
@@ -103,20 +105,21 @@
 **会话开始时（AI 助手的第一件事）：**
 
 1. `git status` — 检查工作区状态
-2. `git log --oneline -5` — 看最近提交，定位进度
-3. `git push` — 推送上次会话遗留的未推送 commit
+2. `git log --oneline -10` — 看最近提交，定位进度
+3. `git push` — 推送上次会话遗留的未推送 commit（如果有）
 4. 读 `docs/PROGRESS.md` — 确认当前迭代和步骤
 5. 读对应 plan.md — 确认从哪个步骤继续
 6. 报告进度摘要，然后继续执行
 
 **会话即将结束时（上下文快满或用户要离开）：**
 
-1. 当前步骤如果做完 → commit + push
-2. 当前步骤如果没做完 → `git stash` 保存现场（或 commit 为 WIP）
-3. 更新 `docs/PROGRESS.md` — 标记当前进度和下次继续的步骤
-4. `git add docs/PROGRESS.md && git commit -m "docs: 更新进度 - 下次从步骤N继续"`
-5. `git push` — 确保远程是最新
-6. 输出简要总结：完成了什么、下次从哪继续
+1. 当前步骤如果做完 → commit
+2. 当前 Plan 如果完成 → push
+3. 当前步骤如果没做完 → `git stash` 保存现场（或 commit 为 WIP）
+4. 更新 `docs/PROGRESS.md` — 标记当前进度和下次继续的步骤
+5. `git add docs/PROGRESS.md && git commit -m "docs: 更新进度 - 下次从步骤N继续"`
+6. `git push` — 确保远程是最新
+7. 输出简要总结：完成了什么、下次从哪继续
 
 **不要在会话结束时问用户"要不要继续"**——直接按上面流程收工，把状态留在 Git 和 PROGRESS.md 里，下次会话自动恢复。
 
@@ -267,7 +270,7 @@ git reset --hard HEAD~1
 
 **大步骤拆 commit**：如果一个步骤涉及多个文件且逻辑独立，拆成多个 commit，每个 commit 能独立编译通过。
 
-**每步 commit 后**：`git push`（失败则记录，不阻塞）
+**每步 commit 后**：不 push，留在本地（Plan 完成后才统一 push）
 
 **终止检查**：所有步骤均为 [✓] / [✗]，0 个 [ ] 残留 → 自动进入审查态，不停下来问。
 
@@ -312,26 +315,15 @@ git commit -m "docs(review): 迭代{N}审查报告"
 
 **输出**：`docs/plans/plan_XXX/verification_report.md`
 
-**Git 操作**：
-```bash
-# 验证通过，打 tag
-git tag -a v0.{N}.0 -m "迭代{N}: {迭代名称} - 验证通过"
+**验证结果出来后**：停下来等用户确认。**Agent 不得自行判定 Plan 完成。**
 
-# 合并到 main
-git checkout main
-git merge dev/iter-{N} --no-ff -m "merge: 迭代{N} - {迭代名称}"
+**用户确认 PASS**：Plan 完成，push 该 Plan 的所有 commit
 
-# 推送到远程
-git push origin main
-git push origin v0.{N}.0
+**用户确认 FAIL**：`git reset --hard` 回到审查态提交，修复后重新验证
 
-# 验证失败，回滚到审查态提交
-git reset --hard HEAD~1  # 回退验证阶段的改动
-```
+**用户确认 PARTIAL**：由用户决定保留哪些成果、是否继续补充
 
-**完成后**：更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）
-
-**最终裁定**：`PASS` / `FAIL` / `PARTIAL`
+**最终裁定**：`PASS` / `FAIL` / `PARTIAL`（由用户裁定，不是 agent 自行确认）
 
 ---
 

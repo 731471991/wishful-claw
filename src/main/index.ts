@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'path'
+import * as fs from 'fs'
 
 import { getNativeWorker } from './lib/native-worker'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
@@ -41,6 +42,8 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
+  mainWindow.webContents.on("console-message", (_e, level, message, line, src) => { console.log(`[renderer:${["LOG","WARN","ERROR"][level] ?? "LOG"}] ${message} (${src}:${line})`) })
+  mainWindow.webContents.on("render-process-gone", (_e, details) => { console.error("[renderer:CRASH]", details.reason, details.exitCode) })
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -122,8 +125,96 @@ app.whenReady().then(() => {
     }
   )
 
+  // Ensure default chat working folder exists (Documents/<date>/Chat)
+  registerMessagePackHandler<void, { path?: string; error?: string }>(
+    'fs:default-chat-working-folder',
+    async () => {
+      try {
+        const folderPath = join(app.getPath('documents'), formatLocalDateFolderName(), 'Chat')
+        await fs.promises.mkdir(folderPath, { recursive: true })
+        return { path: folderPath }
+      } catch (err) {
+        return { error: String(err) }
+      }
+    }
+  )
+
+  // ── Agent history stub handlers (no persistence layer yet) ──
+  registerMessagePackHandler<void, { total: number; sessions: unknown[] }>(
+    'agent-history:index',
+    async () => ({ total: 0, sessions: [] })
+  )
+  registerMessagePackHandler<{ sessionId: string }, unknown[]>(
+    'agent-history:read',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, void>(
+    'agent-history:apply',
+    async () => undefined
+  )
+  registerMessagePackHandler<unknown, void>(
+    'agent-history:replace',
+    async () => undefined
+  )
+
+  // ── Config stub handlers (key-value store, same pattern as settings) ──
+  registerMessagePackHandler<string, unknown | null>(
+    'config:get',
+    () => null
+  )
+  registerMessagePackHandler<{ key: string; value: unknown }, { success: boolean }>(
+    'config:set',
+    () => ({ success: true })
+  )
+
+  // ── Input draft stub handlers ──
+  registerMessagePackHandler<string, unknown | null>(
+    'input-draft:get',
+    () => null
+  )
+  registerMessagePackHandler<unknown, void>(
+    'input-draft:set',
+    () => undefined
+  )
+  registerMessagePackHandler<string, void>(
+    'input-draft:remove',
+    () => undefined
+  )
+  registerMessagePackHandler<void, unknown[]>(
+    'input-draft:list',
+    () => []
+  )
+  registerMessagePackHandler<void, void>(
+    'input-draft:cleanup',
+    () => undefined
+  )
+
+  // ── DB stub handlers (no SQLite layer yet) ──
+  registerMessagePackHandler<string, unknown[] | null>(
+    'db:messages:list-locator:msgpack',
+    async () => null
+  )
+  registerMessagePackHandler<string, unknown | null>(
+    'db:goals:get:msgpack',
+    async () => null
+  )
+  registerMessagePackHandler<string, unknown[]>(
+    'db:goal-events:list:msgpack',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, void>(
+    'db:goal-events:add:msgpack',
+    async () => undefined
+  )
 
   createWindow()
+
+function formatLocalDateFolderName(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -52,5 +52,33 @@
       "description": "确定要删除该模型吗？此操作不可撤销。",
       "action": "删除"
     }
+  },
+  "action": {
+    "cancel": "取消",
+    "delete": "删除",
+    "save": "保存",
+    "confirm": "确认",
+    "close": "关闭",
+    "copy": "复制",
+    "copyPath": "复制路径",
+    "rename": "重命名",
+    "refresh": "刷新",
+    "retry": "重试",
+    "send": "发送",
+    "stop": "停止",
+    "start": "开始",
+    "clear": "清除",
+    "allow": "允许",
+    "deny": "拒绝",
+    "undo": "撤销",
+    "open": "打开",
+    "export": "导出",
+    "import": "导入",
+    "duplicate": "复制会话",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "showMore": "显示更多",
+    "showLess": "收起",
+    "more": "更多"
   }
 }

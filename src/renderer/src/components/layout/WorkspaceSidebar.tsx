@@ -1,16 +1,13 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MessageSquare,
   Settings,
-  Plug,
   FolderTree,
   Sparkles,
   Ghost,
   RefreshCw,
   PenTool,
-  Languages,
-  CheckSquare,
   GitBranch,
   Plus,
   Search,
@@ -23,8 +20,9 @@ import {
   ChevronDown,
   ChevronRight,
   PanelLeftClose,
-  FolderPlus,
-  Archive
+  Archive,
+  Image,
+  CalendarDays
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import {
@@ -34,35 +32,19 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger
 } from '@renderer/components/ui/context-menu'
-// DropdownMenu not currently used but kept for future session list sort/filter
-import { useUIStore, type NavItem } from '@renderer/stores/ui-store'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
+import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Session, type Project } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
-
-// ─── Nav items config ───
-
-interface NavItemConfig {
-  id: NavItem
-  icon: React.ComponentType<{ className?: string }>
-  labelKey: string
-  labelDefault: string
-  implemented: boolean
-  iterLabel?: string
-}
-
-const NAV_ITEMS: NavItemConfig[] = [
-  { id: 'chat', icon: MessageSquare, labelKey: 'nav.chat', labelDefault: 'Chat', implemented: true },
-  { id: 'channels', icon: Plug, labelKey: 'nav.channels', labelDefault: 'Channels', implemented: false, iterLabel: '迭代四' },
-  { id: 'resources', icon: FolderTree, labelKey: 'nav.resources', labelDefault: 'Resources', implemented: false, iterLabel: '后续' },
-  { id: 'skills', icon: Sparkles, labelKey: 'nav.skills', labelDefault: 'Skills', implemented: false, iterLabel: '后续' },
-  { id: 'souls', icon: Ghost, labelKey: 'nav.souls', labelDefault: 'Souls', implemented: false, iterLabel: '迭代七' },
-  { id: 'sync', icon: RefreshCw, labelKey: 'nav.sync', labelDefault: 'Sync', implemented: false, iterLabel: '后续' },
-  { id: 'draw', icon: PenTool, labelKey: 'nav.draw', labelDefault: 'Draw', implemented: false, iterLabel: '后续' },
-  { id: 'translate', icon: Languages, labelKey: 'nav.translate', labelDefault: 'Translate', implemented: false, iterLabel: '后续' },
-  { id: 'tasks', icon: CheckSquare, labelKey: 'nav.tasks', labelDefault: 'Tasks', implemented: false, iterLabel: '后续' },
-  { id: 'codegraph', icon: GitBranch, labelKey: 'nav.codegraph', labelDefault: 'Code Graph', implemented: false, iterLabel: '后续' }
-]
+import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
+import { MoreHorizontal } from 'lucide-react'
 
 // ─── Helpers ───
 
@@ -97,101 +79,6 @@ function sortProjects(projects: Project[]): Project[] {
   })
 }
 
-// ─── NavRail (icon strip) ───
-
-function NavRail(): React.JSX.Element {
-  const { t } = useTranslation('layout')
-  const activeNavItem = useUIStore((s) => s.activeNavItem)
-  const setActiveNavItem = useUIStore((s) => s.setActiveNavItem)
-  const openSettings = useUIStore((s) => s.openSettings)
-  const createSession = useChatStore((s) => s.createSession)
-  const navigateToHome = useUIStore((s) => s.navigateToHome)
-
-  const handleNavClick = useCallback((item: NavItemConfig) => {
-    if (item.id === 'chat') {
-      setActiveNavItem('chat')
-      navigateToHome()
-    } else {
-      // For unimplemented items, just set active nav (shows placeholder page)
-      setActiveNavItem(item.id)
-      toast.info(`${item.labelDefault} — ${item.iterLabel ?? 'coming soon'}`)
-    }
-  }, [setActiveNavItem, navigateToHome])
-
-  const handleNewChat = useCallback(() => {
-    createSession('chat', null, { preserveProjectless: true })
-    navigateToHome()
-  }, [createSession, navigateToHome])
-
-  return (
-    <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-sidebar py-2">
-      {/* New Chat button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={handleNewChat}
-            className="mb-2 flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all duration-200 hover:bg-primary/90"
-          >
-            <Plus className="size-5" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right">{t('sidebar.newChat', { defaultValue: 'New Chat' })}</TooltipContent>
-      </Tooltip>
-
-      <div className="h-px w-6 bg-border/50" />
-
-      {/* Nav items */}
-      <div className="mt-2 flex flex-1 flex-col items-center gap-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon
-          const isActive = activeNavItem === item.id
-          return (
-            <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => handleNavClick(item)}
-                  className={cn(
-                    'flex size-9 items-center justify-center rounded-lg transition-all duration-200',
-                    isActive
-                      ? 'bg-sidebar-accent text-foreground'
-                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground',
-                    !item.implemented && 'opacity-50'
-                  )}
-                >
-                  <Icon className="size-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="flex items-center gap-2">
-                <span>{t(item.labelKey, { defaultValue: item.labelDefault })}</span>
-                {!item.implemented && item.iterLabel && (
-                  <span className="text-[10px] text-muted-foreground">({item.iterLabel})</span>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          )
-        })}
-      </div>
-
-      {/* Bottom: Settings */}
-      <div className="flex flex-col items-center gap-1 pt-2">
-        <div className="h-px w-6 bg-border/50" />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => openSettings('provider')}
-              className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-foreground"
-            >
-              <Settings className="size-5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{t('navRail.settings', { defaultValue: 'Settings' })}</TooltipContent>
-        </Tooltip>
-        <span className="text-[9px] text-muted-foreground/40 select-none">v0.3.1</span>
-      </div>
-    </div>
-  )
-}
-
 // ─── Session Item ───
 
 interface SessionItemProps {
@@ -203,11 +90,12 @@ interface SessionItemProps {
 function SessionItem({ session, isActive, onClick }: SessionItemProps): React.JSX.Element {
   const { t } = useTranslation('layout')
   const deleteSession = useChatStore((s) => s.deleteSession)
-  const clearSessionMessages = useChatStore((s) => s.clearSessionMessages)
-  const togglePinSession = useChatStore((s) => s.togglePinSession)
-  const duplicateSession = useChatStore((s) => s.duplicateSession)
   const updateSessionTitle = useChatStore((s) => s.updateSessionTitle)
+  const clearSessionMessages = useChatStore((s) => s.clearSessionMessages)
+  const duplicateSession = useChatStore((s) => s.duplicateSession)
+  const togglePinSession = useChatStore((s) => s.togglePinSession)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
+
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(session.title)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -333,7 +221,6 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
   const renameProject = useChatStore((s) => s.renameProject)
   const togglePinProject = useChatStore((s) => s.togglePinProject)
   const updateProjectDirectory = useChatStore((s) => s.updateProjectDirectory)
-  const createSession = useChatStore((s) => s.createSession)
   const navigateToProject = useUIStore((s) => s.navigateToProject)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
   const navigateToArchive = useUIStore((s) => s.navigateToArchive)
@@ -376,22 +263,21 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
     toast.success(t('sidebar.projectDeleted', { defaultValue: 'Project deleted' }))
   }, [project.id, deleteProject, t])
 
-  const handleChangeFolder = useCallback(async () => {
-    try {
-      const result = await window.api.invoke<{ folderPath?: string; canceled?: boolean }>('dialog:openFolder', {})
-      if (result && result.folderPath && !result.canceled) {
-        updateProjectDirectory(project.id, { workingFolder: result.folderPath })
-        toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
-      }
-    } catch {
-      toast.error(t('sidebar.folderUpdateFailed', { defaultValue: 'Failed to select folder' }))
-    }
-  }, [project.id, updateProjectDirectory, t])
+  const [changeFolderDialogOpen, setChangeFolderDialogOpen] = useState(false)
+
+  const handleChangeFolder = useCallback(() => {
+    setChangeFolderDialogOpen(true)
+  }, [])
 
   const handleNewSessionInProject = useCallback(() => {
-    createSession('chat', project.id)
-    navigateToSession(null)
-  }, [createSession, project.id, navigateToSession])
+    // Navigate to home with project selected. Session is created when user sends a message.
+    setActiveProjectHome(project.id)
+    const uiStore = useUIStore.getState()
+    if (uiStore.mode === 'chat') {
+      uiStore.setMode('cowork')
+    }
+    uiStore.navigateToHome()
+  }, [project.id, setActiveProjectHome])
 
   if (isEditing) {
     return (
@@ -437,6 +323,63 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
             <FolderOpen className="size-3.5 shrink-0" />
             <span className="flex-1 truncate text-xs font-medium">{project.name}</span>
             <span className="shrink-0 text-[10px] text-muted-foreground/40">{sessions.length}</span>
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleNewSessionInProject()
+                }}
+                className="flex size-5 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                title={t('sidebar.newSessionInProject', { defaultValue: 'New session here' })}
+              >
+                <Plus className="size-3.5" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex size-5 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                    title={t('sidebar.moreActions', { defaultValue: 'More actions' })}
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleNewSessionInProject}>
+                    <Plus className="mr-2 size-3.5" />
+                    {t('sidebar.newSessionInProject', { defaultValue: 'New session here' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRename}>
+                    <Pencil className="mr-2 size-3.5" />
+                    {t('sidebar.rename', { defaultValue: 'Rename' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => togglePinProject(project.id)}>
+                    <Pin className="mr-2 size-3.5" />
+                    {project.pinned
+                      ? t('sidebar.unpin', { defaultValue: 'Unpin' })
+                      : t('sidebar.pin', { defaultValue: 'Pin' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleChangeFolder}>
+                    <FolderOpen className="mr-2 size-3.5" />
+                    {t('sidebar.changeFolder', { defaultValue: 'Change working folder' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigateToArchive(project.id)}>
+                    <Archive className="mr-2 size-3.5" />
+                    {t('sidebar.archive', { defaultValue: 'Archive' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigateToGit(project.id)}>
+                    <GitBranch className="mr-2 size-3.5" />
+                    {t('sidebar.git', { defaultValue: 'Git' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                    <Trash2 className="mr-2 size-3.5" />
+                    {t('sidebar.deleteProject', { defaultValue: 'Delete project' })}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -475,6 +418,23 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
         </ContextMenuContent>
       </ContextMenu>
 
+      <WorkingFolderSelectorDialog
+        open={changeFolderDialogOpen}
+        onOpenChange={setChangeFolderDialogOpen}
+        workingFolder={project.workingFolder}
+        sshConnectionId={project.sshConnectionId}
+        onSelectLocalFolder={(folderPath) => {
+          updateProjectDirectory(project.id, { workingFolder: folderPath, sshConnectionId: null })
+          toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
+          setChangeFolderDialogOpen(false)
+        }}
+        onSelectSshFolder={(folderPath, connectionId) => {
+          updateProjectDirectory(project.id, { workingFolder: folderPath, sshConnectionId: connectionId })
+          toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
+          setChangeFolderDialogOpen(false)
+        }}
+      />
+
       {/* Sessions under this project */}
       {isExpanded && sortedSessions.length > 0 && (
         <div className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-border/40 pl-2">
@@ -493,76 +453,6 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
           {t('sidebar.noSessions', { defaultValue: 'No sessions' })}
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── Sidebar Header ───
-
-function SidebarHeader(): React.JSX.Element {
-  const { t } = useTranslation('layout')
-  const navigateToHome = useUIStore((s) => s.navigateToHome)
-  const createSession = useChatStore((s) => s.createSession)
-  const createProject = useChatStore((s) => s.createProject)
-  const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar)
-
-  const handleNewChat = useCallback(() => {
-    createSession('chat', null, { preserveProjectless: true })
-    navigateToHome()
-  }, [createSession, navigateToHome])
-
-  const handleNewProject = useCallback(async () => {
-    try {
-      const result = await window.api.invoke<{ folderPath?: string; canceled?: boolean }>('dialog:openFolder', {})
-      if (result && result.folderPath && !result.canceled) {
-        const folderName = result.folderPath.split(/[\\/]/).pop() ?? 'New Project'
-        const projectId = await createProject({ name: folderName, workingFolder: result.folderPath })
-        useUIStore.getState().navigateToProject(projectId)
-        toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))
-      }
-    } catch {
-      // dialog:openFolder not yet registered — create project without folder
-      const projectId = await createProject({})
-      useUIStore.getState().navigateToProject(projectId)
-      toast.info(t('sidebar.selectFolderLater', { defaultValue: 'Select working folder from right-click menu' }))
-    }
-  }, [createProject, t])
-
-  return (
-    <div className="flex items-center justify-between border-b px-2 py-2">
-      <button
-        onClick={handleNewChat}
-        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-      >
-        <Plus className="size-3.5" />
-        {t('sidebar.newChat', { defaultValue: 'New Chat' })}
-      </button>
-
-      <div className="flex items-center gap-0.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={handleNewProject}
-              className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <FolderPlus className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t('sidebar.newProject', { defaultValue: 'New Project' })}</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={toggleLeftSidebar}
-              className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <PanelLeftClose className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t('sidebar.collapse', { defaultValue: 'Collapse sidebar' })}</TooltipContent>
-        </Tooltip>
-      </div>
     </div>
   )
 }
@@ -608,20 +498,55 @@ function ResizeHandle(): React.JSX.Element {
   )
 }
 
-// ─── Main WorkspaceSidebar ───
+// ─── Nav item renderer ───
+
+interface NavButtonItem {
+  key: string
+  label: string
+  icon: React.ReactNode
+  active: boolean
+  onClick: () => void
+}
+
+function renderNavItem(item: NavButtonItem): React.JSX.Element {
+  return (
+    <button
+      key={item.key}
+      type="button"
+      onClick={item.onClick}
+      className={cn(
+        'flex h-8 w-full items-center gap-2 px-2 text-[13px] font-medium transition-colors rounded-md',
+        item.active
+          ? 'bg-accent text-foreground'
+          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+      )}
+    >
+      {item.icon}
+      <span className="truncate">{item.label}</span>
+    </button>
+  )
+}
+
+// ─── Main WorkspaceSidebar (single column, OpenCowork-style) ───
 
 export function WorkspaceSidebar(): React.JSX.Element {
   const { t } = useTranslation('layout')
   const leftSidebarOpen = useUIStore((s) => s.leftSidebarOpen)
   const leftSidebarWidth = useUIStore((s) => s.leftSidebarWidth)
-  const activeSessionId = useChatStore((s) => s.activeSessionId)
+  const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar)
+  const setActiveNavItem = useUIStore((s) => s.setActiveNavItem)
+  const navigateToHome = useUIStore((s) => s.navigateToHome)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
+  const activeSessionId = useChatStore((s) => s.activeSessionId)
 
   const sessions = useChatStore((s) => s.sessions)
   const projects = useChatStore((s) => s.projects)
+  const setActiveProjectHome = useChatStore((s) => s.setActiveProjectHome)
+  const createProject = useChatStore((s) => s.createProject)
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery] = useState('')
+  const [extensionsOpen, setExtensionsOpen] = useState(false)
 
   // Auto-expand the active project
   const activeProjectId = useChatStore((s) => s.activeProjectId)
@@ -675,75 +600,244 @@ export function WorkspaceSidebar(): React.JSX.Element {
     })
   }, [])
 
+  const handleNewChat = useCallback(() => {
+    // Don't create a session yet — just navigate to home.
+    // The session is created when the user actually sends a message.
+    setActiveProjectHome(null)
+    setActiveNavItem('chat')
+    navigateToHome()
+  }, [setActiveProjectHome, setActiveNavItem, navigateToHome])
+
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
+
+  const handleNewProject = useCallback(() => {
+    setCreateProjectDialogOpen(true)
+  }, [])
+
+  const handleCreateProjectWithDirectory = useCallback(
+    async (folderPath: string, _connectionId: string | null, projectName?: string) => {
+      const name = projectName?.trim() || folderPath.split(/[\\/]/).pop() || 'New Project'
+      const projectId = await createProject({ name, workingFolder: folderPath })
+      useUIStore.getState().setActiveProjectHome(projectId)
+      useUIStore.getState().navigateToProject(projectId)
+      toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))
+      setCreateProjectDialogOpen(false)
+    },
+    [createProject, t]
+  )
+
+  const openCommandPalette = useCallback(() => {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'k',
+        ctrlKey: true,
+        bubbles: true
+      })
+    )
+  }, [])
+
+  // Collapsed state: completely hidden, use TitleBar button to expand
   if (!leftSidebarOpen) {
-    return <NavRail />
+    return null
   }
 
+  // ─── Nav items ───
+  const navItems: NavButtonItem[] = [
+    {
+      key: 'new-chat',
+      label: t('sidebar.newChat', { defaultValue: 'New Chat' }),
+      icon: <Plus className="size-4 shrink-0" />,
+      active: false,
+      onClick: handleNewChat
+    },
+    {
+      key: 'search',
+      label: t('sidebar.searchLabel', { defaultValue: 'Search' }),
+      icon: <Search className="size-4 shrink-0" />,
+      active: false,
+      onClick: openCommandPalette
+    },
+    {
+      key: 'draw',
+      label: t('sidebar.drawLabel', { defaultValue: 'Draw' }),
+      icon: <Image className="size-4 shrink-0" />,
+      active: false,
+      onClick: () => {
+        setActiveNavItem('draw')
+        toast.info(`Draw — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
+      }
+    },
+    {
+      key: 'automation',
+      label: t('sidebar.automationLabel', { defaultValue: 'Automation' }),
+      icon: <CalendarDays className="size-4 shrink-0" />,
+      active: false,
+      onClick: () => {
+        setActiveNavItem('tasks')
+        toast.info(`Automation — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
+      }
+    }
+  ]
+
+  const extensionItems = [
+    { id: 'resources', icon: <FolderTree className="size-4" />, label: t('sidebar.resources', { defaultValue: 'Resources' }) },
+    { id: 'skills', icon: <Sparkles className="size-4" />, label: t('sidebar.skills', { defaultValue: 'Skills' }) },
+    { id: 'souls', icon: <Ghost className="size-4" />, label: t('sidebar.souls', { defaultValue: 'Souls' }) },
+    { id: 'sync', icon: <RefreshCw className="size-4" />, label: t('sidebar.sync', { defaultValue: 'Sync' }) },
+    { id: 'translate', icon: <PenTool className="size-4" />, label: t('sidebar.translate', { defaultValue: 'Translate' }) },
+    { id: 'codegraph', icon: <GitBranch className="size-4" />, label: t('sidebar.codegraph', { defaultValue: 'Code Graph' }) }
+  ]
+
+  const currentWidth = leftSidebarWidth || 260
+
   return (
-    <div className="flex h-full shrink-0" style={{ width: leftSidebarWidth + 48 }}>
-      <NavRail />
-
-      <div className="relative flex min-w-0 flex-1 flex-col bg-sidebar/50">
-        <SidebarHeader />
-
-        {/* Search */}
-        <div className="px-2 py-1.5">
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/50" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('sidebar.search', { defaultValue: 'Search sessions...' })}
-              className="w-full rounded-md border border-border/50 bg-background/50 py-1 pl-7 pr-2 text-xs placeholder:text-muted-foreground/50 focus:border-ring focus:outline-none"
-            />
-          </div>
+    <aside
+      className="relative flex h-full shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground"
+      style={{ width: currentWidth }}
+    >
+      {/* Title bar area */}
+      <div className="flex h-10 shrink-0 items-center gap-2 px-2">
+        <button
+          onClick={toggleLeftSidebar}
+          className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 hover:text-sidebar-foreground"
+          title={t('sidebar.collapse', { defaultValue: 'Collapse sidebar' })}
+        >
+          <PanelLeftClose className="size-4" />
+        </button>
+        <div className="min-w-0 flex-1 truncate text-sm font-semibold text-sidebar-foreground/90">
+          Wishful Claw
         </div>
-
-        {/* Session list */}
-        <div className="flex-1 overflow-y-auto px-1.5 pb-2">
-          {/* Projects */}
-          {sortedProjects.map((project) => (
-            <ProjectItem
-              key={project.id}
-              project={project}
-              sessions={projectSessions[project.id] ?? []}
-              isExpanded={expandedProjects.has(project.id)}
-              onToggleExpand={() => toggleProjectExpand(project.id)}
-            />
-          ))}
-
-          {/* Unassigned sessions */}
-          {sortedUnassigned.length > 0 && (
-            <div className="mt-2">
-              <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
-                {t('sidebar.unassigned', { defaultValue: 'Unassigned' })}
-              </div>
-              {sortedUnassigned.map((session) => (
-                <SessionItem
-                  key={session.id}
-                  session={session}
-                  isActive={activeSessionId === session.id}
-                  onClick={() => navigateToSession(session.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Empty state */}
-          {sortedProjects.length === 0 && sortedUnassigned.length === 0 && (
-            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-              <MessageSquare className="size-8 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/60">
-                {searchQuery
-                  ? t('sidebar.noResults', { defaultValue: 'No results found' })
-                  : t('sidebar.noSessionsYet', { defaultValue: 'No sessions yet. Click "New Chat" to start.' })}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <ResizeHandle />
       </div>
-    </div>
+
+      {/* Nav items + extensions */}
+      <div className="space-y-1 px-2 py-1.5">
+        {navItems.slice(0, 3).map(renderNavItem)}
+
+        {/* Extensions dropdown (collapsible) */}
+        <DropdownMenu open={extensionsOpen} onOpenChange={setExtensionsOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'flex h-8 w-full items-center gap-2 px-2 text-[13px] font-medium transition-colors rounded-md',
+                extensionsOpen
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+              )}
+            >
+              <FolderOpen className="size-4 shrink-0" />
+              <span className="truncate">{t('sidebar.extensionsLabel', { defaultValue: 'Extensions' })}</span>
+              <ChevronRight className="ml-auto size-3.5 shrink-0" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" sideOffset={6} className="w-40">
+            {extensionItems.map((ext) => (
+              <DropdownMenuItem
+                key={ext.id}
+                onSelect={() => {
+                  setActiveNavItem(ext.id as never)
+                  toast.info(`${ext.label} — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
+                }}
+              >
+                {ext.icon}
+                <span>{ext.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {navItems.slice(3).map(renderNavItem)}
+      </div>
+
+      {/* Project section header */}
+      <div className="flex items-center justify-between gap-2 px-3 pb-1 pt-2">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">
+          {t('sidebar.projects', { defaultValue: 'Projects' })}
+        </span>
+        <span className="rounded-full border border-border/60 bg-muted/45 px-1 py-0.5 text-[9px] text-muted-foreground">
+          {sortedProjects.length}
+        </span>
+        <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleNewProject}
+                className="flex size-5 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                title={t('sidebar.newProject', { defaultValue: 'New Project' })}
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{t('sidebar.newProject', { defaultValue: 'New Project' })}</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
+      {/* Session list */}
+      <div className="flex-1 overflow-y-auto px-1.5 pb-2">
+        {/* Projects */}
+        {sortedProjects.map((project) => (
+          <ProjectItem
+            key={project.id}
+            project={project}
+            sessions={projectSessions[project.id] ?? []}
+            isExpanded={expandedProjects.has(project.id)}
+            onToggleExpand={() => toggleProjectExpand(project.id)}
+          />
+        ))}
+
+        {/* Unassigned sessions */}
+        {sortedUnassigned.length > 0 && (
+          <div className="mt-2">
+            <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
+              {t('sidebar.conversations', { defaultValue: 'Conversations' })}
+            </div>
+            {sortedUnassigned.map((session) => (
+              <SessionItem
+                key={session.id}
+                session={session}
+                isActive={activeSessionId === session.id}
+                onClick={() => navigateToSession(session.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {sortedProjects.length === 0 && sortedUnassigned.length === 0 && (
+          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+            <MessageSquare className="size-8 text-muted-foreground/30" />
+            <p className="text-xs text-muted-foreground/60">
+              {t('sidebar.noSessionsYet', { defaultValue: 'No sessions yet. Click "New Chat" to start.' })}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom: Settings + version */}
+      <div className="flex items-center justify-between border-t px-2 py-1.5">
+        <button
+          onClick={() => useUIStore.getState().openSettings('provider')}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Settings className="size-3.5" />
+          {t('navRail.settings', { defaultValue: 'Settings' })}
+        </button>
+        <span className="text-[9px] text-muted-foreground/40 select-none">v0.4.0</span>
+      </div>
+
+      <ResizeHandle />
+
+      <WorkingFolderSelectorDialog
+        open={createProjectDialogOpen}
+        onOpenChange={setCreateProjectDialogOpen}
+        createMode
+        projectName={t('sidebar.newProject', { defaultValue: 'New Project' })}
+        onSelectLocalFolder={(folderPath, projectName) => handleCreateProjectWithDirectory(folderPath, null, projectName)}
+        onSelectSshFolder={(folderPath, connectionId, projectName) =>
+          handleCreateProjectWithDirectory(folderPath, connectionId, projectName)
+        }
+      />
+    </aside>
   )
 }

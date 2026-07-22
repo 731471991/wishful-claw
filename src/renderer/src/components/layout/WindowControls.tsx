@@ -17,7 +17,7 @@ export function WindowControls(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="flex items-center">
+    <div className="titlebar-no-drag flex items-center">
       {/* Minimize */}
       <button
         onClick={() => void window.api.invoke('window:minimize', {})}

@@ -1,45 +1,84 @@
-import {
-  type AgentStreamEvent,
-  type AgentStreamEnvelope,
-  CHAT_STREAM_EVENTS,
-  ACTIVITY_PANEL_EVENTS
-} from '@shared/agent-stream-protocol'
+import type { AgentStreamEvent } from '../../../../shared/agent-stream-protocol'
+import type { AgentEvent } from './types'
+import type { SubAgentEvent } from './sub-agents/types'
 
-export type ChatStreamEvent = Extract<
-  AgentStreamEvent,
-  { type: 'loop_start' | 'loop_end' | 'text_delta' | 'thinking_delta' | 'thinking_encrypted' | 'message_end' | 'error' }
->
+export function toAgentEvent(e: AgentStreamEvent): AgentEvent | null {
+  switch (e.type) {
+    case 'loop_start':
+    case 'iteration_start':
+    case 'text_delta':
+    case 'thinking_delta':
+    case 'translation_buffer_update':
+    case 'image_generation_started':
+    case 'context_compression_start':
+    case 'tool_use_args_delta':
+    case 'request_retry':
+      return e as AgentEvent
 
-export type ActivityPanelEvent = Extract<
-  AgentStreamEvent,
-  { type: 'iteration_start' | 'iteration_end' | 'tool_use_streaming_start' | 'tool_use_args_delta' | 'tool_use_generated' | 'tool_call_start' | 'tool_call_result' | 'context_compression_start' | 'context_compressed' | 'request_debug' }
->
+    case 'thinking_encrypted':
+      return {
+        type: 'thinking_encrypted',
+        thinkingEncryptedContent: e.content,
+        thinkingEncryptedProvider: e.provider
+      }
 
-export function isChatStreamEvent(event: AgentStreamEvent): event is ChatStreamEvent {
-  return CHAT_STREAM_EVENTS.has(event.type)
-}
+    case 'tool_use_streaming_start':
+      return {
+        type: 'tool_use_streaming_start',
+        toolCallId: e.toolCallId,
+        toolName: e.toolName,
+        toolCallExtraContent: e.extraContent
+      } as AgentEvent
 
-export function isActivityPanelEvent(event: AgentStreamEvent): event is ActivityPanelEvent {
-  return ACTIVITY_PANEL_EVENTS.has(event.type)
-}
+    case 'error':
+      return {
+        type: 'error',
+        error: new Error(e.message),
+        errorType: e.errorType,
+        details: e.details,
+        stackTrace: e.stackTrace
+      }
 
-/**
- * Splits envelope events into chat stream and activity panel channels.
- */
-export function splitEnvelope(envelope: AgentStreamEnvelope): {
-  chatEvents: ChatStreamEvent[]
-  activityEvents: ActivityPanelEvent[]
-} {
-  const chatEvents: ChatStreamEvent[] = []
-  const activityEvents: ActivityPanelEvent[] = []
+    case 'image_generation_partial':
+    case 'image_generated':
+    case 'image_error':
+    case 'web_search':
+    case 'message_end':
+    case 'tool_use_generated':
+    case 'tool_call_start':
+    case 'tool_call_update':
+    case 'tool_call_approval_needed':
+    case 'tool_call_result':
+    case 'iteration_end':
+    case 'request_debug':
+    case 'context_compressed':
+      return e as unknown as AgentEvent
 
-  for (const event of envelope.events) {
-    if (isChatStreamEvent(event)) {
-      chatEvents.push(event)
-    } else if (isActivityPanelEvent(event)) {
-      activityEvents.push(event)
-    }
+    case 'loop_end':
+      return e as unknown as AgentEvent
+
+    default:
+      if ((e as { type: string }).type.startsWith('sub_agent_')) return null
+      return null
   }
+}
 
-  return { chatEvents, activityEvents }
+export function toSubAgentEvent(e: AgentStreamEvent): SubAgentEvent | null {
+  if (!(e as { type: string }).type.startsWith('sub_agent_')) return null
+  return e as unknown as SubAgentEvent
+}
+
+// wishful-claw compatibility: type guard for chat stream events
+export function isChatStreamEvent(event: unknown): boolean {
+  if (typeof event !== 'object' || event === null) return false
+  const e = event as { type?: string }
+  return typeof e.type === 'string'
+}
+
+// wishful-claw compatibility: type guard for activity panel events
+export function isActivityPanelEvent(event: unknown): boolean {
+  if (typeof event !== 'object' || event === null) return false
+  const e = event as { type?: string }
+  const activityTypes = ['tool_call_start', 'tool_call_result', 'text_delta', 'thinking_delta', 'message_end', 'loop_start', 'loop_end', 'error']
+  return typeof e.type === 'string' && activityTypes.includes(e.type)
 }

@@ -1,39 +1,86 @@
-/**
- * Agent stream MessagePack codec.
- * The native-worker already decodes the MessagePack frame using @msgpack/msgpack,
- * so the renderer receives a plain JS object. This module provides type-safe
- * helpers for working with the decoded envelope.
- */
-import type { AgentStreamEnvelope, AgentStreamEvent } from '../agent-stream-protocol'
+import { decode, decodeMulti, encode } from '@msgpack/msgpack'
+import { AGENT_STREAM_PROTOCOL_VERSION, type AgentStreamEnvelope } from '../agent-stream-protocol'
 
-/**
- * Validates that a decoded object is a valid AgentStreamEnvelope.
- */
+export const AGENT_STREAM_MSGPACK_CHANNEL = 'agent:stream:msgpack'
+
+type NativeAgentStreamFrame =
+  | (AgentStreamEnvelope & { event?: 'agent/stream' })
+  | { event?: 'agent/stream'; params?: unknown }
+
+export function encodeAgentStreamEnvelope(envelope: AgentStreamEnvelope): Uint8Array {
+  return encode({
+    event: 'agent/stream',
+    v: envelope.v,
+    runId: envelope.runId,
+    sessionId: envelope.sessionId,
+    seq: envelope.seq,
+    events: envelope.events
+  })
+}
+
+export function decodeAgentStreamEnvelope(
+  bytes: ArrayBuffer | ArrayBufferView
+): AgentStreamEnvelope {
+  const decoded = decode(toUint8Array(bytes))
+  const envelope = normalizeAgentStreamEnvelope(decoded)
+  if (!envelope) {
+    throw new Error('Invalid agent stream MessagePack envelope')
+  }
+  return envelope
+}
+
+// The main process may concatenate several envelopes into one IPC message;
+// MessagePack values are self-delimiting, so decodeMulti splits them back out.
+export function decodeAgentStreamEnvelopes(
+  bytes: ArrayBuffer | ArrayBufferView
+): AgentStreamEnvelope[] {
+  const envelopes: AgentStreamEnvelope[] = []
+  for (const decoded of decodeMulti(toUint8Array(bytes))) {
+    const envelope = normalizeAgentStreamEnvelope(decoded)
+    if (!envelope) {
+      throw new Error('Invalid agent stream MessagePack envelope')
+    }
+    envelopes.push(envelope)
+  }
+  return envelopes
+}
+
 export function isAgentStreamEnvelope(value: unknown): value is AgentStreamEnvelope {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    typeof (value as Record<string, unknown>).runId === 'string' &&
-    typeof (value as Record<string, unknown>).seq === 'number' &&
-    Array.isArray((value as Record<string, unknown>).events)
+    record.v === AGENT_STREAM_PROTOCOL_VERSION &&
+    typeof record.runId === 'string' &&
+    typeof record.sessionId === 'string' &&
+    typeof record.seq === 'number' &&
+    Array.isArray(record.events)
   )
 }
 
-/**
- * Safely casts a decoded object to AgentStreamEnvelope.
- * Returns null if the object doesn't match the expected shape.
- */
-export function asAgentStreamEnvelope(value: unknown): AgentStreamEnvelope | null {
-  return isAgentStreamEnvelope(value) ? value : null
+function normalizeAgentStreamEnvelope(value: unknown): AgentStreamEnvelope | null {
+  if (isAgentStreamEnvelope(value)) return value
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+
+  const frame = value as NativeAgentStreamFrame
+  if (frame.event !== 'agent/stream') return null
+
+  if ('params' in frame && isAgentStreamEnvelope(frame.params)) {
+    return frame.params
+  }
+
+  const flat = frame as Record<string, unknown>
+  const envelope = {
+    v: flat.v,
+    runId: flat.runId,
+    sessionId: flat.sessionId,
+    seq: flat.seq,
+    events: flat.events
+  }
+  return isAgentStreamEnvelope(envelope) ? envelope : null
 }
 
-/**
- * Extracts events of a specific type from an envelope.
- */
-export function filterEventsByType<T extends AgentStreamEvent['type']>(
-  envelope: AgentStreamEnvelope,
-  type: T
-): Extract<AgentStreamEvent, { type: T }>[] {
-  return envelope.events.filter((e) => e.type === type) as Extract<AgentStreamEvent, { type: T }>[]
+function toUint8Array(bytes: ArrayBuffer | ArrayBufferView): Uint8Array {
+  if (bytes instanceof Uint8Array) return bytes
+  if (bytes instanceof ArrayBuffer) return new Uint8Array(bytes)
+  return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
 }

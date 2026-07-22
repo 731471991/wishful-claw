@@ -52,5 +52,33 @@
       "description": "Are you sure you want to delete this model? This action cannot be undone.",
       "action": "Delete"
     }
+  },
+  "action": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save",
+    "confirm": "Confirm",
+    "close": "Close",
+    "copy": "Copy",
+    "copyPath": "Copy Path",
+    "rename": "Rename",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "send": "Send",
+    "stop": "Stop",
+    "start": "Start",
+    "clear": "Clear",
+    "allow": "Allow",
+    "deny": "Deny",
+    "undo": "Undo",
+    "open": "Open",
+    "export": "Export",
+    "import": "Import",
+    "duplicate": "Duplicate",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "more": "More"
   }
 }

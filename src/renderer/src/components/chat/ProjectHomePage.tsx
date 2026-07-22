@@ -1,183 +1,172 @@
-import { useState, useCallback } from 'react'
+import * as React from 'react'
+import { BookOpen, GitBranch, MessageSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { FolderOpen, GitBranch, Archive, Plus } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { useChatStore, type Project } from '@renderer/stores/chat-store'
+import { Button } from '@renderer/components/ui/button'
+import { InputArea } from '@renderer/components/chat/InputArea'
+import { ProjectTerminalDock } from '@renderer/components/terminal/ProjectTerminalDock'
+import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useChatActions } from '@renderer/hooks/use-chat-actions'
-import { ModelSwitcher } from './ModelSwitcher'
-import { cn } from '@renderer/lib/utils'
-import { toast } from 'sonner'
+import { useChatStore } from '@renderer/stores/chat-store'
+import { useChatActions, type SendMessageOptions } from '@renderer/hooks/use-chat-actions'
+import type { ImageAttachment } from '@renderer/lib/image-attachments'
+import { ensureDefaultChatWorkingFolder } from '@renderer/lib/chat-working-folder'
 
 export function ProjectHomePage(): React.JSX.Element {
   const { t } = useTranslation('chat')
-  const activeProjectId = useChatStore((s) => s.activeProjectId)
-  const projects = useChatStore((s) => s.projects)
-  const sessions = useChatStore((s) => s.sessions)
-  const createSession = useChatStore((s) => s.createSession)
-  const updateProjectDirectory = useChatStore((s) => s.updateProjectDirectory)
-  const navigateToSession = useUIStore((s) => s.navigateToSession)
-  const navigateToArchive = useUIStore((s) => s.navigateToArchive)
-  const navigateToGit = useUIStore((s) => s.navigateToGit)
+  const activeProjectId = useChatStore((state) => state.activeProjectId)
+  const projects = useChatStore((state) => state.projects)
+  const mode = useUIStore((state) => state.mode)
+  const terminalDockOpen = useUIStore((state) =>
+    activeProjectId ? Boolean(state.bottomTerminalDockOpenByProjectId[activeProjectId]) : false
+  )
+  const activeProject = projects.find((project) => project.id === activeProjectId) ?? null
+  const workingFolder = activeProject?.workingFolder
+  const sshConnectionId = activeProject?.sshConnectionId
   const { sendMessage } = useChatActions()
-  const [input, setInput] = useState('')
+  const [folderDialogOpen, setFolderDialogOpen] = React.useState(false)
 
-  const project: Project | undefined = projects.find((p) => p.id === activeProjectId)
-  const projectSessions = sessions
-    .filter((s) => s.projectId === activeProjectId)
-    .sort((a, b) => b.updatedAt - a.updatedAt)
+  const handleSend = React.useCallback(
+    (text: string, images?: ImageAttachment[], options?: SendMessageOptions): void => {
+      void (async () => {
+        if (!activeProjectId && mode !== 'chat') return
+        const chatStore = useChatStore.getState()
+        const chatWorkingFolder =
+          mode === 'chat' ? await ensureDefaultChatWorkingFolder() : undefined
+        const sessionId =
+          mode === 'chat'
+            ? chatStore.createSession(mode, null, {
+                preserveProjectless: true,
+                workingFolder: chatWorkingFolder
+              })
+            : chatStore.createSession(mode, activeProjectId)
+        useUIStore.getState().navigateToSession(sessionId)
+        void sendMessage(text, images, undefined, sessionId, undefined, undefined, {
+          ...options,
+          clearCompletedTasksOnTurnStart: true
+        })
+      })()
+    },
+    [activeProjectId, mode, sendMessage]
+  )
 
-  const handleSend = useCallback(async (text?: string) => {
-    const content = (text ?? input).trim()
-    if (!content || !activeProjectId) return
+  const updateProjectDirectory = React.useCallback(
+    async (patch: { workingFolder: string; sshConnectionId: string | null }): Promise<void> => {
+      if (!activeProjectId) return
+      useChatStore.getState().updateProjectDirectory(activeProjectId, patch)
+    },
+    [activeProjectId]
+  )
 
-    const sessionId = createSession('chat', activeProjectId)
-    setInput('')
-    navigateToSession(sessionId)
-    await sendMessage(content, undefined, undefined, sessionId)
-  }, [input, activeProjectId, createSession, navigateToSession, sendMessage])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      void handleSend()
-    }
-  }
-
-  const handleChangeFolder = useCallback(async () => {
-    if (!activeProjectId) return
-    try {
-      const result = await window.api.invoke<{ folderPath?: string; canceled?: boolean }>('dialog:openFolder', {})
-      if (result && result.folderPath && !result.canceled) {
-        updateProjectDirectory(activeProjectId, { workingFolder: result.folderPath })
-        toast.success(t('project.folderUpdated', { defaultValue: 'Working folder updated' }))
-      }
-    } catch {
-      toast.error(t('project.folderUpdateFailed', { defaultValue: 'Failed to select folder' }))
-    }
-  }, [activeProjectId, updateProjectDirectory, t])
-
-  if (!project) {
+  if (!activeProject) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        <p className="text-sm">{t('project.notFound', { defaultValue: 'Project not found' })}</p>
+      <div className="flex flex-1 flex-col items-center justify-center bg-background px-6">
+        <div className="w-full max-w-[520px] text-center">
+          <p className="text-[28px] font-semibold tracking-tight text-foreground">
+            {t('projectHome.noProjectSelected')}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {t('projectHome.noProjectSelectedDesc')}
+          </p>
+          <Button
+            className="mt-6 h-9 rounded-md px-4"
+            onClick={() => useUIStore.getState().navigateToHome()}
+          >
+            {t('projectHome.backHome')}
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6">
-        {/* Project header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FolderOpen className="size-6 text-primary/70" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">{project.name}</h1>
-              {project.workingFolder && (
-                <p className="mt-0.5 text-xs text-muted-foreground/60" title={project.workingFolder}>
-                  {project.workingFolder}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {!project.workingFolder && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleChangeFolder}
-                    className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <FolderOpen className="size-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{t('project.setFolder', { defaultValue: 'Set working folder' })}</TooltipContent>
-              </Tooltip>
-            )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigateToArchive(project.id)}
-                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <Archive className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t('project.archive', { defaultValue: 'Archive' })}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigateToGit(project.id)}
-                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <GitBranch className="size-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{t('project.git', { defaultValue: 'Git' })}</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Input area */}
-        <div className="mb-6">
-          <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-3 shadow-sm">
-            <ModelSwitcher />
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t('project.placeholder', { defaultValue: 'Start a conversation in this project...' })}
-              rows={1}
-              className={cn(
-                'flex-1 resize-none bg-transparent px-2 py-2 text-sm',
-                'placeholder:text-muted-foreground focus:outline-none',
-                'max-h-[200px]'
-              )}
-              style={{ minHeight: '40px' }}
-            />
-            <button
-              onClick={() => void handleSend()}
-              disabled={!input.trim()}
-              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {t('project.send', { defaultValue: 'Send' })}
-            </button>
-          </div>
-        </div>
-
-        {/* Recent sessions in project */}
-        <div>
-          <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/50">
-            {t('project.recentSessions', { defaultValue: 'Recent sessions' })}
-          </h2>
-          {projectSessions.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <Plus className="size-6 text-muted-foreground/30" />
-              <p className="text-xs text-muted-foreground/60">
-                {t('project.noSessions', { defaultValue: 'No sessions yet. Send a message to start.' })}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <div className="flex flex-1 flex-col overflow-auto px-6 pb-14 pt-8 sm:pt-10">
+        <div className="flex flex-1 items-start justify-center pt-8 lg:items-center lg:pt-0">
+          <div className="w-full max-w-[760px]">
+            <div className="mb-6 flex flex-col items-center gap-3 text-center sm:mb-7">
+              <p className="max-w-[560px] text-sm leading-6 text-muted-foreground/72">
+                {workingFolder ? t('projectHome.heroDesc') : t('projectHome.noWorkingFolder')}
               </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {projectSessions.slice(0, 10).map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => navigateToSession(session.id)}
-                  className="flex items-center justify-between rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-left transition-colors hover:border-border hover:bg-accent/30"
-                >
-                  <span className="truncate text-xs font-medium">{session.title}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground/40">
-                    {session.messageCount} messages
+
+              {sshConnectionId ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  <span className="inline-flex items-center rounded-md border border-border/60 bg-background/70 px-3 py-1.5 text-[11px] text-muted-foreground">
+                    SSH
                   </span>
-                </button>
-              ))}
+                </div>
+              ) : null}
             </div>
-          )}
+
+            <InputArea
+              sessionId={null}
+              onSend={handleSend}
+              onSelectFolder={() => setFolderDialogOpen(true)}
+              workingFolder={workingFolder}
+              hideWorkingFolderIndicator
+              hideWorkingFolderPicker
+              isStreaming={false}
+            />
+
+            <div className="mt-4 flex flex-wrap gap-2 sm:mt-5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-md border border-border/60 bg-background/50 px-3 text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                onClick={() => useUIStore.getState().navigateToArchive(activeProject.id)}
+              >
+                <BookOpen className="size-3.5" />
+                {t('projectHome.openArchive')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-md border border-border/60 bg-background/50 px-3 text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                onClick={() => useUIStore.getState().navigateToChannels(activeProject.id)}
+              >
+                <MessageSquare className="size-3.5" />
+                {t('projectHome.openChannels')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-md border border-border/60 bg-background/50 px-3 text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                onClick={() => useUIStore.getState().navigateToGit(activeProject.id)}
+              >
+                <GitBranch className="size-3.5" />
+                {t('projectHome.openGit')}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {terminalDockOpen && (workingFolder || sshConnectionId) && (
+        <ProjectTerminalDock
+          projectId={activeProject.id}
+          projectName={activeProject.name}
+          workingFolder={workingFolder ?? null}
+          sshConnectionId={sshConnectionId}
+        />
+      )}
+
+      <WorkingFolderSelectorDialog
+        open={folderDialogOpen}
+        onOpenChange={setFolderDialogOpen}
+        workingFolder={workingFolder}
+        sshConnectionId={sshConnectionId}
+        onSelectLocalFolder={(folderPath) =>
+          updateProjectDirectory({
+            workingFolder: folderPath,
+            sshConnectionId: null
+          })
+        }
+        onSelectSshFolder={(folderPath, connectionId) =>
+          updateProjectDirectory({
+            workingFolder: folderPath,
+            sshConnectionId: connectionId
+          })
+        }
+      />
     </div>
   )
 }

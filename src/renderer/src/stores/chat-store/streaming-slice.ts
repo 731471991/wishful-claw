@@ -11,6 +11,7 @@ interface StreamingSliceState {
   streamingMessageId: string | null
   streamingMessages: Record<string, string>
   generatingImageMessages: Record<string, boolean>
+  generatingImagePreviews: Record<string, unknown>
   imageGenerationTimings: Record<string, ImageGenerationTiming>
 
   setStreamingMessageId: (sessionId: string, id: string | null) => void
@@ -28,6 +29,7 @@ export const createStreamingSlice: StateCreator<
   streamingMessageId: null,
   streamingMessages: {},
   generatingImageMessages: {},
+  generatingImagePreviews: {},
   imageGenerationTimings: {},
 
   setStreamingMessageId: (sessionId, id) => {

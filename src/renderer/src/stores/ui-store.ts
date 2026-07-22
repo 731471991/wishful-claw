@@ -23,6 +23,38 @@ export type NavItem =
   | 'tasks'
   | 'codegraph'
 
+
+export type AutoModelRoute = 'main' | 'fast'
+export type AutoModelTaskType = string
+export type AutoModelConfidence = string
+export type AutoModelDecisionSource = string
+export type AutoModelRoutingComplexity = string
+export type AutoModelRoutingRisk = string
+
+export interface AutoModelSelectionStatus {
+  source: 'auto'
+  mode?: string
+  target: AutoModelRoute
+  providerId?: string
+  modelId?: string
+  providerName?: string
+  modelName?: string
+  taskType?: AutoModelTaskType
+  confidence?: AutoModelConfidence
+  decisionSource?: AutoModelDecisionSource
+  toolsAllowed?: boolean
+  complexity?: AutoModelRoutingComplexity
+  risk?: AutoModelRoutingRisk
+  reasons?: string[]
+  classifierRoute?: AutoModelRoute
+  heuristicRoute?: AutoModelRoute
+  fallbackReason?: string
+  routingDurationMs?: number
+  selectedAt: number
+}
+
+export type AutoModelRoutingState = 'idle' | 'routing'
+
 export type ChatView = 'home' | 'project' | 'archive' | 'channels' | 'git' | 'session'
 
 export type RightPanelSection = 'execution' | 'resources' | 'collaboration' | 'monitoring'
@@ -160,6 +192,12 @@ interface UIStore {
   toggleRuntimeStatusPanel: () => void
   setRuntimeStatusPanelOpen: (open: boolean) => void
 
+  // Auto model selection (from OpenCowork)
+  autoModelSelectionsBySession: Record<string, AutoModelSelectionStatus | null>
+  autoModelRoutingStatesBySession: Record<string, AutoModelRoutingState>
+  setAutoModelSelection: (sessionId: string, status: AutoModelSelectionStatus | null) => void
+  setAutoModelRoutingState: (sessionId: string, status: AutoModelRoutingState) => void
+
   // Settings page
   settingsPageOpen: boolean
   settingsTab: SettingsTab
@@ -265,6 +303,16 @@ interface UIStore {
   toggleFileSelection: (filePath: string) => void
   clearSelectedFiles: () => void
 
+  // File preview
+  openFilePreview: (
+    filePath: string,
+    viewMode?: 'split' | 'inline',
+    sshConnectionId?: string | null,
+    sessionId?: string | null,
+    targetLine?: number,
+    targetColumn?: number
+  ) => void
+
   // Hovering state
   isHoveringRightPanel: boolean
   setIsHoveringRightPanel: (hovering: boolean) => void
@@ -350,6 +398,18 @@ export const useUIStore = create<UIStore>((set, get) => ({
   runtimeStatusPanelOpen: false,
   toggleRuntimeStatusPanel: () => set((state) => ({ runtimeStatusPanelOpen: !state.runtimeStatusPanelOpen })),
   setRuntimeStatusPanelOpen: (open) => set({ runtimeStatusPanelOpen: open }),
+
+  // Auto model selection
+  autoModelSelectionsBySession: {},
+  autoModelRoutingStatesBySession: {},
+  setAutoModelSelection: (sessionId, status) =>
+    set((state) => ({
+      autoModelSelectionsBySession: { ...state.autoModelSelectionsBySession, [sessionId]: status }
+    })),
+  setAutoModelRoutingState: (sessionId, status) =>
+    set((state) => ({
+      autoModelRoutingStatesBySession: { ...state.autoModelRoutingStatesBySession, [sessionId]: status }
+    })),
 
   // Settings page
   settingsPageOpen: false,
@@ -476,6 +536,12 @@ export const useUIStore = create<UIStore>((set, get) => ({
         : [...state.selectedFiles, filePath]
     })),
   clearSelectedFiles: () => set({ selectedFiles: [] }),
+
+  // File preview (stub — opens file via shell)
+  openFilePreview: (filePath) => {
+    // Stub: will be implemented with proper preview panel later
+    console.log('[UIStore] openFilePreview stub:', filePath)
+  },
 
   // Hovering state
   isHoveringRightPanel: false,

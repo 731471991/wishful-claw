@@ -13,6 +13,9 @@ export type { BuiltinProviderPreset }
 interface ProviderState {
   providers: AIProvider[]
   activeProviderId: string | null
+  activeModelId: string
+  activeFastProviderId: string | null
+  activeFastModelId: string
   defaultModel: string | null
 
   // ── Selectors ──
@@ -25,6 +28,10 @@ interface ProviderState {
   updateProvider: (id: string, updates: Partial<AIProvider>) => void
   deleteProvider: (id: string) => void
   setActiveProvider: (id: string) => void
+  setActiveModel: (modelId: string) => void
+  setActiveFastProvider: (id: string) => void
+  setActiveFastModel: (modelId: string) => void
+  getFastProviderConfig: () => { providerId: string | null; model: string } | null
   setDefaultModel: (modelId: string) => void
 
   // ── Model management ──
@@ -191,8 +198,41 @@ function ensureBuiltinPresets(): void {
     changed = true
   }
 
+  const state = useProviderStore.getState()
+  const updates: Partial<ProviderState> = {}
   if (changed) {
-    useProviderStore.setState({ providers: nextProviders })
+    updates.providers = nextProviders
+  }
+  // If no active provider is set, pick the first available one
+  if (!state.activeProviderId && nextProviders.length > 0) {
+    const firstProvider = nextProviders[0]
+    updates.activeProviderId = firstProvider.id
+    // Pick default model
+    const defaultModel =
+      firstProvider.models.find((m) => m.id === firstProvider.defaultModel) ??
+      firstProvider.models.find((m) => m.enabled && (!m.category || m.category === 'chat')) ??
+      firstProvider.models.find((m) => m.enabled) ??
+      firstProvider.models[0]
+    if (defaultModel) {
+      updates.activeModelId = defaultModel.id
+    }
+  }
+  // If activeProviderId is set but activeModelId is empty, resolve a default model
+  if (state.activeProviderId && !state.activeModelId) {
+    const provider = nextProviders.find((p) => p.id === state.activeProviderId)
+    if (provider) {
+      const defaultModel =
+        provider.models.find((m) => m.id === provider.defaultModel) ??
+        provider.models.find((m) => m.enabled && (!m.category || m.category === 'chat')) ??
+        provider.models.find((m) => m.enabled) ??
+        provider.models[0]
+      if (defaultModel) {
+        updates.activeModelId = defaultModel.id
+      }
+    }
+  }
+  if (Object.keys(updates).length > 0) {
+    useProviderStore.setState(updates)
   }
 }
 
@@ -201,6 +241,9 @@ export const useProviderStore = create<ProviderState>()(
     (set, get) => ({
       providers: [],
       activeProviderId: null,
+      activeModelId: '',
+      activeFastProviderId: null,
+      activeFastModelId: '',
       defaultModel: null,
 
       getActiveProvider: () => {
@@ -249,6 +292,20 @@ export const useProviderStore = create<ProviderState>()(
       },
 
       setActiveProvider: (id) => set({ activeProviderId: id }),
+
+      setActiveModel: (modelId) => set({ activeModelId: modelId }),
+
+      setActiveFastProvider: (id) => set({ activeFastProviderId: id }),
+
+      setActiveFastModel: (modelId) => set({ activeFastModelId: modelId }),
+
+      getFastProviderConfig: () => {
+        const { activeFastProviderId, activeFastModelId, providers } = get()
+        if (!activeFastProviderId) return null
+        const provider = providers.find((p) => p.id === activeFastProviderId)
+        if (!provider) return null
+        return { providerId: activeFastProviderId, model: activeFastModelId || provider.defaultModel || '' }
+      },
 
       setDefaultModel: (modelId) => set({ defaultModel: modelId }),
 
@@ -356,6 +413,66 @@ export const useProviderStore = create<ProviderState>()(
     }
   )
 )
+
+
+// ── Helper functions (from OpenCowork, simplified) ──
+
+export function modelSupportsVision(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return providerType === 'openai-images'
+  const requestType = model.type ?? providerType
+  return Boolean(
+    model.supportsVision || model.category === 'image' || requestType === 'openai-images'
+  )
+}
+
+export function isProviderAuthReady(provider: AIProvider | null | undefined): boolean {
+  if (!provider) return false
+  const authMode = provider.authMode ?? 'apiKey'
+  if (authMode === 'apiKey') {
+    return provider.requiresApiKey === false || provider.apiKey.trim().length > 0
+  }
+  return false
+}
+
+export function isProviderAvailableForModelSelection(
+  provider: AIProvider | null | undefined
+): boolean {
+  if (!provider?.enabled) return false
+  return isProviderAuthReady(provider)
+}
+
+export function modelSupportsBuiltinSearch(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return false
+  const requestType = model.type ?? providerType
+  return (
+    (requestType === 'anthropic' || requestType === 'openai-responses') &&
+    model.supportsBuiltinSearch === true
+  )
+}
+
+export function modelSupportsResponsesWebsocket(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return false
+  const requestType = model.type ?? providerType
+  return requestType === 'openai-responses' && model.supportsWebsocket === true
+}
+
+export function modelSupportsResponsesImageGeneration(
+  model: AIModelConfig | null | undefined,
+  providerType?: ProviderType
+): boolean {
+  if (!model) return false
+  const requestType = model.type ?? providerType
+  return requestType === 'openai-responses' && model.supportsImageGeneration === true
+}
 
 /**
  * Initialize provider store — call once on app startup.
