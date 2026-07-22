@@ -283,8 +283,10 @@ export function WorkingFolderSelectorDialog({
       setCreatingProject(false)
     }
   }, [
+    autoProjectName,
     createMode,
     creatingProject,
+    customProjectName,
     deriveBaseDirectoryFromSelectedFolder,
     onOpenChange,
     onSelectLocalFolder,
