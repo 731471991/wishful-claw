@@ -45,17 +45,18 @@
   - plan-002: AgentLoop 工具执行集成 + 前端工具 UI — 替换占位代码实现完整工具调用循环，前端 ToolCallCard 组件 + 事件处理 + sendMessage 传入 tools/workingFolder。tsc+build+dotnet 全部通过。
 
 ## 迭代五：项目注册 + 会话历史
-- 状态：进行中（规划已验证，待用户确认后执行）
+- 状态：进行中（plan-001 + plan-002 代码完成，待用户端到端验证）
 - 分支：dev/iter-5
 - Plan: docs/plans/iter-5/plan-001/ + docs/plans/iter-5/plan-002/
-- VERDICT: —
-- Tag: —
-- Commit: —
+- VERDICT: PASS (编译验证 + 端到端 DB 测试) / 待用户端到端验证
+- Tag: —（待验证后打 v0.5.0）
+- Commit: 48e6aec (plan-001) / 45104f1 (plan-002)
 - 日期: 2026-07-22
 - 备注：
-  - plan-001: 后端 DB 层（SQLite + DbModule + 三张表 + CRUD）— 9 步
-  - plan-002: 前端 DB 层（IPC 桥接 + db-helpers 实现 + 消息持久化 + 启动加载）— 10 步
-  - 规划验证通过，待用户确认后开始执行 plan-001
+  - plan-001: 后端 DB 层 — SqlSugarCore ORM + DbClient/DbEntities/DbProjectTools/DbSessionTools/DbMessageTools/DbModule，CodeFirst 自动建表，8 项端到端测试通过
+  - plan-002: 前端 DB 层 — db-helpers.ts 用 workerRequest 直连 Worker（简化架构，无需 Main 侧 DAO），消息序列化/反序列化，sendMessage/message_end 实时持久化，dbLoadAll 启动加载，loadRecentSessionMessages 按需加载
+  - 架构简化：原计划 5 个 Main 侧文件 → 0 个（worker:request 通用转发器已覆盖）
+  - tsc + electron-vite build + dotnet build 全部通过
 
 ## 迭代六：记忆系统
 - 状态：未开始
