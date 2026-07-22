@@ -140,6 +140,7 @@ export const useChatStore = create<ChatStore>()(
     },
 
     handleEnvelope: (envelope) => {
+      const set = args[0] as typeof args[0]
       const get = args[1] as () => ChatStore
       const state = get()
 

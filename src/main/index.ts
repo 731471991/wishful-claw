@@ -170,6 +170,9 @@ app.whenReady().then(() => {
         const content = await fs.promises.readFile(args.path, 'utf-8')
         return content
       } catch (err) {
+        // Return empty string for missing files instead of throwing
+        const code = (err as NodeJS.ErrnoException).code
+        if (code === 'ENOENT' || code === 'EISDIR') return ''
         throw new Error(String(err))
       }
     }

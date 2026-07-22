@@ -618,7 +618,7 @@ export function WorkspaceSidebar(): React.JSX.Element {
     async (folderPath: string, _connectionId: string | null, projectName?: string) => {
       const name = projectName?.trim() || folderPath.split(/[\\/]/).pop() || 'New Project'
       const projectId = await createProject({ name, workingFolder: folderPath })
-      useUIStore.getState().setActiveProjectHome(projectId)
+      useChatStore.getState().setActiveProjectHome(projectId)
       useUIStore.getState().navigateToProject(projectId)
       toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))
       setCreateProjectDialogOpen(false)
