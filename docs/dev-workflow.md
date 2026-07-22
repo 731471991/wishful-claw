@@ -88,7 +88,7 @@
 | 节点 | 必须停 | 原因 |
 |------|--------|------|
 | 规划验证通过后、执行前 | ✅ | 用户确认计划方向，避免白干 |
-| 验证态出结果后（PASS/FAIL/PARTIAL） | ✅ | 用户确认迭代是否完结。Agent 不得自行合并 main、打 tag、删分支 |
+| 验证态出结果后（PASS/FAIL/PARTIAL） | ✅ | 用户确认 Plan 是否达标，Agent 不得自行判定完成 |
 | 步骤反复失败（同一步骤 3 次未过） | ✅ | 超出自动修复能力，需要用户决策 |
 | 需要用户手动操作（如调整目录结构、填 API Key） | ✅ | AI 无法替代 |
 
@@ -315,31 +315,13 @@ git commit -m "docs(review): 迭代{N}审查报告"
 
 **输出**：`docs/plans/plan_XXX/verification_report.md`
 
-**验证结果出来后**：停下来等用户确认。**Agent 不得自行判定迭代完结。**
+**验证结果出来后**：停下来等用户确认。**Agent 不得自行判定 Plan 完成。**
 
-**用户确认 PASS 后，Agent 执行收尾**：
-```bash
-# 打 tag
-git tag -a v0.{N}.0 -m "迭代{N}: {迭代名称} - 验证通过"
-
-# 合并到 main
-git checkout main
-git merge dev/iter-{N} --no-ff -m "merge: 迭代{N} - {迭代名称}"
-
-# 推送远程
-git push origin main
-git push origin v0.{N}.0
-
-# 删除迭代分支
-git branch -d dev/iter-{N}
-git push origin --delete dev/iter-{N}
-```
-
-**更新 `docs/PROGRESS.md`**（状态 + VERDICT + Commit ID + Tag + 日期）
+**用户确认 PASS**：Plan 完成，push 该 Plan 的所有 commit
 
 **用户确认 FAIL**：`git reset --hard` 回到审查态提交，修复后重新验证
 
-**用户确认 PARTIAL**：由用户决定是否合并已有成果、是否继续补充
+**用户确认 PARTIAL**：由用户决定保留哪些成果、是否继续补充
 
 **最终裁定**：`PASS` / `FAIL` / `PARTIAL`（由用户裁定，不是 agent 自行确认）
 

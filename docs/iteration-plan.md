@@ -20,6 +20,34 @@
 
 执行迭代时，先在 `docs/plans/iter-{N}/` 下创建 Plan 文件，自行拆分后再逐个执行。
 
+## 迭代完结规则
+
+**迭代是否完结由用户确认，Agent 不得自行判定。**
+
+当迭代内所有 Plan 都完成后，Agent 输出迭代总结（做了什么、验证结果、遗留问题），然后**停下来等用户确认**。
+
+**用户确认完结后，Agent 执行收尾**：
+```bash
+# 打 tag
+git tag -a v0.{N}.0 -m "迭代{N}: {迭代名称} - 验证通过"
+
+# 合并到 main
+git checkout main
+git merge dev/iter-{N} --no-ff -m "merge: 迭代{N} - {迭代名称}"
+
+# 推送远程
+git push origin main
+git push origin v0.{N}.0
+
+# 删除迭代分支
+git branch -d dev/iter-{N}
+git push origin --delete dev/iter-{N}
+```
+
+**更新 `docs/PROGRESS.md`**（状态 + VERDICT + Commit ID + Tag + 日期）
+
+**用户确认未完结**：根据用户反馈继续补充，开启新的 Plan
+
 ---
 
 ## 迭代一：项目骨架
