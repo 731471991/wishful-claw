@@ -183,37 +183,41 @@ export const useChatStore = create<ChatStore>()(
             break
 
           case 'tool_call_start': {
-            const session = state.sessions.find((s) => s.id === targetSessionId)
-            if (session) {
-              const msg = session.messages.find((m) => m.id === envelope.runId)
-              if (msg) {
-                if (!msg.toolCalls) msg.toolCalls = []
-                msg.toolCalls.push({
-                  id: event.toolCall.id,
-                  name: event.toolCall.name,
-                  input: event.toolCall.input,
-                  status: 'running',
-                  startedAt: event.toolCall.startedAt
-                })
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  if (!msg.toolCalls) msg.toolCalls = []
+                  msg.toolCalls.push({
+                    id: event.toolCall.id,
+                    name: event.toolCall.name,
+                    input: event.toolCall.input,
+                    status: 'running',
+                    startedAt: event.toolCall.startedAt
+                  })
+                }
               }
-            }
+            })
             break
           }
 
           case 'tool_call_result': {
-            const session = state.sessions.find((s) => s.id === targetSessionId)
-            if (session) {
-              const msg = session.messages.find((m) => m.id === envelope.runId)
-              if (msg && msg.toolCalls) {
-                const tc = msg.toolCalls.find((t) => t.id === event.toolCall.id)
-                if (tc) {
-                  tc.status = event.toolCall.status === 'error' ? 'error' : 'completed'
-                  tc.output = event.toolCall.output
-                  tc.error = event.toolCall.error
-                  tc.completedAt = event.toolCall.completedAt
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg && msg.toolCalls) {
+                  const tc = msg.toolCalls.find((t) => t.id === event.toolCall.id)
+                  if (tc) {
+                    tc.status = event.toolCall.status === 'error' ? 'error' : 'completed'
+                    tc.output = event.toolCall.output
+                    tc.error = event.toolCall.error
+                    tc.completedAt = event.toolCall.completedAt
+                  }
                 }
               }
-            }
+            })
             break
           }
 

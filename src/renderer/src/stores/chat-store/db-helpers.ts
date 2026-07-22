@@ -279,6 +279,7 @@ export async function dbUpsertMessage(
   msg: ChatMessage,
   sortOrder: number
 ): Promise<void> {
+  await ensureDbInitialized()
   const data = serializeMessage(msg, sortOrder)
   data.sessionId = sessionId
   await window.api.workerRequest('db/messages-upsert', data)
