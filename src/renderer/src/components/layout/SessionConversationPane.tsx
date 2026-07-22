@@ -37,6 +37,10 @@ export function SessionConversationPane({
     resolvedSessionId ? Boolean(s.streamingMessages[resolvedSessionId]) : false
   )
   const activities = useActivityStore((s) => s.activities)
+  const projectWorkingFolder = useChatStore((s) => {
+    if (!session?.projectId) return undefined
+    return s.projects.find((p) => p.id === session.projectId)?.workingFolder
+  })
 
   const handleSend = useCallback(
     (text: string, _images?: unknown, _options?: unknown) => {
@@ -119,6 +123,7 @@ export function SessionConversationPane({
           isStreaming={isStreaming}
           onStop={stopStreaming}
           sessionId={resolvedSessionId ?? undefined}
+          workingFolder={session?.workingFolder ?? projectWorkingFolder}
         />
       </div>
 

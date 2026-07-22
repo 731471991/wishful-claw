@@ -2725,7 +2725,7 @@ export function InputArea({
     [insertPluginPrompt, insertSlashCommand, selectSlashSkill]
   )
   const hasApiKey = !!activeProvider?.apiKey || activeProvider?.requiresApiKey === false
-  const needsWorkingFolder = projectScoped && !workingFolder
+  const needsWorkingFolder = projectScoped && !workingFolder && Boolean(onSelectFolder)
   const planMode = useUIStore((s) =>
     draftSessionId ? Boolean(s.planModesBySession[draftSessionId]) : pendingPlanMode
   )
