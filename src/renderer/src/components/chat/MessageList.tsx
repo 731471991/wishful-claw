@@ -716,14 +716,12 @@ function shouldShowAssistantRailMarker(
   if (source.meta?.compactBoundary) return false
   if (source.meta?.compressionStatus) return false
   if (isTeamLocatorSource(source)) return false
-  if (source.role === 'user') {
-    return (
-      Boolean(normalizeLocatorPreview(getUserMessageText(source.content))) ||
-      countImageBlocks(source.content) > 0
-    )
-  }
-  if (source.role !== 'assistant') return false
-  return true
+  // Only show markers for user messages
+  if (source.role !== 'user') return false
+  return (
+    Boolean(normalizeLocatorPreview(getUserMessageText(source.content))) ||
+    countImageBlocks(source.content) > 0
+  )
 }
 
 function getAssistantRailMarkerKind(
@@ -1038,7 +1036,7 @@ function AssistantReplyRail({
     return (
       <span
         className={cn(
-          'block h-0.5 w-3 origin-left rounded-full transition-[color,background-color,opacity,transform] duration-100 ease-out will-change-transform',
+          'block h-0.5 w-3 origin-right rounded-full transition-[color,background-color,opacity,transform] duration-100 ease-out will-change-transform',
           item.kind === 'summary'
             ? 'bg-amber-500/55'
             : item.kind === 'user'
@@ -1092,11 +1090,11 @@ function AssistantReplyRail({
   }
 
   return (
-    <div className="pointer-events-none absolute bottom-5 left-2 top-5 z-20 hidden md:block">
+    <div className="pointer-events-none absolute bottom-5 right-2 top-5 z-20 hidden md:block">
       <div className="pointer-events-none relative h-full w-[min(320px,calc(100vw-3rem))]">
         {previewItem && previewCopy ? (
           <div
-            className="absolute left-7 w-[min(276px,calc(100vw-5rem))] -translate-y-1/2 animate-in fade-in-0 slide-in-from-left-1 duration-150"
+            className="absolute right-7 w-[min(276px,calc(100vw-5rem))] -translate-y-1/2 animate-in fade-in-0 slide-in-from-right-1 duration-150"
             style={{ top: previewTop }}
           >
             <div className="overflow-hidden rounded-xl border border-border/70 bg-popover/95 px-3 py-2.5 text-popover-foreground shadow-xl backdrop-blur-xl">
@@ -1128,7 +1126,7 @@ function AssistantReplyRail({
 
         <div
           className={cn(
-            'pointer-events-auto absolute left-0 top-0 h-full w-6',
+            'pointer-events-auto absolute right-0 top-0 h-full w-6',
             dense && 'cursor-pointer'
           )}
           onPointerMove={(event) => {
@@ -1165,7 +1163,7 @@ function AssistantReplyRail({
             return dense ? (
               <span
                 key={item.id}
-                className="absolute left-0 flex h-3 w-6 -translate-y-1/2 items-center justify-start"
+                className="absolute right-0 flex h-3 w-6 -translate-y-1/2 items-center justify-end"
                 style={{ top: getCompactRailMarkerTop(itemIndex, items.length) }}
               >
                 {renderMarker(item, itemIndex, previewing)}
@@ -1177,7 +1175,7 @@ function AssistantReplyRail({
                 aria-current={activeMessageIds.has(item.id) ? 'true' : undefined}
                 aria-label={getLabel(item)}
                 title={item.preview}
-                className="pointer-events-auto group/assistant-marker absolute left-0 flex w-6 -translate-y-1/2 items-center justify-start rounded-sm outline-none"
+                className="pointer-events-auto group/assistant-marker absolute right-0 flex w-6 -translate-y-1/2 items-center justify-end rounded-sm outline-none"
                 style={{
                   top: getCompactRailMarkerTop(itemIndex, items.length),
                   // Hit areas must tile without overlap: taller buttons would let the
