@@ -125,6 +125,43 @@ app.whenReady().then(() => {
     }
   )
 
+  // Folder picker: returns { canceled, path } for the renderer's fs:select-folder channel
+  registerMessagePackHandler<{ defaultPath?: string }, { canceled: boolean; path?: string }>(
+    'fs:select-folder',
+    async (args, event) => {
+      const win = BrowserWindow.fromWebContents(event.sender)
+      const result = await dialog.showOpenDialog(win!, {
+        properties: ['openDirectory'],
+        ...(args.defaultPath ? { defaultPath: args.defaultPath } : {})
+      })
+      return {
+        canceled: result.canceled,
+        path: result.canceled ? undefined : result.filePaths[0]
+      }
+    }
+  )
+
+  // List desktop directories for the working folder selector dialog
+  registerMessagePackHandler<void, { desktopPath: string; directories: { name: string; path: string; isDesktop: boolean }[] } | { error: string }>(
+    'fs:list-desktop-directories',
+    async () => {
+      try {
+        const desktopPath = app.getPath('desktop')
+        const entries = await fs.promises.readdir(desktopPath, { withFileTypes: true })
+        const directories = entries
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => ({
+            name: entry.name,
+            path: join(desktopPath, entry.name),
+            isDesktop: false
+          }))
+        return { desktopPath, directories }
+      } catch (err) {
+        return { error: String(err) }
+      }
+    }
+  )
+
   // Ensure default chat working folder exists (Documents/<date>/Chat)
   registerMessagePackHandler<void, { path?: string; error?: string }>(
     'fs:default-chat-working-folder',
