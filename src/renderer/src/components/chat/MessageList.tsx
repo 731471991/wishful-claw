@@ -252,6 +252,7 @@ interface MessageRowProps {
 }
 
 const EMPTY_MESSAGES: UnifiedMessage[] = []
+const EMPTY_MESSAGES_RAW: readonly unknown[] = []
 const EMPTY_TEAM_HISTORY: ActiveTeam[] = []
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 const STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD = 80
@@ -447,6 +448,65 @@ function isActiveTeamRunning(team: ActiveTeam): boolean {
   )
 }
 
+// Cache: ChatMessage[] reference → UnifiedMessage[] conversion result
+// This prevents infinite re-render loops by returning the same array reference
+// when the source messages array hasn't changed.
+const chatMessageConversionCache = new WeakMap<readonly unknown[], UnifiedMessage[]>()
+
+function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMessage[] {
+  const cached = chatMessageConversionCache.get(messages)
+  if (cached) return cached
+
+  const converted = messages.map((raw) => {
+    const msg = raw as Record<string, unknown>
+    const role = msg.role as UnifiedMessage['role']
+    const text = (msg.text as string) ?? ''
+    const thinking = msg.thinking as string | undefined
+    const toolCalls = msg.toolCalls as Array<Record<string, unknown>> | undefined
+
+    // Build content blocks from ChatMessage fields
+    const blocks: ContentBlock[] = []
+
+    if (thinking) {
+      blocks.push({ type: 'thinking', thinking })
+    }
+
+    if (text) {
+      blocks.push({ type: 'text', text })
+    }
+
+    if (toolCalls && toolCalls.length > 0) {
+      for (const tc of toolCalls) {
+        blocks.push({
+          type: 'tool_use',
+          id: tc.id as string,
+          name: tc.name as string,
+          input: (tc.input as Record<string, unknown>) ?? {}
+        })
+      }
+    }
+
+    const result: UnifiedMessage = {
+      id: msg.id as string,
+      role,
+      content: blocks.length > 0 ? blocks : text,
+      createdAt: (msg.createdAt as number) ?? Date.now()
+    }
+
+    if (msg.usage) result.usage = msg.usage as UnifiedMessage['usage']
+    if (msg.isStreaming) result._revision = 0
+    if (msg.error) {
+      // Represent errors as an agent_error block
+      result.content = [{ type: 'agent_error', code: 'runtime_error', message: msg.error as string }]
+    }
+
+    return result
+  })
+
+  chatMessageConversionCache.set(messages, converted)
+  return converted
+}
+
 function selectMessageListSession(
   state: ChatStoreSnapshot,
   sessionId: string | null | undefined
@@ -457,8 +517,13 @@ function selectMessageListSession(
   if (idx === undefined) return EMPTY_MESSAGE_LIST_SESSION_SELECTION
 
   const session = state.sessions[idx]
+  const rawMessages = session.messages ?? EMPTY_MESSAGES_RAW
+  const messages = rawMessages.length > 0
+    ? convertChatMessagesToUnified(rawMessages)
+    : EMPTY_MESSAGES
+
   return {
-    messages: session.messages ?? EMPTY_MESSAGES,
+    messages,
     messagesLoaded: session.messagesLoaded ?? false,
     messageCount: session.messageCount ?? 0,
     workingFolder: session.workingFolder,
