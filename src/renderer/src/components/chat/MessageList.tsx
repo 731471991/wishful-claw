@@ -2381,7 +2381,7 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
 
   if (isAwaitingInitialMessages) {
     return (
-      <div className="flex flex-1 flex-col gap-4 overflow-hidden px-4 pt-6">
+      <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden px-4 pt-6">
         {[0, 1, 2].map((index) => (
           <div
             key={index}
@@ -2407,7 +2407,7 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
         ? 'What should we talk through?'
         : t(hint.titleKey)
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+      <div className="flex h-full flex-1 flex-col items-center justify-center px-6 text-center">
         <div
           className={`flex flex-col items-center gap-3 ${getMessageColumnCompactClass(fullWidth)}`}
         >
@@ -2455,7 +2455,7 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
 
   if (exportAll) {
     return (
-      <div ref={containerRef} className="relative flex-1" data-message-list>
+      <div ref={containerRef} className="relative h-full flex-1" data-message-list>
         <div data-message-content>
           {renderableMessages.map((row) => {
             const message = messageLookup.get(row.messageId)
