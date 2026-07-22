@@ -138,6 +138,56 @@ app.whenReady().then(() => {
     }
   )
 
+  // ── Agent history stub handlers (no persistence layer yet) ──
+  registerMessagePackHandler<void, { total: number; sessions: unknown[] }>(
+    'agent-history:index',
+    async () => ({ total: 0, sessions: [] })
+  )
+  registerMessagePackHandler<{ sessionId: string }, unknown[]>(
+    'agent-history:read',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, void>(
+    'agent-history:apply',
+    async () => undefined
+  )
+  registerMessagePackHandler<unknown, void>(
+    'agent-history:replace',
+    async () => undefined
+  )
+
+  // ── Config stub handlers (key-value store, same pattern as settings) ──
+  registerMessagePackHandler<string, unknown | null>(
+    'config:get',
+    () => null
+  )
+  registerMessagePackHandler<{ key: string; value: unknown }, { success: boolean }>(
+    'config:set',
+    () => ({ success: true })
+  )
+
+  // ── Input draft stub handlers ──
+  registerMessagePackHandler<string, unknown | null>(
+    'input-draft:get',
+    () => null
+  )
+  registerMessagePackHandler<unknown, void>(
+    'input-draft:set',
+    () => undefined
+  )
+  registerMessagePackHandler<string, void>(
+    'input-draft:remove',
+    () => undefined
+  )
+  registerMessagePackHandler<void, unknown[]>(
+    'input-draft:list',
+    () => []
+  )
+  registerMessagePackHandler<void, void>(
+    'input-draft:cleanup',
+    () => undefined
+  )
+
   // ── DB stub handlers (no SQLite layer yet) ──
   registerMessagePackHandler<string, unknown[] | null>(
     'db:messages:list-locator:msgpack',
