@@ -146,7 +146,7 @@ function useTitle(): { title: string; subtitle: string | null } {
 // ─── MainLayout ───
 
 export function MainLayout(): React.JSX.Element {
-  const { title, subtitle } = useTitle()
+
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen)
   const rightPanelWidth = useUIStore((s) => s.rightPanelWidth)
   const runtimeStatusPanelOpen = useUIStore((s) => s.runtimeStatusPanelOpen)
@@ -165,7 +165,7 @@ export function MainLayout(): React.JSX.Element {
 
         {/* Center: Title bar + Content */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <TitleBar title={title} subtitle={subtitle} tooltip={subtitle} />
+          <TitleBar />
 
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {/* Main content */}
