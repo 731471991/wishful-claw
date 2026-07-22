@@ -423,6 +423,40 @@ app.whenReady().then(() => {
     'agent-history:replace',
     async () => undefined
   )
+  // ── Agent changes stub handlers ──
+  registerMessagePackHandler<unknown, unknown[]>(
+    'agent:changes:list-session',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, unknown[]>(
+    'agent:changes:list-project',
+    async () => []
+  )
+
+  // ── SSH stub handlers ──
+  registerMessagePackHandler<unknown, unknown[]>(
+    'ssh:connection:list',
+    async () => []
+  )
+
+  // ── Skills stub handlers ──
+  registerMessagePackHandler<unknown, unknown[]>(
+    'skills:list',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, unknown[]>(
+    'agents:list',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, unknown[]>(
+    'commands:list',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, unknown[]>(
+    'prompts:list',
+    async () => []
+  )
+
 
   // ── Config stub handlers (key-value store, same pattern as settings) ──
   registerMessagePackHandler<string, unknown | null>(
