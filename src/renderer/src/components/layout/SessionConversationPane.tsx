@@ -124,6 +124,7 @@ export function SessionConversationPane({
           onStop={stopStreaming}
           sessionId={resolvedSessionId ?? undefined}
           workingFolder={session?.workingFolder ?? projectWorkingFolder}
+          hideWorkingFolderIndicator
         />
       </div>
 

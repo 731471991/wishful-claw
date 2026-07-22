@@ -1090,11 +1090,11 @@ function AssistantReplyRail({
   }
 
   return (
-    <div className="pointer-events-none absolute bottom-5 right-2 top-5 z-20 hidden md:block">
+    <div className="pointer-events-none absolute bottom-5 right-4 top-5 z-20 hidden md:block">
       <div className="pointer-events-none relative h-full w-[min(320px,calc(100vw-3rem))]">
         {previewItem && previewCopy ? (
           <div
-            className="absolute right-7 w-[min(276px,calc(100vw-5rem))] -translate-y-1/2 animate-in fade-in-0 slide-in-from-right-1 duration-150"
+            className="absolute right-8 w-[min(276px,calc(100vw-5rem))] -translate-y-1/2 animate-in fade-in-0 slide-in-from-right-1 duration-150"
             style={{ top: previewTop }}
           >
             <div className="overflow-hidden rounded-xl border border-border/70 bg-popover/95 px-3 py-2.5 text-popover-foreground shadow-xl backdrop-blur-xl">
