@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'path'
+import * as fs from 'fs'
 
 import { getNativeWorker } from './lib/native-worker'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
