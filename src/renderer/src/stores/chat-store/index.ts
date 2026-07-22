@@ -159,18 +159,39 @@ export const useChatStore = create<ChatStore>()(
 
         switch (event.type) {
           case 'text_delta':
-            state.appendTextDelta(targetSessionId, envelope.runId, event.text)
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) msg.text += event.text
+              }
+            })
             break
 
           case 'thinking_delta':
-            state.appendThinkingDelta(targetSessionId, envelope.runId, event.thinking)
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) msg.thinking = (msg.thinking ?? '') + event.thinking
+              }
+            })
             break
 
+          // message_end = one LLM turn finished, but the loop may continue
+          // (tool calls → next iteration). Do NOT set isStreaming=false here.
+          // Only persist the message and store usage/timing.
           case 'message_end':
-            state.updateMessage(targetSessionId, envelope.runId, {
-              isStreaming: false,
-              usage: event.usage,
-              timing: event.timing
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.usage = event.usage
+                  msg.timing = event.timing
+                  // isStreaming stays true — loop_end will set it false
+                }
+              }
             })
             // Persist assistant message to DB
             {
@@ -222,25 +243,41 @@ export const useChatStore = create<ChatStore>()(
             break
           }
 
+          // loop_end = entire agent loop finished, now we can stop streaming
           case 'loop_end':
-            state.setStreamingMessageId(targetSessionId, null)
-            {
+            set((state) => {
+              state.streamingMessages[targetSessionId] = null
               const session = state.sessions.find((s) => s.id === targetSessionId)
               if (session) {
                 for (const msg of session.messages) {
                   if (msg.isStreaming) {
-                    state.updateMessage(targetSessionId!, msg.id, { isStreaming: false })
+                    msg.isStreaming = false
                   }
                 }
+              }
+            })
+            // Final persist after loop ends
+            {
+              const sess = get().sessions.find((s) => s.id === targetSessionId)
+              const msg = sess?.messages.find((m) => m.id === envelope.runId)
+              if (msg) {
+                const sortOrder = sess ? sess.messages.indexOf(msg) : 0
+                void dbUpsertMessage(targetSessionId, msg, sortOrder)
               }
             }
             break
 
           case 'error':
-            state.setStreamingMessageId(targetSessionId, null)
-            state.updateMessage(targetSessionId, envelope.runId, {
-              isStreaming: false,
-              error: event.message
+            set((state) => {
+              state.streamingMessages[targetSessionId] = null
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.isStreaming = false
+                  msg.error = event.message
+                }
+              }
             })
             break
         }

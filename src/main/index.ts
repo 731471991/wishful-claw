@@ -508,6 +508,24 @@ app.whenReady().then(() => {
     async () => undefined
   )
 
+  // ── Agent changes stub handlers ──
+  registerMessagePackHandler<{ sessionId: string }, unknown[]>(
+    'agent:changes:list-session',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, unknown>(
+    'agent:changes:diff-content',
+    async () => null
+  )
+  registerMessagePackHandler<unknown, { success: boolean }>(
+    'agent:changes:undo-run',
+    async () => ({ success: false })
+  )
+  registerMessagePackHandler<unknown, { success: boolean }>(
+    'agent:changes:undo-file',
+    async () => ({ success: false })
+  )
+
   createWindow()
 
 function formatLocalDateFolderName(date = new Date()): string {
