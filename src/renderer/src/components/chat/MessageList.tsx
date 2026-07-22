@@ -2501,7 +2501,7 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
   }
 
   const messageListContent = (
-    <div ref={containerRef} className="relative flex-1" data-message-list>
+    <div ref={containerRef} className="relative h-full flex-1" data-message-list>
       <div
         ref={listRef}
         className="absolute inset-0 overflow-y-auto pl-7 md:pl-9"

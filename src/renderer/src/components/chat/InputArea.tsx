@@ -3914,7 +3914,7 @@ export function InputArea({
             </>
           ) : (
             <>
-              <span>{t('action.start', { ns: 'common' })}</span>
+              <span>{t(sessionId ? 'action.send' : 'action.start', { ns: 'common' })}</span>
               <Send className="ml-1.5 size-3.5" />
             </>
           )}

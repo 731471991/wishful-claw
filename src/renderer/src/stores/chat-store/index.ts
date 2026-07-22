@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
@@ -47,6 +47,12 @@ export const useChatStore = create<ChatStore>()(
 
       const userText = params.messages[params.messages.length - 1]?.content ?? ''
       const now = Date.now()
+      // Generate runId on the renderer side so we can set streamingMessages
+      // BEFORE awaiting the agent/run response. This prevents a race condition
+      // where stream events (including loop_end) arrive before streamingMessages
+      // is populated, causing handleEnvelope to skip processing and leaving
+      // isStreaming stuck forever.
+      const runId = `wc-agent-${now}-${Math.random().toString(36).slice(2, 8)}`
       const userMessage: ChatMessage = {
         id: `user_${now}`,
         role: 'user',
@@ -54,7 +60,7 @@ export const useChatStore = create<ChatStore>()(
         createdAt: now
       }
       const assistantMessage: ChatMessage = {
-        id: `assistant_${now}`,
+        id: runId,
         role: 'assistant',
         text: '',
         thinking: '',
@@ -65,6 +71,10 @@ export const useChatStore = create<ChatStore>()(
       // Add messages to session
       state.beginUserTurn(sessionId, userMessage, assistantMessage, assistantMessage.id)
 
+      // Set streamingMessages BEFORE the await so handleEnvelope can process
+      // events that arrive while we're waiting for the agent/run response.
+      state.setStreamingMessageId(sessionId, runId)
+
       // Auto-generate title from first user message
       const session = state.sessions.find((s) => s.id === sessionId)
       if (session && session.title === 'New Conversation' && userText) {
@@ -72,17 +82,22 @@ export const useChatStore = create<ChatStore>()(
       }
 
       try {
+        // Pass runId to the worker so it uses ours instead of generating one
         const result = await window.api.workerRequest<{ started: boolean; runId: string }>(
           'agent/run',
-          params
+          { ...params, runId }
         )
-        if (result.started) {
-          // Rename assistant message ID to match runId so handleEnvelope can find it
-          state.updateMessage(sessionId, assistantMessage.id, { id: result.runId })
-          state.setStreamingMessageId(sessionId, result.runId)
+        if (!result.started) {
+          // Worker rejected the run - clear streaming state
+          state.setStreamingMessageId(sessionId, null)
+          state.updateMessage(sessionId, runId, {
+            isStreaming: false,
+            error: 'Agent run was not started'
+          })
         }
       } catch (err) {
-        state.updateMessage(sessionId, assistantMessage.id, {
+        state.setStreamingMessageId(sessionId, null)
+        state.updateMessage(sessionId, runId, {
           isStreaming: false,
           error: err instanceof Error ? err.message : String(err)
         })
