@@ -1,42 +1,345 @@
-import type { Session, Project } from './types'
+import type { Session, Project, ChatMessage } from './types'
 
 /**
- * DB persistence helpers — placeholder implementations.
- * All functions are no-ops for now (in-memory storage).
- * TODO (迭代五): Implement with SQLite via MessagePack IPC.
+ * DB persistence helpers — SQLite via Worker IPC (workerRequest → db/*).
+ *
+ * Architecture:
+ *   Renderer → window.api.workerRequest('db/xxx', params)
+ *   → Electron Main 'worker:request' handler
+ *   → .NET Worker DbModule handler
+ *   → SqlSugar ORM → SQLite (~/.wishful-claw/index.db)
  */
 
-export function dbCreateSession(_session: Session): void {
-  // Placeholder — 迭代五接入 SQLite
+// ─── DB Row Types (from backend, snake_case) ───
+
+interface ProjectRow {
+  id: string
+  name: string
+  workingFolder: string | null
+  sshConnectionId: string | null
+  pluginId: string | null
+  pinned: boolean
+  createdAt: number
+  updatedAt: number
+  sessionCount: number
 }
 
-export function dbDeleteSession(_sessionId: string): void {
-  // Placeholder
+interface SessionRow {
+  id: string
+  title: string
+  icon: string | null
+  mode: string
+  createdAt: number
+  updatedAt: number
+  messageCount: number
+  projectId: string | null
+  workingFolder: string | null
+  sshConnectionId: string | null
+  planId: string | null
+  pinned: boolean
+  pluginId: string | null
+  externalChatId: string | null
+  providerId: string | null
+  modelId: string | null
+  modelSelectionMode: string | null
 }
 
-export function dbUpdateSession(
-  _sessionId: string,
-  _patch: Partial<Session>
-): void {
-  // Placeholder
+interface MessageRow {
+  id: string
+  sessionId: string
+  role: string
+  content: string
+  meta: string | null
+  createdAt: number
+  usage: string | null
+  sortOrder: number
 }
 
-export function dbCreateProject(_project: Project): void {
-  // Placeholder
+// ─── Serialization helpers ───
+
+/**
+ * Serialize a ChatMessage to DB format.
+ * content = message text
+ * meta = JSON string of { thinking, toolCalls, isStreaming, error }
+ * usage = JSON string of usage data
+ */
+function serializeMessage(msg: ChatMessage, sortOrder: number): {
+  id: string
+  sessionId: string
+  role: string
+  content: string
+  meta: string | null
+  createdAt: number
+  usage: string | null
+  sortOrder: number
+} {
+  const meta: Record<string, unknown> = {}
+  if (msg.thinking) meta.thinking = msg.thinking
+  if (msg.toolCalls && msg.toolCalls.length > 0) meta.toolCalls = msg.toolCalls
+  if (msg.isStreaming) meta.isStreaming = msg.isStreaming
+  if (msg.error) meta.error = msg.error
+
+  return {
+    id: msg.id,
+    sessionId: '', // filled by caller
+    role: msg.role,
+    content: msg.text,
+    meta: Object.keys(meta).length > 0 ? JSON.stringify(meta) : null,
+    createdAt: msg.createdAt,
+    usage: msg.usage ? JSON.stringify(msg.usage) : null,
+    sortOrder
+  }
 }
 
-export function dbDeleteProject(_projectId: string): void {
-  // Placeholder
+/**
+ * Deserialize a DB MessageRow back to ChatMessage.
+ */
+function deserializeMessage(row: MessageRow): ChatMessage {
+  const msg: ChatMessage = {
+    id: row.id,
+    role: row.role as 'user' | 'assistant' | 'system',
+    text: row.content,
+    createdAt: row.createdAt
+  }
+
+  if (row.meta) {
+    try {
+      const meta = JSON.parse(row.meta) as Record<string, unknown>
+      if (meta.thinking) msg.thinking = meta.thinking as string
+      if (meta.toolCalls) msg.toolCalls = meta.toolCalls as ChatMessage['toolCalls']
+      if (meta.isStreaming) msg.isStreaming = meta.isStreaming as boolean
+      if (meta.error) msg.error = meta.error as string
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  if (row.usage) {
+    try {
+      msg.usage = JSON.parse(row.usage)
+    } catch {
+      // ignore
+    }
+  }
+
+  return msg
 }
 
-export function dbUpdateProject(
-  _projectId: string,
-  _patch: Partial<Project>
-): void {
-  // Placeholder
+/**
+ * Convert DB SessionRow to frontend Session type.
+ */
+function rowToSession(row: SessionRow): Session {
+  return {
+    id: row.id,
+    title: row.title,
+    icon: row.icon ?? undefined,
+    mode: row.mode as Session['mode'],
+    messages: [],
+    messageCount: row.messageCount,
+    messagesLoaded: false,
+    loadedRangeStart: 0,
+    loadedRangeEnd: 0,
+    lastKnownMessageCount: row.messageCount,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    projectId: row.projectId ?? undefined,
+    workingFolder: row.workingFolder ?? undefined,
+    sshConnectionId: row.sshConnectionId ?? undefined,
+    planId: row.planId ?? undefined,
+    pinned: row.pinned,
+    pluginId: row.pluginId ?? undefined,
+    externalChatId: row.externalChatId ?? undefined,
+    providerId: row.providerId ?? undefined,
+    modelId: row.modelId ?? undefined,
+    modelSelectionMode: (row.modelSelectionMode ?? 'inherit') as Session['modelSelectionMode']
+  }
 }
+
+/**
+ * Convert DB ProjectRow to frontend Project type.
+ */
+function rowToProject(row: ProjectRow): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    workingFolder: row.workingFolder ?? undefined,
+    sshConnectionId: row.sshConnectionId ?? undefined,
+    pluginId: row.pluginId ?? undefined,
+    pinned: row.pinned,
+    sessionCount: row.sessionCount
+  }
+}
+
+// ─── DB Initialize ───
+
+let dbInitPromise: Promise<void> | null = null
+
+export async function ensureDbInitialized(): Promise<void> {
+  dbInitPromise ??= window.api.workerRequest<{ success: boolean; dbPath: string; error: string | null }>('db/initialize', {})
+    .then((result) => {
+      if (!result.success) {
+        dbInitPromise = null
+        throw new Error(result.error || 'DB initialization failed')
+      }
+    })
+    .catch((err) => {
+      dbInitPromise = null
+      throw err
+    })
+  return dbInitPromise
+}
+
+// ─── Session DB Operations ───
+
+export async function dbCreateSession(session: Session): Promise<void> {
+  await ensureDbInitialized()
+  await window.api.workerRequest('db/sessions-create', {
+    id: session.id,
+    title: session.title,
+    icon: session.icon ?? null,
+    mode: session.mode,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    projectId: session.projectId ?? null,
+    workingFolder: session.workingFolder ?? null,
+    sshConnectionId: session.sshConnectionId ?? null,
+    planId: session.planId ?? null,
+    pinned: session.pinned ?? false,
+    providerId: session.providerId ?? null,
+    modelId: session.modelId ?? null,
+    modelSelectionMode: session.modelSelectionMode ?? 'inherit'
+  })
+}
+
+export async function dbDeleteSession(sessionId: string): Promise<void> {
+  await window.api.workerRequest('db/sessions-delete', { id: sessionId })
+}
+
+export async function dbUpdateSession(
+  sessionId: string,
+  patch: Partial<Session>
+): Promise<void> {
+  const dbPatch: Record<string, unknown> = {}
+  if (patch.title !== undefined) dbPatch.title = patch.title
+  if (patch.icon !== undefined) dbPatch.icon = patch.icon
+  if (patch.mode !== undefined) dbPatch.mode = patch.mode
+  if (patch.updatedAt !== undefined) dbPatch.updatedAt = patch.updatedAt
+  if (patch.projectId !== undefined) dbPatch.projectId = patch.projectId
+  if (patch.workingFolder !== undefined) dbPatch.workingFolder = patch.workingFolder
+  if (patch.pinned !== undefined) dbPatch.pinned = patch.pinned
+  if (patch.providerId !== undefined) dbPatch.providerId = patch.providerId
+  if (patch.modelId !== undefined) dbPatch.modelId = patch.modelId
+  if (patch.modelSelectionMode !== undefined) dbPatch.modelSelectionMode = patch.modelSelectionMode
+
+  await window.api.workerRequest('db/sessions-update', { id: sessionId, patch: dbPatch })
+}
+
+// ─── Project DB Operations ───
+
+export async function dbCreateProject(project: Project): Promise<void> {
+  await ensureDbInitialized()
+  await window.api.workerRequest('db/projects-create', {
+    id: project.id,
+    name: project.name,
+    workingFolder: project.workingFolder ?? null,
+    sshConnectionId: project.sshConnectionId ?? null,
+    pinned: project.pinned ?? false,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt
+  })
+}
+
+export async function dbDeleteProject(projectId: string): Promise<void> {
+  await window.api.workerRequest('db/projects-delete', { id: projectId })
+}
+
+export async function dbUpdateProject(
+  projectId: string,
+  patch: Partial<Project>
+): Promise<void> {
+  const dbPatch: Record<string, unknown> = {}
+  if (patch.name !== undefined) dbPatch.name = patch.name
+  if (patch.workingFolder !== undefined) dbPatch.workingFolder = patch.workingFolder
+  if (patch.sshConnectionId !== undefined) dbPatch.sshConnectionId = patch.sshConnectionId
+  if (patch.pinned !== undefined) dbPatch.pinned = patch.pinned
+  if (patch.updatedAt !== undefined) dbPatch.updatedAt = patch.updatedAt
+
+  await window.api.workerRequest('db/projects-update', { id: projectId, patch: dbPatch })
+}
+
+// ─── Message DB Operations ───
+
+/**
+ * Upsert a message to DB. Called during streaming (message_end) and for user messages.
+ */
+export async function dbUpsertMessage(
+  sessionId: string,
+  msg: ChatMessage,
+  sortOrder: number
+): Promise<void> {
+  const data = serializeMessage(msg, sortOrder)
+  data.sessionId = sessionId
+  await window.api.workerRequest('db/messages-upsert', data)
+}
+
+/**
+ * Load messages for a session from DB.
+ */
+export async function dbLoadMessages(sessionId: string): Promise<ChatMessage[]> {
+  await ensureDbInitialized()
+  const rows = await window.api.workerRequest<MessageRow[]>('db/messages-list', { sessionId })
+  return rows.map(deserializeMessage)
+}
+
+/**
+ * Get message count for a session.
+ */
+export async function dbGetMessageCount(sessionId: string): Promise<number> {
+  const result = await window.api.workerRequest<{ success: boolean; count: number }>('db/messages-count', { sessionId })
+  return result.count
+}
+
+/**
+ * Delete last message of a given role from DB.
+ */
+export async function dbDeleteLastMessage(sessionId: string, role: string): Promise<void> {
+  await window.api.workerRequest('db/messages-delete-last', { sessionId, role })
+}
+
+/**
+ * Clear all messages for a session.
+ */
+export async function dbClearMessages(sessionId: string): Promise<void> {
+  await window.api.workerRequest('db/messages-clear', { sessionId })
+}
+
+// ─── Load All (startup) ───
 
 export async function dbLoadAll(): Promise<{ projects: Project[]; sessions: Session[] } | null> {
-  // Placeholder — 迭代五从 SQLite 加载
-  return null
+  try {
+    await ensureDbInitialized()
+
+    const [projectRows, sessionRows] = await Promise.all([
+      window.api.workerRequest<ProjectRow[]>('db/projects-list', {}),
+      window.api.workerRequest<SessionRow[]>('db/sessions-list', {})
+    ])
+
+    return {
+      projects: projectRows.map(rowToProject),
+      sessions: sessionRows.map(rowToSession)
+    }
+  } catch (err) {
+    console.error('[DB] dbLoadAll failed:', err)
+    return null
+  }
+}
+
+// ─── Ensure Default Project ───
+
+export async function dbEnsureDefaultProject(): Promise<Project | null> {
+  await ensureDbInitialized()
+  const row = await window.api.workerRequest<ProjectRow>('db/projects-ensure-default', {})
+  return row ? rowToProject(row) : null
 }

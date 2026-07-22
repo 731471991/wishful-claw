@@ -7,6 +7,7 @@ import { createSessionSlice, type SessionSlice } from './session-slice'
 import { createProjectSlice, type ProjectSlice } from './project-slice'
 import { createStreamingSlice, type StreamingSlice } from './streaming-slice'
 import type { ChatMessage } from './types'
+import { dbUpsertMessage } from './db-helpers'
 
 export type { Session, Project, ChatMessage, SessionMode, CreateSessionOptions, SessionPromptSnapshot, ToolCallInfo, SessionModelSelectionMode } from './types'
 export type { SessionSlice } from './session-slice'
@@ -70,6 +71,9 @@ export const useChatStore = create<ChatStore>()(
 
       // Add messages to session
       state.beginUserTurn(sessionId, userMessage, assistantMessage, assistantMessage.id)
+
+      // Persist user message to DB (fire-and-forget)
+      void dbUpsertMessage(sessionId, userMessage, 0)
 
       // Set streamingMessages BEFORE the await so handleEnvelope can process
       // events that arrive while we're waiting for the agent/run response.
@@ -167,6 +171,15 @@ export const useChatStore = create<ChatStore>()(
               usage: event.usage,
               timing: event.timing
             })
+            // Persist assistant message to DB
+            {
+              const sess = get().sessions.find((s) => s.id === targetSessionId)
+              const msg = sess?.messages.find((m) => m.id === envelope.runId)
+              if (msg) {
+                const sortOrder = sess ? sess.messages.indexOf(msg) : 0
+                void dbUpsertMessage(targetSessionId, msg, sortOrder)
+              }
+            }
             break
 
           case 'tool_call_start': {

@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid'
 import type { StateCreator } from 'zustand'
 import type { Session, CreateSessionOptions, ChatMessage } from './types'
-import { dbCreateSession, dbDeleteSession, dbUpdateSession } from './db-helpers'
+import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbLoadMessages } from './db-helpers'
 
 export interface SessionSlice {
   sessions: Session[]
@@ -109,7 +109,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       state.activeSessionId = id
     })
 
-    dbCreateSession(newSession)
+    void dbCreateSession(newSession)
     return id
   },
 
@@ -124,7 +124,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         state.activeSessionId = state.sessions[0]?.id ?? null
       }
     })
-    dbDeleteSession(id)
+    void dbDeleteSession(id)
   },
 
   setActiveSession: (id) => {
@@ -140,7 +140,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = now
       }
     })
-    dbUpdateSession(id, { title, updatedAt: now })
+    void dbUpdateSession(id, { title, updatedAt: now })
   },
 
   updateSessionIcon: (id, icon) => {
@@ -152,7 +152,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = now
       }
     })
-    dbUpdateSession(id, { icon, updatedAt: now })
+    void dbUpdateSession(id, { icon, updatedAt: now })
   },
 
   updateSessionMode: (id, mode) => {
@@ -164,7 +164,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = now
       }
     })
-    dbUpdateSession(id, { mode, updatedAt: now })
+    void dbUpdateSession(id, { mode, updatedAt: now })
   },
 
   clearSessionMessages: (sessionId) => {
@@ -207,7 +207,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       syncSessionsById(state)
       state.activeSessionId = newId
     })
-    dbCreateSession(copy)
+    void dbCreateSession(copy)
     return newId
   },
 
@@ -405,15 +405,29 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
   },
 
   loadRecentSessionMessages: async (sessionId, _force, _limit) => {
-    // Stub: messages are already in-memory, only mark as loaded if not already
     const state = get()
     const session = state.sessions.find((s) => s.id === sessionId)
     if (!session || session.messagesLoaded) return
-    set((state) => {
-      const target = state.sessions.find((s) => s.id === sessionId)
-      if (!target) return
-      target.messagesLoaded = true
-    })
+
+    try {
+      const messages = await dbLoadMessages(sessionId)
+      set((state) => {
+        const target = state.sessions.find((s) => s.id === sessionId)
+        if (!target) return
+        target.messages = messages
+        target.messageCount = messages.length
+        target.messagesLoaded = true
+        target.loadedRangeStart = 0
+        target.loadedRangeEnd = messages.length
+      })
+    } catch (err) {
+      console.error('[DB] loadRecentSessionMessages failed:', err)
+      set((state) => {
+        const target = state.sessions.find((s) => s.id === sessionId)
+        if (!target) return
+        target.messagesLoaded = true
+      })
+    }
   },
 
   loadOlderSessionMessages: async (_sessionId, _limit, _options) => {

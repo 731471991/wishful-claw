@@ -15,6 +15,7 @@ import {
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore } from '@renderer/stores/chat-store'
+import { dbLoadAll } from '@renderer/stores/chat-store/db-helpers'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import { TitleBar } from './TitleBar'
 import { RightPanel } from './RightPanel'
@@ -152,9 +153,23 @@ export function MainLayout(): React.JSX.Element {
   const runtimeStatusPanelOpen = useUIStore((s) => s.runtimeStatusPanelOpen)
   const ensureDefaultProject = useChatStore((s) => s.ensureDefaultProject)
 
-  // Ensure a default project exists on first load
+  // Load projects + sessions from DB on startup, then ensure default project
   useEffect(() => {
-    void ensureDefaultProject()
+    void (async () => {
+      const data = await dbLoadAll()
+      if (data && data.projects.length > 0) {
+        // Hydrate store with DB data
+        useChatStore.setState({
+          projects: data.projects,
+          activeProjectId: data.projects[0]?.id ?? null,
+          sessions: data.sessions,
+          activeSessionId: data.sessions[0]?.id ?? null
+        })
+      } else {
+        // No projects in DB, ensure default
+        void ensureDefaultProject()
+      }
+    })()
   }, [ensureDefaultProject])
 
   return (

@@ -53,7 +53,7 @@ export const createProjectSlice: StateCreator<
         state.activeProjectId = project.id
       }
     })
-    dbCreateProject(project)
+    void dbCreateProject(project)
     return project
   },
 
@@ -98,7 +98,7 @@ export const createProjectSlice: StateCreator<
       state.projects.unshift(project)
       state.activeProjectId = project.id
     })
-    dbCreateProject(project)
+    void dbCreateProject(project)
     return project.id
   },
 
@@ -113,7 +113,7 @@ export const createProjectSlice: StateCreator<
         project.updatedAt = now
       }
     })
-    dbUpdateProject(projectId, { name: nextName, updatedAt: now })
+    void dbUpdateProject(projectId, { name: nextName, updatedAt: now })
   },
 
   deleteProject: async (projectId) => {
@@ -137,7 +137,7 @@ export const createProjectSlice: StateCreator<
         state.activeSessionId = state.sessions[0]?.id ?? null
       }
     })
-    dbDeleteProject(projectId)
+    void dbDeleteProject(projectId)
   },
 
   togglePinProject: (projectId) => {
@@ -149,7 +149,7 @@ export const createProjectSlice: StateCreator<
         project.updatedAt = now
       }
     })
-    dbUpdateProject(projectId, { updatedAt: now })
+    void dbUpdateProject(projectId, { updatedAt: now })
   },
 
   updateProjectDirectory: (projectId, patch) => {
@@ -165,6 +165,6 @@ export const createProjectSlice: StateCreator<
       }
       project.updatedAt = now
     })
-    dbUpdateProject(projectId, { updatedAt: now })
+    void dbUpdateProject(projectId, { updatedAt: now })
   }
 })
