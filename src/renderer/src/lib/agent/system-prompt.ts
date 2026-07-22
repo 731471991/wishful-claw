@@ -35,11 +35,12 @@ export function resolvePromptEnvironmentContext(): PromptEnvironmentContext {
 
 export function buildSystemPrompt(options: {
   workingFolder?: string
+  projectName?: string
   language?: string
   toolDefs?: ToolDefinition[]
   userRules?: string
 }): string {
-  const { workingFolder, language, toolDefs, userRules } = options
+  const { workingFolder, projectName, language, toolDefs, userRules } = options
   const environmentContext = resolvePromptEnvironmentContext()
 
   const parts: string[] = []
@@ -122,9 +123,13 @@ export function buildSystemPrompt(options: {
     `</running_commands>`
   )
 
-  // Working Folder Context
+  // Project & Working Folder Context
   if (workingFolder) {
-    parts.push(`\n## Working Folder\n\`${workingFolder}\``)
+    parts.push(`\n## Project`)
+    if (projectName) {
+      parts.push(`- Project Name: ${projectName}`)
+    }
+    parts.push(`- Working Folder: \`${workingFolder}\``)
     parts.push(
       `All relative paths should be resolved against this folder. Use this as the default cwd for terminal commands run via the Bash tool.`
     )

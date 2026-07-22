@@ -53,9 +53,12 @@ export function useChatActions() {
       // Clear activities for new turn
       useActivityStore.getState().clearActivities()
 
-      // Get session's working folder
+      // Get session's working folder — fall back to project's workingFolder
       const session = chatStore.sessions.find((s) => s.id === targetSessionId)
-      const workingFolder = session?.workingFolder ?? _workingFolder ?? undefined
+      const projectId = session?.projectId
+      const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
+      const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
+      const projectName = project?.name
 
       // Build messages from session history
       const historyMessages = (session?.messages ?? [])
@@ -70,6 +73,7 @@ export function useChatActions() {
       const settings = useSettingsStore.getState()
       const systemPrompt = buildSystemPrompt({
         workingFolder,
+        projectName,
         language: settings.language,
         toolDefs: tools ?? undefined
       })
