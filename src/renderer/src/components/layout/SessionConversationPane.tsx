@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Eraser, MoreHorizontal } from 'lucide-react'
+import { Eraser, MoreHorizontal, Trash2, Pencil } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { MessageList } from '@renderer/components/chat/MessageList'
@@ -32,6 +33,7 @@ export function SessionConversationPane({
   )
   const clearSessionMessages = useChatStore((s) => s.clearSessionMessages)
   const deleteSession = useChatStore((s) => s.deleteSession)
+  const renameSession = useChatStore((s) => s.renameSession)
   const { sendMessage, stopStreaming } = useChatActions()
   const isStreaming = useChatStore((s) =>
     resolvedSessionId ? Boolean(s.streamingMessages[resolvedSessionId]) : false
@@ -64,6 +66,14 @@ export function SessionConversationPane({
     useUIStore.getState().navigateToHome()
   }, [resolvedSessionId, deleteSession])
 
+  const handleRename = useCallback(() => {
+    if (!resolvedSessionId || !session) return
+    const newName = window.prompt(t('sidebar.rename', { defaultValue: 'Rename' }), session.title)
+    if (newName && newName.trim() && newName.trim() !== session.title) {
+      renameSession(resolvedSessionId, newName.trim())
+    }
+  }, [resolvedSessionId, session, renameSession, t])
+
   if (!session) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -72,39 +82,48 @@ export function SessionConversationPane({
     )
   }
 
+  const hasMessages = (session.messageCount ?? 0) > 0
+
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       {/* Left: Chat area */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Session header */}
-        <div className="flex h-9 shrink-0 items-center justify-between border-b px-3">
-          <div className="truncate text-xs font-medium text-foreground/80">
-            {session.title}
-          </div>
-          <div className="flex items-center gap-1">
+        {/* Session action bar (no title — TitleBar already shows it) */}
+        <div className="flex shrink-0 items-center justify-end gap-1 px-3 py-1.5">
+          <div className="flex items-center rounded-lg border border-border/60 bg-background/70 p-0.5 shadow-sm backdrop-blur-sm">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={handleClear}
-                  className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  disabled={!hasMessages || isStreaming}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
                 >
-                  <Eraser className="size-3.5" />
+                  <Eraser className="size-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">{t('sidebar.clearMessages', { defaultValue: 'Clear messages' })}</TooltipContent>
             </Tooltip>
+
+            <div className="mx-0.5 h-4 w-px bg-border/60" />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                  <MoreHorizontal className="size-3.5" />
+                <button className="flex size-7 items-center justify-center rounded-md text-muted-foreground/80 transition-colors hover:bg-accent hover:text-foreground">
+                  <MoreHorizontal className="size-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleClear}>
-                  <Eraser className="mr-2 size-3.5" />
+                <DropdownMenuItem onClick={handleRename}>
+                  <Pencil className="mr-2 size-4" />
+                  {t('sidebar.rename', { defaultValue: 'Rename' })}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleClear} disabled={!hasMessages}>
+                  <Eraser className="mr-2 size-4" />
                   {t('sidebar.clearMessages', { defaultValue: 'Clear messages' })}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                  <Trash2 className="mr-2 size-4" />
                   {t('sidebar.deleteSession', { defaultValue: 'Delete session' })}
                 </DropdownMenuItem>
               </DropdownMenuContent>
