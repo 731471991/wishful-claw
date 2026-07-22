@@ -278,9 +278,9 @@ export function WorkingFolderSelectorDialog({
         })
         await onSelectLocalFolder(pendingSelection.folderPath, finalProjectName)
       }
-      onOpenChange(false)
     } finally {
       setCreatingProject(false)
+      onOpenChange(false)
     }
   }, [
     autoProjectName,
