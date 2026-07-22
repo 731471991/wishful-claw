@@ -47,6 +47,10 @@ export interface SessionSlice {
   // Helpers
   getActiveSession: () => Session | undefined
   getSessionMessages: (sessionId: string) => ChatMessage[]
+
+  // Message loading (stub - no DB layer yet, messages are in-memory)
+  loadRecentSessionMessages: (sessionId: string, force?: boolean, limit?: number) => Promise<void>
+  loadOlderSessionMessages: (sessionId: string, limit?: number, options?: { preserveResidentHistory?: boolean }) => Promise<number>
 }
 
 function syncSessionsById(state: { sessions: Session[]; sessionsById: Record<string, number> }): void {
@@ -398,5 +402,19 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
   getSessionMessages: (sessionId) => {
     const session = get().sessions.find((s) => s.id === sessionId)
     return session?.messages ?? []
+  },
+
+  loadRecentSessionMessages: async (sessionId, _force, _limit) => {
+    // Stub: messages are already in-memory, just mark as loaded
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === sessionId)
+      if (!session) return
+      session.messagesLoaded = true
+    })
+  },
+
+  loadOlderSessionMessages: async (_sessionId, _limit, _options) => {
+    // Stub: no DB layer, all messages are already in memory
+    return 0
   }
 })
