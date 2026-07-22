@@ -125,7 +125,6 @@ export function WorkingFolderSelectorDialog({
   React.useEffect(() => {
     if (!open) return
     setCreatingProject(false)
-    setCustomProjectName('')
     if (createMode) {
       setPendingSelection(null)
       return
@@ -168,6 +167,11 @@ export function WorkingFolderSelectorDialog({
     ? deriveProjectNameFromFolder(pendingSelection.folderPath, suggestedProjectName)
     : suggestedProjectName
   const displayedProjectName = customProjectName.trim() || autoProjectName
+
+  // Sync project name input when folder selection changes
+  React.useEffect(() => {
+    setCustomProjectName(autoProjectName)
+  }, [autoProjectName])
   const preferredDirectoryLabel =
     preferredDirectory || t('input.systemDefaultLocation', { defaultValue: 'System default' })
 
@@ -474,14 +478,16 @@ export function WorkingFolderSelectorDialog({
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] text-muted-foreground/70">{t('input.projectName')}</p>
-                  <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-foreground">
-                    <FolderOpen className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">{displayedProjectName}</span>
-                  </div>
+                  <Input
+                    value={customProjectName}
+                    onChange={(e) => setCustomProjectName(e.target.value)}
+                    placeholder={suggestedProjectName}
+                    className="mt-1 h-8 text-[13px]"
+                  />
                   <p className="mt-1 text-[10px] text-muted-foreground/60">
                     {t('input.createProjectSubtitle', {
                       defaultValue:
-                        'Choose a local or SSH folder. The project name follows the folder name.'
+                        'Choose a local or SSH folder. Project name defaults to the folder name and can be edited.'
                     })}
                   </p>
                 </div>
