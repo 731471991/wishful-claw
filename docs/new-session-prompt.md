@@ -44,7 +44,8 @@
 
 **Git 注意事项**：
 - 从 main 切 `dev/iter-1` 分支开发
-- 每完成一个步骤立即 commit + push（push 失败不阻塞，记录后继续）
+- 每完成一个步骤立即 commit（Plan 内不 push）
+- Plan 所有步骤完成并通过验证后，一次性 push 该 Plan 的所有 commit
 - 迭代验证通过后打 tag `v0.1.0`，合并回 main 并 push
 
 **特别注意**：
