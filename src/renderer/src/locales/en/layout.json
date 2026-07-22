@@ -185,7 +185,8 @@
     "sync": "Sync",
     "translate": "Translate",
     "codegraph": "Code Graph",
-    "comingSoon": "coming soon"
+    "comingSoon": "coming soon",
+    "moreActions": "More actions"
   },
   "sectionExecution": {
     "title": "Execution"

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MessageSquare,
@@ -37,12 +37,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Session, type Project } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
+import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
+import { MoreHorizontal } from 'lucide-react'
 
 // ─── Helpers ───
 
@@ -261,24 +264,21 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
     toast.success(t('sidebar.projectDeleted', { defaultValue: 'Project deleted' }))
   }, [project.id, deleteProject, t])
 
-  const handleChangeFolder = useCallback(async () => {
-    try {
-      const result = await window.api.invoke<{ folderPath?: string; canceled?: boolean }>('dialog:openFolder', {})
-      if (result && result.folderPath && !result.canceled) {
-        updateProjectDirectory(project.id, { workingFolder: result.folderPath })
-        toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
-      }
-    } catch {
-      toast.error(t('sidebar.folderUpdateFailed', { defaultValue: 'Failed to select folder' }))
-    }
-  }, [project.id, updateProjectDirectory, t])
+  const [changeFolderDialogOpen, setChangeFolderDialogOpen] = useState(false)
+
+  const handleChangeFolder = useCallback(() => {
+    setChangeFolderDialogOpen(true)
+  }, [])
 
   const handleNewSessionInProject = useCallback(() => {
-    // Don't create a session — navigate to project home.
-    // Session is created when the user sends a message.
+    // Navigate to home with project selected. Session is created when user sends a message.
     setActiveProjectHome(project.id)
-    navigateToProject(project.id)
-  }, [project.id, setActiveProjectHome, navigateToProject])
+    const uiStore = useUIStore.getState()
+    if (uiStore.mode === 'chat') {
+      uiStore.setMode('cowork')
+    }
+    uiStore.navigateToHome()
+  }, [project.id, setActiveProjectHome])
 
   if (isEditing) {
     return (
@@ -324,6 +324,63 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
             <FolderOpen className="size-3.5 shrink-0" />
             <span className="flex-1 truncate text-xs font-medium">{project.name}</span>
             <span className="shrink-0 text-[10px] text-muted-foreground/40">{sessions.length}</span>
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleNewSessionInProject()
+                }}
+                className="flex size-5 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                title={t('sidebar.newSessionInProject', { defaultValue: 'New session here' })}
+              >
+                <Plus className="size-3.5" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex size-5 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                    title={t('sidebar.moreActions', { defaultValue: 'More actions' })}
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleNewSessionInProject}>
+                    <Plus className="mr-2 size-3.5" />
+                    {t('sidebar.newSessionInProject', { defaultValue: 'New session here' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRename}>
+                    <Pencil className="mr-2 size-3.5" />
+                    {t('sidebar.rename', { defaultValue: 'Rename' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => togglePinProject(project.id)}>
+                    <Pin className="mr-2 size-3.5" />
+                    {project.pinned
+                      ? t('sidebar.unpin', { defaultValue: 'Unpin' })
+                      : t('sidebar.pin', { defaultValue: 'Pin' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleChangeFolder}>
+                    <FolderOpen className="mr-2 size-3.5" />
+                    {t('sidebar.changeFolder', { defaultValue: 'Change working folder' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigateToArchive(project.id)}>
+                    <Archive className="mr-2 size-3.5" />
+                    {t('sidebar.archive', { defaultValue: 'Archive' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigateToGit(project.id)}>
+                    <GitBranch className="mr-2 size-3.5" />
+                    {t('sidebar.git', { defaultValue: 'Git' })}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                    <Trash2 className="mr-2 size-3.5" />
+                    {t('sidebar.deleteProject', { defaultValue: 'Delete project' })}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent>
@@ -361,6 +418,23 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
+      <WorkingFolderSelectorDialog
+        open={changeFolderDialogOpen}
+        onOpenChange={setChangeFolderDialogOpen}
+        workingFolder={project.workingFolder}
+        sshConnectionId={project.sshConnectionId}
+        onSelectLocalFolder={(folderPath) => {
+          updateProjectDirectory(project.id, { workingFolder: folderPath, sshConnectionId: null })
+          toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
+          setChangeFolderDialogOpen(false)
+        }}
+        onSelectSshFolder={(folderPath, connectionId) => {
+          updateProjectDirectory(project.id, { workingFolder: folderPath, sshConnectionId: connectionId })
+          toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
+          setChangeFolderDialogOpen(false)
+        }}
+      />
 
       {/* Sessions under this project */}
       {isExpanded && sortedSessions.length > 0 && (
@@ -535,21 +609,23 @@ export function WorkspaceSidebar(): React.JSX.Element {
     navigateToHome()
   }, [setActiveProjectHome, setActiveNavItem, navigateToHome])
 
-  const handleNewProject = useCallback(async () => {
-    try {
-      const result = await window.api.invoke<{ folderPath?: string; canceled?: boolean }>('dialog:openFolder', {})
-      if (result && result.folderPath && !result.canceled) {
-        const folderName = result.folderPath.split(/[\\/]/).pop() ?? 'New Project'
-        const projectId = await createProject({ name: folderName, workingFolder: result.folderPath })
-        useUIStore.getState().navigateToProject(projectId)
-        toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))
-      }
-    } catch {
-      const projectId = await createProject({})
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
+
+  const handleNewProject = useCallback(() => {
+    setCreateProjectDialogOpen(true)
+  }, [])
+
+  const handleCreateProjectWithDirectory = useCallback(
+    async (folderPath: string, _connectionId: string | null, projectName?: string) => {
+      const name = projectName?.trim() || folderPath.split(/[\\/]/).pop() || 'New Project'
+      const projectId = await createProject({ name, workingFolder: folderPath })
+      useUIStore.getState().setActiveProjectHome(projectId)
       useUIStore.getState().navigateToProject(projectId)
-      toast.info(t('sidebar.selectFolderLater', { defaultValue: 'Select working folder from right-click menu' }))
-    }
-  }, [createProject, t])
+      toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))
+      setCreateProjectDialogOpen(false)
+    },
+    [createProject, t]
+  )
 
   const openCommandPalette = useCallback(() => {
     window.dispatchEvent(
@@ -762,6 +838,17 @@ export function WorkspaceSidebar(): React.JSX.Element {
       </div>
 
       <ResizeHandle />
+
+      <WorkingFolderSelectorDialog
+        open={createProjectDialogOpen}
+        onOpenChange={setCreateProjectDialogOpen}
+        createMode
+        projectName={t('sidebar.newProject', { defaultValue: 'New Project' })}
+        onSelectLocalFolder={(folderPath, projectName) => handleCreateProjectWithDirectory(folderPath, null, projectName)}
+        onSelectSshFolder={(folderPath, connectionId, projectName) =>
+          handleCreateProjectWithDirectory(folderPath, connectionId, projectName)
+        }
+      />
     </aside>
   )
 }

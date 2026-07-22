@@ -185,7 +185,8 @@
     "sync": "同步",
     "translate": "翻译",
     "codegraph": "代码图",
-    "comingSoon": "即将推出"
+    "comingSoon": "即将推出",
+    "moreActions": "更多操作"
   },
   "sectionExecution": {
     "title": "执行"
