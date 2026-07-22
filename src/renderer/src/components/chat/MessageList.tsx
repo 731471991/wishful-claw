@@ -494,7 +494,11 @@ function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMess
     }
 
     if (msg.usage) result.usage = msg.usage as UnifiedMessage['usage']
-    if (msg.isStreaming) result._revision = 0
+    // Use text length as revision so structural signature changes when
+    // streaming text grows (buildStructuralSignature uses _revision).
+    // This ensures renderableMessageIds is rebuilt when assistant text
+    // goes from empty to non-empty.
+    result._revision = (text.length) + (thinking?.length ?? 0) + (toolCalls?.length ?? 0)
     if (msg.error) {
       // Represent errors as an agent_error block
       result.content = [{ type: 'agent_error', code: 'runtime_error', message: msg.error as string }]
