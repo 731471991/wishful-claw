@@ -45,12 +45,17 @@
   - plan-002: AgentLoop 工具执行集成 + 前端工具 UI — 替换占位代码实现完整工具调用循环，前端 ToolCallCard 组件 + 事件处理 + sendMessage 传入 tools/workingFolder。tsc+build+dotnet 全部通过。
 
 ## 迭代五：项目注册 + 会话历史
-- 状态：未开始
-- Plan: —
+- 状态：进行中（规划已验证，待用户确认后执行）
+- 分支：dev/iter-5
+- Plan: docs/plans/iter-5/plan-001/ + docs/plans/iter-5/plan-002/
 - VERDICT: —
 - Tag: —
 - Commit: —
-- 日期: —
+- 日期: 2026-07-22
+- 备注：
+  - plan-001: 后端 DB 层（SQLite + DbModule + 三张表 + CRUD）— 9 步
+  - plan-002: 前端 DB 层（IPC 桥接 + db-helpers 实现 + 消息持久化 + 启动加载）— 10 步
+  - 规划验证通过，待用户确认后开始执行 plan-001
 
 ## 迭代六：记忆系统
 - 状态：未开始
