@@ -20,7 +20,6 @@ import {
   ChevronDown,
   ChevronRight,
   PanelLeftClose,
-  PanelLeftOpen,
   Archive,
   Image,
   CalendarDays
@@ -637,19 +636,9 @@ export function WorkspaceSidebar(): React.JSX.Element {
     )
   }, [])
 
-  // ─── Collapsed state: thin strip with expand button ───
+  // Collapsed state: completely hidden, use TitleBar button to expand
   if (!leftSidebarOpen) {
-    return (
-      <div className="flex h-full w-12 shrink-0 flex-col items-center border-r bg-muted/30 py-2">
-        <button
-          onClick={toggleLeftSidebar}
-          className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
-          title={t('sidebar.expand', { defaultValue: 'Expand sidebar' })}
-        >
-          <PanelLeftOpen className="size-5" />
-        </button>
-      </div>
-    )
+    return null
   }
 
   // ─── Nav items ───
