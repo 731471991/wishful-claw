@@ -1771,7 +1771,7 @@ export function AssistantMessage({
     isLiveMode && msgId ? s.imageGenerationTimings[msgId] : undefined
   )
   const generatingImagePreview = useChatStore((s) =>
-    isLiveMode && msgId ? s.generatingImagePreviews[msgId] : undefined
+    isLiveMode && msgId ? s.generatingImagePreviews?.[msgId] : undefined
   )
 
   const stringSegments = useMemo(
