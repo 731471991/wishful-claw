@@ -16,32 +16,91 @@ function getSettingsFilePath(dataDirectory = getDefaultDataDirectory()): string 
   return path.join(dataDirectory, SETTINGS_DIRECTORY_NAME, SETTINGS_FILE_NAME)
 }
 
-export function readPersistedSettings(): Record<string, unknown> | null {
+/**
+ * Read the entire settings file as a map of store-name → persisted-state.
+ * Each value is the { state, version } object that Zustand persist writes.
+ */
+function readSettingsMap(): Record<string, unknown> {
   const filePath = getSettingsFilePath()
   try {
-    if (!fs.existsSync(filePath)) return null
+    if (!fs.existsSync(filePath)) return {}
     const raw = fs.readFileSync(filePath, 'utf8')
-    return JSON.parse(raw) as Record<string, unknown>
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+    // Legacy format: the file was a single { state, version } object.
+    // Migrate it under a default key.
+    if (parsed && typeof parsed === 'object' && 'state' in parsed) {
+      return { __legacy__: parsed }
+    }
+    return {}
   } catch {
-    return null
+    return {}
   }
 }
 
-export function writePersistedSettings(value: unknown): void {
+function writeSettingsMap(data: Record<string, unknown>): void {
   const filePath = getSettingsFilePath()
   const directory = path.dirname(filePath)
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 })
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2), {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), {
     encoding: 'utf8',
     mode: 0o600
   })
 }
 
-export function clearPersistedSettings(): void {
-  const filePath = getSettingsFilePath()
-  try {
-    fs.rmSync(filePath, { force: true })
-  } catch {
-    // ignore
+/**
+ * Read a specific store's persisted state by key name.
+ * Returns null if the key doesn't exist.
+ */
+export function readPersistedSettings(key?: string): unknown | null {
+  const map = readSettingsMap()
+  if (key === undefined) {
+    // Legacy callers that don't pass a key get the whole map
+    return Object.keys(map).length > 0 ? map : null
+  }
+  return map[key] ?? null
+}
+
+/**
+ * Write a specific store's persisted state under its key name.
+ * Other stores' data is preserved.
+ */
+export function writePersistedSettings(value: unknown, key?: string): void {
+  if (key === undefined) {
+    // Legacy callers: write the whole map
+    writeSettingsMap(value as Record<string, unknown>)
+    return
+  }
+  const map = readSettingsMap()
+  map[key] = value
+  writeSettingsMap(map)
+}
+
+/**
+ * Clear a specific store's entry (or the entire file if no key).
+ */
+export function clearPersistedSettings(key?: string): void {
+  if (key === undefined) {
+    const filePath = getSettingsFilePath()
+    try {
+      fs.rmSync(filePath, { force: true })
+    } catch {
+      // ignore
+    }
+    return
+  }
+  const map = readSettingsMap()
+  delete map[key]
+  if (Object.keys(map).length === 0) {
+    const filePath = getSettingsFilePath()
+    try {
+      fs.rmSync(filePath, { force: true })
+    } catch {
+      // ignore
+    }
+  } else {
+    writeSettingsMap(map)
   }
 }

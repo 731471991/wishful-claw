@@ -11,17 +11,19 @@ type MutationResult = {
 }
 
 export function registerSettingsHandlers(): void {
-  registerMessagePackHandler<string | undefined>('settings:get', () => {
-    return readPersistedSettings()
+  // Read a specific store's persisted state by key (name)
+  registerMessagePackHandler<string, unknown | null>('settings:get', (key) => {
+    return readPersistedSettings(key)
   })
 
+  // Write a specific store's persisted state under its key
   registerMessagePackHandler<{ key: string; value: unknown }, MutationResult>(
     'settings:set',
-    ({ value }) => {
+    ({ key, value }) => {
       if (value === undefined || value === null) {
-        clearPersistedSettings()
+        clearPersistedSettings(key)
       } else {
-        writePersistedSettings(value)
+        writePersistedSettings(value, key)
       }
       return { success: true }
     }
