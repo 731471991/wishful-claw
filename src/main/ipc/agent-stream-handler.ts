@@ -11,7 +11,7 @@ export function registerAgentStreamForwarder(): void {
 
   worker.onEvent('agent/stream', (payload: unknown) => {
     for (const win of BrowserWindow.getAllWindows()) {
-      safeSendMessagePackToWindow(win, 'agent/stream', payload)
+      safeSendMessagePackToWindow(win, 'agent:stream', payload)
     }
   })
 }
