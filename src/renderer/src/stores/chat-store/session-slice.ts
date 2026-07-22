@@ -405,11 +405,14 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
   },
 
   loadRecentSessionMessages: async (sessionId, _force, _limit) => {
-    // Stub: messages are already in-memory, just mark as loaded
+    // Stub: messages are already in-memory, only mark as loaded if not already
+    const state = get()
+    const session = state.sessions.find((s) => s.id === sessionId)
+    if (!session || session.messagesLoaded) return
     set((state) => {
-      const session = state.sessions.find((s) => s.id === sessionId)
-      if (!session) return
-      session.messagesLoaded = true
+      const target = state.sessions.find((s) => s.id === sessionId)
+      if (!target) return
+      target.messagesLoaded = true
     })
   },
 

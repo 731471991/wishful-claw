@@ -138,6 +138,24 @@ app.whenReady().then(() => {
     }
   )
 
+  // ── DB stub handlers (no SQLite layer yet) ──
+  registerMessagePackHandler<string, unknown[] | null>(
+    'db:messages:list-locator:msgpack',
+    async () => null
+  )
+  registerMessagePackHandler<string, unknown | null>(
+    'db:goals:get:msgpack',
+    async () => null
+  )
+  registerMessagePackHandler<string, unknown[]>(
+    'db:goal-events:list:msgpack',
+    async () => []
+  )
+  registerMessagePackHandler<unknown, void>(
+    'db:goal-events:add:msgpack',
+    async () => undefined
+  )
+
   createWindow()
 
 function formatLocalDateFolderName(date = new Date()): string {
