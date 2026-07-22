@@ -158,13 +158,56 @@ export function MainLayout(): React.JSX.Element {
     void (async () => {
       const data = await dbLoadAll()
       if (data && data.projects.length > 0) {
-        // Hydrate store with DB data
-        useChatStore.setState({
-          projects: data.projects,
-          activeProjectId: data.projects[0]?.id ?? null,
-          sessions: data.sessions,
-          activeSessionId: data.sessions[0]?.id ?? null
+        // Build project map for session hydration
+        const projectMap = new Map(data.projects.map((p) => [p.id, p]))
+
+        // Hydrate sessions: inherit workingFolder from project if session doesn't have one
+        const sessions = data.sessions.map((session) => {
+          if (session.projectId) {
+            const project = projectMap.get(session.projectId)
+            if (project) {
+              if (!session.workingFolder && project.workingFolder) {
+                session.workingFolder = project.workingFolder
+              }
+              if (!session.sshConnectionId && project.sshConnectionId) {
+                session.sshConnectionId = project.sshConnectionId
+              }
+            }
+          }
+          // messageCount === 0 → no messages to load, mark as loaded
+          if (session.messageCount === 0) {
+            session.messagesLoaded = true
+            session.loadedRangeStart = 0
+            session.loadedRangeEnd = 0
+            session.lastKnownMessageCount = 0
+          }
+          return session
         })
+
+        // Use set() so immer runs syncSessionsById and creates proper drafts
+        let nextActiveSessionId: string | null = null
+        let nextActiveProjectId: string | null = null
+
+        useChatStore.setState((state) => {
+          state.projects = data.projects
+          state.sessions = sessions
+          // Rebuild sessionsById index
+          state.sessionsById = {}
+          for (let i = 0; i < sessions.length; i++) {
+            state.sessionsById[sessions[i].id] = i
+          }
+
+          nextActiveSessionId = sessions[0]?.id ?? null
+          state.activeSessionId = nextActiveSessionId
+
+          nextActiveProjectId = sessions[0]?.projectId ?? data.projects[0]?.id ?? null
+          state.activeProjectId = nextActiveProjectId
+        })
+
+        // Load messages for the active session (like OpenCowork does)
+        if (nextActiveSessionId) {
+          await useChatStore.getState().loadRecentSessionMessages(nextActiveSessionId)
+        }
       } else {
         // No projects in DB, ensure default
         void ensureDefaultProject()

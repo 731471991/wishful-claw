@@ -295,6 +295,23 @@ export async function dbLoadMessages(sessionId: string): Promise<ChatMessage[]> 
 }
 
 /**
+ * Load a page of messages from DB (like OpenCowork's dbListMessagesPage).
+ */
+export async function dbListMessagesPage(args: {
+  sessionId: string
+  limit: number
+  offset: number
+}): Promise<ChatMessage[]> {
+  await ensureDbInitialized()
+  const rows = await window.api.workerRequest<MessageRow[]>('db/messages-list-page', {
+    sessionId: args.sessionId,
+    limit: args.limit,
+    offset: args.offset
+  })
+  return rows.map(deserializeMessage)
+}
+
+/**
  * Get message count for a session.
  */
 export async function dbGetMessageCount(sessionId: string): Promise<number> {
