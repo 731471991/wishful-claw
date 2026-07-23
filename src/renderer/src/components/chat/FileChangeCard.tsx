@@ -26,11 +26,11 @@ import { toMessagePackChannel } from '../../../../shared/messagepack/binary-ipc'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
 import {
   type FileChangeCardProps, type FilePreviewTone, type CompactActionOp,
-  type DiffLine, type DiffChunk, type TrackedDiffContent,
-  type ResolvedEditPayload, type ResolvedWritePayload,
-  detectLang, shortPath, fileName, normalizeLineEndings, lineCount, formatCompactCount,
+  type DiffLine, type TrackedDiffContent,
+  type ResolvedWritePayload,
+  detectLang, shortPath, fileName, normalizeLineEndings, formatCompactCount,
   snapshotText, snapshotLineTotal, canRenderInlineSnapshot,
-  computeLargeDiff, computeDiff, summarizeDiff, foldContext,
+  computeDiff, summarizeDiff, foldContext,
   diffDisplayLineNumber, buildDiffCopyText, diffLineStyle,
   resolveEditPayload, resolveWritePayload, hasPendingEditPreviewContent,
   resolveEditSummaryDiff, trackedStatusLabelKey, trackedTransportLabelKey,
