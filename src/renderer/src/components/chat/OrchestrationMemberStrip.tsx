@@ -105,8 +105,8 @@ export function OrchestrationMemberStrip({
             ? normalizeInlineText(member.errorMessage)
             : getMemberDescription(member, isFailed ? failureFallback : waitingLabel)
         const metaText = [
-          member.iteration > 0 ? t('subAgent.iter', { count: member.iteration }) : '',
-          member.toolCallCount > 0 ? t('subAgent.calls', { count: member.toolCallCount }) : '',
+          (member.iteration ?? 0) > 0 ? t('subAgent.iter', { count: member.iteration }) : '',
+          (member.toolCallCount ?? 0) > 0 ? t('subAgent.calls', { count: member.toolCallCount }) : '',
           member.model?.trim() || ''
         ]
           .filter(Boolean)

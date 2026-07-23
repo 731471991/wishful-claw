@@ -20,6 +20,10 @@ interface PluginInstance {
 
 interface ChannelStore {
   channels: PluginInstance[]
+  loadChannels: () => Promise<void>
+  toggleActiveChannel: (projectId: string, channelId: string) => void
+  loadProviders: () => Promise<void>
+  activeChannelIdsByProject: Record<string, string[]>
   selectedChannelId: string | null
   channelStatuses: Record<string, 'running' | 'stopped' | 'error'>
 
@@ -38,5 +42,10 @@ export const useChannelStore = create<ChannelStore>((set) => ({
     }))
   },
 
-  setSelectedChannel: (id) => set({ selectedChannelId: id })
+  setSelectedChannel: (id) => set({ selectedChannelId: id }),
+
+  loadChannels: async () => {},
+  loadProviders: async () => {},
+  toggleActiveChannel: (_projectId: string, _channelId: string) => {},
+  activeChannelIdsByProject: {}
 }))

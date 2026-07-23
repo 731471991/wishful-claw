@@ -30,6 +30,7 @@ export interface TokenUsageWire {
   cacheReadRatio?: number
   reasoningTokens?: number
   contextTokens?: number
+  contextLength?: number
 }
 
 export interface RequestTimingWire {
@@ -100,12 +101,28 @@ export type AgentStreamEvent =
       stopReason?: string
     }
   // Tool streaming (reserved for iteration 4)
-  | { type: 'tool_use_streaming_start'; toolCallId: string; toolName: string }
+  | { type: 'tool_use_streaming_start'; toolCallId: string; toolName: string; extraContent?: unknown }
   | { type: 'tool_use_args_delta'; toolCallId: string; partialInput: Record<string, unknown> }
   | { type: 'tool_use_generated'; toolUseBlock: ToolUseBlockWire }
   // Tool execution (reserved for iteration 4)
   | { type: 'tool_call_start'; toolCall: ToolCallStateWire }
+  | { type: 'tool_call_update'; toolCall: ToolCallStateWire }
+  | { type: 'tool_call_approval_needed'; toolCall: ToolCallStateWire }
   | { type: 'tool_call_result'; toolCall: ToolCallStateWire }
+  // Extended streaming events (wishful-claw compatibility stubs)
+  | { type: 'translation_buffer_update'; content: string }
+  | { type: 'image_generation_started' }
+  | { type: 'image_generation_partial'; imageBlock: unknown; partialImageIndex?: number }
+  | { type: 'image_generated'; imageBlock: unknown }
+  | { type: 'image_error'; imageError: { code: string; message: string } }
+  | {
+      type: 'web_search'
+      content: string
+      status?: 'searching' | 'completed'
+      webSearchId?: string
+      webSearchSources?: { url?: string; title?: string }[]
+    }
+  | { type: 'request_retry'; attempt: number; maxAttempts: number; delayMs: number; statusCode?: number; reason: string }
   // Error
   | { type: 'error'; message: string; errorType?: string; details?: string; stackTrace?: string }
   // Debug / compression

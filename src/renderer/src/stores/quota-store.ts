@@ -35,7 +35,11 @@ export interface CopilotQuota {
   fetchedAt: number
 }
 
-export type ProviderQuota = CodexQuota | CopilotQuota
+
+export interface KimiQuota { [key: string]: unknown }
+export interface KimiQuotaWindow { [key: string]: unknown }
+
+export type ProviderQuota = CodexQuota | CopilotQuota | KimiQuota
 
 interface QuotaStore {
   quotaByKey: Record<string, ProviderQuota>
@@ -54,3 +58,4 @@ export const useQuotaStore = create<QuotaStore>((set) => ({
       return { quotaByKey: next }
     })
 }))
+

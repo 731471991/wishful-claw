@@ -21,7 +21,7 @@ export type { StreamingSlice } from './streaming-slice'
 export interface AgentActions {
   sendMessage: (params: {
     provider: Record<string, unknown>
-    messages: Array<{ role: string; content: string | Array<Record<string, unknown>> }>
+    messages: Array<{ role: string; content: string | Array<Record<string, unknown>> | Record<string, unknown> }>
     sessionId?: string
     systemPrompt?: string
     tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>

@@ -1,4 +1,5 @@
-import type { ITheme } from '@xterm/xterm'
+// ITheme type stub for xterm
+interface ITheme { [key: string]: unknown }
 
 export type AppThemeMode = 'light' | 'dark'
 export type AppThemePreset = 'mulberry' | 'studio' | 'graphite' | 'ocean' | 'forest' | 'dawn'

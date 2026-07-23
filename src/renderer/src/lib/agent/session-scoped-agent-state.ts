@@ -43,6 +43,6 @@ export function selectSessionScopedAgentState(
 export function findSubAgentInSelection(
   _selection: unknown,
   _toolUseId: string | null | undefined
-): unknown {
+): import('../../stores/agent-store/types').SubAgentState | null {
   return null
 }

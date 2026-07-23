@@ -42,7 +42,7 @@ export const PET_VOICE_PRESETS: Record<'openai' | 'mimo', string[]> = {
   mimo: ['mimo_default', '冰糖', '茉莉', '苏打', '白桦', 'Mia', 'Chloe', 'Milo', 'Dean']
 }
 
-export function resolvePetVoiceMode(modelId: string, mode: PetVoiceMode): 'speech' | 'chat' {
+export function resolvePetVoiceMode(modelId: string, mode: PetVoiceMode): PetVoiceMode {
   if (mode !== 'auto') return mode
   // Chat-audio models speak through completions; plain TTS models through
   // the dedicated speech endpoint.
@@ -364,12 +364,12 @@ function voiceParamsFromConfig(): PetVoiceParams | null {
   const config = usePetAgentStore.getState()
   if (!config.voiceEnabled || !config.voiceProviderId || !config.voiceModelId) return null
   return {
-    providerId: config.voiceProviderId,
-    modelId: config.voiceModelId,
-    voice: config.voice,
-    mode: config.voiceMode,
-    instruction: config.voiceInstruction,
-    tag: config.voiceTag
+    providerId: config.voiceProviderId!,
+    modelId: config.voiceModelId!,
+    voice: config.voice ?? '',
+    mode: config.voiceMode ?? 'speech',
+    instruction: config.voiceInstruction ?? '',
+    tag: config.voiceTag ?? ''
   }
 }
 

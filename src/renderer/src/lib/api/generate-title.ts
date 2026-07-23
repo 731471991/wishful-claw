@@ -192,7 +192,7 @@ export async function generateSessionTitle(
   const settings = useSettingsStore.getState()
 
   const fastConfig = useProviderStore.getState().getFastProviderConfig()
-  const config: ProviderConfig | null = fastConfig
+  const config: ProviderConfig | null = (fastConfig
     ? {
         ...fastConfig,
         maxTokens: 100,
@@ -217,7 +217,7 @@ export async function generateSessionTitle(
           enableSystemPromptCache: useProviderStore.getState().getActiveModelConfig()
             ?.enableSystemPromptCache
         }
-      : null
+      : null) as ProviderConfig | null
 
   if (!config || (config.requiresApiKey !== false && !config.apiKey)) return null
   const scopedConfig = await withWorkspacePromptCacheKey(config, options?.workspace)

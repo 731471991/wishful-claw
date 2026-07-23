@@ -1,8 +1,43 @@
 import type { ContentBlock, ToolUseBlock, UnifiedMessage } from '@renderer/lib/api/types'
+import type { ChatMessage } from '@renderer/stores/chat-store/types'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { createResidentRequestDebugInfo } from '@renderer/lib/debug-store'
+
+// ─── Type helpers for UnifiedMessage → ChatMessage conversion ───
+
+function isContentBlockArray(content: unknown): content is ContentBlock[] {
+  return Array.isArray(content)
+}
+
+function unifiedToChatMessage(msg: UnifiedMessage): ChatMessage {
+  return {
+    id: msg.id,
+    role: msg.role as 'user' | 'assistant' | 'system',
+    text: typeof msg.content === 'string' ? msg.content : '',
+    content: msg.content,
+    createdAt: msg.createdAt,
+    usage: msg.usage as ChatMessage['usage'],
+    debugInfo: msg.debugInfo as ChatMessage['debugInfo'],
+    _revision: msg._revision,
+  }
+}
+
+function unifiedPatchToChatPatch(patch: Partial<UnifiedMessage>): Partial<ChatMessage> {
+  const result: Partial<ChatMessage> = {}
+  if (patch.id !== undefined) result.id = patch.id
+  if (patch.role !== undefined) result.role = patch.role as ChatMessage['role']
+  if (patch.content !== undefined) {
+    result.content = patch.content
+    if (typeof patch.content === 'string') result.text = patch.content
+  }
+  if (patch.createdAt !== undefined) result.createdAt = patch.createdAt
+  if (patch.usage !== undefined) result.usage = patch.usage as ChatMessage['usage']
+  if (patch.debugInfo !== undefined) result.debugInfo = patch.debugInfo as ChatMessage['debugInfo']
+  if (patch._revision !== undefined) result._revision = patch._revision
+  return result
+}
 
 type ThinkingProvider = 'anthropic' | 'openai-responses' | 'google'
 
@@ -48,7 +83,7 @@ function toolUseExists(sessionId: string, messageId: string, toolUseId: string):
     .getState()
     .getSessionMessages(sessionId)
     .find((item) => item.id === messageId)
-  if (!message || typeof message.content === 'string') return false
+  if (!message || !isContentBlockArray(message.content)) return false
   return message.content.some(
     (block) => block.type === 'tool_use' && (block as ToolUseBlock).id === toolUseId
   )
@@ -77,7 +112,7 @@ function applySessionRuntimeSyncEvent(event: SessionRuntimeSyncEvent): void {
       if (!sessionExists(event.sessionId) || messageExists(event.sessionId, event.message.id)) {
         return
       }
-      chatStore.addMessage(event.sessionId, event.message)
+      chatStore.addMessage(event.sessionId, unifiedToChatMessage(event.message))
       return
 
     case 'update_message':
@@ -132,11 +167,12 @@ function applySessionRuntimeSyncEvent(event: SessionRuntimeSyncEvent): void {
   }
 }
 
-function sanitizeRuntimeSyncPatch(patch: Partial<UnifiedMessage>): Partial<UnifiedMessage> {
-  if (!patch.debugInfo) return patch
+function sanitizeRuntimeSyncPatch(patch: Partial<UnifiedMessage>): Partial<ChatMessage> {
+  const chatPatch = unifiedPatchToChatPatch(patch)
+  if (!chatPatch.debugInfo) return chatPatch
   return {
-    ...patch,
-    debugInfo: createResidentRequestDebugInfo(patch.debugInfo)
+    ...chatPatch,
+    debugInfo: createResidentRequestDebugInfo(chatPatch.debugInfo)
   }
 }
 

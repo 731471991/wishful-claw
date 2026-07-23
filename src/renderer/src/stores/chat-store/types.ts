@@ -1,5 +1,5 @@
 import type { TokenUsageWire, RequestTimingWire } from '@shared/agent-stream-protocol'
-import type { RequestDebugInfo } from '@renderer/lib/api/types'
+import type { RequestDebugInfo, MessageMeta, ContentBlock } from '@renderer/lib/api/types'
 
 // ─── Session Mode ───
 export type SessionMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
@@ -47,6 +47,9 @@ export interface ChatMessage {
   segments?: ContentSegment[]
   currentIteration?: number
   debugInfo?: RequestDebugInfo
+  meta?: MessageMeta
+  content?: string | ContentBlock[]
+  _revision?: number
   createdAt: number
 }
 

@@ -1191,7 +1191,7 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
 
       await useChatStore
         .getState()
-        .loadMessageWindowAround(activeSessionId, { messageId, sortOrder: item.sortOrder }, 30)
+        .loadMessageWindowAround?.(activeSessionId, { messageId, sortOrder: item.sortOrder }, 30)
 
       await new Promise<void>((resolve) => {
         window.requestAnimationFrame(() => {

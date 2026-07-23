@@ -13,6 +13,7 @@ export function Sheet({ children, open, onOpenChange }: {
 export function SheetContent({ children, className, side = 'right' }: {
   children: React.ReactNode
   className?: string
+  showCloseButton?: boolean
   side?: 'left' | 'right' | 'top' | 'bottom'
 }) {
   return (

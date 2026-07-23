@@ -118,7 +118,7 @@ export function useQueuedMessages(opts: UseQueuedMessagesOptions) {
       const nextDraft: EditableUserMessageDraft = {
         text: editingQueueText.trim(),
         images: cloneImageAttachments(editingQueueImages),
-        command: targetMessage.command
+        command: (targetMessage.command as any) ?? null
       }
 
       if (!hasEditableDraftContent(nextDraft)) {

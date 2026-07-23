@@ -183,8 +183,8 @@ export function openMarkdownHref(href: string, filePath?: string): boolean {
   if (!link) return false
   if (HTTP_URL_RE.test(link)) {
     // Use Electron's shell.openExternal if available, otherwise window.open
-    if (typeof window !== 'undefined' && window.electron?.shell?.openExternal) {
-      void window.electron.shell.openExternal(link)
+    if (typeof window !== 'undefined' && (window as any).electron?.shell?.openExternal) {
+      void (window as any).electron.shell.openExternal(link)
     } else {
       window.open(link, '_blank', 'noopener,noreferrer')
     }

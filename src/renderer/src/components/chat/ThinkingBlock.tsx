@@ -96,9 +96,9 @@ export const ThinkingBlock = memo(function ThinkingBlock({
 
   const compactElapsedLabel =
     liveElapsed > 0
-      ? compactLanguage === 'ko'
+      ? compactLanguage === 'ko' as string
         ? `${liveElapsed}초`
-        : compactLanguage === 'zh' || compactLanguage === 'ja'
+        : compactLanguage === 'zh' || compactLanguage === 'ja' as string
           ? `${liveElapsed} 秒`
           : `${liveElapsed}s`
       : ''

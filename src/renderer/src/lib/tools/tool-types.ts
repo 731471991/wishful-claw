@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolResultContent } from '../api/types'
-import type { PluginPermissions as ChannelPermissions } from '../channel/types'
+import type { PluginPermissions as ChannelPermissions } from '../api/types'
 
 // --- Tool Context ---
 

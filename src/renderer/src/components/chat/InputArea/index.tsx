@@ -1255,7 +1255,7 @@ export function InputArea({
       sendOptions.goalObjective = goalObjective
     }
 
-    onSend(message, attachedImages.length > 0 ? attachedImages : undefined, sendOptions)
+    onSend?.(message, attachedImages.length > 0 ? attachedImages : undefined, sendOptions)
 
     resetComposer()
     if (goalObjective) {

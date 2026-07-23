@@ -119,7 +119,7 @@ export type AgentEvent =
   | {
       type: 'thinking_encrypted'
       thinkingEncryptedContent: string
-      thinkingEncryptedProvider: 'anthropic' | 'openai-responses' | 'google'
+      thinkingEncryptedProvider: string
     }
   | { type: 'translation_buffer_update'; content: string }
   | { type: 'image_generation_started' }

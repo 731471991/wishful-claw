@@ -7,7 +7,7 @@ interface UsePromptRecommendationParams {
   mode: AppMode
   sessionId?: string | null
   text: string
-  getRecentMessages: () => UnifiedMessage[]
+  getRecentMessages: () => unknown[]
   selectedSkill: string | null
   images: ImageAttachment[]
   disabled: boolean

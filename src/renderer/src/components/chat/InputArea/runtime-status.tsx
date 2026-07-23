@@ -18,6 +18,7 @@ import {
   getCacheHitRate
 } from '@renderer/lib/format-tokens'
 import type { AIModelConfig, MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
+import type { ChatMessage } from '@renderer/stores/chat-store/types'
 import type {
   ComposerRuntimeStatusProps,
   ContextCompressionStatus,
@@ -102,7 +103,7 @@ export function ComposerRuntimeStatus({
         messages && streamingMessageId
           ? messages.findIndex((item) => item.id === streamingMessageId)
           : -1
-      let previousUserMessage: UnifiedMessage | undefined
+      let previousUserMessage: UnifiedMessage | ChatMessage | undefined
       if (messages && messageIndex > 0) {
         for (let index = messageIndex - 1; index >= 0; index -= 1) {
           if (messages[index]?.role === 'user') {

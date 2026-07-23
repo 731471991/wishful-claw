@@ -1,6 +1,6 @@
 export const DEFAULT_SETTINGS_TAB = 'provider'
 
-export type SettingsTab = 'provider' | 'modelManagement' | 'general' | 'about'
+export type SettingsTab = 'provider' | 'modelManagement' | 'general' | 'about' | 'permission' | 'channel' | 'plugin' | 'extension' | 'mcp'
 
 export function parseSettingsRoute(): { tab: SettingsTab } {
   return { tab: DEFAULT_SETTINGS_TAB }

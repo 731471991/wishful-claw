@@ -182,7 +182,7 @@ export function PlanReviewCard({
   const payload = parsedPayload ?? buildPlanReviewPayloadFromPlan(fallbackPlan)
   const plan = usePlanStore((s) => (payload?.planId ? s.plans[payload.planId] : undefined))
   const executionSession = useChatStore((s) =>
-    payload?.planId ? s.getLatestSessionByPlanId(payload.planId) : undefined
+    payload?.planId ? s.getLatestSessionByPlanId?.(payload.planId) ?? null : undefined
   )
   const isRunning = useAgentStore((s) => s.isSessionActive(activeSessionId)) || hasStreamingMessage
 
@@ -365,7 +365,7 @@ export function PlanReviewCard({
               size="sm"
               className="h-8 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
               onClick={() => {
-                void sendImplementPlan(payload.planId)
+                void sendImplementPlan(sessionId ?? activeSessionId ?? '', payload.planId)
               }}
               disabled={isRunning}
             >
@@ -381,7 +381,7 @@ export function PlanReviewCard({
               size="sm"
               className="h-8 gap-1.5"
               onClick={() => {
-                void sendImplementPlanInNewSession(payload.planId)
+                void sendImplementPlanInNewSession(null, payload.planId)
               }}
               disabled={isRunning}
             >

@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import type { InputDraftValue } from '@renderer/lib/input-drafts'
 
 interface DraftContext {
   [key: string]: unknown
@@ -6,8 +7,8 @@ interface DraftContext {
 
 interface UseInputDraftPersistenceResult {
   hydrated: boolean
-  loadedDraft: string | null
-  saveDraft: (text: string) => void
+  loadedDraft: InputDraftValue | null
+  saveDraft: (draft: InputDraftValue) => void
   removeDraft: () => void
 }
 
@@ -24,7 +25,7 @@ export function useInputDraftPersistence(_options: {
   return {
     hydrated: hydratedRef.current,
     loadedDraft: null,
-    saveDraft: (_text: string) => {},
+    saveDraft: (_draft: InputDraftValue) => {},
     removeDraft: () => {}
   }
 }

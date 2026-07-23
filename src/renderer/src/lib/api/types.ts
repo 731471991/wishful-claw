@@ -1,4 +1,15 @@
 // ===== Unified API Type System =====
+// Import types locally for use in this file
+import type {
+  ProviderType,
+  ModelCategory,
+  ResponseSummary,
+  ReasoningEffortLevel,
+  ResponsesImageGenerationConfig,
+  ThinkingConfig,
+  RequestOverrides,
+  ImageGenerationStreamConfig
+} from '@shared/types/provider'
 // Re-export shared provider types so OpenCowork imports (`@renderer/lib/api/types`) work.
 export type {
   ProviderType,
@@ -223,8 +234,8 @@ export interface RequestDebugInfo {
   providerId?: string
   providerBuiltinId?: string
   model?: string
-  executionPath?: 'sidecar'
-  transport?: 'http' | 'websocket'
+  executionPath?: string
+  transport?: string
   fallbackReason?: string
   reusedConnection?: boolean
   websocketRequestKind?: 'warmup' | 'full' | 'incremental'
@@ -393,8 +404,8 @@ export interface ToolDefinition {
 // --- Provider Config (renderer-side, for agent loop) ---
 
 export interface ProviderConfig {
-  type: ProviderType
-  apiKey: string
+  type?: ProviderType
+  apiKey?: string
   baseUrl?: string
   model: string
   category?: ModelCategory
@@ -430,3 +441,6 @@ export interface ProviderConfig {
   websocketUrl?: string
   websocketMode?: 'auto' | 'disabled'
 }
+
+
+// ─── Note: ProviderType, ModelCategory, ThinkingConfig, etc. are re-exported from @shared/types/provider above ───

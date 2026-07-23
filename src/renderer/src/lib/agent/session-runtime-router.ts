@@ -105,7 +105,7 @@ function resolveChatStoreSeed(sessionId: string, messageId: string): UnifiedMess
   return useChatStore
     .getState()
     .getSessionMessages(sessionId)
-    .find((message) => message.id === messageId)
+    .find((message) => message.id === messageId) as UnifiedMessage | undefined
 }
 
 /**
@@ -214,7 +214,7 @@ export function updateRuntimeMessage(
 
   if (isSessionForeground(sessionId)) {
     queueForegroundMutation(() =>
-      useChatStore.getState().updateMessage(sessionId, messageId, residentPatch)
+      useChatStore.getState().updateMessage(sessionId, messageId, residentPatch as any)
     )
     return
   }
@@ -515,7 +515,7 @@ export function addRuntimeMessage(sessionId: string, message: UnifiedMessage): v
   emitSessionRuntimeSync({ kind: 'add_message', sessionId, message })
 
   if (isSessionForeground(sessionId)) {
-    useChatStore.getState().addMessage(sessionId, message)
+    useChatStore.getState().addMessage(sessionId, message as any)
     return
   }
 
@@ -556,7 +556,7 @@ export async function flushBackgroundSessionToForeground(sessionId: string): Pro
       await chatState.loadRecentSessionMessages(sessionId, true)
     }
 
-    useChatStore.getState().applyBackgroundSnapshot(sessionId, {
+    useChatStore.getState().applyBackgroundSnapshot?.(sessionId, {
       patchedMessagesById: snapshot.patchedMessagesById,
       addedMessagesById: snapshot.addedMessagesById,
       addedMessageIds: snapshot.addedMessageIds

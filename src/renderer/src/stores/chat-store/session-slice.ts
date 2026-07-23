@@ -7,6 +7,9 @@ export interface SessionSlice {
   sessions: Session[]
   sessionsById: Record<string, number>
   activeSessionId: string | null
+  forkSessionFromMessage?: (sessionId: string, messageId: string) => Promise<string | null>
+  loadMessageWindowAround?: (sessionId: string, options?: { messageId?: string; sortOrder?: number }, windowSize?: number) => Promise<void>
+  getLatestSessionByPlanId?: (planId: string) => Session | null
 
   createSession: (
     mode: Session['mode'],
@@ -23,6 +26,8 @@ export interface SessionSlice {
   setSessionModelAuto: (sessionId: string) => void
   setSessionModelInherit: (sessionId: string) => void
   clearSessionMessages: (sessionId: string) => void
+  clearSessionPromptSnapshot: (sessionId: string) => void
+  applyBackgroundSnapshot?: (sessionId: string, snapshot: { patchedMessagesById: Record<string, unknown>; addedMessagesById: Record<string, unknown>; addedMessageIds: string[] }) => void
   togglePinSession: (sessionId: string) => void
   duplicateSession: (sessionId: string) => string | null
   restoreSession: (session: Session) => void
@@ -189,6 +194,10 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = Date.now()
       }
     })
+  },
+
+  clearSessionPromptSnapshot: (_sessionId: string) => {
+    // TODO: stub - clear session prompt snapshot
   },
 
   togglePinSession: (sessionId) => {

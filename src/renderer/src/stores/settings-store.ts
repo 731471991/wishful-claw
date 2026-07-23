@@ -71,7 +71,8 @@ export type MemoryAutomationWritePolicy = 'auto'
 export type MemoryScopeMode = 'hybrid'
 export type ClarifyPlanModeAutoSwitchTarget = 'off' | 'code' | 'acp'
 export type ProjectDefaultDirectoryMode = 'last-used' | 'custom'
-export type FileDiffViewMode = 'split' | 'inline'
+export type FileDiffViewMode = 'split' | 'inline' | 'code' | 'preview'
+export type ThemeMode = 'light' | 'dark' | 'system'
 export type LiveOutputAnimationStyle = 'agile' | 'elegant'
 export type OnboardingLanguage = AppLanguage
 export type ShellExecutionEndpoint =
@@ -390,6 +391,7 @@ interface SettingsStore {
   editorWorkspaceEnabled: boolean
   editorRemoteLanguageServiceEnabled: boolean
   maxParallelToolCalls: number
+  maxToolCallsPerTurn: number
   maxConcurrentSubAgents: number
   toolResultFormat: 'toon' | 'json'
   fileDiffViewMode: FileDiffViewMode

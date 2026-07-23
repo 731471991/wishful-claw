@@ -54,8 +54,8 @@ export const useTeamStore = create<TeamStore>()(
           switch (eventWithSession.type) {
             case 'team_start':
               state.activeTeam = {
-                name: eventWithSession.teamName,
-                description: eventWithSession.description,
+                name: eventWithSession.teamName ?? '',
+                description: eventWithSession.description ?? '',
                 sessionId: resolvedSessionId,
                 runtimePath: eventWithSession.runtimePath,
                 leadAgentId: eventWithSession.leadAgentId,
@@ -69,22 +69,24 @@ export const useTeamStore = create<TeamStore>()(
                 lastRuntimeSyncAt: Date.now()
               }
               break
-            case 'team_member_add':
-              if (state.activeTeam) {
+            case 'team_member_add': {
+              const newMember = eventWithSession.member
+              if (state.activeTeam && newMember) {
                 // Guard: skip if a member with the same id or name already exists
                 const dup = state.activeTeam.members.some(
                   (m) =>
-                    m.id === eventWithSession.member.id || m.name === eventWithSession.member.name
+                    m.id === newMember.id || m.name === newMember.name
                 )
-                if (!dup) state.activeTeam.members.push(eventWithSession.member)
+                if (!dup) state.activeTeam.members.push(newMember)
               }
               break
+            }
             case 'team_member_update': {
               if (!state.activeTeam) break
               const member = state.activeTeam.members.find(
                 (m) => m.id === eventWithSession.memberId
               )
-              if (member) Object.assign(member, eventWithSession.patch)
+              if (member && eventWithSession.patch) Object.assign(member, eventWithSession.patch)
               break
             }
             case 'team_member_remove': {
@@ -95,41 +97,47 @@ export const useTeamStore = create<TeamStore>()(
               if (idx !== -1) state.activeTeam.members.splice(idx, 1)
               break
             }
-            case 'team_task_add':
-              if (state.activeTeam) {
+            case 'team_task_add': {
+              const newTask = eventWithSession.task
+              if (state.activeTeam && newTask) {
                 // Guard: skip if a task with the same id already exists
                 const dupTask = state.activeTeam.tasks.some(
-                  (t) => t.id === eventWithSession.task.id
+                  (t) => t.id === newTask.id
                 )
-                if (!dupTask) state.activeTeam.tasks.push(eventWithSession.task)
-              }
-              break
-            case 'team_task_update': {
-              if (!state.activeTeam) break
-              const task = state.activeTeam.tasks.find((t) => t.id === eventWithSession.taskId)
-              if (task) {
-                // Guard: never roll back a completed task to a non-completed status
-                if (
-                  task.status === 'completed' &&
-                  eventWithSession.patch.status &&
-                  eventWithSession.patch.status !== 'completed'
-                ) {
-                  break
-                }
-                Object.assign(task, eventWithSession.patch)
+                if (!dupTask) state.activeTeam.tasks.push(newTask)
               }
               break
             }
-            case 'team_message':
-              if (
-                state.activeTeam &&
-                !state.activeTeam.messages.some(
-                  (message) => message.id === eventWithSession.message.id
-                )
-              ) {
-                state.activeTeam.messages.push(eventWithSession.message)
+            case 'team_task_update': {
+              if (!state.activeTeam) break
+              const task = state.activeTeam.tasks.find((t) => t.id === eventWithSession.taskId)
+              const patch = eventWithSession.patch
+              if (task && patch) {
+                // Guard: never roll back a completed task to a non-completed status
+                if (
+                  task.status === 'completed' &&
+                  patch.status &&
+                  patch.status !== 'completed'
+                ) {
+                  break
+                }
+                Object.assign(task, patch)
               }
               break
+            }
+            case 'team_message': {
+              const newMessage = eventWithSession.message
+              if (
+                state.activeTeam &&
+                newMessage &&
+                !state.activeTeam.messages.some(
+                  (message) => message.id === newMessage.id
+                )
+              ) {
+                state.activeTeam.messages.push(newMessage)
+              }
+              break
+            }
             case 'team_end':
               if (state.activeTeam) {
                 state.teamHistory.push({ ...state.activeTeam })

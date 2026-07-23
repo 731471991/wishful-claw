@@ -31,7 +31,20 @@ interface ProviderState {
   setActiveModel: (modelId: string) => void
   setActiveFastProvider: (id: string) => void
   setActiveFastModel: (modelId: string) => void
-  getFastProviderConfig: () => { providerId: string | null; model: string } | null
+  getFastProviderConfig: () => { providerId: string; model: string; apiKey?: string; requiresApiKey?: boolean; baseUrl?: string } | null
+  // Speech provider stubs (for pet voice features)
+  activeSpeechProviderId: string | null
+  activeSpeechModelId: string
+  getProviderConfigById: (id: string, _modelId?: string) => AIProvider | null
+  getActiveModelConfig: () => { responseSummary?: any; enablePromptCache?: boolean; enableSystemPromptCache?: boolean } | null
+  getEffectiveMaxTokens: (userDefault?: number | null, modelId?: string) => number
+  getCompressionProviderConfig: () => { providerId: string | null; model: string } | null
+  getTranslationProviderConfig: () => { providerId: string | null; model: string } | null
+  activeImageProviderId: string | null
+  activeImageModelId: string
+  activeTranslationProviderId: string | null
+  activeTranslationModelId: string
+  getSpeechProviderConfig: () => { providerId: string | null; model: string } | null
   setDefaultModel: (modelId: string) => void
 
   // ── Model management ──
@@ -305,6 +318,38 @@ export const useProviderStore = create<ProviderState>()(
         const provider = providers.find((p) => p.id === activeFastProviderId)
         if (!provider) return null
         return { providerId: activeFastProviderId, model: activeFastModelId || provider.defaultModel || '' }
+      },
+      activeSpeechProviderId: null,
+      activeSpeechModelId: '',
+      getProviderConfigById: (id: string, _modelId?: string) => get().providers.find(p => p.id === id) ?? null,
+      getActiveModelConfig: () => {
+        const { providers, activeProviderId, activeModelId } = get()
+        const provider = providers.find(p => p.id === activeProviderId)
+        if (!provider) return null
+        const model = provider.models?.find((m: any) => m.id === activeModelId)
+        return model ?? null
+      },
+      getEffectiveMaxTokens: (userDefault?: number | null, _modelId?: string) => {
+        return userDefault ?? 4096
+      },
+      getCompressionProviderConfig: () => {
+        const { activeFastProviderId, activeFastModelId } = get()
+        if (!activeFastProviderId) return null
+        return { providerId: activeFastProviderId, model: activeFastModelId }
+      },
+      getTranslationProviderConfig: () => {
+        const { activeTranslationProviderId, activeTranslationModelId } = get()
+        if (!activeTranslationProviderId) return null
+        return { providerId: activeTranslationProviderId, model: activeTranslationModelId }
+      },
+      activeImageProviderId: null,
+      activeImageModelId: '',
+      activeTranslationProviderId: null,
+      activeTranslationModelId: '',
+      getSpeechProviderConfig: () => {
+        const { activeSpeechProviderId, activeSpeechModelId } = get()
+        if (!activeSpeechProviderId) return null
+        return { providerId: activeSpeechProviderId, model: activeSpeechModelId }
       },
 
       setDefaultModel: (modelId) => set({ defaultModel: modelId }),

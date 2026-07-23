@@ -1,7 +1,5 @@
-export function parseExtensionToolResult(_text: string): {
-  title?: string
-  content?: string
-  isError?: boolean
-} | null {
+import type { ExtensionToolResult } from '../../../../shared/extension-types'
+
+export function parseExtensionToolResult(_text: unknown): ExtensionToolResult | null {
   return null
 }

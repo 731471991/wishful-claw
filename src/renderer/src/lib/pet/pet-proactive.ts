@@ -41,7 +41,7 @@ export const petEvents = {
 function proactiveAllowed(now: number): boolean {
   const config = usePetAgentStore.getState()
   if (!config.proactive || !config.providerId || !config.modelId) return false
-  if (isInQuietHours(new Date(now).getHours(), config.quietStart, config.quietEnd)) return false
+  if (isInQuietHours(new Date(now))) return false
   return true
 }
 
@@ -50,13 +50,13 @@ async function runRemark(event: string, allowTools: boolean): Promise<string | n
   if (!config.providerId || !config.modelId) return null
   try {
     const store = usePetStore.getState()
-    const memorySection = buildMemorySection(await loadPetMemories())
-    const persona = buildPetSystemPrompt(config.systemPrompt, {
-      petName: store.name,
-      hunger: store.hunger,
-      cleanliness: store.cleanliness,
-      mood: store.mood,
-      level: getPetLevel(store.growth + usePetExpStore.getState().totalExp),
+    const memorySection = buildMemorySection((await loadPetMemories()) as any)
+    const persona = buildPetSystemPrompt(config.systemPrompt ?? "", {
+      petName: store.name ?? "",
+      hunger: store.hunger ?? 0,
+      cleanliness: store.cleanliness ?? 0,
+      mood: store.mood ?? 0,
+      level: getPetLevel((store.growth ?? 0) + (usePetExpStore.getState().totalExp ?? 0)),
       projectName: config.projectName,
       projectFolder: config.projectFolder,
       memorySection
@@ -110,11 +110,11 @@ export async function runTimedProactiveChat(): Promise<string | null> {
   if (!proactiveAllowed(now)) return null
   const config = usePetAgentStore.getState()
   const store = usePetStore.getState()
-  if (getProactiveCountToday(store) >= PET_PROACTIVE_DAILY_CAP[config.proactiveFreq]) return null
-  if (now - store.lastProactiveAt < TIMED_MIN_GAP_MS) return null
+  if (getProactiveCountToday() >= PET_PROACTIVE_DAILY_CAP) return null
+  if (now - ((store.lastProactiveAt as number) ?? 0) < TIMED_MIN_GAP_MS) return null
   if (now - lastRemarkAt < REMARK_MIN_GAP_MS) return null
 
-  store.recordProactive(now)
+  if (typeof store.recordProactive === "function") (store.recordProactive as (now: number) => void)(now)
   lastRemarkAt = now
   const event = config.projectFolder
     ? '你有一阵子没和主人说话了，想主动找主人聊两句。你可以先用只读工具快速看一眼绑定项目（最多 2 次工具调用），结合最近的文件聊点具体的；也可以结合你的状态和记忆，说一句自然的开场白或关心的话。'

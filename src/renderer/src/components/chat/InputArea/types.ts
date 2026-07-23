@@ -109,7 +109,7 @@ export interface ComposerRuntimeStatusProps {
 
 export interface InputAreaProps {
   sessionId?: string | null
-  onSend: (text: string, images?: ImageAttachment[], options?: SendMessageOptions) => void
+  onSend?: (text: string, images?: ImageAttachment[], options?: SendMessageOptions) => void
   onStop?: () => void
   onSelectFolder?: () => void
   isStreaming?: boolean

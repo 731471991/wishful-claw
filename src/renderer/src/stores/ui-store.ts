@@ -95,6 +95,11 @@ export type SettingsTab =
   | 'general'
   | 'persona'
   | 'about'
+  | 'permission'
+  | 'channel'
+  | 'plugin'
+  | 'extension'
+  | 'mcp'
 
 export type DetailPanelContent =
   | { type: 'team' }
@@ -268,7 +273,7 @@ interface UIStore {
   subAgentExecutionDetailOpen: boolean
   subAgentExecutionDetailToolUseId: string | null
   subAgentExecutionDetailInlineText: string | null
-  openSubAgentExecutionDetail: (toolUseId: string, inlineText?: string | null) => void
+  openSubAgentExecutionDetail: (toolUseId: string, inlineText?: string | null, name?: string, sessionId?: string) => void
   closeSubAgentExecutionDetail: () => void
   selectedSubAgentToolUseId: string | null
   setSelectedSubAgentToolUseId: (toolUseId: string | null) => void
@@ -281,6 +286,8 @@ interface UIStore {
   orchestrationConsoleOpen: boolean
   orchestrationConsoleView: 'overview' | 'member' | 'tasks'
   openOrchestrationPanel: (runId?: string | null, memberId?: string | null) => void
+  openOrchestrationMember: (runId: string, memberId: string) => void
+  openMarkdownPreview: (title: string, content: string, sessionId?: string | null) => void
   closeOrchestrationPanel: () => void
 
   // Plan mode
@@ -307,7 +314,7 @@ interface UIStore {
   // File preview
   openFilePreview: (
     filePath: string,
-    viewMode?: 'split' | 'inline',
+    viewMode?: 'split' | 'inline' | 'preview',
     sshConnectionId?: string | null,
     sessionId?: string | null,
     targetLine?: number,
@@ -340,6 +347,16 @@ interface UIStore {
   navigateToSession: (sessionId?: string | null) => void
   applyRouteFromLocation: () => void
   applyChatRouteFromLocation: () => void
+
+  // Browser webview management (stub - for browser-native-ui tools)
+  getBrowserWebviewRef: (sessionId?: string | null) => { current: Electron.WebviewTag | null } | undefined
+  getBrowserState: (sessionId?: string | null) => { url: string; pageTitle: string }
+  openBrowserTab: (
+    url: string,
+    sessionId?: string | null,
+    title?: string | null,
+    options?: { background?: boolean }
+  ) => void
 }
 
 // ─── Store Implementation ───
@@ -509,6 +526,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   openOrchestrationPanel: (runId, memberId) =>
     set({ orchestrationConsoleOpen: true, selectedOrchestrationRunId: runId ?? null, selectedOrchestrationMemberId: memberId ?? null }),
   closeOrchestrationPanel: () => set({ orchestrationConsoleOpen: false }),
+  openOrchestrationMember: (runId, memberId) => set({ orchestrationConsoleOpen: true, selectedOrchestrationRunId: runId, selectedOrchestrationMemberId: memberId }),
 
   // Plan mode
   planMode: false,
@@ -543,6 +561,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
   openFilePreview: (filePath) => {
     // Stub: will be implemented with proper preview panel later
     console.log('[UIStore] openFilePreview stub:', filePath)
+  },
+  openMarkdownPreview: (_title, _content, _sessionId) => {
+    // Stub: will be implemented with proper preview panel later
   },
 
   // Hovering state
@@ -622,6 +643,13 @@ export const useUIStore = create<UIStore>((set, get) => ({
     // Placeholder: no URL routing for now. Navigation is driven by state.
   },
   applyChatRouteFromLocation: () => {
-    // Placeholder
-  }
+    // Placeholder - will be implemented when routing is migrated
+  },
+
+  // Browser webview management stubs
+  getBrowserWebviewRef: (_sessionId?: string | null) => undefined,
+  getBrowserState: (_sessionId?: string | null) => ({ url: '', pageTitle: '' }),
+  openBrowserTab: (_url: string, _sessionId?: string | null, _title?: string | null, _options?: { background?: boolean }) => {
+    // Stub - will be implemented when browser panel is migrated
+  },
 }))

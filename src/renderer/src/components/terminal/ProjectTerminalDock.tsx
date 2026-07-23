@@ -1,6 +1,8 @@
 import * as React from 'react'
 
 interface ProjectTerminalDockProps {
+  projectName?: string
+  sshConnectionId?: string | null
   projectId: string
 }
 

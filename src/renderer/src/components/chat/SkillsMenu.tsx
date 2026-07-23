@@ -473,7 +473,7 @@ function SkillsMenuContent({
                           key={channel.id}
                           onSelect={(event) => {
                             event.preventDefault()
-                            toggleActiveChannel(channel.id, projectId)
+                            toggleActiveChannel(projectId ?? "", channel.id)
                           }}
                           className="flex cursor-pointer items-center gap-2 py-1.5"
                         >

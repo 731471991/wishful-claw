@@ -10,6 +10,9 @@ import type { ToolDefinition } from '@renderer/lib/api/types'
 export interface PromptEnvironmentContext {
   operatingSystem: string
   shell: string
+  target?: 'local' | 'ssh'
+  host?: string
+  pathStyle?: 'posix' | 'windows'
 }
 
 function resolveLocalShellLabel(rawPlatform: string): string {
@@ -18,7 +21,7 @@ function resolveLocalShellLabel(rawPlatform: string): string {
   return 'system shell'
 }
 
-export function resolvePromptEnvironmentContext(): PromptEnvironmentContext {
+export function resolvePromptEnvironmentContext(_options?: { workingFolder?: string }): PromptEnvironmentContext {
   const rawPlatform = typeof navigator !== 'undefined' ? navigator.platform : 'unknown'
   const localOperatingSystem = rawPlatform.startsWith('Win')
     ? 'Windows'
@@ -34,6 +37,7 @@ export function resolvePromptEnvironmentContext(): PromptEnvironmentContext {
 }
 
 export function buildSystemPrompt(options: {
+  mode?: string
   workingFolder?: string
   projectName?: string
   language?: string

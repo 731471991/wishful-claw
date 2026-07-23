@@ -101,8 +101,8 @@ export interface SidecarUnifiedMessage {
 }
 
 export interface SidecarProviderConfig {
-  type: string
-  apiKey: string
+  type?: string
+  apiKey?: string
   baseUrl?: string
   model: string
   category?: string
@@ -373,7 +373,10 @@ function normalizeRequestContextTexts(value: readonly string[] | null | undefine
   return value.map((item) => item.trim()).filter(Boolean)
 }
 
-export function isNativeSidecarProviderConfig(provider: ProviderConfig): boolean {
+/** Minimal provider shape accepted by sidecar mapping functions. Accepts both full ProviderConfig and lightweight { providerId, model } selections. */
+type SidecarProviderInput = Partial<Omit<ProviderConfig, 'providerId'>> & { model: string; providerId?: string | null }
+
+export function isNativeSidecarProviderConfig(provider: SidecarProviderInput): boolean {
   if (
     provider.type !== 'openai-chat' &&
     provider.type !== 'openai-responses' &&
@@ -501,7 +504,7 @@ function mapSidecarMessage(message: UnifiedMessage): SidecarUnifiedMessage | nul
   }
 }
 
-function mapSidecarProvider(provider: ProviderConfig): SidecarProviderConfig {
+function mapSidecarProvider(provider: SidecarProviderInput): SidecarProviderConfig {
   return {
     type: provider.type,
     apiKey: provider.apiKey,

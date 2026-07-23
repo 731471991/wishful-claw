@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, Folder, FolderTree } from 'lucide-react'
+import { Search, Folder, FolderTree, File } from 'lucide-react'
 import { MONO_FONT } from '@renderer/lib/constants'
 import {
   parseGrepOutput,

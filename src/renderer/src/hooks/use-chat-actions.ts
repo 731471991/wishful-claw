@@ -9,6 +9,8 @@ export interface SendMessageOptions {
   enablePlanMode?: boolean
   selectedFileReferences?: unknown[]
   goalObjective?: string
+  imageEdit?: unknown
+  [key: string]: unknown
 }
 
 // Cache tool definitions to avoid fetching on every message
@@ -30,7 +32,8 @@ export function useChatActions() {
   const cancelStream = useChatStore((s) => s.cancelStream)
 
   const handleSendMessage = useCallback(
-    async (text: string, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
+    async (text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
+      const textStr = typeof text === 'string' ? text : text.text
       const providerStore = useProviderStore.getState()
       const activeProvider = providerStore.getActiveProvider()
       if (!activeProvider) {
@@ -159,9 +162,10 @@ export function abortSession(sessionId: string): void {
   store.setStreamingMessageId(sessionId, null)
 }
 
-export function clearPendingSessionMessages(sessionId: string): void {
+export function clearPendingSessionMessages(sessionId: string): number {
   void sessionId
   // Placeholder — 迭代四实现 pending message queue
+  return 0
 }
 
 export function getPendingSessionMessageCountForSession(sessionId: string): number {
@@ -169,10 +173,9 @@ export function getPendingSessionMessageCountForSession(sessionId: string): numb
   return 0
 }
 
-export function subscribePendingSessionMessages(sessionId: string, callback: (count: number) => void): () => void {
-  void sessionId
-  void callback
-  return () => {}
+export function subscribePendingSessionMessages(onStoreChange: () => void): () => void {
+  _pendingListeners.add(onStoreChange)
+  return () => { _pendingListeners.delete(onStoreChange) }
 }
 
 export async function sendImplementPlan(_sessionId: string, _planId: string): Promise<void> {
@@ -190,6 +193,11 @@ export interface PendingSessionMessageItem {
   sessionId: string
   role: 'user'
   content: string
+  text: string
+  command?: { name: string; content: string } | null
+  images: import('@renderer/lib/image-attachments').ImageAttachment[]
+  skill?: string | null
+  selectedFiles?: unknown[]
   createdAt: number
   draft?: string
 }
@@ -218,12 +226,19 @@ export function removePendingSessionMessage(sessionId: string, messageId: string
 export function updatePendingSessionMessageDraft(
   sessionId: string,
   messageId: string,
-  draft: string
+  draft: unknown
 ): void {
   const list = _pendingMessages.get(sessionId) ?? []
   const msg = list.find((m) => m.id === messageId)
   if (msg) {
-    msg.draft = draft
+    if (typeof draft === 'string') {
+      msg.draft = draft
+    } else if (draft && typeof draft === 'object') {
+      const d = draft as { text?: string; images?: unknown[]; command?: unknown }
+      msg.draft = d.text ?? ''
+      if (d.images) msg.images = d.images as any[]
+      if (d.command) msg.command = d.command as any
+    }
     _pendingListeners.forEach((fn) => fn())
   }
 }
@@ -231,7 +246,7 @@ export function updatePendingSessionMessageDraft(
 export function quotePendingSessionMessageIntoConversation(
   _sessionId: string,
   _messageId: string
-): string | null {
+): unknown {
   return null
 }
 

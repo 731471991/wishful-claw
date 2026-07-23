@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import type { ProviderConfig } from '@renderer/lib/api/types'
+import type { AIProvider } from '../../../shared/types/provider'
 import { streamAiTranslation } from '@renderer/lib/translate-service'
 import { runTranslationAgent } from '@renderer/lib/translate-agent-service'
 import { recordUsageEvent } from '@renderer/lib/usage-analytics'
@@ -65,10 +66,10 @@ function buildEffectiveProviderConfig(
   const providerStore = useProviderStore.getState()
 
   if (overrideProviderId && overrideModelId) {
-    return providerStore.getProviderConfigById(overrideProviderId, overrideModelId)
+    return providerStore.getProviderConfigById(overrideProviderId, overrideModelId) as unknown as ProviderConfig | null
   }
 
-  return providerStore.getTranslationProviderConfig() ?? buildFallbackProviderConfig()
+  return (providerStore.getTranslationProviderConfig() ?? buildFallbackProviderConfig()) as unknown as ProviderConfig | null
 }
 
 export const useTranslateStore = create<TranslateStore>((set, get) => ({

@@ -177,7 +177,7 @@ export async function runPetChat(args: PetChatArgs): Promise<string> {
   const request = buildSidecarAgentRunRequest({
     messages,
     tools,
-    provider: { ...config, systemPrompt, thinkingEnabled: false },
+    provider: { ...config, model: args.modelId, systemPrompt, thinkingEnabled: false },
     maxIterations: 8,
     forceApproval: false,
     workingFolder,

@@ -18,6 +18,13 @@ type NativeBrowserToolResponse = {
   error?: string
 }
 
+/** Minimal type for Electron nativeImage returned by webview.capturePage() */
+interface NativeImageLike {
+  isEmpty(): boolean
+  toDataURL(): string
+  getSize(): { width: number; height: number }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
@@ -372,8 +379,8 @@ async function executeBrowserScreenshot(
   const accessError = getCurrentBrowserAccessError(ctx)
   if (accessError) return accessError
   const webview = await ensureAttachedWebview(ctx)
-  const nativeImage = await runWebviewCommand(webview, 'capture screenshot', (target) =>
-    target.capturePage()
+  const nativeImage = await runWebviewCommand<NativeImageLike>(webview, 'capture screenshot', (target) =>
+    (target as unknown as { capturePage: () => NativeImageLike }).capturePage()
   )
   if (nativeImage.isEmpty()) {
     return encodeToolError('Failed to capture screenshot; page may still be loading.')
