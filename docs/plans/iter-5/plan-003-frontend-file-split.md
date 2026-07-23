@@ -108,15 +108,11 @@ commit: 0847ac8
 
 ---
 
-## Step 4: MessageList.tsx — 提取子组件和工具函数 (P3)
+## Step 4: MessageList.tsx — 提取子组件和工具函数 (P3) ✅
 
-**现状**：2700行。
+**现状**：2701行 → 1806行，提取纯工具函数和类型定义到 MessageList/utils.ts (934行)。
 
-**拆分方向**：
-- 提取 AutoScroll 逻辑
-- 提取消息行渲染逻辑
-- 提取工具结果查找逻辑
-- 主文件保留列表骨架
+commit: c973139
 
 ---
 
