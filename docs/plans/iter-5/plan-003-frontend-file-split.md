@@ -141,15 +141,11 @@ commit: 50a3e80
 
 ---
 
-## Step 8: GitPage.tsx — 按视图区域拆分 (P7)
+## Step 8: GitPage.tsx — 按视图区域拆分 (P7) ✅
 
-**现状**：1444行。
+**现状**：1444行 → 1189行，提取类型/纯函数/子组件到 GitPage/utils.tsx (272行)。
 
-**拆分方向**：
-- 提取 ScmFileRowView / ScmSectionHeader 等子组件
-- 提取 diff 解析工具函数
-- 提取分支列表逻辑
-- 主文件保留 GitPage 骨架
+commit: a63bee2
 
 ---
 
