@@ -42,6 +42,7 @@ interface SessionRow {
   providerId: string | null
   modelId: string | null
   modelSelectionMode: string | null
+  personaId: string | null
 }
 
 interface MessageRow {
@@ -153,7 +154,8 @@ function rowToSession(row: SessionRow): Session {
     externalChatId: row.externalChatId ?? undefined,
     providerId: row.providerId ?? undefined,
     modelId: row.modelId ?? undefined,
-    modelSelectionMode: (row.modelSelectionMode ?? 'inherit') as Session['modelSelectionMode']
+    modelSelectionMode: (row.modelSelectionMode ?? 'inherit') as Session['modelSelectionMode'],
+    personaId: row.personaId ?? undefined
   }
 }
 
@@ -217,7 +219,8 @@ export async function dbCreateSession(session: Session): Promise<void> {
     pinned: session.pinned ?? false,
     providerId: session.providerId ?? null,
     modelId: session.modelId ?? null,
-    modelSelectionMode: session.modelSelectionMode ?? 'inherit'
+    modelSelectionMode: session.modelSelectionMode ?? 'inherit',
+    personaId: session.personaId ?? null
     })
   })()
   sessionCreatePromises.set(session.id, promise)
@@ -251,6 +254,7 @@ export async function dbUpdateSession(
   if (patch.providerId !== undefined) dbPatch.providerId = patch.providerId
   if (patch.modelId !== undefined) dbPatch.modelId = patch.modelId
   if (patch.modelSelectionMode !== undefined) dbPatch.modelSelectionMode = patch.modelSelectionMode
+  if (patch.personaId !== undefined) dbPatch.personaId = patch.personaId
 
   await window.api.workerRequest('db/sessions-update', { id: sessionId, patch: dbPatch })
 }

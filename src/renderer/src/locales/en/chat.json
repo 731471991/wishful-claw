@@ -889,7 +889,8 @@
     "folderLabel": "Working folder",
     "sshLabel": "SSH connection",
     "actionsLabel": "Quick access",
-    "noWorkingFolder": "No working folder configured"
+    "noWorkingFolder": "No working folder configured",
+    "openPersona": "Persona"
   },
   "projectArchive": {
     "noChannelSummary": "View project collaboration channels and connection status.",
@@ -1284,5 +1285,11 @@
     "reveal": "Reveal in Finder",
     "open": "Open",
     "more": "+{{count}} more"
+  },
+  "chat": {
+    "personaSwitcher": {
+      "title": "Switch Persona",
+      "none": "Default"
+    }
   }
 }

@@ -26,6 +26,7 @@ import { PlaceholderPage } from './PlaceholderPage'
 import { ChatHomePage } from '@renderer/components/chat/ChatHomePage'
 import { ProjectHomePage } from '@renderer/components/chat/ProjectHomePage'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
+import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 
 // ─── Feature page registry ───
 
@@ -56,6 +57,9 @@ function ContentArea(): React.JSX.Element {
   const tasksPageOpen = useUIStore((s) => s.tasksPageOpen)
   const codeGraphPageOpen = useUIStore((s) => s.codeGraphPageOpen)
   const activeSessionId = useChatStore((s) => s.activeSessionId)
+  const activeProject = useChatStore((s) =>
+    s.projects.find((p) => p.id === s.activeProjectId)
+  )
 
   // Settings page (inline overlay)
   if (settingsPageOpen) {
@@ -88,6 +92,10 @@ function ContentArea(): React.JSX.Element {
       return <ProjectHomePage />
     case 'session':
       return <SessionConversationPane sessionId={activeSessionId} />
+    case 'persona':
+      return (
+        <PersonaPanel workingFolder={activeProject?.workingFolder} />
+      )
     case 'archive':
       return <PlaceholderPage title="Archive" iterLabel="后续" icon={Archive} />
     case 'git':
@@ -132,6 +140,8 @@ function useTitle(): { title: string; subtitle: string | null } {
         return { title: activeProject?.name ?? t('title.project', { defaultValue: 'Project' }), subtitle: activeProject?.workingFolder ?? null }
       case 'session':
         return { title: activeSession?.title ?? t('title.session', { defaultValue: 'Session' }), subtitle: activeProject?.name ?? null }
+      case 'persona':
+        return { title: t('title.persona', { defaultValue: 'Persona' }), subtitle: activeProject?.name ?? null }
       case 'archive':
         return { title: t('title.archive', { defaultValue: 'Archive' }), subtitle: null }
       case 'git':

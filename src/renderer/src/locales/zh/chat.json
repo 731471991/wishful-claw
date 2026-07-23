@@ -889,7 +889,8 @@
     "folderLabel": "工作目录",
     "sshLabel": "SSH 连接",
     "actionsLabel": "快捷入口",
-    "noWorkingFolder": "未配置工作目录"
+    "noWorkingFolder": "未配置工作目录",
+    "openPersona": "人格管理"
   },
   "projectArchive": {
     "noChannelSummary": "查看项目协作频道与连接状态。",
@@ -1283,5 +1284,11 @@
     "reveal": "在 Finder 中显示",
     "open": "打开",
     "more": "还有 {{count}} 个"
+  },
+  "chat": {
+    "personaSwitcher": {
+      "title": "切换人格",
+      "none": "默认"
+    }
   }
 }

@@ -17,6 +17,10 @@
       "general": "General",
       "aiService": "AI Service",
       "about": "About"
+    },
+    "persona": {
+      "label": "Persona",
+      "desc": "Manage persona library, edit identity, soul, ontology and behavior rules"
     }
   },
   "general": {
@@ -626,5 +630,53 @@
     "openCowork": "OpenCowork — Agent Loop / Toolchain / Provider / Architecture",
     "kodaClaw": "KodaClaw — Memory System / Personality System Design",
     "openClaw": "OpenClaw — Active Memory Recall Mechanism"
+  },
+  "persona": {
+    "title": "Persona Management",
+    "subtitle": "Manage global persona library, edit identity, soul, ontology and behavior rules",
+    "newPersona": "New Persona",
+    "builtin": "Built-in",
+    "newBadge": "New",
+    "empty": "No personas",
+    "selectHint": "Select a persona from the left, or click New Persona",
+    "unsaved": "Unsaved",
+    "unsavedConfirm": "You have unsaved changes. Are you sure you want to switch?",
+    "fieldName": "Name",
+    "fieldTagline": "Tagline",
+    "fieldDescription": "Description",
+    "namePlaceholder": "Persona name",
+    "taglinePlaceholder": "One-line description",
+    "descriptionPlaceholder": "More detailed description",
+    "editorPlaceholder": "Write Markdown content here...",
+    "save": "Save",
+    "reset": "Reset",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirmDelete": "Delete",
+    "deleteConfirmTitle": "Delete Persona",
+    "deleteConfirmDesc": "Are you sure you want to delete {{name}}? This action cannot be undone.",
+    "dismiss": "Dismiss",
+    "saved": "Persona saved",
+    "deleted": "Persona deleted",
+    "saveFailed": "Failed to save",
+    "deleteFailed": "Failed to delete",
+    "projectTitle": "Project Persona Management",
+    "projectSubtitle": "Manage project persona library, independent from global library",
+    "copyFromGlobal": "Copy from Global"
+  },
+  "settings": {
+    "persona": {
+      "aiCreate": "AI Create Persona",
+      "aiCreateDesc": "Describe the persona you want and AI will generate complete persona files",
+      "promptPlaceholder": "e.g. I want a tech buddy like Lao Zheng but more humorous",
+      "referencePlaceholder": "Reference persona ID (optional, e.g. lao-zheng)",
+      "generate": "Generate",
+      "generating": "Generating...",
+      "regenerate": "Regenerate",
+      "confirmSave": "Confirm Save",
+      "saving": "Saving...",
+      "noProvider": "Please configure an AI provider first",
+      "noModel": "Please select a model first"
+    }
   }
 }

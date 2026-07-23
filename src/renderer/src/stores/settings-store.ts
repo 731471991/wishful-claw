@@ -402,6 +402,7 @@ interface SettingsStore {
   onboardingCompletedAt: number | null
   onboardingInterests: string[]
   defaultSoulTemplateId: string
+  defaultPersonaId: string
   conversationGuideSeen: boolean
   memoryAutomationEnabled: boolean
   memoryAutomationWritePolicy: MemoryAutomationWritePolicy
@@ -530,6 +531,7 @@ export const useSettingsStore = create<SettingsStore>()(
       onboardingCompletedAt: null,
       onboardingInterests: [],
       defaultSoulTemplateId: '',
+      defaultPersonaId: '',
       conversationGuideSeen: false,
       memoryAutomationEnabled: true,
       memoryAutomationWritePolicy: 'auto',
@@ -971,6 +973,7 @@ export const useSettingsStore = create<SettingsStore>()(
         onboardingCompletedAt: state.onboardingCompletedAt,
         onboardingInterests: state.onboardingInterests,
         defaultSoulTemplateId: state.defaultSoulTemplateId,
+        defaultPersonaId: state.defaultPersonaId,
         conversationGuideSeen: state.conversationGuideSeen,
         memoryAutomationEnabled: state.memoryAutomationEnabled,
         memoryAutomationWritePolicy: 'auto' as const,

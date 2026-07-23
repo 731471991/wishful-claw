@@ -18,4 +18,9 @@
     <PackageReference Include="SqlSugarCore" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Embedded persona preset markdown files -->
+    <EmbeddedResource Include="Resources\Personas\**\*.md" />
+  </ItemGroup>
+
 </Project>

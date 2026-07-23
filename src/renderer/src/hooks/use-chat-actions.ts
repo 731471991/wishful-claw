@@ -3,7 +3,6 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import { buildSystemPrompt } from '@renderer/lib/agent/system-prompt'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -111,14 +110,9 @@ export function useChatActions() {
       // Fetch tool definitions
       const tools = await getToolDefinitions()
 
-      // Build system prompt with context
+      // System prompt is now built by the backend PromptBuilder
+      // using personaId + workingFolder + language + userRules.
       const settings = useSettingsStore.getState()
-      const systemPrompt = buildSystemPrompt({
-        workingFolder,
-        projectName,
-        language: settings.language,
-        toolDefs: tools ?? undefined
-      })
 
       const provider = {
         id: activeProvider.id,
@@ -127,7 +121,6 @@ export function useChatActions() {
         apiKey: activeProvider.apiKey,
         baseUrl: activeProvider.baseUrl,
         model: modelId,
-        systemPrompt,
         temperature: settings.temperature ?? undefined,
         maxTokens: settings.maxTokens ?? undefined
       }
@@ -140,7 +133,10 @@ export function useChatActions() {
         workingFolder,
         maxIterations: 10,
         maxParallelTools: settings.maxParallelToolCalls,
-        maxToolCallsPerTurn: settings.maxToolCallsPerTurn
+        maxToolCallsPerTurn: settings.maxToolCallsPerTurn,
+        personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,
+        language: settings.language,
+        userRules: settings.systemPrompt || undefined
       })
 
       void opts

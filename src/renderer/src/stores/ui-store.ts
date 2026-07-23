@@ -55,7 +55,7 @@ export interface AutoModelSelectionStatus {
 
 export type AutoModelRoutingState = 'idle' | 'routing'
 
-export type ChatView = 'home' | 'project' | 'archive' | 'channels' | 'git' | 'session'
+export type ChatView = 'home' | 'project' | 'archive' | 'channels' | 'git' | 'session' | 'persona'
 
 export type RightPanelSection = 'execution' | 'resources' | 'collaboration' | 'monitoring'
 export type AgentFilesTab = 'files' | 'changes'
@@ -93,6 +93,7 @@ export type SettingsTab =
   | 'provider'
   | 'modelManagement'
   | 'general'
+  | 'persona'
   | 'about'
 
 export type DetailPanelContent =
@@ -335,6 +336,7 @@ interface UIStore {
   navigateToArchive: (projectId?: string | null) => void
   navigateToChannels: (projectId?: string | null) => void
   navigateToGit: (projectId?: string | null) => void
+  navigateToPersona: (projectId?: string | null) => void
   navigateToSession: (sessionId?: string | null) => void
   applyRouteFromLocation: () => void
   applyChatRouteFromLocation: () => void
@@ -601,6 +603,11 @@ export const useUIStore = create<UIStore>((set, get) => ({
   navigateToGit: (projectId) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
     set({ activeNavItem: 'chat', chatView: 'git', ...CHAT_SURFACE_NAV_RESET })
+    void resolvedProjectId
+  },
+  navigateToPersona: (projectId) => {
+    const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
+    set({ activeNavItem: 'chat', chatView: 'persona', ...CHAT_SURFACE_NAV_RESET })
     void resolvedProjectId
   },
   navigateToSession: (sessionId) => {

@@ -29,6 +29,9 @@ export interface AgentActions {
     maxIterations?: number
     maxParallelTools?: number
     maxToolCallsPerTurn?: number
+    personaId?: string
+    language?: string
+    userRules?: string
   }) => Promise<void>
   cancelStream: () => Promise<void>
   handleEnvelope: (envelope: AgentStreamEnvelope) => void

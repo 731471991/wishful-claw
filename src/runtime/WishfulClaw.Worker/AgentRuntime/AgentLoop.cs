@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Buffers;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Worker.Persona;
 
 namespace WishfulClaw.Worker.AgentRuntime;
 
@@ -43,6 +45,19 @@ internal static partial class AgentLoop
         state.ReplaceParameters(runtimeParameters);
         parameters = runtimeParameters;
         provider = GetObject(parameters, "provider");
+
+        // ── Persona-aware system prompt ──
+        var personaId = JsonHelpers.GetString(parameters, "personaId");
+        if (!string.IsNullOrWhiteSpace(personaId))
+        {
+            var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+            var language = JsonHelpers.GetString(parameters, "language");
+            var userRules = JsonHelpers.GetString(parameters, "userRules");
+            var builtPrompt = PromptBuilder.Build(
+                PromptProfile.Main, provider, personaId, workingFolder, language, userRules);
+            provider = InjectSystemPrompt(provider, builtPrompt);
+            WorkerLog.Info($"persona system prompt built id={personaId} length={builtPrompt.Length}");
+        }
 
         var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 1);
         var hasIterationLimit = requestedMaxIterations > 0;
@@ -267,6 +282,40 @@ internal static partial class AgentLoop
     }
 
     // ── JSON helper methods ──
+
+    /// <summary>
+    /// Replaces or adds the systemPrompt field in the provider JSON element.
+    /// </summary>
+    private static JsonElement InjectSystemPrompt(JsonElement provider, string systemPrompt)
+    {
+        if (string.IsNullOrWhiteSpace(systemPrompt)) return provider;
+
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            var hasSystemPrompt = false;
+            foreach (var prop in provider.EnumerateObject())
+            {
+                if (prop.NameEquals("systemPrompt"))
+                {
+                    writer.WriteString("systemPrompt", systemPrompt);
+                    hasSystemPrompt = true;
+                }
+                else
+                {
+                    prop.WriteTo(writer);
+                }
+            }
+            if (!hasSystemPrompt)
+            {
+                writer.WriteString("systemPrompt", systemPrompt);
+            }
+            writer.WriteEndObject();
+        }
+        using var doc = JsonDocument.Parse(buffer.WrittenMemory);
+        return doc.RootElement.Clone();
+    }
 
     internal static JsonElement GetObject(JsonElement element, string propertyName)
     {

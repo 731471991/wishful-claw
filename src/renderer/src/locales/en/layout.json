@@ -10,6 +10,57 @@
       "extensibleDesc": "Create focused assistants, delegate tasks, and keep a human-in-the-loop workflow.",
       "intelligent": "Identity and memory",
       "intelligentDesc": "Choose a SOUL.md persona so every conversation starts from the right collaboration style."
+    },
+    "loading": "Loading...",
+    "personaSelect": {
+      "title": "Choose Your Companion",
+      "subtitle": "Different companions have different personalities and communication styles. You can switch anytime.",
+      "loading": "Loading personas...",
+      "empty": "No personas available",
+      "retry": "Retry",
+      "hint": "You can modify or create new personas in Settings anytime",
+      "start": "Get Started",
+      "saved": "Setup complete",
+      "builtin": "Built-in"
+    },
+    "start": "Get Started",
+    "next": "Next",
+    "back": "Back",
+    "welcome": {
+      "title": "Welcome to Wishful Claw",
+      "subtitle": "More than an AI assistant — it's your programming partner. Your data stays local, privacy by design. Combines a powerful toolchain with customizable personas, so every conversation has personality. Tools at your fingertips, models in the cloud, efficiency by your side.",
+      "points": {
+        "local": {
+          "title": "Local First",
+          "desc": "Data processed on your device, works offline"
+        },
+        "persona": {
+          "title": "Custom Persona",
+          "desc": "Choose or create AI assistants with different personalities"
+        },
+        "powerful": {
+          "title": "Full Toolchain",
+          "desc": "File operations, coding, terminal commands in one place"
+        }
+      }
+    },
+    "nickname": {
+      "title": "What's your name?",
+      "subtitle": "So the AI knows how to address you.",
+      "placeholder": "Enter your name"
+    },
+    "language": {
+      "title": "Choose Language",
+      "subtitle": "System language detected. You can change it here."
+    },
+    "theme": {
+      "title": "Choose Appearance",
+      "subtitle": "Pick your preferred theme mode and color scheme.",
+      "modes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      }
     }
   },
   "main": {
@@ -38,7 +89,8 @@
     "archive": "Archive",
     "git": "Git",
     "channels": "Channels",
-    "settings": "Settings"
+    "settings": "Settings",
+    "persona": "Persona"
   },
   "topbar": {
     "toggleSidebar": "Toggle sidebar",
