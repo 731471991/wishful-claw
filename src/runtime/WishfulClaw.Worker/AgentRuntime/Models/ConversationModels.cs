@@ -26,4 +26,9 @@ internal sealed record AgentRuntimeChatMessage(
     {
         return new AgentRuntimeChatMessage("user", string.Empty, [], toolResults);
     }
+
+    public static AgentRuntimeChatMessage User(string text)
+    {
+        return new AgentRuntimeChatMessage("user", text, [], []);
+    }
 }
