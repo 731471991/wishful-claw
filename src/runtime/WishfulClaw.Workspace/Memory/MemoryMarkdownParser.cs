@@ -1,0 +1,100 @@
+using System.Text.RegularExpressions;
+
+namespace WishfulClaw.Workspace.Memory;
+
+/// <summary>
+/// Parses MEMORY.md section structure. Each section starts with a ## heading.
+/// Adapted from KodaClaw's MemoryMarkdownParser.
+/// </summary>
+public static class MemoryMarkdownParser
+{
+    private static readonly Regex SectionHeadingRegex = new(
+        @"^##\s+(.+)$",
+        RegexOptions.Compiled | RegexOptions.Multiline);
+
+    /// <summary>
+    /// Parse MEMORY.md into a list of (title, body) sections.
+    /// Each section starts with a ## heading.
+    /// </summary>
+    public static IReadOnlyList<MemorySection> ParseSections(string content)
+    {
+        var sections = new List<MemorySection>();
+        var matches = SectionHeadingRegex.Matches(content);
+
+        for (var i = 0; i < matches.Count; i++)
+        {
+            var match = matches[i];
+            var title = match.Groups[1].Value.Trim();
+            var bodyStart = match.Index + match.Length;
+            var bodyEnd = i + 1 < matches.Count
+                ? matches[i + 1].Index
+                : content.Length;
+
+            var body = content[bodyStart..bodyEnd].Trim();
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                sections.Add(new MemorySection { Title = title, Body = body });
+            }
+        }
+
+        return sections;
+    }
+
+    /// <summary>
+    /// Find a section by title (case-insensitive).
+    /// </summary>
+    public static MemorySection? FindSection(string content, string title)
+    {
+        var sections = ParseSections(content);
+        return sections.FirstOrDefault(s =>
+            string.Equals(s.Title, title, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Replace or insert a section in MEMORY.md content.
+    /// If the section exists, replace its body. Otherwise append a new section.
+    /// </summary>
+    public static string UpsertSection(string content, string title, string body)
+    {
+        var matches = SectionHeadingRegex.Matches(content);
+        var sectionIndex = -1;
+
+        for (var i = 0; i < matches.Count; i++)
+        {
+            if (string.Equals(matches[i].Groups[1].Value.Trim(), title, StringComparison.OrdinalIgnoreCase))
+            {
+                sectionIndex = i;
+                break;
+            }
+        }
+
+        if (sectionIndex >= 0)
+        {
+            // Replace existing section body
+            var match = matches[sectionIndex];
+            var bodyStart = match.Index + match.Length;
+            var bodyEnd = sectionIndex + 1 < matches.Count
+                ? matches[sectionIndex + 1].Index
+                : content.Length;
+
+            return content[..bodyStart] + "\n" + body.Trim() + "\n" + content[bodyEnd..];
+        }
+
+        // Append new section
+        var newSection = $"\n\n## {title}\n{body.Trim()}\n";
+        return content.TrimEnd() + newSection;
+    }
+
+    /// <summary>
+    /// Normalize a section title to a key suitable for file naming or lookup.
+    /// Lowercases, replaces spaces with hyphens, removes special chars, preserves CJK.
+    /// </summary>
+    public static string NormalizeKey(string title)
+    {
+        var key = title.ToLowerInvariant().Trim();
+        key = Regex.Replace(key, @"\s+", "-");
+        key = Regex.Replace(key, @"[^\w\u4e00-\u9fff\u3400-\u4dbf-]", "");
+        key = Regex.Replace(key, @"-{2,}", "-");
+        return key.Trim('-');
+    }
+}
