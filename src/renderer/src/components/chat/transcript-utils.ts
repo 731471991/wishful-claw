@@ -74,6 +74,12 @@ function getStableAssistantToolResults(
     return cached.innerMap
   }
   const innerMap: ToolResultsInnerMap = new Map()
+  // Collect inline tool_result blocks from the assistant message itself
+  // (wishful-claw stores tool results inline, not as separate user messages)
+  if (Array.isArray(assistantMessage.content)) {
+    collectToolResults(assistantMessage.content as ContentBlock[], innerMap)
+  }
+  // Also collect from contributor messages (OpenCowork-style separate user messages)
   for (const contributor of contributors) {
     collectToolResults(contributor.content as ContentBlock[], innerMap)
   }
@@ -384,8 +390,10 @@ export function buildTranscriptStaticAnalysis(
   }
 
   for (const [assistantId, { assistant, contributors }] of assistantContributors) {
-    if (contributors.length === 0) continue
-    toolResultsLookup.set(assistantId, getStableAssistantToolResults(assistant, contributors))
+    const results = getStableAssistantToolResults(assistant, contributors)
+    if (results.size > 0) {
+      toolResultsLookup.set(assistantId, results)
+    }
   }
 
   const nextAnalysis: TranscriptStaticAnalysis = {

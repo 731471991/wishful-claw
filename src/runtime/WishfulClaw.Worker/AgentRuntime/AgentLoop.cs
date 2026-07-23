@@ -1,12 +1,7 @@
-using System.Buffers;
 using System.Diagnostics;
-using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
-using WishfulClaw.Core.Tools;
-using WishfulClaw.Worker.Tools;
 
 namespace WishfulClaw.Worker.AgentRuntime;
 
@@ -17,16 +12,11 @@ namespace WishfulClaw.Worker.AgentRuntime;
 /// - OpenCowork: SSE parsing, provider dispatch
 /// - OpenClaw.net: TryInjectRecallAsync placeholder (iteration 6)
 /// </summary>
-internal static class AgentLoop
+internal static partial class AgentLoop
 {
     private const double DefaultContextCompressionThreshold = 0.8;
     private const int DefaultContextCompressionReservedOutputTokens = 20_000;
     private const int ContextCompressionAutoBufferTokens = 13_000;
-
-    private static readonly JsonWriterOptions WriterOptions = new()
-    {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
 
     /// <summary>
     /// Main execution loop. Called by AgentRuntimeTools.ExecuteRunAsync.
@@ -160,7 +150,6 @@ internal static class AgentLoop
             // ── Check for tool calls ──
             if (turn.ToolCalls.Count == 0)
             {
-                // No tool calls — turn is complete
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
                     new AgentRuntimeStreamEvent("iteration_end", StopReason: turn.StopReason));
@@ -173,7 +162,7 @@ internal static class AgentLoop
                 break;
             }
 
-            // Tool calls present — iteration 3 does not execute tools
+            // Tool calls present — providerTurnOnly skips execution
             if (providerTurnOnly)
             {
                 await AgentRuntimeTools.EmitAsync(
@@ -183,90 +172,14 @@ internal static class AgentLoop
                 break;
             }
 
-            // ── Tool execution (iteration 4) ──
-            var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
-            var toolResults = new List<AgentRuntimeToolResult>();
-            var registry = ToolModuleState.Registry;
+            // ── Tool execution ──
+            var toolResults = await ToolCallProcessor.ExecuteAsync(
+                turn.ToolCalls, parameters, state, context);
 
-            foreach (var toolCall in turn.ToolCalls)
+            if (state.IsCancellationRequested)
             {
-                if (state.IsCancellationRequested)
-                {
-                    await EmitLoopEndAsync(state, context, "aborted");
-                    return;
-                }
-
-                var startedAt = NowMs();
-
-                await AgentRuntimeTools.EmitAsync(
-                    state, context,
-                    new AgentRuntimeStreamEvent(
-                        "tool_call_start",
-                        ToolCall: new AgentRuntimeToolCallState(
-                            toolCall.Id,
-                            toolCall.Name,
-                            toolCall.Input,
-                            "running",
-                            null,
-                            null,
-                            false,
-                            startedAt,
-                            null)));
-                string toolOutput;
-                bool isToolError = false;
-
-                if (registry is not null && registry.TryGetExecutor(toolCall.Name, out var executor))
-                {
-                    try
-                    {
-                        var toolContext = new ToolExecutionContext(workingFolder, state.SessionId, state.RunId, state.CancellationToken);
-                        var result = await executor.ExecuteAsync(toolCall.Input, toolContext);
-                        toolOutput = result.Content;
-                        isToolError = result.IsError;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        toolOutput = $"Tool execution failed: {ex.Message}";
-                        isToolError = true;
-                    }
-                }
-                else
-                {
-                    toolOutput = $"Unknown tool: {toolCall.Name}";
-                    isToolError = true;
-                }
-
-                var completedAt = NowMs();
-
-                await AgentRuntimeTools.EmitAsync(
-                    state, context,
-                    new AgentRuntimeStreamEvent(
-                        "tool_call_result",
-                        ToolCallId: toolCall.Id,
-                        ToolName: toolCall.Name,
-                        ToolCall: new AgentRuntimeToolCallState(
-                            toolCall.Id,
-                            toolCall.Name,
-                            toolCall.Input,
-                            isToolError ? "error" : "completed",
-                            AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
-                            isToolError ? toolOutput : null,
-                            false,
-                            startedAt,
-                            completedAt)));
-
-                toolResults.Add(new AgentRuntimeToolResult(
-                    toolCall.Id,
-                    AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
-                    isToolError ? true : null));
-
-                WorkerLog.Debug(
-                    $"agent tool executed runId={state.RunId} tool={toolCall.Name} " +
-                    $"id={toolCall.Id} error={isToolError} outputLen={toolOutput.Length}");
+                await EmitLoopEndAsync(state, context, "aborted");
+                return;
             }
 
             // Add tool results as a user message to the conversation
@@ -351,238 +264,6 @@ internal static class AgentLoop
         var reserved = contextLength - DefaultContextCompressionReservedOutputTokens - ContextCompressionAutoBufferTokens;
         var trigger = Math.Min(threshold, reserved);
         return inputTokens >= trigger;
-    }
-
-    // ── Wire conversation reading ──
-
-    private static List<JsonElement> ReadWireConversation(JsonElement parameters)
-    {
-        var result = new List<JsonElement>();
-        if (parameters.ValueKind != JsonValueKind.Object ||
-            !parameters.TryGetProperty("messages", out var messages) ||
-            messages.ValueKind != JsonValueKind.Array)
-        {
-            return result;
-        }
-
-        foreach (var message in messages.EnumerateArray())
-        {
-            if (message.ValueKind == JsonValueKind.Object)
-            {
-                result.Add(message.Clone());
-            }
-        }
-        return result;
-    }
-
-    private static List<AgentRuntimeChatMessage> ReadConversation(IReadOnlyList<JsonElement> messages)
-    {
-        var result = new List<AgentRuntimeChatMessage>();
-
-        foreach (var message in messages)
-        {
-            var role = JsonHelpers.GetString(message, "role");
-            if (string.IsNullOrEmpty(role))
-            {
-                continue;
-            }
-
-            if (!message.TryGetProperty("content", out var content))
-            {
-                continue;
-            }
-
-            if (content.ValueKind == JsonValueKind.String)
-            {
-                result.Add(new AgentRuntimeChatMessage(
-                    role,
-                    content.GetString() ?? string.Empty,
-                    [],
-                    [],
-                    JsonHelpers.GetString(message, "providerResponseId")));
-                continue;
-            }
-
-            if (content.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            var text = new StringBuilder();
-            var toolUses = new List<AgentRuntimeChatToolUse>();
-            var toolResults = new List<AgentRuntimeToolResult>();
-            var contentBlocks = new List<JsonElement>();
-
-            foreach (var block in content.EnumerateArray())
-            {
-                if (block.ValueKind == JsonValueKind.Object)
-                {
-                    contentBlocks.Add(block.Clone());
-                }
-
-                switch (JsonHelpers.GetString(block, "type"))
-                {
-                    case "text":
-                        if (JsonHelpers.GetString(block, "text") is { Length: > 0 } blockText)
-                        {
-                            text.Append(blockText);
-                        }
-                        break;
-                    case "tool_use":
-                        if (JsonHelpers.GetString(block, "id") is { Length: > 0 } id &&
-                            JsonHelpers.GetString(block, "name") is { Length: > 0 } name)
-                        {
-                            var input = block.TryGetProperty("input", out var inputElement)
-                                ? inputElement.Clone()
-                                : AgentRuntimeProviderSupport.CreateEmptyObjectElement();
-                            var extraContent = block.TryGetProperty("extraContent", out var extra) &&
-                                extra.ValueKind == JsonValueKind.Object
-                                    ? extra.Clone()
-                                    : (JsonElement?)null;
-                            toolUses.Add(new AgentRuntimeChatToolUse(id, name, input, extraContent));
-                        }
-                        break;
-                    case "tool_result":
-                        if (JsonHelpers.GetString(block, "toolUseId") is { Length: > 0 } toolUseId)
-                        {
-                            var resultContent = block.TryGetProperty("content", out var contentElement)
-                                ? contentElement.Clone()
-                                : AgentRuntimeProviderSupport.CreateStringElement(string.Empty);
-                            var isError = JsonHelpers.GetBool(block, "isError", false);
-                            toolResults.Add(new AgentRuntimeToolResult(
-                                toolUseId, resultContent, isError ? true : null));
-                        }
-                        break;
-                }
-            }
-
-            result.Add(new AgentRuntimeChatMessage(
-                role,
-                text.ToString(),
-                toolUses,
-                toolResults,
-                JsonHelpers.GetString(message, "providerResponseId"),
-                contentBlocks));
-        }
-
-        return result;
-    }
-
-    // ── Wire message creation ──
-
-    internal static JsonElement CreateAssistantWireMessage(
-        AgentRuntimeChatMessage message,
-        AgentRuntimeTokenUsage? usage)
-    {
-        return AgentRuntimeProviderSupport.CreateObjectElement(writer =>
-        {
-            writer.WriteString("id", NewMessageId());
-            writer.WriteString("role", "assistant");
-            writer.WritePropertyName("content");
-            WriteAssistantWireContent(writer, message);
-            writer.WriteNumber("createdAt", NowMs());
-            if (!string.IsNullOrWhiteSpace(message.ProviderResponseId))
-            {
-                writer.WriteString("providerResponseId", message.ProviderResponseId);
-            }
-            if (usage is not null)
-            {
-                writer.WritePropertyName("usage");
-                WriteUsage(writer, usage);
-            }
-        });
-    }
-
-    private static void WriteAssistantWireContent(Utf8JsonWriter writer, AgentRuntimeChatMessage message)
-    {
-        if (message.ContentBlocks is { Count: > 0 } contentBlocks)
-        {
-            writer.WriteStartArray();
-            foreach (var block in contentBlocks)
-            {
-                block.WriteTo(writer);
-            }
-            writer.WriteEndArray();
-            return;
-        }
-
-        if (message.ToolUses.Count == 0)
-        {
-            writer.WriteStringValue(message.Text);
-            return;
-        }
-
-        writer.WriteStartArray();
-        if (!string.IsNullOrEmpty(message.Text))
-        {
-            writer.WriteStartObject();
-            writer.WriteString("type", "text");
-            writer.WriteString("text", message.Text);
-            writer.WriteEndObject();
-        }
-        foreach (var toolUse in message.ToolUses)
-        {
-            writer.WriteStartObject();
-            writer.WriteString("type", "tool_use");
-            writer.WriteString("id", toolUse.Id);
-            writer.WriteString("name", toolUse.Name);
-            writer.WritePropertyName("input");
-            toolUse.Input.WriteTo(writer);
-            writer.WriteEndObject();
-        }
-        writer.WriteEndArray();
-    }
-
-    private static void WriteUsage(Utf8JsonWriter writer, AgentRuntimeTokenUsage usage)
-    {
-        writer.WriteStartObject();
-        writer.WriteNumber("inputTokens", usage.InputTokens);
-        writer.WriteNumber("outputTokens", usage.OutputTokens);
-        WriteOptionalNumber(writer, "billableInputTokens", usage.BillableInputTokens);
-        WriteOptionalNumber(writer, "cacheReadTokens", usage.CacheReadTokens);
-        WriteOptionalNumber(writer, "reasoningTokens", usage.ReasoningTokens);
-        WriteOptionalNumber(writer, "contextTokens", usage.ContextTokens);
-        WriteOptionalNumber(writer, "cacheCreationTokens", usage.CacheCreationTokens);
-        WriteOptionalNumber(writer, "cacheCreation5mTokens", usage.CacheCreation5mTokens);
-        WriteOptionalNumber(writer, "cacheCreation1hTokens", usage.CacheCreation1hTokens);
-        if (usage.CacheReadRatio.HasValue)
-        {
-            writer.WriteNumber("cacheReadRatio", usage.CacheReadRatio.Value);
-        }
-        writer.WriteEndObject();
-    }
-
-    private static void WriteOptionalNumber(Utf8JsonWriter writer, string propertyName, int? value)
-    {
-        if (!value.HasValue) return;
-        writer.WriteNumber(propertyName, value.Value);
-    }
-
-    // ── Runtime parameters ──
-
-    private static JsonElement CreateRuntimeParametersWithoutMessages(JsonElement parameters)
-    {
-        if (parameters.ValueKind != JsonValueKind.Object)
-        {
-            return parameters;
-        }
-
-        var buffer = new ArrayBufferWriter<byte>();
-        using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
-        {
-            writer.WriteStartObject();
-            foreach (var property in parameters.EnumerateObject())
-            {
-                if (property.NameEquals("messages"))
-                {
-                    continue;
-                }
-                property.WriteTo(writer);
-            }
-            writer.WriteEndObject();
-        }
-        using var document = JsonDocument.Parse(buffer.WrittenMemory);
-        return document.RootElement.Clone();
     }
 
     // ── JSON helper methods ──
@@ -694,41 +375,4 @@ internal static class AgentLoop
             model.StartsWith("o3", StringComparison.OrdinalIgnoreCase) ||
             model.StartsWith("o4", StringComparison.OrdinalIgnoreCase);
     }
-
-    /// <summary>
-    /// Creates a wire-format user message containing tool results.
-    /// </summary>
-    internal static JsonElement CreateToolResultsWireMessage(List<AgentRuntimeToolResult> toolResults)
-    {
-        return AgentRuntimeProviderSupport.CreateObjectElement(writer =>
-        {
-            writer.WriteString("id", NewMessageId());
-            writer.WriteString("role", "user");
-            writer.WritePropertyName("content");
-            writer.WriteStartArray();
-            foreach (var result in toolResults)
-            {
-                writer.WriteStartObject();
-                writer.WriteString("type", "tool_result");
-                writer.WriteString("toolUseId", result.ToolUseId);
-                if (result.Content.ValueKind == JsonValueKind.String)
-                {
-                    writer.WriteString("content", result.Content.GetString());
-                }
-                else
-                {
-                    writer.WritePropertyName("content");
-                    result.Content.WriteTo(writer);
-                }
-                if (result.IsError is true)
-                {
-                    writer.WriteBoolean("isError", true);
-                }
-                writer.WriteEndObject();
-            }
-            writer.WriteEndArray();
-            writer.WriteNumber("createdAt", NowMs());
-        });
-    }
-
 }

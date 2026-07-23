@@ -322,7 +322,7 @@ function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectI
             {project.pinned && <Pin className="size-3 shrink-0 text-primary/60" />}
             <FolderOpen className="size-3.5 shrink-0" />
             <span className="flex-1 truncate text-xs font-medium">{project.name}</span>
-            <span className="shrink-0 text-[10px] text-muted-foreground/40">{sessions.length}</span>
+            
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               <button
                 onClick={(e) => {
@@ -604,6 +604,7 @@ export function WorkspaceSidebar(): React.JSX.Element {
     // Don't create a session yet — just navigate to home.
     // The session is created when the user actually sends a message.
     setActiveProjectHome(null)
+    useUIStore.getState().setMode('chat')
     setActiveNavItem('chat')
     navigateToHome()
   }, [setActiveProjectHome, setActiveNavItem, navigateToHome])
@@ -618,7 +619,7 @@ export function WorkspaceSidebar(): React.JSX.Element {
     async (folderPath: string, _connectionId: string | null, projectName?: string) => {
       const name = projectName?.trim() || folderPath.split(/[\\/]/).pop() || 'New Project'
       const projectId = await createProject({ name, workingFolder: folderPath })
-      useUIStore.getState().setActiveProjectHome(projectId)
+      useChatStore.getState().setActiveProjectHome(projectId)
       useUIStore.getState().navigateToProject(projectId)
       toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))
       setCreateProjectDialogOpen(false)
@@ -754,9 +755,7 @@ export function WorkspaceSidebar(): React.JSX.Element {
         <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">
           {t('sidebar.projects', { defaultValue: 'Projects' })}
         </span>
-        <span className="rounded-full border border-border/60 bg-muted/45 px-1 py-0.5 text-[9px] text-muted-foreground">
-          {sortedProjects.length}
-        </span>
+
         <div className="flex items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>

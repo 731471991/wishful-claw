@@ -128,6 +128,15 @@ Agent 通用框架，不含任何业务逻辑。
    - `StreamProcessor.cs` — 流式响应处理
 4. 拆分时建立 partial class 或独立 class，不要为了拆而拆导致过度碎片化
 
+### 耦合文件拆分
+
+参考项目中有些文件本身不大，但塞了多个逻辑不相关的东西——这不是我们的项目结构该有的。搬入时必须按职责拆开：
+
+1. **逻辑不相关的代码不放在同一个文件**：即使参考项目把它们放在一起，搬入时也要拆分到各自的文件中
+2. **判断标准**：如果两个类/方法之间没有调用关系或数据依赖，只是参考方随手放在一起，就必须拆开
+3. **拆分到正确的目录**：拆出来的文件放到 AGENTS.md 项目结构中对应的目录，而不是继续堆在一起
+4. **示例**：OpenCowork 某个文件里同时放了 Provider 配置模型 + Provider 服务逻辑 + Provider API 客户端 → 搬入时拆为 `ProviderConfig.cs`（模型）+ `ProviderService.cs`（逻辑）+ `ProviderApiClient.cs`（客户端），分别放入 Contracts 和 Core
+
 ### 迭代交付标准
 
 每个迭代交付时，功能必须**完整可用**，不能是半成品：
@@ -149,3 +158,27 @@ Agent 通用框架，不含任何业务逻辑。
 - 新增模块时在 Worker/Modules 下注册
 - 新增工具时实现工具基类并在对应 Module 中注册
 - 记忆和人格的配置文件使用 Markdown 格式（.wishful-claw/ 目录下）
+
+## 异常日志
+
+项目运行时的所有异常（主进程、渲染进程、Worker、IPC 通道）会自动写入日志文件。
+
+**日志位置**：`<userData>/logs/` 目录下，按日期命名，如 `2026-07-22.log`
+
+其中 `<userData>` 是 Electron 的 `app.getPath('userData')` 返回值：
+- Windows：`%APPDATA%/<appName>`（即 `C:\Users\<用户名>\AppData\Roaming\wishful-claw\logs\`）
+- macOS：`~/Library/Application Support/<appName>/logs/`
+- Linux：`~/.config/<appName>/logs/`
+
+**排查方式**：Agent 排查问题时，优先读取当天日志文件中的 `[ERROR]` 级别条目，获取完整堆栈信息，而非依赖用户口述错误。
+
+日志格式：
+
+```
+[2026-07-22T12:30:45.123Z] [ERROR] [renderer] Uncaught TypeError: Cannot read property 'x' of undefined
+  at handleClick (ChatPage.tsx:45:12)
+  ...
+[2026-07-22T12:30:46.000Z] [ERROR] [ipc] Handler error for 'fs:read-file': ENOENT: no such file...
+```
+
+来源标记：`[main]` 主进程、`[renderer]` 渲染进程、`[worker]` Worker 子进程、`[ipc]` IPC 通道。

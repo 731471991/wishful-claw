@@ -53,7 +53,15 @@ const api = {
 
   // Open native folder selection dialog
   openFolderDialog: (): Promise<{ folderPath: string | null; canceled: boolean }> =>
-    invokeMessagePackBinary<{ folderPath: string | null; canceled: boolean }>('dialog:openFolder', {})
+    invokeMessagePackBinary<{ folderPath: string | null; canceled: boolean }>('dialog:openFolder', {}),
+
+  // Write a log entry to the log file (renderer -> main forwarding)
+  log: (payload: { level: string; message: string; stack?: string; extra?: Record<string, unknown> }): Promise<void> =>
+    invokeMessagePackBinary<void>('log:write', payload),
+
+  // Read recent log lines from today's log file
+  readLogs: (maxLines?: number): Promise<string> =>
+    invokeMessagePackBinary<string>('log:read', { maxLines: maxLines ?? 500 })
 }
 
 if (process.contextIsolated) {

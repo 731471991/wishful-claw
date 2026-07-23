@@ -232,6 +232,7 @@ export interface SidecarAgentRunRequest {
   forceApproval: boolean
   permissionMode: 'default' | 'whitelist' | 'fullAccess'
   maxParallelTools?: number
+  maxToolCallsPerTurn?: number
   maxConcurrentSubAgents: number
   compression?: CompressionConfig
   sessionMode?: 'agent' | 'chat'
@@ -593,6 +594,7 @@ export function buildSidecarAgentRunRequest(args: {
   maxIterations: number
   forceApproval: boolean
   maxParallelTools?: number
+  maxToolCallsPerTurn?: number
   compression?: CompressionConfig | null
   imagePluginProvider?: ProviderConfig | null
   sessionMode?: 'agent' | 'chat'
@@ -693,6 +695,7 @@ export function buildSidecarAgentRunRequest(args: {
         ? 'whitelist'
         : 'default',
     ...(maxParallelTools !== undefined ? { maxParallelTools } : {}),
+    ...(args.maxToolCallsPerTurn !== undefined ? { maxToolCallsPerTurn: args.maxToolCallsPerTurn } : {}),
     maxConcurrentSubAgents,
     ...(args.sessionMode ? { sessionMode: args.sessionMode } : {}),
     ...(args.planMode ? { planMode: true } : {}),

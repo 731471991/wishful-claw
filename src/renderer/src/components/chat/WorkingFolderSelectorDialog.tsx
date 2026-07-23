@@ -125,7 +125,6 @@ export function WorkingFolderSelectorDialog({
   React.useEffect(() => {
     if (!open) return
     setCreatingProject(false)
-    setCustomProjectName('')
     if (createMode) {
       setPendingSelection(null)
       return
@@ -168,6 +167,11 @@ export function WorkingFolderSelectorDialog({
     ? deriveProjectNameFromFolder(pendingSelection.folderPath, suggestedProjectName)
     : suggestedProjectName
   const displayedProjectName = customProjectName.trim() || autoProjectName
+
+  // Sync project name input when folder selection changes
+  React.useEffect(() => {
+    setCustomProjectName(autoProjectName)
+  }, [autoProjectName])
   const preferredDirectoryLabel =
     preferredDirectory || t('input.systemDefaultLocation', { defaultValue: 'System default' })
 
@@ -274,13 +278,15 @@ export function WorkingFolderSelectorDialog({
         })
         await onSelectLocalFolder(pendingSelection.folderPath, finalProjectName)
       }
-      onOpenChange(false)
     } finally {
       setCreatingProject(false)
+      onOpenChange(false)
     }
   }, [
+    autoProjectName,
     createMode,
     creatingProject,
+    customProjectName,
     deriveBaseDirectoryFromSelectedFolder,
     onOpenChange,
     onSelectLocalFolder,
@@ -471,26 +477,14 @@ export function WorkingFolderSelectorDialog({
         <div className="-mt-1 min-w-0 overflow-hidden rounded-xl border bg-background/60 p-3">
           {createMode ? (
             <>
-              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] text-muted-foreground/70">{t('input.projectName')}</p>
-                  <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[13px] font-medium text-foreground">
-                    <FolderOpen className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">{displayedProjectName}</span>
-                  </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground/60">
-                    {t('input.createProjectSubtitle', {
-                      defaultValue:
-                        'Choose a local or SSH folder. The project name follows the folder name.'
-                    })}
-                  </p>
-                </div>
-
-                <div className="w-full shrink-0 sm:w-44">
-                  <p className="text-[10px] text-muted-foreground/70">
-                    {t('input.projectSource', { defaultValue: 'Project source' })}
-                  </p>
-                  <div className="relative mt-1 grid grid-cols-2 rounded-lg border border-border/70 bg-muted/20 p-0.5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[10px] text-muted-foreground/60">
+                  {t('input.createProjectSubtitle', {
+                    defaultValue: 'Choose a local or SSH folder. Project name defaults to the folder name and can be edited.'
+                  })}
+                </p>
+                <div className="shrink-0">
+                  <div className="relative grid grid-cols-2 rounded-lg border border-border/70 bg-muted/20 p-0.5">
                     <motion.span
                       className="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-md bg-background shadow-sm"
                       animate={{ x: showSshSection ? '100%' : '0%' }}
@@ -583,6 +577,19 @@ export function WorkingFolderSelectorDialog({
                     {pendingSelectionConnection.host}:{pendingSelectionConnection.port}
                   </p>
                 ) : null}
+              </div>
+
+              <div className="mt-3">
+                <p className="text-[10px] font-medium text-muted-foreground/80">
+                  {t('input.projectName')}
+                </p>
+                <Input
+                  value={customProjectName}
+                  onChange={(e) => setCustomProjectName(e.target.value)}
+                  placeholder={suggestedProjectName}
+                  className="mt-1 h-8 text-[13px]"
+                  disabled={!pendingSelection}
+                />
               </div>
 
               <div className="mt-3 flex justify-end gap-2">

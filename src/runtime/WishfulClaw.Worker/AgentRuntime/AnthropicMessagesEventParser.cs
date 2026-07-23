@@ -51,7 +51,7 @@ internal static partial class AnthropicMessagesProvider
                 break;
 
             case "content_block_stop":
-                ProcessContentBlockStop(root, parseState);
+                await ProcessContentBlockStopAsync(root, parseState, state, context);
                 break;
 
             case "message_delta":
@@ -150,11 +150,21 @@ internal static partial class AnthropicMessagesProvider
             if (JsonHelpers.GetString(delta, "partial_json") is { } partialJson)
             {
                 buffer.Arguments.Append(partialJson);
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_use_args_delta",
+                        ToolCallId: buffer.Id,
+                        PartialInput: JsonSerializer.SerializeToElement(partialJson)));
             }
         }
     }
 
-    private static void ProcessContentBlockStop(JsonElement root, AnthropicParseState parseState)
+    private static async Task ProcessContentBlockStopAsync(
+        JsonElement root,
+        AnthropicParseState parseState,
+        AgentRuntimeRunState state,
+        IWorkerRequestContext context)
     {
         var index = JsonHelpers.GetInt(root, "index", -1);
         if (index < 0 || !parseState.ToolBuffers.TryGetValue(index, out var buffer))
@@ -166,9 +176,18 @@ internal static partial class AnthropicMessagesProvider
             : AgentRuntimeProviderSupport.CreateEmptyObjectElement();
         parseState.ToolCalls.Add(new AgentRuntimeNativeToolCall(buffer.Id, buffer.Name, input));
         parseState.ToolBuffers.Remove(index);
+        await AgentRuntimeTools.EmitAsync(
+            state, context,
+            new AgentRuntimeStreamEvent(
+                "tool_use_generated",
+                ToolCallId: buffer.Id,
+                ToolUseBlock: new AgentRuntimeToolUseBlock(buffer.Id, buffer.Name, input)));
     }
 
-    private static void FlushPendingToolCalls(AnthropicParseState parseState)
+    private static async Task FlushPendingToolCallsAsync(
+        AnthropicParseState parseState,
+        AgentRuntimeRunState state,
+        IWorkerRequestContext context)
     {
         foreach (var item in parseState.ToolBuffers.ToArray())
         {
@@ -178,6 +197,12 @@ internal static partial class AnthropicMessagesProvider
                 : AgentRuntimeProviderSupport.CreateEmptyObjectElement();
             parseState.ToolCalls.Add(new AgentRuntimeNativeToolCall(buffer.Id, buffer.Name, input));
             parseState.ToolBuffers.Remove(item.Key);
+            await AgentRuntimeTools.EmitAsync(
+                state, context,
+                new AgentRuntimeStreamEvent(
+                    "tool_use_generated",
+                    ToolCallId: buffer.Id,
+                    ToolUseBlock: new AgentRuntimeToolUseBlock(buffer.Id, buffer.Name, input)));
         }
     }
 

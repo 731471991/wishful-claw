@@ -498,4 +498,103 @@ textarea.composer-aux-textarea {
   background: transparent;
   box-shadow: none;
 }
+
+/* ── Pending assistant status (thinking indicator) ── */
+.pending-assistant-status {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0;
+}
+
+.pending-assistant-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+/* ── Live output shimmer animation ── */
+.ai-live-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 40%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 60%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ai-shimmer-slide 2s linear infinite;
+}
+
+.ai-live-shimmer-text--elegant {
+  animation-duration: 2.8s;
+}
+
+.ai-live-shimmer-text--agile {
+  animation-duration: 1.4s;
+}
+
+@keyframes ai-shimmer-slide {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Live cursor ── */
+.ai-live-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--primary);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: ai-cursor-blink 1s step-end infinite;
+}
+
+.ai-live-cursor--elegant {
+  animation-duration: 1.2s;
+}
+
+.ai-live-cursor--agile {
+  animation-duration: 0.7s;
+}
+
+@keyframes ai-cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ── Live stream surface ── */
+.ai-live-stream {
+  position: relative;
+}
+
+.ai-live-stream--elegant {
+  transition: opacity 0.3s ease;
+}
+
+.ai-live-stream--agile {
+  transition: opacity 0.15s ease;
+}
+
+/* ── Live component wrapper ── */
+.ai-live-component {
+  position: relative;
+}
+
+.ai-live-component--elegant {
+  transition: all 0.3s ease;
+}
+
+.ai-live-component--agile {
+  transition: all 0.15s ease;
+}
+
 } /* end @layer components */

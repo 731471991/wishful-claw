@@ -105,7 +105,7 @@ internal static partial class AnthropicMessagesProvider
             }
         }
 
-        FlushPendingToolCalls(parseState);
+        await FlushPendingToolCallsAsync(parseState, state, context);
 
         var totalMs = AgentLoop.ElapsedMs(startedAt);
         await AgentRuntimeTools.EmitAsync(
@@ -152,7 +152,7 @@ internal static partial class AnthropicMessagesProvider
         request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
         request.Headers.TryAddWithoutValidation("anthropic-beta", BuildAnthropicBetaHeader(provider));
         ApiUserAgent.Apply(request, provider);
-        AgentRuntimeProviderSupport.ApplyHttpHeaderOverrides(request, provider);
+        ProviderRequestOverrides.ApplyHttpHeaderOverrides(request, provider);
         ApiUserAgent.Ensure(request, provider);
     }
 
@@ -176,7 +176,7 @@ internal static partial class AnthropicMessagesProvider
         }
 
         ApiUserAgent.ApplyDebug(headers, provider);
-        AgentRuntimeProviderSupport.ApplyDebugHeaderOverrides(headers, provider);
+        ProviderRequestOverrides.ApplyDebugHeaderOverrides(headers, provider);
         ApiUserAgent.EnsureDebug(headers, provider);
         return headers;
     }

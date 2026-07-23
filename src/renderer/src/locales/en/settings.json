@@ -79,7 +79,30 @@
       "fontOptions": {
         "default": "System Default"
       }
-    }
+    },
+    "language": {
+      "label": "Language",
+      "desc": "Interface display language"
+    },
+    "toolExecution": {
+      "label": "Tool Execution",
+      "desc": "Control how many tools the agent can run at once and per turn",
+      "maxParallel": {
+        "label": "Max Parallel Tools",
+        "desc": "Number of tools executed simultaneously"
+      },
+      "maxPerTurn": {
+        "label": "Max Tool Calls Per Turn",
+        "desc": "Cap total tool calls in a single AI response"
+      }
+    },
+    "developerMode": {
+      "label": "Developer Mode",
+      "desc": "Show request parameters (URL, headers, body) for each assistant message. Useful for debugging during development.",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "reset": "Reset"
   },
   "provider": {
     "list": {

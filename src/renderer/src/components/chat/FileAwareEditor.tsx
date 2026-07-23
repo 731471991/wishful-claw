@@ -542,6 +542,7 @@ export const FileAwareEditor = React.forwardRef<FileAwareEditorHandle, FileAware
     const focusedRef = React.useRef(false)
     const selectionSyncFrameRef = React.useRef<number | null>(null)
     const documentSyncFrameRef = React.useRef<number | null>(null)
+    const compositionEndRafRef = React.useRef<number | null>(null)
     const isComposingRef = React.useRef(false)
     const pendingRenderAfterCompositionRef = React.useRef(false)
     const [compositionRenderVersion, bumpCompositionRenderVersion] = React.useReducer(
@@ -598,6 +599,9 @@ export const FileAwareEditor = React.forwardRef<FileAwareEditorHandle, FileAware
         }
         if (documentSyncFrameRef.current !== null) {
           window.cancelAnimationFrame(documentSyncFrameRef.current)
+        }
+        if (compositionEndRafRef.current !== null) {
+          window.cancelAnimationFrame(compositionEndRafRef.current)
         }
       }
     }, [scheduleSelectionSync])
@@ -746,12 +750,24 @@ export const FileAwareEditor = React.forwardRef<FileAwareEditorHandle, FileAware
           window.cancelAnimationFrame(documentSyncFrameRef.current)
           documentSyncFrameRef.current = null
         }
-        flushDocumentSync()
-        scheduleSelectionSync()
-        if (pendingRenderAfterCompositionRef.current) {
-          pendingRenderAfterCompositionRef.current = false
-          bumpCompositionRenderVersion()
+        // Defer flush to next animation frame. On Windows, some IMEs (Microsoft
+        // Pinyin, Sogou, etc.) update the DOM AFTER compositionend fires, so
+        // reading the DOM synchronously here captures intermediate pinyin state.
+        // requestAnimationFrame fires after the browser has finished updating
+        // the DOM and after the subsequent 'input' event, ensuring we read the
+        // final composed text.
+        if (compositionEndRafRef.current !== null) {
+          window.cancelAnimationFrame(compositionEndRafRef.current)
         }
+        compositionEndRafRef.current = window.requestAnimationFrame(() => {
+          compositionEndRafRef.current = null
+          flushDocumentSync()
+          scheduleSelectionSync()
+          if (pendingRenderAfterCompositionRef.current) {
+            pendingRenderAfterCompositionRef.current = false
+            bumpCompositionRenderVersion()
+          }
+        })
       },
       [flushDocumentSync, onCompositionEnd, scheduleSelectionSync]
     )

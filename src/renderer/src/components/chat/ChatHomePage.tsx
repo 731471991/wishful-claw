@@ -8,7 +8,6 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Project } from '@renderer/stores/chat-store'
 import { useChatActions, type SendMessageOptions } from '@renderer/hooks/use-chat-actions'
 import type { ImageAttachment } from '@renderer/lib/image-attachments'
-import { ensureDefaultChatWorkingFolder } from '@renderer/lib/chat-working-folder'
 import {
   NewSessionProjectSelector,
   type NewSessionProjectOption
@@ -138,6 +137,9 @@ export function ChatHomePage(): React.JSX.Element {
 
   React.useEffect(() => {
     if (mode === 'chat' || selectedProjectId || selectableProjects.length === 0) return
+    // Don't force-select a project if user explicitly clicked "New Chat"
+    // (activeProjectId is null) - respect the global session intent
+    if (!activeProjectId) return
     const nextProjectId = activeProjectId ?? selectableProjects[0].id
     setSelectedProjectId(nextProjectId)
     useChatStore.getState().setActiveProjectHome(nextProjectId)
@@ -179,14 +181,8 @@ export function ChatHomePage(): React.JSX.Element {
     (text: string, images?: ImageAttachment[], options?: SendMessageOptions): void => {
       void (async () => {
         const chatStore = useChatStore.getState()
-        let chatWorkingFolder: string | undefined
-        if (mode === 'chat') {
-          try {
-            chatWorkingFolder = await ensureDefaultChatWorkingFolder()
-          } catch {
-            chatWorkingFolder = undefined
-          }
-        }
+        // Global sessions (chat mode, no project) don't need a working folder.
+        // Only project-scoped sessions get one from the project.
         const projectIdForSession =
           selectedProjectId &&
           chatStore.projects.some((project) => project.id === selectedProjectId)
@@ -195,8 +191,7 @@ export function ChatHomePage(): React.JSX.Element {
         const sessionId =
           mode === 'chat' && !projectIdForSession
             ? chatStore.createSession(mode, null, {
-                preserveProjectless: true,
-                workingFolder: chatWorkingFolder
+                preserveProjectless: true
               })
             : chatStore.createSession(mode, projectIdForSession ?? activeProject?.id ?? undefined)
         useUIStore.getState().navigateToSession(sessionId)
@@ -302,6 +297,7 @@ export function ChatHomePage(): React.JSX.Element {
               projects={selectableProjects}
               selectedProjectId={selectedProjectId}
               allowNoProject={mode === 'chat'}
+              locked={mode !== 'chat' && !!activeProjectId}
               onSelectProject={handleSelectHomeProject}
               onCreateProject={() => setCreateProjectDialogOpen(true)}
             />

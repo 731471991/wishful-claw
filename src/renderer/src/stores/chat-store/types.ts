@@ -1,4 +1,5 @@
 import type { TokenUsageWire, RequestTimingWire } from '@shared/agent-stream-protocol'
+import type { RequestDebugInfo } from '@renderer/lib/api/types'
 
 // ─── Session Mode ───
 export type SessionMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
@@ -17,16 +18,35 @@ export interface ToolCallInfo {
   completedAt?: number
 }
 
+export interface ContentSegment {
+  type: 'thinking' | 'text' | 'tool_use'
+  iteration: number
+  thinking?: string
+  text?: string
+  toolCallId?: string
+  toolName?: string
+  input?: Record<string, unknown>
+  status?: 'running' | 'completed' | 'error'
+  output?: string
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
   text: string
   thinking?: string
+  thinkingEncrypted?: boolean
   isStreaming?: boolean
   usage?: TokenUsageWire
   timing?: RequestTimingWire
   error?: string
   toolCalls?: ToolCallInfo[]
+  segments?: ContentSegment[]
+  currentIteration?: number
+  debugInfo?: RequestDebugInfo
   createdAt: number
 }
 

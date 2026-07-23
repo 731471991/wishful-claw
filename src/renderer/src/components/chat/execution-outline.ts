@@ -348,7 +348,7 @@ export function buildToolExecutionOutline({
       summary,
       category,
       visibility,
-      forceExpanded: hasError || isActive || requiresApproval,
+      forceExpanded: isActive || requiresApproval,
       hasError,
       isActive,
       requiresApproval,

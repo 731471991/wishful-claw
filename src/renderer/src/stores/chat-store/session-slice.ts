@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid'
 import type { StateCreator } from 'zustand'
 import type { Session, CreateSessionOptions, ChatMessage } from './types'
-import { dbCreateSession, dbDeleteSession, dbUpdateSession } from './db-helpers'
+import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage } from './db-helpers'
 
 export interface SessionSlice {
   sessions: Session[]
@@ -16,6 +16,7 @@ export interface SessionSlice {
   deleteSession: (id: string) => void
   setActiveSession: (id: string | null) => void
   updateSessionTitle: (id: string, title: string) => void
+  renameSession: (id: string, title: string) => void
   updateSessionIcon: (id: string, icon: string) => void
   updateSessionMode: (id: string, mode: Session['mode']) => void
   setSessionModelManual: (sessionId: string, providerId: string, modelId: string) => void
@@ -109,7 +110,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       state.activeSessionId = id
     })
 
-    dbCreateSession(newSession)
+    void dbCreateSession(newSession)
     return id
   },
 
@@ -124,7 +125,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         state.activeSessionId = state.sessions[0]?.id ?? null
       }
     })
-    dbDeleteSession(id)
+    void dbDeleteSession(id)
   },
 
   setActiveSession: (id) => {
@@ -140,7 +141,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = now
       }
     })
-    dbUpdateSession(id, { title, updatedAt: now })
+    void dbUpdateSession(id, { title, updatedAt: now })
   },
 
   updateSessionIcon: (id, icon) => {
@@ -152,7 +153,19 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = now
       }
     })
-    dbUpdateSession(id, { icon, updatedAt: now })
+    void dbUpdateSession(id, { icon, updatedAt: now })
+  },
+
+  renameSession: (id, title) => {
+    const now = Date.now()
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === id)
+      if (session) {
+        session.title = title
+        session.updatedAt = now
+      }
+    })
+    void dbUpdateSession(id, { title, updatedAt: now })
   },
 
   updateSessionMode: (id, mode) => {
@@ -164,7 +177,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = now
       }
     })
-    dbUpdateSession(id, { mode, updatedAt: now })
+    void dbUpdateSession(id, { mode, updatedAt: now })
   },
 
   clearSessionMessages: (sessionId) => {
@@ -207,7 +220,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       syncSessionsById(state)
       state.activeSessionId = newId
     })
-    dbCreateSession(copy)
+    void dbCreateSession(copy)
     return newId
   },
 
@@ -405,15 +418,56 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
   },
 
   loadRecentSessionMessages: async (sessionId, _force, _limit) => {
-    // Stub: messages are already in-memory, only mark as loaded if not already
     const state = get()
     const session = state.sessions.find((s) => s.id === sessionId)
-    if (!session || session.messagesLoaded) return
-    set((state) => {
-      const target = state.sessions.find((s) => s.id === sessionId)
-      if (!target) return
-      target.messagesLoaded = true
-    })
+    if (!session) return
+
+    const knownCount = session.messageCount ?? session.messages.length
+
+    // Already loaded and no change
+    if (!_force && session.messagesLoaded && session.messages.length > 0) {
+      return
+    }
+
+    // No messages to load
+    if (knownCount === 0) {
+      set((state) => {
+        const target = state.sessions.find((s) => s.id === sessionId)
+        if (!target) return
+        target.messages = []
+        target.messagesLoaded = true
+        target.messageCount = 0
+        target.loadedRangeStart = 0
+        target.loadedRangeEnd = 0
+        target.lastKnownMessageCount = 0
+      })
+      return
+    }
+
+    try {
+      // Load the most recent messages (like OpenCowork: tail page)
+      const limit = Math.min(_limit ?? 100, knownCount)
+      const offset = Math.max(0, knownCount - limit)
+      const messages = await dbListMessagesPage({ sessionId, limit, offset })
+
+      set((state) => {
+        const target = state.sessions.find((s) => s.id === sessionId)
+        if (!target) return
+        target.messages = messages
+        target.messageCount = messages.length
+        target.messagesLoaded = true
+        target.loadedRangeStart = offset
+        target.loadedRangeEnd = offset + messages.length
+        target.lastKnownMessageCount = knownCount
+      })
+    } catch (err) {
+      console.error('[DB] loadRecentSessionMessages failed:', err)
+      set((state) => {
+        const target = state.sessions.find((s) => s.id === sessionId)
+        if (!target) return
+        target.messagesLoaded = true
+      })
+    }
   },
 
   loadOlderSessionMessages: async (_sessionId, _limit, _options) => {

@@ -5,6 +5,7 @@ import { EventEmitter } from 'events'
 import * as net from 'net'
 import * as path from 'path'
 import { decode, encode } from '@msgpack/msgpack'
+import { logError, logWarn } from './logger'
 
 const DEFAULT_TIMEOUT_MS = 60_000
 const CONNECT_TIMEOUT_MS = 10_000
@@ -128,16 +129,21 @@ class NativeWorkerManager {
 
     child.stderr?.on('data', (chunk: Buffer) => {
       const text = chunk.toString('utf8').trim()
-      if (text) console.warn(`[Worker] ${text}`)
+      if (text) {
+        console.warn(`[Worker] ${text}`)
+        logWarn('worker', text)
+      }
     })
 
     child.on('exit', (code, signal) => {
       console.log('[Worker] exited', { code, signal })
+      logWarn('worker', `Worker exited: code=${code} signal=${signal}`)
       this.closeWorker(new Error(`Worker exited with code ${code}`))
     })
 
     child.on('error', (error) => {
       console.error('[Worker] spawn error', error)
+      logError('worker', `Spawn error: ${error.message}`, { stack: error.stack })
       this.closeWorker(error)
     })
 
@@ -262,6 +268,7 @@ class NativeWorkerManager {
       decoded = decode(payload)
     } catch (error) {
       console.warn('[Worker] invalid MessagePack response:', error)
+      logWarn('worker', `Invalid MessagePack response: ${String(error)}`)
       return
     }
 

@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
@@ -7,6 +7,9 @@ import { createSessionSlice, type SessionSlice } from './session-slice'
 import { createProjectSlice, type ProjectSlice } from './project-slice'
 import { createStreamingSlice, type StreamingSlice } from './streaming-slice'
 import type { ChatMessage } from './types'
+import { dbUpsertMessage, dbUpdateSession, awaitSessionCreated } from './db-helpers'
+import { setLastDebugInfo } from '@renderer/lib/debug-store'
+import { useAgentStore } from '@renderer/stores/agent-store'
 
 export type { Session, Project, ChatMessage, SessionMode, CreateSessionOptions, SessionPromptSnapshot, ToolCallInfo, SessionModelSelectionMode } from './types'
 export type { SessionSlice } from './session-slice'
@@ -18,12 +21,14 @@ export type { StreamingSlice } from './streaming-slice'
 export interface AgentActions {
   sendMessage: (params: {
     provider: Record<string, unknown>
-    messages: Array<{ role: string; content: string }>
+    messages: Array<{ role: string; content: string | Array<Record<string, unknown>> }>
     sessionId?: string
     systemPrompt?: string
     tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
     workingFolder?: string
     maxIterations?: number
+    maxParallelTools?: number
+    maxToolCallsPerTurn?: number
   }) => Promise<void>
   cancelStream: () => Promise<void>
   handleEnvelope: (envelope: AgentStreamEnvelope) => void
@@ -41,11 +46,13 @@ export const useChatStore = create<ChatStore>()(
     // ─── Agent Actions ───
     sendMessage: async (params) => {
       const get = args[1] as () => ChatStore
+      const set = args[0] as (fn: (state: ChatStore) => void) => void
       const state = get()
       const sessionId = params.sessionId ?? state.activeSessionId
       if (!sessionId) return
 
-      const userText = params.messages[params.messages.length - 1]?.content ?? ''
+      const lastMsgContent = params.messages[params.messages.length - 1]?.content
+      const userText = typeof lastMsgContent === 'string' ? lastMsgContent : '' 
       const now = Date.now()
       // Generate runId on the renderer side so we can set streamingMessages
       // BEFORE awaiting the agent/run response. This prevents a race condition
@@ -71,14 +78,39 @@ export const useChatStore = create<ChatStore>()(
       // Add messages to session
       state.beginUserTurn(sessionId, userMessage, assistantMessage, assistantMessage.id)
 
+      // Persist user message to DB (fire-and-forget)
+      // Use the message's index in the session as sortOrder for correct ordering
+      const _sessForUserSort = get().sessions.find((s) => s.id === sessionId)
+      const _userSortOrder = _sessForUserSort ? _sessForUserSort.messages.findIndex((m) => m.id === userMessage.id) : 0
+      void dbUpsertMessage(sessionId, userMessage, Math.max(0, _userSortOrder))
+
       // Set streamingMessages BEFORE the await so handleEnvelope can process
       // events that arrive while we're waiting for the agent/run response.
       state.setStreamingMessageId(sessionId, runId)
 
+      // Reset agentStore live session — clear leftover tool calls from previous runs
+      // and set this session as the active live session for tool call tracking
+      const agentStore = useAgentStore.getState()
+      agentStore.resetLiveSessionExecution(sessionId)
+      agentStore.switchToolCallSession(null, sessionId)
+
       // Auto-generate title from first user message
-      const session = state.sessions.find((s) => s.id === sessionId)
-      if (session && session.title === 'New Conversation' && userText) {
-        state.updateSessionTitle(sessionId, userText.slice(0, 40) + (userText.length > 40 ? '...' : ''))
+      const titleSession = get().sessions.find((s) => s.id === sessionId)
+      if (titleSession && titleSession.title === 'New Conversation' && userText) {
+        const newTitle = userText.slice(0, 40) + (userText.length > 40 ? '...' : '')
+        const titleNow = Date.now()
+        set((state) => {
+          const sess = state.sessions.find((s) => s.id === sessionId)
+          if (sess) {
+            sess.title = newTitle
+            sess.updatedAt = titleNow
+          }
+        })
+        // Ensure the session row exists in DB before updating (createSession's
+        // dbCreateSession is fire-and-forget; the worker processes requests
+        // concurrently, so db/sessions-update could arrive before db/sessions-create)
+        await awaitSessionCreated(sessionId)
+        await dbUpdateSession(sessionId, { title: newTitle, updatedAt: titleNow })
       }
 
       try {
@@ -90,6 +122,7 @@ export const useChatStore = create<ChatStore>()(
         if (!result.started) {
           // Worker rejected the run - clear streaming state
           state.setStreamingMessageId(sessionId, null)
+          useAgentStore.getState().resetLiveSessionExecution(sessionId)
           state.updateMessage(sessionId, runId, {
             isStreaming: false,
             error: 'Agent run was not started'
@@ -97,6 +130,7 @@ export const useChatStore = create<ChatStore>()(
         }
       } catch (err) {
         state.setStreamingMessageId(sessionId, null)
+        useAgentStore.getState().resetLiveSessionExecution(sessionId)
         state.updateMessage(sessionId, runId, {
           isStreaming: false,
           error: err instanceof Error ? err.message : String(err)
@@ -119,6 +153,8 @@ export const useChatStore = create<ChatStore>()(
       const sessionId = state.activeSessionId
       if (sessionId) {
         state.setStreamingMessageId(sessionId, null)
+        // Clear agentStore tool calls for this session
+        useAgentStore.getState().resetLiveSessionExecution(sessionId)
       }
 
       // Mark streaming messages as no longer streaming
@@ -136,6 +172,7 @@ export const useChatStore = create<ChatStore>()(
     },
 
     handleEnvelope: (envelope) => {
+      const set = args[0] as typeof args[0]
       const get = args[1] as () => ChatStore
       const state = get()
 
@@ -154,75 +191,371 @@ export const useChatStore = create<ChatStore>()(
 
         switch (event.type) {
           case 'text_delta':
-            state.appendTextDelta(targetSessionId, envelope.runId, event.text)
-            break
-
-          case 'thinking_delta':
-            state.appendThinkingDelta(targetSessionId, envelope.runId, event.thinking)
-            break
-
-          case 'message_end':
-            state.updateMessage(targetSessionId, envelope.runId, {
-              isStreaming: false,
-              usage: event.usage,
-              timing: event.timing
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.text += event.text
+                  if (!msg.segments) msg.segments = []
+                  if (!msg.currentIteration) msg.currentIteration = 1
+                  // Mark the last thinking segment as completed when text output starts
+                  const lastSegForText = msg.segments[msg.segments.length - 1]
+                  if (lastSegForText && lastSegForText.type === 'thinking' && !lastSegForText.completedAt) {
+                    lastSegForText.completedAt = Date.now()
+                  }
+                  // Append to last text segment of current iteration, or create new
+                  const lastSeg = msg.segments[msg.segments.length - 1]
+                  if (lastSeg && lastSeg.type === 'text' && lastSeg.iteration === msg.currentIteration) {
+                    lastSeg.text = (lastSeg.text ?? '') + event.text
+                  } else {
+                    msg.segments.push({ type: 'text', iteration: msg.currentIteration, text: event.text })
+                  }
+                }
+              }
             })
             break
 
-          case 'tool_call_start': {
-            const session = state.sessions.find((s) => s.id === targetSessionId)
-            if (session) {
-              const msg = session.messages.find((m) => m.id === envelope.runId)
+          case 'iteration_start':
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.currentIteration = event.iteration
+                  if (!msg.segments) msg.segments = []
+                }
+              }
+            })
+            break
+
+        case 'thinking_delta':
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.thinking = (msg.thinking ?? '') + event.thinking
+                  if (!msg.segments) msg.segments = []
+                  if (!msg.currentIteration) msg.currentIteration = 1
+                  // Append to last thinking segment of current iteration, or create new
+                  const lastSeg = msg.segments[msg.segments.length - 1]
+                  if (lastSeg && lastSeg.type === 'thinking' && lastSeg.iteration === msg.currentIteration) {
+                    lastSeg.thinking = (lastSeg.thinking ?? '') + event.thinking
+                  } else {
+                    msg.segments.push({ type: 'thinking', iteration: msg.currentIteration, thinking: event.thinking, startedAt: Date.now() })
+                  }
+                }
+              }
+            })
+            break
+
+          // message_end = one LLM turn finished, but the loop may continue
+          // (tool calls → next iteration). Do NOT set isStreaming=false here.
+          // Only persist the message and store usage/timing.
+          case 'message_end':
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.usage = event.usage
+                  msg.timing = event.timing
+                  // Mark the last thinking segment as completed
+                  if (msg.segments) {
+                    for (let i = msg.segments.length - 1; i >= 0; i--) {
+                      const seg = msg.segments[i]
+                      if (seg.type === 'thinking' && !seg.completedAt) {
+                        seg.completedAt = Date.now()
+                        break
+                      }
+                    }
+                  }
+                  // isStreaming stays true — loop_end will set it false
+                }
+              }
+            })
+            // Persist assistant message to DB
+            {
+              const sess = get().sessions.find((s) => s.id === targetSessionId)
+              const msg = sess?.messages.find((m) => m.id === envelope.runId)
               if (msg) {
-                if (!msg.toolCalls) msg.toolCalls = []
-                msg.toolCalls.push({
-                  id: event.toolCall.id,
-                  name: event.toolCall.name,
-                  input: event.toolCall.input,
-                  status: 'running',
-                  startedAt: event.toolCall.startedAt
-                })
+                const sortOrder = sess ? sess.messages.indexOf(msg) : 0
+                void dbUpsertMessage(targetSessionId, msg, sortOrder)
               }
             }
+            break
+
+          case 'iteration_end': {
+            // One iteration of the agent loop finished (e.g., after tool calls).
+            // In wishful-claw, tool calls and results live in the same assistant message's
+            // toolCalls array — no need to insert separate tool_result user messages.
+            // The next iteration's thinking_delta will start a new thinking paragraph
+            // naturally since it appends to the same message.
+            break
+          }
+
+          case 'thinking_encrypted': {
+            // Encrypted thinking content — store as a marker on the message.
+            // Currently we don't decrypt, just note its presence.
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.thinkingEncrypted = true
+                }
+              }
+            })
+            break
+          }
+
+          case 'tool_use_streaming_start': {
+            // Tool use is being streamed by the LLM \u2014 show card with 'streaming' status
+            useAgentStore.getState().addToolCall({
+              id: event.toolCallId,
+              name: event.toolName,
+              input: {},
+              status: 'streaming',
+              requiresApproval: false,
+            }, targetSessionId)
+            // Also add a placeholder toolCall to ChatMessage so it renders as a tool_use block
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  if (!msg.toolCalls) msg.toolCalls = []
+                  if (!msg.toolCalls.find((t) => t.id === event.toolCallId)) {
+                    msg.toolCalls.push({
+                      id: event.toolCallId,
+                      name: event.toolName,
+                      input: {},
+                      status: 'running'
+                    })
+                  }
+                  // Add to segments for temporal ordering
+                  if (!msg.segments) msg.segments = []
+                  if (!msg.currentIteration) msg.currentIteration = 1
+                  // Mark the last thinking segment as completed when tool use starts
+                  const lastSegForTool = msg.segments[msg.segments.length - 1]
+                  if (lastSegForTool && lastSegForTool.type === 'thinking' && !lastSegForTool.completedAt) {
+                    lastSegForTool.completedAt = Date.now()
+                  }
+                  if (!msg.segments.find((s) => s.type === 'tool_use' && s.toolCallId === event.toolCallId)) {
+                    msg.segments.push({
+                      type: 'tool_use',
+                      iteration: msg.currentIteration,
+                      toolCallId: event.toolCallId,
+                      toolName: event.toolName,
+                      input: {},
+                      status: 'running'
+                    })
+                  }
+                }
+              }
+            })
+            break
+          }
+
+          case 'tool_use_args_delta': {
+            // Partial args streaming in \u2014 update agentStore live input
+            if (event.partialInput) {
+              useAgentStore.getState().updateToolCall(event.toolCallId, {
+                input: event.partialInput
+              }, targetSessionId)
+            }
+            break
+          }
+
+          case 'tool_use_generated': {
+            // LLM finished emitting tool args \u2014 update with full input, switch to 'running'
+            const tuBlock = event.toolUseBlock
+            if (tuBlock) {
+              useAgentStore.getState().updateToolCall(tuBlock.id, {
+                name: tuBlock.name,
+                input: tuBlock.input ?? {},
+                status: 'running',
+                startedAt: Date.now(),
+              }, targetSessionId)
+              // Update ChatMessage toolCalls and segments too
+              set((state) => {
+                const session = state.sessions.find((s) => s.id === targetSessionId)
+                if (session) {
+                  const msg = session.messages.find((m) => m.id === envelope.runId)
+                  if (msg) {
+                    if (msg.toolCalls) {
+                      const tc = msg.toolCalls.find((t) => t.id === tuBlock.id)
+                      if (tc) {
+                        tc.input = tuBlock.input ?? {}
+                        tc.status = 'running'
+                      }
+                    }
+                    if (msg.segments) {
+                      const seg = msg.segments.find((s) => s.type === 'tool_use' && s.toolCallId === tuBlock.id)
+                      if (seg) {
+                        seg.input = tuBlock.input ?? {}
+                        seg.status = 'running'
+                        seg.startedAt = Date.now()
+                      }
+                    }
+                  }
+                }
+              })
+            }
+            break
+          }
+
+          case 'tool_call_start': {
+            // Worker started executing the tool
+            useAgentStore.getState().addToolCall({
+              ...event.toolCall,
+              status: 'running',
+              requiresApproval: false
+            }, targetSessionId)
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  if (!msg.toolCalls) msg.toolCalls = []
+                  // Update existing or add new
+                  const existing = msg.toolCalls.find((t) => t.id === event.toolCall.id)
+                  if (existing) {
+                    existing.input = event.toolCall.input
+                    existing.status = 'running'
+                    existing.startedAt = event.toolCall.startedAt
+                  } else {
+                    msg.toolCalls.push({
+                      id: event.toolCall.id,
+                      name: event.toolCall.name,
+                      input: event.toolCall.input,
+                      status: 'running',
+                      startedAt: event.toolCall.startedAt
+                    })
+                  }
+                  // Update segments
+                  if (!msg.segments) msg.segments = []
+                  if (!msg.currentIteration) msg.currentIteration = 1
+                  const seg = msg.segments.find((s) => s.type === 'tool_use' && s.toolCallId === event.toolCall.id)
+                  if (seg) {
+                    seg.input = event.toolCall.input
+                    seg.status = 'running'
+                    seg.startedAt = event.toolCall.startedAt
+                  } else {
+                    msg.segments.push({
+                      type: 'tool_use',
+                      iteration: msg.currentIteration,
+                      toolCallId: event.toolCall.id,
+                      toolName: event.toolCall.name,
+                      input: event.toolCall.input,
+                      status: 'running',
+                      startedAt: event.toolCall.startedAt
+                    })
+                  }
+                }
+              }
+            })
             break
           }
 
           case 'tool_call_result': {
-            const session = state.sessions.find((s) => s.id === targetSessionId)
-            if (session) {
-              const msg = session.messages.find((m) => m.id === envelope.runId)
-              if (msg && msg.toolCalls) {
-                const tc = msg.toolCalls.find((t) => t.id === event.toolCall.id)
-                if (tc) {
-                  tc.status = event.toolCall.status === 'error' ? 'error' : 'completed'
-                  tc.output = event.toolCall.output
-                  tc.error = event.toolCall.error
-                  tc.completedAt = event.toolCall.completedAt
+            const resultStatus = event.toolCall.status === 'error' ? 'error' : 'completed'
+            useAgentStore.getState().updateToolCall(event.toolCall.id, {
+              status: resultStatus,
+              output: event.toolCall.output,
+              error: event.toolCall.error,
+              completedAt: event.toolCall.completedAt
+            }, targetSessionId)
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  if (msg.toolCalls) {
+                    const tc = msg.toolCalls.find((t) => t.id === event.toolCall.id)
+                    if (tc) {
+                      tc.status = resultStatus
+                      tc.output = event.toolCall.output
+                      tc.error = event.toolCall.error
+                      tc.completedAt = event.toolCall.completedAt
+                    }
+                  }
+                  if (msg.segments) {
+                    const seg = msg.segments.find((s) => s.type === 'tool_use' && s.toolCallId === event.toolCall.id)
+                    if (seg) {
+                      seg.status = resultStatus
+                      seg.output = event.toolCall.output
+                      seg.error = event.toolCall.error
+                      seg.completedAt = event.toolCall.completedAt
+                    }
+                  }
                 }
               }
-            }
+            })
             break
           }
 
+          // loop_end = entire agent loop finished, now we can stop streaming
           case 'loop_end':
-            state.setStreamingMessageId(targetSessionId, null)
+            // Move any remaining pending tool calls to executed in agentStore
             {
+              const agentState = useAgentStore.getState()
+              for (const tc of agentState.pendingToolCalls) {
+                agentState.updateToolCall(tc.id, { status: 'completed' }, targetSessionId)
+              }
+            }
+            set((state) => {
+              delete state.streamingMessages[targetSessionId]
               const session = state.sessions.find((s) => s.id === targetSessionId)
               if (session) {
                 for (const msg of session.messages) {
                   if (msg.isStreaming) {
-                    state.updateMessage(targetSessionId!, msg.id, { isStreaming: false })
+                    msg.isStreaming = false
                   }
                 }
+              }
+            })
+            // Final persist after loop ends
+            {
+              const sess = get().sessions.find((s) => s.id === targetSessionId)
+              const msg = sess?.messages.find((m) => m.id === envelope.runId)
+              if (msg) {
+                const sortOrder = sess ? sess.messages.indexOf(msg) : 0
+                void dbUpsertMessage(targetSessionId, msg, sortOrder)
               }
             }
             break
 
+          case 'request_debug': {
+            if (event.debugInfo) {
+              setLastDebugInfo(envelope.runId, event.debugInfo)
+              set((state) => {
+                const session = state.sessions.find((s) => s.id === targetSessionId)
+                if (session) {
+                  const msg = session.messages.find((m) => m.id === envelope.runId)
+                  if (msg) {
+                    msg.debugInfo = event.debugInfo
+                  }
+                }
+              })
+            }
+            break
+          }
+
           case 'error':
-            state.setStreamingMessageId(targetSessionId, null)
-            state.updateMessage(targetSessionId, envelope.runId, {
-              isStreaming: false,
-              error: event.message
+            // Clear agentStore pending tool calls on error
+            useAgentStore.getState().resetLiveSessionExecution(targetSessionId)
+            set((state) => {
+              delete state.streamingMessages[targetSessionId]
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.isStreaming = false
+                  msg.error = event.message
+                }
+              }
             })
             break
         }
