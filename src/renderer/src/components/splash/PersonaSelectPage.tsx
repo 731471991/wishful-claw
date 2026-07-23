@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, Check, Loader2, Send, ShieldCheck, Sparkles, Users, Languages, Sun, Moon, Monitor, PenLine } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Loader2, Send, ShieldCheck, Sparkles, Users, Languages, Sun, Moon, Monitor, PenLine } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
@@ -14,6 +14,7 @@ import type { PersonaSummary } from '@renderer/lib/persona/persona-types'
 import { LANGUAGE_OPTIONS, detectSystemLanguage } from '@renderer/lib/i18n-language'
 import { changeI18nLanguage } from '@renderer/locales'
 import { cn } from '@renderer/lib/utils'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@renderer/components/ui/dropdown-menu'
 
 type Step = 'setup' | 'persona'
 
@@ -147,39 +148,57 @@ export function PersonaSelectPage(): React.JSX.Element {
                 </div>
               </div>
 
-              {/* Language & Theme (compact, optional) */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              {/* Language & Theme (compact dropdowns) */}
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                 {/* Language */}
-                <div className="flex items-center gap-2">
-                  <Languages className="size-3.5" />
-                  <select
-                    value={language}
-                    onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="h-8 rounded-md border bg-background px-2 text-sm outline-none cursor-pointer hover:bg-muted"
-                  >
-                    {LANGUAGE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex h-8 items-center gap-1.5 rounded-md border bg-background px-2.5 text-sm outline-none cursor-pointer hover:bg-muted">
+                      <Languages className="size-3.5" />
+                      {LANGUAGE_OPTIONS.find((o) => o.value === language)?.label ?? language}
+                      <ChevronDown className="size-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuRadioGroup
+                      value={language}
+                      onValueChange={handleLanguageChange}
+                    >
+                      {LANGUAGE_OPTIONS.map((opt) => (
+                        <DropdownMenuRadioItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 {/* Theme mode */}
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const CurrentIcon = THEME_MODES.find((m) => m.value === themeMode)?.icon ?? Sun
-                    return <CurrentIcon className="size-3.5" />
-                  })()}
-                  <select
-                    value={themeMode}
-                    onChange={(e) => handleThemeModeChange(e.target.value)}
-                    className="h-8 rounded-md border bg-background px-2 text-sm outline-none cursor-pointer hover:bg-muted"
-                  >
-                    {THEME_MODES.map((mode) => (
-                      <option key={mode.value} value={mode.value}>
-                        {t(`splash.theme.modes.${mode.value}`, { defaultValue: mode.label })}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex h-8 items-center gap-1.5 rounded-md border bg-background px-2.5 text-sm outline-none cursor-pointer hover:bg-muted">
+                      {(() => {
+                        const CurrentIcon = THEME_MODES.find((m) => m.value === themeMode)?.icon ?? Sun
+                        return <CurrentIcon className="size-3.5" />
+                      })()}
+                      {t(`splash.theme.modes.${themeMode}`, {
+                        defaultValue: THEME_MODES.find((m) => m.value === themeMode)?.label ?? ''
+                      })}
+                      <ChevronDown className="size-3 opacity-60" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuRadioGroup
+                      value={themeMode}
+                      onValueChange={handleThemeModeChange}
+                    >
+                      {THEME_MODES.map((mode) => (
+                        <DropdownMenuRadioItem key={mode.value} value={mode.value}>
+                          {t(`splash.theme.modes.${mode.value}`, { defaultValue: mode.label })}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           )}
