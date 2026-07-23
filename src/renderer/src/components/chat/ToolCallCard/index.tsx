@@ -200,6 +200,11 @@ function ToolCallCardInner({
     if (diffMs < 1000) return `${Math.round(diffMs)}ms`
     return `${(diffMs / 1000).toFixed(1)}s`
   })()
+  // Cache elapsed so it persists even after liveToolCall is cleaned up
+  const elapsedCacheRef = React.useRef<string | null>(null)
+  if (elapsed) {
+    elapsedCacheRef.current = elapsed
+  }
   const isMcpToolCall = isMcpTool(name)
   const useCompactToolHeader = COMPACT_BUILTIN_TOOL_NAMES.has(name)
   const compactHeader = React.useMemo(() => {
@@ -272,7 +277,7 @@ function ToolCallCardInner({
             statusLabel={compactStatus}
             hasError={compactHeaderError}
             errorTitle={displayError ?? outputError ?? t('error.label')}
-            elapsed={elapsed}
+            elapsed={elapsed ?? elapsedCacheRef.current}
             open={open}
           />
         ) : isMcpToolCall ? (
@@ -295,8 +300,8 @@ function ToolCallCardInner({
             ) : (
               <span className="min-w-0 flex-1" />
             )}
-            {elapsed && (
-              <span className="text-[10px] tabular-nums text-muted-foreground/55">{elapsed}</span>
+            {(elapsed ?? elapsedCacheRef.current) && (
+              <span className="text-[10px] tabular-nums text-muted-foreground/55">{elapsed ?? elapsedCacheRef.current}</span>
             )}
             <ChevronDown
               className={cn(
@@ -349,8 +354,8 @@ function ToolCallCardInner({
                 {headerSummary}
               </span>
             )}
-            {elapsed && (
-              <span className="text-[10px] tabular-nums text-muted-foreground/55">{elapsed}</span>
+            {(elapsed ?? elapsedCacheRef.current) && (
+              <span className="text-[10px] tabular-nums text-muted-foreground/55">{elapsed ?? elapsedCacheRef.current}</span>
             )}
             <ChevronDown
               className={cn(
