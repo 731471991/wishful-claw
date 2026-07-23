@@ -7,13 +7,14 @@ import type { useChatStore } from '@renderer/stores/chat-store'
 import type { useTeamStore } from '@renderer/stores/team-store'
 import type { RequestRetryState } from '@renderer/lib/agent/types'
 import type { EditableUserMessageDraft } from '@renderer/lib/image-attachments'
+import type { TFunction } from 'i18next'
+import { getCompactSummaryDisplayText } from '@renderer/lib/agent/context-compression'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import { buildOrchestrationRuns } from '@renderer/lib/orchestration/build-runs'
 import { selectSessionScopedAgentState } from '@renderer/lib/agent/session-scoped-agent-state'
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import { DB_MESSAGES_LIST_LOCATOR_MSGPACK_CHANNEL } from '../../../../shared/messagepack/binary-ipc'
 
-}
 
 export interface MessageListProps {
   sessionId?: string | null
@@ -208,30 +209,30 @@ export interface MessageRowProps {
 const EMPTY_MESSAGES: UnifiedMessage[] = []
 const EMPTY_MESSAGES_RAW: readonly unknown[] = []
 const EMPTY_TEAM_HISTORY: ActiveTeam[] = []
-const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
-const STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD = 80
-const STREAMING_AUTO_SCROLL_STOP_THRESHOLD = 240
-const TAIL_STATIC_MESSAGE_COUNT = 4
-const TAIL_LIVE_MESSAGE_COUNT = 6
-const FOLLOW_BOTTOM_SETTLE_FRAMES = 3
-const BOTTOM_SCROLL_CORRECTION_EPSILON = 2
-const AUTO_SCROLL_MIN_DELTA = 24
-const PROGRAMMATIC_SCROLL_GUARD_MS = 160
-const STREAMING_AUTO_SCROLL_POLL_MS = 500
-const USER_LOCATOR_HIGHLIGHT_MS = 1400
+export const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
+export const STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD = 80
+export const STREAMING_AUTO_SCROLL_STOP_THRESHOLD = 240
+export const TAIL_STATIC_MESSAGE_COUNT = 4
+export const TAIL_LIVE_MESSAGE_COUNT = 6
+export const FOLLOW_BOTTOM_SETTLE_FRAMES = 3
+export const BOTTOM_SCROLL_CORRECTION_EPSILON = 2
+export const AUTO_SCROLL_MIN_DELTA = 24
+export const PROGRAMMATIC_SCROLL_GUARD_MS = 160
+export const STREAMING_AUTO_SCROLL_POLL_MS = 500
+export const USER_LOCATOR_HIGHLIGHT_MS = 1400
 const ASSISTANT_RAIL_PREVIEW_LIMIT = 120
-const ASSISTANT_RAIL_SCROLL_OFFSET = 28
-const ASSISTANT_RAIL_DENSE_THRESHOLD = 80
-const OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD = 72
-const MIN_RENDERABLE_HISTORY_ROWS = 3
-const VIRTUAL_ROW_ESTIMATED_HEIGHT = 180
-const VIRTUAL_ROW_OVERSCAN = 8
-const INITIAL_TAIL_RENDER_COUNT = 32
-const EMPTY_ORCHESTRATION_STATE = { runs: [], byId: new Map(), byMessageId: new Map() }
+export const ASSISTANT_RAIL_SCROLL_OFFSET = 28
+export const ASSISTANT_RAIL_DENSE_THRESHOLD = 80
+export const OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD = 72
+export const MIN_RENDERABLE_HISTORY_ROWS = 3
+export const VIRTUAL_ROW_ESTIMATED_HEIGHT = 180
+export const VIRTUAL_ROW_OVERSCAN = 8
+export const INITIAL_TAIL_RENDER_COUNT = 32
+export const EMPTY_ORCHESTRATION_STATE = { runs: [], byId: new Map(), byMessageId: new Map() }
 const MESSAGE_COLUMN_CLASS = 'mx-auto w-full max-w-[820px] px-5'
 const MESSAGE_COLUMN_COMPACT_CLASS = 'mx-auto w-full max-w-[720px] px-5'
 const MESSAGE_COLUMN_FULL_WIDTH_CLASS = 'mx-auto w-full max-w-none px-5'
-const EMPTY_MESSAGE_LOCATOR_ROWS: MessageLocatorIndexRow[] = []
+export const EMPTY_MESSAGE_LOCATOR_ROWS: MessageLocatorIndexRow[] = []
 const EMPTY_ASSISTANT_RAIL_LAYOUT: AssistantRailLayout = {
   rows: [],
   items: [],

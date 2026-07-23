@@ -58,6 +58,7 @@ const modeHints = {
     titleKey: 'messageList.startAcp',
     descKey: 'messageList.startAcpDesc'
   }
+}
 
 import {
   type MessageListProps, type RenderableMessage, type ToolResultsLookup,
@@ -80,7 +81,29 @@ import {
   buildAssistantRailPreview, estimateLocatorRowHeight, buildAssistantRailLayout,
   parseLocatorRowSource, countImageBlocks, getCompactRailGapPx,
   getCompactRailMarkerOffsetPx, getCompactRailMarkerTop, getCompactRailMarkerY,
-  formatLocatorTime, splitLocatorPreview, parseLocatorContent, parseLocatorMeta
+  formatLocatorTime, splitLocatorPreview, parseLocatorContent, parseLocatorMeta,
+  ASSISTANT_RAIL_DENSE_THRESHOLD,
+  ASSISTANT_RAIL_SCROLL_OFFSET,
+  AUTO_SCROLL_BOTTOM_THRESHOLD,
+  AUTO_SCROLL_MIN_DELTA,
+  BOTTOM_SCROLL_CORRECTION_EPSILON,
+  EMPTY_MESSAGE_LOCATOR_ROWS,
+  EMPTY_ORCHESTRATION_STATE,
+  FOLLOW_BOTTOM_SETTLE_FRAMES,
+  INITIAL_TAIL_RENDER_COUNT,
+  MIN_RENDERABLE_HISTORY_ROWS,
+  OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD,
+  PROGRAMMATIC_SCROLL_GUARD_MS,
+  STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD,
+  STREAMING_AUTO_SCROLL_POLL_MS,
+  STREAMING_AUTO_SCROLL_STOP_THRESHOLD,
+  TAIL_LIVE_MESSAGE_COUNT,
+  TAIL_STATIC_MESSAGE_COUNT,
+  USER_LOCATOR_HIGHLIGHT_MS,
+  VIRTUAL_ROW_ESTIMATED_HEIGHT,
+  VIRTUAL_ROW_OVERSCAN,
+  findPendingAskUserQuestion,
+  getDistanceToBottom,
 } from './MessageList/utils'
 
 function AssistantReplyRail({

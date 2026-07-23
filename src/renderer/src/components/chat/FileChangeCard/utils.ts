@@ -2,7 +2,7 @@
 
 import type { ToolResultContent } from '@renderer/lib/api/types'
 import type { AgentRunFileChange } from '@renderer/stores/agent-store'
-import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
+import type { ToolCallStatus } from '@renderer/lib/agent/types'
 import { type DiffViewerChunk, type DiffViewerLine } from '../CodeDiffViewer'
 
 export interface FileChangeCardProps {

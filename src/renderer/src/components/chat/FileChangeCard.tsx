@@ -14,7 +14,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import type { ToolCallStatus } from '@renderer/lib/agent/types'
+import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import type { AgentRunFileChange } from '@renderer/stores/agent-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { MONO_FONT } from '@renderer/lib/constants'
