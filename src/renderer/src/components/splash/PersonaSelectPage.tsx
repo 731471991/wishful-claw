@@ -72,12 +72,7 @@ export function PersonaSelectPage(): React.JSX.Element {
 
       {/* Main content */}
       <main className="flex min-h-0 flex-1 items-center justify-center px-5 py-8">
-        <div className="w-full max-w-3xl space-y-8">
-          {/* Brand mark */}
-          <div className="flex size-12 items-center justify-center rounded-lg border bg-background shadow-sm">
-            <BrainCircuit className="size-6 text-primary" />
-          </div>
-
+        <div className="flex w-full max-w-3xl flex-col space-y-5">
           {/* Title & subtitle */}
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold">
@@ -107,7 +102,7 @@ export function PersonaSelectPage(): React.JSX.Element {
               </Button>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid max-h-[calc(100vh-280px)] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
               {personas.map((persona) => (
                 <PersonaCard
                   key={persona.id}
@@ -120,7 +115,7 @@ export function PersonaSelectPage(): React.JSX.Element {
           )}
 
           {/* Action bar */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex shrink-0 items-center justify-between pt-2">
             <p className="text-xs text-muted-foreground/60">
               {t('splash.personaSelect.hint', { defaultValue: '可以在设置中随时修改或创建新人格' })}
             </p>
