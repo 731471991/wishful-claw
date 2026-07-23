@@ -69,7 +69,29 @@ internal static class DbClient
             _db.CodeFirst.InitTables(
                 typeof(ProjectEntity),
                 typeof(SessionEntity),
-                typeof(MessageEntity));
+                typeof(MessageEntity),
+                typeof(MemoryArchiveEntity));
+
+            // FTS5 虚拟表（记忆全文搜索）
+            _db!.Ado.ExecuteCommand(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(" +
+                "scope UNINDEXED, key UNINDEXED, title, content, tier UNINDEXED);");
+
+            // memory_archive → memory_fts 同步触发器
+            _db.Ado.ExecuteCommand(
+                "CREATE TRIGGER IF NOT EXISTS memory_archive_ai AFTER INSERT ON memory_archive BEGIN " +
+                "INSERT INTO memory_fts(scope, key, title, content, tier) " +
+                "VALUES (new.scope, new.key, new.title, new.content, 'cold'); END;");
+            _db.Ado.ExecuteCommand(
+                "CREATE TRIGGER IF NOT EXISTS memory_archive_ad AFTER DELETE ON memory_archive BEGIN " +
+                "INSERT INTO memory_fts(memory_fts, scope, key, title, content, tier) " +
+                "VALUES ('delete', old.scope, old.key, old.title, old.content, 'cold'); END;");
+            _db.Ado.ExecuteCommand(
+                "CREATE TRIGGER IF NOT EXISTS memory_archive_au AFTER UPDATE ON memory_archive BEGIN " +
+                "INSERT INTO memory_fts(memory_fts, scope, key, title, content, tier) " +
+                "VALUES ('delete', old.scope, old.key, old.title, old.content, 'cold'); " +
+                "INSERT INTO memory_fts(scope, key, title, content, tier) " +
+                "VALUES (new.scope, new.key, new.title, new.content, 'cold'); END;");
 
             // ── Migrations: add columns that CodeFirst doesn't add to existing tables ──
             EnsureColumn(_db, "sessions", "persona_id", "TEXT");
