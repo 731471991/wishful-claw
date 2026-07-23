@@ -185,88 +185,48 @@ internal static class AgentLoop
 
             // ── Tool execution (iteration 4) ──
             var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+            var maxParallelTools = Math.Max(1, JsonHelpers.GetInt(parameters, "maxParallelTools", 1));
+            var maxToolCallsPerTurn = JsonHelpers.GetInt(parameters, "maxToolCallsPerTurn", 0); // 0 = unlimited
             var toolResults = new List<AgentRuntimeToolResult>();
             var registry = ToolModuleState.Registry;
 
-            foreach (var toolCall in turn.ToolCalls)
+            // Cap total tool calls per turn to prevent runaway LLM behavior
+            var toolCallsToExecute = turn.ToolCalls;
+            if (maxToolCallsPerTurn > 0 && toolCallsToExecute.Count > maxToolCallsPerTurn)
+            {
+                WorkerLog.Warn(
+                    $"agent tool calls capped runId={state.RunId} " +
+                    $"requested={toolCallsToExecute.Count} max={maxToolCallsPerTurn}");
+                toolCallsToExecute = toolCallsToExecute.Take(maxToolCallsPerTurn).ToList();
+            }
+
+            // Execute tools with concurrency control via SemaphoreSlim
+            var semaphore = new SemaphoreSlim(maxParallelTools, maxParallelTools);
+            var toolTasks = new List<Task<AgentRuntimeToolResult>>();
+
+            foreach (var toolCall in toolCallsToExecute)
             {
                 if (state.IsCancellationRequested)
                 {
-                    await EmitLoopEndAsync(state, context, "aborted");
-                    return;
+                    break;
                 }
 
-                var startedAt = NowMs();
+                await semaphore.WaitAsync(state.CancellationToken);
+                toolTasks.Add(ExecuteSingleToolAsync(
+                    toolCall, workingFolder, state, context, semaphore, registry));
+            }
 
-                await AgentRuntimeTools.EmitAsync(
-                    state, context,
-                    new AgentRuntimeStreamEvent(
-                        "tool_call_start",
-                        ToolCall: new AgentRuntimeToolCallState(
-                            toolCall.Id,
-                            toolCall.Name,
-                            toolCall.Input,
-                            "running",
-                            null,
-                            null,
-                            false,
-                            startedAt,
-                            null)));
-                string toolOutput;
-                bool isToolError = false;
+            // Wait for all started tool tasks to complete
+            if (toolTasks.Count > 0)
+            {
+                var results = await Task.WhenAll(toolTasks);
+                toolResults.AddRange(results);
+            }
 
-                if (registry is not null && registry.TryGetExecutor(toolCall.Name, out var executor))
-                {
-                    try
-                    {
-                        var toolContext = new ToolExecutionContext(workingFolder, state.SessionId, state.RunId, state.CancellationToken);
-                        var result = await executor.ExecuteAsync(toolCall.Input, toolContext);
-                        toolOutput = result.Content;
-                        isToolError = result.IsError;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        toolOutput = $"Tool execution failed: {ex.Message}";
-                        isToolError = true;
-                    }
-                }
-                else
-                {
-                    toolOutput = $"Unknown tool: {toolCall.Name}";
-                    isToolError = true;
-                }
-
-                var completedAt = NowMs();
-
-                await AgentRuntimeTools.EmitAsync(
-                    state, context,
-                    new AgentRuntimeStreamEvent(
-                        "tool_call_result",
-                        ToolCallId: toolCall.Id,
-                        ToolName: toolCall.Name,
-                        ToolCall: new AgentRuntimeToolCallState(
-                            toolCall.Id,
-                            toolCall.Name,
-                            toolCall.Input,
-                            isToolError ? "error" : "completed",
-                            AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
-                            isToolError ? toolOutput : null,
-                            false,
-                            startedAt,
-                            completedAt)));
-
-                toolResults.Add(new AgentRuntimeToolResult(
-                    toolCall.Id,
-                    AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
-                    isToolError ? true : null));
-
-                WorkerLog.Debug(
-                    $"agent tool executed runId={state.RunId} tool={toolCall.Name} " +
-                    $"id={toolCall.Id} error={isToolError} outputLen={toolOutput.Length}");
+            if (state.IsCancellationRequested)
+            {
+                await EmitLoopEndAsync(state, context, "aborted");
+                return;
             }
 
             // Add tool results as a user message to the conversation
@@ -285,6 +245,99 @@ internal static class AgentLoop
         await EmitLoopEndAsync(
             state, context,
             state.StopReason ?? (completed ? "completed" : "max_iterations"));
+    }
+
+    /// <summary>
+    /// Executes a single tool call with event emission. Used for concurrent execution.
+    /// </summary>
+    private static async Task<AgentRuntimeToolResult> ExecuteSingleToolAsync(
+        AgentRuntimeNativeToolCall toolCall,
+        string? workingFolder,
+        AgentRuntimeRunState state,
+        IWorkerRequestContext context,
+        SemaphoreSlim semaphore,
+        ToolRegistry? registry)
+    {
+        try
+        {
+            var startedAt = NowMs();
+
+            await AgentRuntimeTools.EmitAsync(
+                state, context,
+                new AgentRuntimeStreamEvent(
+                    "tool_call_start",
+                    ToolCall: new AgentRuntimeToolCallState(
+                        toolCall.Id,
+                        toolCall.Name,
+                        toolCall.Input,
+                        "running",
+                        null,
+                        null,
+                        false,
+                        startedAt,
+                        null)));
+
+            string toolOutput;
+            bool isToolError = false;
+
+            if (registry is not null && registry.TryGetExecutor(toolCall.Name, out var executor))
+            {
+                try
+                {
+                    var toolContext = new ToolExecutionContext(
+                        workingFolder, state.SessionId, state.RunId, state.CancellationToken);
+                    var result = await executor.ExecuteAsync(toolCall.Input, toolContext);
+                    toolOutput = result.Content;
+                    isToolError = result.IsError;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            else
+            {
+                toolOutput = $"Unknown tool: {toolCall.Name}";
+                isToolError = true;
+            }
+
+            var completedAt = NowMs();
+
+            await AgentRuntimeTools.EmitAsync(
+                state, context,
+                new AgentRuntimeStreamEvent(
+                    "tool_call_result",
+                    ToolCallId: toolCall.Id,
+                    ToolName: toolCall.Name,
+                    ToolCall: new AgentRuntimeToolCallState(
+                        toolCall.Id,
+                        toolCall.Name,
+                        toolCall.Input,
+                        isToolError ? "error" : "completed",
+                        AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
+                        isToolError ? toolOutput : null,
+                        false,
+                        startedAt,
+                        completedAt)));
+
+            WorkerLog.Debug(
+                $"agent tool executed runId={state.RunId} tool={toolCall.Name} " +
+                $"id={toolCall.Id} error={isToolError} outputLen={toolOutput.Length}");
+
+            return new AgentRuntimeToolResult(
+                toolCall.Id,
+                AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
+                isToolError ? true : null);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
     }
 
     /// <summary>

@@ -27,6 +27,8 @@ export interface AgentActions {
     tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
     workingFolder?: string
     maxIterations?: number
+    maxParallelTools?: number
+    maxToolCallsPerTurn?: number
   }) => Promise<void>
   cancelStream: () => Promise<void>
   handleEnvelope: (envelope: AgentStreamEnvelope) => void

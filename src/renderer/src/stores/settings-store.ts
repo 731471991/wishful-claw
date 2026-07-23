@@ -586,6 +586,9 @@ export const useSettingsStore = create<SettingsStore>()(
             ...(patch.maxParallelToolCalls === undefined
               ? {}
               : { maxParallelToolCalls: clampMaxParallelToolCalls(patch.maxParallelToolCalls) }),
+            ...(patch.maxToolCallsPerTurn === undefined
+              ? {}
+              : { maxToolCallsPerTurn: clampMaxToolCallsPerTurn(patch.maxToolCallsPerTurn) }),
             ...(patch.maxConcurrentSubAgents === undefined
               ? {}
               : {
@@ -799,6 +802,14 @@ export const useSettingsStore = create<SettingsStore>()(
           state.maxParallelToolCalls = clampMaxParallelToolCalls(state.maxParallelToolCalls)
         }
         if (
+          state.maxToolCallsPerTurn === undefined ||
+          typeof state.maxToolCallsPerTurn !== 'number'
+        ) {
+          state.maxToolCallsPerTurn = DEFAULT_MAX_TOOL_CALLS_PER_TURN
+        } else {
+          state.maxToolCallsPerTurn = clampMaxToolCallsPerTurn(state.maxToolCallsPerTurn)
+        }
+        if (
           state.maxConcurrentSubAgents === undefined ||
           typeof state.maxConcurrentSubAgents !== 'number'
         ) {
@@ -935,6 +946,7 @@ export const useSettingsStore = create<SettingsStore>()(
         editorWorkspaceEnabled: state.editorWorkspaceEnabled,
         editorRemoteLanguageServiceEnabled: state.editorRemoteLanguageServiceEnabled,
         maxParallelToolCalls: clampMaxParallelToolCalls(state.maxParallelToolCalls),
+        maxToolCallsPerTurn: clampMaxToolCallsPerTurn(state.maxToolCallsPerTurn),
         maxConcurrentSubAgents: clampMaxConcurrentSubAgents(state.maxConcurrentSubAgents),
         toolResultFormat: state.toolResultFormat,
         fileDiffViewMode: state.fileDiffViewMode,

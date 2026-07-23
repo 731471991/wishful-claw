@@ -138,7 +138,9 @@ export function useChatActions() {
         sessionId: targetSessionId,
         tools: tools ?? undefined,
         workingFolder,
-        maxIterations: 10
+        maxIterations: 10,
+        maxParallelTools: settings.maxParallelToolCalls,
+        maxToolCallsPerTurn: settings.maxToolCallsPerTurn
       })
 
       void opts

@@ -322,6 +322,82 @@ function GeneralPanel(): React.JSX.Element {
         </div>
       </section>
 
+      {/* Tool Execution */}
+      <section className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Tool Execution</label>
+          <p className="text-xs text-muted-foreground">
+            Control how many tools the agent can run at once and per turn.
+          </p>
+        </div>
+
+        {/* Max Parallel Tools */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between max-w-lg">
+            <div>
+              <label className="text-xs font-medium">Max Parallel Tools</label>
+              <p className="text-xs text-muted-foreground">Number of tools executed simultaneously</p>
+            </div>
+            <span className="text-xs text-muted-foreground">{settings.maxParallelToolCalls}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={1}
+              max={16}
+              step={1}
+              value={settings.maxParallelToolCalls}
+              onChange={(e) => settings.updateSettings({ maxParallelToolCalls: parseInt(e.target.value) })}
+              className="flex-1 max-w-lg accent-primary"
+            />
+            <Input
+              type="number"
+              min={1}
+              max={16}
+              value={settings.maxParallelToolCalls}
+              onChange={(e) => {
+                const next = Math.min(16, Math.max(1, parseInt(e.target.value, 10) || 8))
+                settings.updateSettings({ maxParallelToolCalls: next })
+              }}
+              className="max-w-24 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Max Tool Calls Per Turn */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between max-w-lg">
+            <div>
+              <label className="text-xs font-medium">Max Tool Calls Per Turn</label>
+              <p className="text-xs text-muted-foreground">Cap total tool calls in a single AI response (0 = unlimited)</p>
+            </div>
+            <span className="text-xs text-muted-foreground">{settings.maxToolCallsPerTurn}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={1}
+              max={100}
+              step={1}
+              value={settings.maxToolCallsPerTurn}
+              onChange={(e) => settings.updateSettings({ maxToolCallsPerTurn: parseInt(e.target.value) })}
+              className="flex-1 max-w-lg accent-primary"
+            />
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={settings.maxToolCallsPerTurn}
+              onChange={(e) => {
+                const next = Math.min(100, Math.max(1, parseInt(e.target.value, 10) || 20))
+                settings.updateSettings({ maxToolCallsPerTurn: next })
+              }}
+              className="max-w-24 text-xs"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Developer Mode */}
       <section className="space-y-3">
         <div>
