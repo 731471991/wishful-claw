@@ -116,38 +116,28 @@ commit: c973139
 
 ---
 
-## Step 5: FileChangeCard.tsx — 子组件拆分 (P4)
+## Step 5: FileChangeCard.tsx — 子组件拆分 (P4) ✅
 
-**现状**：1732行。
+**现状**：1732行 → 1316行，提取纯工具函数和类型到 FileChangeCard/utils.ts (434行)。
 
-**拆分方向**：
-- 提取 diff 解析工具函数
-- 提取 FilePreviewShell / CodeFrame 等子组件
-- 提取 detectLang/shortPath 等工具函数
+commit: 95c8343
 
 ---
 
-## Step 6: ModelSwitcher.tsx — 子组件拆分 (P5)
+## Step 6: ModelSwitcher.tsx — 子组件拆分 (P5) ✅
 
-**现状**：1540行。
+**现状**：1540行 → 1398行，提取纯工具函数和类型到 ModelSwitcher/utils.ts (162行)。
 
-**拆分方向**：
-- 提取 SettingSection / PillToggle 等通用 UI 子组件
-- 提取 ModelCapabilityTags / ModelHoverDetails 等展示组件
-- 提取 thinking budget 计算函数
-- 主文件保留 ModelSwitcher 主组件
+commit: 2f1b653
 
 ---
 
-## Step 7: memory-automation.ts — 按管道阶段拆分 (P6)
+## Step 7: memory-automation.ts — 按管道阶段拆分 (P6) ✅
 
-**现状**：1488行。
+**现状**：1488行 → 873行，提取56个纯函数/常量/类型到 memory-automation-utils.ts (683行)。
+同时修复 MessageList.tsx 语法错误（modeHints缺失闭合括号）、MessageList/utils.ts 缺少export、FileChangeCard 导入错误。
 
-**拆分方向**：
-- 提取 run session 逻辑
-- 提取 daily rollup 逻辑
-- 提取 consolidation 逻辑
-- 提取共享工具函数
+commit: 50a3e80
 
 ---
 
