@@ -5,7 +5,7 @@ import type { AgentRunFileChange } from '@renderer/stores/agent-store'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import { type DiffViewerChunk, type DiffViewerLine } from '../CodeDiffViewer'
 
-interface FileChangeCardProps {
+export interface FileChangeCardProps {
   /** Tool name: Write, Edit, Delete */
   name: string
   input: Record<string, unknown>
@@ -20,7 +20,7 @@ interface FileChangeCardProps {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-function detectLang(filePath: string): string {
+export function detectLang(filePath: string): string {
   const ext = filePath.includes('.') ? (filePath.split('.').pop()?.toLowerCase() ?? '') : ''
   const map: Record<string, string> = {
     ts: 'typescript',
@@ -73,25 +73,25 @@ function detectLang(filePath: string): string {
   return map[ext] ?? 'text'
 }
 
-function shortPath(filePath: string): string {
+export function shortPath(filePath: string): string {
   return filePath.split(/[\\/]/).slice(-2).join('/')
 }
 
-function fileName(filePath: string): string {
+export function fileName(filePath: string): string {
   const parts = filePath.split(/[\\/]/)
   return parts[parts.length - 1] || filePath
 }
 
-function normalizeLineEndings(text: string): string {
+export function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, '\n')
 }
 
-function lineCount(text: string): number {
+export function lineCount(text: string): number {
   const normalized = normalizeLineEndings(text)
   return normalized.length === 0 ? 0 : normalized.split('\n').length
 }
 
-function formatCompactCount(value: number): string {
+export function formatCompactCount(value: number): string {
   if (!Number.isFinite(value)) return '0'
   return new Intl.NumberFormat(undefined, {
     notation: value >= 10_000 ? 'compact' : 'standard',
@@ -99,16 +99,16 @@ function formatCompactCount(value: number): string {
   }).format(value)
 }
 
-type FilePreviewTone = 'create' | 'edit'
-type CompactActionOp = 'create' | 'modify' | 'delete'
+export type FilePreviewTone = 'create' | 'edit'
+export type CompactActionOp = 'create' | 'modify' | 'delete'
 
-function snapshotText(
+export function snapshotText(
   snapshot: AgentRunFileChange['before'] | AgentRunFileChange['after']
 ): string {
   return snapshot.text ?? snapshot.previewText ?? ''
 }
 
-function snapshotLineTotal(
+export function snapshotLineTotal(
   snapshot: AgentRunFileChange['before'] | AgentRunFileChange['after']
 ): number {
   return typeof snapshot.lineCount === 'number'
@@ -116,15 +116,15 @@ function snapshotLineTotal(
     : lineCount(snapshotText(snapshot))
 }
 
-function canRenderInlineSnapshot(
+export function canRenderInlineSnapshot(
   snapshot: AgentRunFileChange['before'] | AgentRunFileChange['after']
 ): boolean {
   return typeof snapshot.text === 'string'
 }
 
-type DiffLine = DiffViewerLine
+export type DiffLine = DiffViewerLine
 
-function computeLargeDiff(a: string[], b: string[]): DiffLine[] {
+export function computeLargeDiff(a: string[], b: string[]): DiffLine[] {
   const result: DiffLine[] = []
   const m = a.length
   const n = b.length
@@ -162,7 +162,7 @@ function computeLargeDiff(a: string[], b: string[]): DiffLine[] {
   return result
 }
 
-function computeDiff(oldStr: string, newStr: string): DiffLine[] {
+export function computeDiff(oldStr: string, newStr: string): DiffLine[] {
   const a = normalizeLineEndings(oldStr).split('\n')
   const b = normalizeLineEndings(newStr).split('\n')
   const m = a.length,
@@ -196,7 +196,7 @@ function computeDiff(oldStr: string, newStr: string): DiffLine[] {
   return result.reverse()
 }
 
-function summarizeDiff(lines: DiffLine[]): { added: number; deleted: number } {
+export function summarizeDiff(lines: DiffLine[]): { added: number; deleted: number } {
   return lines.reduce(
     (acc, line) => {
       if (line.type === 'add') acc.added += 1
@@ -207,9 +207,9 @@ function summarizeDiff(lines: DiffLine[]): { added: number; deleted: number } {
   )
 }
 
-type DiffChunk = DiffViewerChunk
+export type DiffChunk = DiffViewerChunk
 
-function foldContext(lines: DiffLine[], ctx: number = 2): DiffChunk[] {
+export function foldContext(lines: DiffLine[], ctx: number = 2): DiffChunk[] {
   const chunks: DiffChunk[] = []
   let keepRun: DiffLine[] = []
 
@@ -244,12 +244,12 @@ function foldContext(lines: DiffLine[], ctx: number = 2): DiffChunk[] {
   return chunks
 }
 
-function diffDisplayLineNumber(line: DiffLine): number | undefined {
+export function diffDisplayLineNumber(line: DiffLine): number | undefined {
   if (line.type === 'del') return line.oldNum
   return line.newNum ?? line.oldNum
 }
 
-function buildDiffCopyText(lines: DiffLine[]): string {
+export function buildDiffCopyText(lines: DiffLine[]): string {
   return lines
     .map((line) => {
       const lineNumber = diffDisplayLineNumber(line)
@@ -259,7 +259,7 @@ function buildDiffCopyText(lines: DiffLine[]): string {
     .join('\n')
 }
 
-function diffLineStyle(line: DiffLine | undefined): React.CSSProperties {
+export function diffLineStyle(line: DiffLine | undefined): React.CSSProperties {
   if (line?.type === 'add') {
     return {
       display: 'block',
@@ -284,14 +284,14 @@ function diffLineStyle(line: DiffLine | undefined): React.CSSProperties {
   }
 }
 
-interface TrackedDiffContent {
+export interface TrackedDiffContent {
   beforeText: string
   afterText: string
 }
 
 // ── Status Icon ──────────────────────────────────────────────────
 
-interface ResolvedEditPayload {
+export interface ResolvedEditPayload {
   oldText: string
   newText: string
   oldPreview: string
@@ -302,13 +302,13 @@ interface ResolvedEditPayload {
   newTruncated: boolean
 }
 
-interface ResolvedWritePayload {
+export interface ResolvedWritePayload {
   text: string
   preview: string
   lineTotal: number
 }
 
-function resolveEditPayload(input: Record<string, unknown>): ResolvedEditPayload {
+export function resolveEditPayload(input: Record<string, unknown>): ResolvedEditPayload {
   const oldText = typeof input.old_string === 'string' ? input.old_string : ''
   const newText = typeof input.new_string === 'string' ? input.new_string : ''
   const oldPreview =
@@ -334,7 +334,7 @@ function resolveEditPayload(input: Record<string, unknown>): ResolvedEditPayload
   }
 }
 
-function resolveWritePayload(input: Record<string, unknown>): ResolvedWritePayload {
+export function resolveWritePayload(input: Record<string, unknown>): ResolvedWritePayload {
   const text = typeof input.content === 'string' ? input.content : ''
   const preview = typeof input.content_preview === 'string' ? input.content_preview : text
   const lineTotal =
@@ -349,7 +349,7 @@ function resolveWritePayload(input: Record<string, unknown>): ResolvedWritePaylo
   return { text, preview, lineTotal }
 }
 
-function hasPendingEditPreviewContent(input: Record<string, unknown>): boolean {
+export function hasPendingEditPreviewContent(input: Record<string, unknown>): boolean {
   const filePath = String(input.file_path ?? input.path ?? '').trim()
   const explanation = typeof input.explanation === 'string' ? input.explanation.trim() : ''
   const oldStr = typeof input.old_string === 'string' ? input.old_string : ''
@@ -375,7 +375,7 @@ function hasPendingEditPreviewContent(input: Record<string, unknown>): boolean {
   )
 }
 
-function resolveEditSummaryDiff(
+export function resolveEditSummaryDiff(
   payload: ResolvedEditPayload,
   trackedChange?: AgentRunFileChange
 ): { added: number; deleted: number; oldStr: string; newStr: string } | null {
@@ -407,16 +407,16 @@ function resolveEditSummaryDiff(
   }
 }
 
-function trackedStatusLabelKey(change: AgentRunFileChange): string {
+export function trackedStatusLabelKey(change: AgentRunFileChange): string {
   if (change.status === 'reverted') return 'fileChange.status.reverted'
   return 'fileChange.status.pending'
 }
 
-function trackedTransportLabelKey(change: AgentRunFileChange): string {
+export function trackedTransportLabelKey(change: AgentRunFileChange): string {
   return change.transport === 'ssh' ? 'fileChange.transport.ssh' : 'fileChange.transport.local'
 }
 
-function trackedStatusTone(change: AgentRunFileChange): string {
+export function trackedStatusTone(change: AgentRunFileChange): string {
   if (change.status === 'reverted')
     return 'bg-muted text-foreground/70 dark:bg-zinc-500/10 dark:text-zinc-300'
   return change.transport === 'ssh'
@@ -424,7 +424,7 @@ function trackedStatusTone(change: AgentRunFileChange): string {
     : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
 }
 
-function trackedStatusDotTone(change: AgentRunFileChange): string {
+export function trackedStatusDotTone(change: AgentRunFileChange): string {
   if (change.status === 'reverted') return 'bg-zinc-500'
   return change.transport === 'ssh' ? 'bg-sky-400' : 'bg-zinc-400'
 }

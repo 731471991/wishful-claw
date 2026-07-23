@@ -15,7 +15,7 @@ import { DB_MESSAGES_LIST_LOCATOR_MSGPACK_CHANNEL } from '../../../../shared/mes
 
 }
 
-interface MessageListProps {
+export interface MessageListProps {
   sessionId?: string | null
   onRetry?: () => void
   onContinue?: () => void
@@ -25,20 +25,20 @@ interface MessageListProps {
   fullWidth?: boolean
 }
 
-type RenderableMessage = ChatRenderableMessageMeta
+export type RenderableMessage = ChatRenderableMessageMeta
 
-type ToolResultsLookup = Map<string, { content: ToolResultContent; isError?: boolean }>
+export type ToolResultsLookup = Map<string, { content: ToolResultContent; isError?: boolean }>
 
-type MessageListRow = { type: 'message'; key: string; data: RenderableMessage }
+export type MessageListRow = { type: 'message'; key: string; data: RenderableMessage }
 
-type AutoScrollMode = 'off' | 'user' | 'stream'
+export type AutoScrollMode = 'off' | 'user' | 'stream'
 
-interface AskUserQuestionPresence {
+export interface AskUserQuestionPresence {
   assistantMessageId: string
   toolUseId: string
 }
 
-function getMessageToolUseIds(message: UnifiedMessage): string[] {
+export function getMessageToolUseIds(message: UnifiedMessage): string[] {
   if (!Array.isArray(message.content)) return []
   return message.content
     .filter((block): block is Extract<ContentBlock, { type: 'tool_use' }> => {
@@ -48,7 +48,7 @@ function getMessageToolUseIds(message: UnifiedMessage): string[] {
     .filter(Boolean)
 }
 
-function toolResultContentToText(content: ToolResultContent | undefined): string {
+export function toolResultContentToText(content: ToolResultContent | undefined): string {
   if (!content) return ''
   if (typeof content === 'string') return content
   return content
@@ -57,7 +57,7 @@ function toolResultContentToText(content: ToolResultContent | undefined): string
     .join('\n')
 }
 
-function getPlanReviewPlanId(content: ToolResultContent | undefined): string | null {
+export function getPlanReviewPlanId(content: ToolResultContent | undefined): string | null {
   const text = toolResultContentToText(content)
   if (!text.trim()) return null
   const parsed = decodeStructuredToolResult(text)
@@ -66,7 +66,7 @@ function getPlanReviewPlanId(content: ToolResultContent | undefined): string | n
   return planId || null
 }
 
-function collectDuplicatePlanReviewToolUseIds(
+export function collectDuplicatePlanReviewToolUseIds(
   messages: UnifiedMessage[],
   toolResultsLookup: Map<string, ToolResultsLookup>
 ): Set<string> {
@@ -111,25 +111,25 @@ function collectDuplicatePlanReviewToolUseIds(
   return hidden
 }
 
-function mergeHiddenToolUseIds(first?: Set<string>, second?: Set<string>): Set<string> | undefined {
+export function mergeHiddenToolUseIds(first?: Set<string>, second?: Set<string>): Set<string> | undefined {
   if (!first || first.size === 0) return second && second.size > 0 ? second : undefined
   if (!second || second.size === 0) return first
   return new Set([...first, ...second])
 }
 
-function hasCompleteTailToolExecutionResults(state: TailToolExecutionState | null): boolean {
+export function hasCompleteTailToolExecutionResults(state: TailToolExecutionState | null): boolean {
   if (!state || state.toolUseBlocks.length === 0) return false
 
   return state.toolUseBlocks.every((toolUse) => state.toolResultMap.has(toolUse.id))
 }
 
-function hasEmptyAssistantContent(message: UnifiedMessage): boolean {
+export function hasEmptyAssistantContent(message: UnifiedMessage): boolean {
   if (message.role !== 'assistant') return false
   if (typeof message.content === 'string') return message.content.length === 0
   return Array.isArray(message.content) && message.content.length === 0
 }
 
-interface MessageLocatorIndexRow {
+export interface MessageLocatorIndexRow {
   id: string
   session_id: string
   role: string
@@ -139,7 +139,7 @@ interface MessageLocatorIndexRow {
   sort_order: number
 }
 
-interface MessageLocatorSource {
+export interface MessageLocatorSource {
   id: string
   role: UnifiedMessage['role']
   content: UnifiedMessage['content']
@@ -149,15 +149,15 @@ interface MessageLocatorSource {
   source?: UnifiedMessage['source']
 }
 
-type AssistantRailMarkerKind = 'assistant' | 'streaming' | 'summary' | 'user'
+export type AssistantRailMarkerKind = 'assistant' | 'streaming' | 'summary' | 'user'
 
-interface AssistantRailLayoutRow extends MessageLocatorSource {
+export interface AssistantRailLayoutRow extends MessageLocatorSource {
   estimatedTop: number
   estimatedHeight: number
   markerKind: AssistantRailMarkerKind | null
 }
 
-interface AssistantReplyRailItem {
+export interface AssistantReplyRailItem {
   id: string
   index: number
   preview: string
@@ -170,16 +170,16 @@ interface AssistantReplyRailItem {
   kind: AssistantRailMarkerKind
 }
 
-interface AssistantRailLayout {
+export interface AssistantRailLayout {
   rows: AssistantRailLayoutRow[]
   items: AssistantReplyRailItem[]
   totalEstimatedHeight: number
 }
 
-type ChatStoreSnapshot = ReturnType<typeof useChatStore.getState>
-type TeamStoreSnapshot = ReturnType<typeof useTeamStore.getState>
+export type ChatStoreSnapshot = ReturnType<typeof useChatStore.getState>
+export type TeamStoreSnapshot = ReturnType<typeof useTeamStore.getState>
 
-interface MessageRowProps {
+export interface MessageRowProps {
   message: UnifiedMessage
   sessionId?: string | null
   sessionAssistantMessageIds?: readonly string[]
@@ -238,15 +238,15 @@ const EMPTY_ASSISTANT_RAIL_LAYOUT: AssistantRailLayout = {
   totalEstimatedHeight: 0
 }
 
-function getMessageColumnClass(fullWidth: boolean): string {
+export function getMessageColumnClass(fullWidth: boolean): string {
   return fullWidth ? MESSAGE_COLUMN_FULL_WIDTH_CLASS : MESSAGE_COLUMN_CLASS
 }
 
-function getMessageColumnCompactClass(fullWidth: boolean): string {
+export function getMessageColumnCompactClass(fullWidth: boolean): string {
   return fullWidth ? MESSAGE_COLUMN_FULL_WIDTH_CLASS : MESSAGE_COLUMN_COMPACT_CLASS
 }
 
-interface MessageListSessionSelection {
+export interface MessageListSessionSelection {
   messages: UnifiedMessage[]
   messagesLoaded: boolean
   messageCount: number
@@ -255,7 +255,7 @@ interface MessageListSessionSelection {
   projectId?: string
 }
 
-interface SessionScopedTeamSelection {
+export interface SessionScopedTeamSelection {
   activeTeam: ActiveTeam | null
   teamHistory: ActiveTeam[]
   isTeamRunning: boolean
@@ -282,7 +282,7 @@ const EMPTY_SESSION_TEAM_SELECTION: SessionScopedTeamSelection = {
 
 const sessionScopedTeamSelectionCache = new Map<string, SessionScopedTeamSelection>()
 
-function areToolResultsEqual(a?: ToolResultsLookup, b?: ToolResultsLookup): boolean {
+export function areToolResultsEqual(a?: ToolResultsLookup, b?: ToolResultsLookup): boolean {
   if (a === b) return true
   if (!a || !b) return !a && !b
   if (a.size !== b.size) return false
@@ -297,7 +297,7 @@ function areToolResultsEqual(a?: ToolResultsLookup, b?: ToolResultsLookup): bool
   return true
 }
 
-function areStringSetsEqual(a?: Set<string>, b?: Set<string>): boolean {
+export function areStringSetsEqual(a?: Set<string>, b?: Set<string>): boolean {
   if (a === b) return true
   if (!a || !b) return !a && !b
   if (a.size !== b.size) return false
@@ -309,7 +309,7 @@ function areStringSetsEqual(a?: Set<string>, b?: Set<string>): boolean {
   return true
 }
 
-function areStringArraysEqual(a?: readonly string[], b?: readonly string[]): boolean {
+export function areStringArraysEqual(a?: readonly string[], b?: readonly string[]): boolean {
   if (a === b) return true
   if (!a || !b) return !a && !b
   if (a.length !== b.length) return false
@@ -321,7 +321,7 @@ function areStringArraysEqual(a?: readonly string[], b?: readonly string[]): boo
   return true
 }
 
-function areRequestRetryStatesEqual(
+export function areRequestRetryStatesEqual(
   a?: RequestRetryState | null,
   b?: RequestRetryState | null
 ): boolean {
@@ -337,7 +337,7 @@ function areRequestRetryStatesEqual(
   )
 }
 
-function buildTeamMemberRenderSignature(team: ActiveTeam): string {
+export function buildTeamMemberRenderSignature(team: ActiveTeam): string {
   return team.members
     .map((member) =>
       [
@@ -357,7 +357,7 @@ function buildTeamMemberRenderSignature(team: ActiveTeam): string {
     .join('|')
 }
 
-function buildTeamTaskRenderSignature(team: ActiveTeam): string {
+export function buildTeamTaskRenderSignature(team: ActiveTeam): string {
   return team.tasks
     .map((task) =>
       [
@@ -372,7 +372,7 @@ function buildTeamTaskRenderSignature(team: ActiveTeam): string {
     .join('|')
 }
 
-function buildTeamMessageRenderSignature(team: ActiveTeam): string {
+export function buildTeamMessageRenderSignature(team: ActiveTeam): string {
   const lastMessage = team.messages[team.messages.length - 1]
   return [
     String(team.messages.length),
@@ -382,7 +382,7 @@ function buildTeamMessageRenderSignature(team: ActiveTeam): string {
   ].join(':')
 }
 
-function buildTeamRenderSignature(team: ActiveTeam): string {
+export function buildTeamRenderSignature(team: ActiveTeam): string {
   return [
     team.name,
     team.description,
@@ -395,7 +395,7 @@ function buildTeamRenderSignature(team: ActiveTeam): string {
   ].join('::')
 }
 
-function isActiveTeamRunning(team: ActiveTeam): boolean {
+export function isActiveTeamRunning(team: ActiveTeam): boolean {
   return (
     team.tasks.some((task) => task.status !== 'completed') ||
     team.members.some((member) => member.status === 'working' || member.status === 'waiting')
@@ -407,7 +407,7 @@ function isActiveTeamRunning(team: ActiveTeam): boolean {
 // when the source messages array hasn't changed.
 const chatMessageConversionCache = new WeakMap<readonly unknown[], UnifiedMessage[]>()
 
-function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMessage[] {
+export function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMessage[] {
   const cached = chatMessageConversionCache.get(messages)
   if (cached) return cached
 
@@ -497,7 +497,7 @@ function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMess
   return converted
 }
 
-function selectMessageListSession(
+export function selectMessageListSession(
   state: ChatStoreSnapshot,
   sessionId: string | null | undefined
 ): MessageListSessionSelection {
@@ -522,7 +522,7 @@ function selectMessageListSession(
   }
 }
 
-function selectSessionScopedTeamState(
+export function selectSessionScopedTeamState(
   state: TeamStoreSnapshot,
   sessionId: string | null | undefined
 ): SessionScopedTeamSelection {
@@ -559,7 +559,7 @@ function selectSessionScopedTeamState(
   return nextSelection
 }
 
-function getOrchestrationRunSignature(
+export function getOrchestrationRunSignature(
   run?: import('@renderer/lib/orchestration/types').OrchestrationRun | null
 ): string {
   if (!run) return ''
@@ -585,7 +585,7 @@ function getOrchestrationRunSignature(
 }
 void getOrchestrationRunSignature
 
-function areMessageRowPropsEqual(prev: MessageRowProps, next: MessageRowProps): boolean {
+export function areMessageRowPropsEqual(prev: MessageRowProps, next: MessageRowProps): boolean {
   return (
     prev.message === next.message &&
     prev.sessionId === next.sessionId &&
@@ -614,11 +614,11 @@ function areMessageRowPropsEqual(prev: MessageRowProps, next: MessageRowProps): 
   )
 }
 
-function getDistanceToBottom(ref: HTMLDivElement): number {
+export function getDistanceToBottom(ref: HTMLDivElement): number {
   return Math.max(0, ref.scrollHeight - ref.scrollTop - ref.clientHeight)
 }
 
-function findPendingAskUserQuestion(
+export function findPendingAskUserQuestion(
   rows: MessageListRow[],
   toolResultsLookup: Map<string, ToolResultsLookup>,
   messageLookup: Map<string, UnifiedMessage>
@@ -641,20 +641,20 @@ function findPendingAskUserQuestion(
   return null
 }
 
-function normalizeLocatorPreview(text: string): string {
+export function normalizeLocatorPreview(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
 }
 
-function truncateAssistantRailPreview(text: string): string {
+export function truncateAssistantRailPreview(text: string): string {
   if (text.length <= ASSISTANT_RAIL_PREVIEW_LIMIT) return text
   return `${text.slice(0, ASSISTANT_RAIL_PREVIEW_LIMIT - 1).trimEnd()}...`
 }
 
-function isSystemPromptText(text: string): boolean {
+export function isSystemPromptText(text: string): boolean {
   return text.trim().toLowerCase().startsWith('<system')
 }
 
-function getUserMessageText(content: UnifiedMessage['content']): string {
+export function getUserMessageText(content: UnifiedMessage['content']): string {
   if (typeof content === 'string') return isSystemPromptText(content) ? '' : content
   return content
     .filter(
@@ -665,7 +665,7 @@ function getUserMessageText(content: UnifiedMessage['content']): string {
     .join('\n')
 }
 
-function getAssistantVisibleText(content: UnifiedMessage['content']): string {
+export function getAssistantVisibleText(content: UnifiedMessage['content']): string {
   if (typeof content === 'string') return content
   return content
     .filter((block) => block.type === 'text' || block.type === 'agent_error')
@@ -677,23 +677,23 @@ function getAssistantVisibleText(content: UnifiedMessage['content']): string {
     .join('\n')
 }
 
-function countToolUseBlocks(content: UnifiedMessage['content']): number {
+export function countToolUseBlocks(content: UnifiedMessage['content']): number {
   if (typeof content === 'string') return 0
   return content.filter((block) => block.type === 'tool_use').length
 }
 
-function countCodeFenceBlocks(text: string): number {
+export function countCodeFenceBlocks(text: string): number {
   return text.match(/```/g)?.length ?? 0
 }
 
-function isTeamLocatorSource(source: MessageLocatorSource): boolean {
+export function isTeamLocatorSource(source: MessageLocatorSource): boolean {
   if (source.source === 'team') return true
   return (
     typeof source.content === 'string' && /^\[Team message from .+?\]:\n?/u.test(source.content)
   )
 }
 
-function shouldShowAssistantRailMarker(
+export function shouldShowAssistantRailMarker(
   source: MessageLocatorSource,
   hiddenCompactSummaryIds: Set<string>
 ): boolean {
@@ -710,7 +710,7 @@ function shouldShowAssistantRailMarker(
   )
 }
 
-function getAssistantRailMarkerKind(
+export function getAssistantRailMarkerKind(
   source: MessageLocatorSource,
   streamingMessageId: string | null,
   hiddenCompactSummaryIds: Set<string>
@@ -722,7 +722,7 @@ function getAssistantRailMarkerKind(
   return 'assistant'
 }
 
-function buildAssistantRailPreview(
+export function buildAssistantRailPreview(
   source: MessageLocatorSource,
   kind: AssistantRailMarkerKind,
   t: TFunction
@@ -774,7 +774,7 @@ function buildAssistantRailPreview(
   })
 }
 
-function estimateLocatorRowHeight(source: MessageLocatorSource): number {
+export function estimateLocatorRowHeight(source: MessageLocatorSource): number {
   if (source.meta?.compressionStatus) return 64
   if (source.meta?.compactBoundary) return 40
   if (source.meta?.compactSummary) return 112
@@ -809,7 +809,7 @@ function estimateLocatorRowHeight(source: MessageLocatorSource): number {
   return 48
 }
 
-function buildAssistantRailLayout(args: {
+export function buildAssistantRailLayout(args: {
   sources: MessageLocatorSource[]
   streamingMessageId: string | null
   measuredHeights: Map<string, number>
@@ -856,7 +856,7 @@ function buildAssistantRailLayout(args: {
   return { rows, items, totalEstimatedHeight }
 }
 
-function parseLocatorRowSource(row: MessageLocatorIndexRow): MessageLocatorSource {
+export function parseLocatorRowSource(row: MessageLocatorIndexRow): MessageLocatorSource {
   return {
     id: row.id,
     role: row.role as UnifiedMessage['role'],
@@ -867,16 +867,16 @@ function parseLocatorRowSource(row: MessageLocatorIndexRow): MessageLocatorSourc
   }
 }
 
-function countImageBlocks(content: UnifiedMessage['content']): number {
+export function countImageBlocks(content: UnifiedMessage['content']): number {
   if (typeof content === 'string') return 0
   return content.filter((block) => block.type === 'image' || block.type === 'image_error').length
 }
 
-function getCompactRailGapPx(total: number): number {
+export function getCompactRailGapPx(total: number): number {
   return Math.max(3.5, Math.min(9, 176 / (Math.max(2, total) - 1)))
 }
 
-function getCompactRailMarkerOffsetPx(index: number, total: number): number {
+export function getCompactRailMarkerOffsetPx(index: number, total: number): number {
   const safeTotal = Math.max(1, total)
   if (safeTotal === 1) return 0
 
@@ -884,20 +884,20 @@ function getCompactRailMarkerOffsetPx(index: number, total: number): number {
   return (index - (safeTotal - 1) / 2) * gapPx
 }
 
-function getCompactRailMarkerTop(index: number, total: number): string {
+export function getCompactRailMarkerTop(index: number, total: number): string {
   const offsetPx = getCompactRailMarkerOffsetPx(index, total)
   return `calc(50% + ${Number(offsetPx.toFixed(2))}px)`
 }
 
-function getCompactRailMarkerY(rect: DOMRect, index: number, total: number): number {
+export function getCompactRailMarkerY(rect: DOMRect, index: number, total: number): number {
   return rect.top + rect.height / 2 + getCompactRailMarkerOffsetPx(index, total)
 }
 
-function formatLocatorTime(timestamp: number): string {
+export function formatLocatorTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function splitLocatorPreview(preview: string): { title: string; detail: string | null } {
+export function splitLocatorPreview(preview: string): { title: string; detail: string | null } {
   const normalized = preview.trim()
   if (normalized.length <= 30) return { title: normalized, detail: null }
 
@@ -913,7 +913,7 @@ function splitLocatorPreview(preview: string): { title: string; detail: string |
   }
 }
 
-function parseLocatorContent(rawContent: string): UnifiedMessage['content'] {
+export function parseLocatorContent(rawContent: string): UnifiedMessage['content'] {
   try {
     const parsed = JSON.parse(rawContent)
     if (typeof parsed === 'string' || Array.isArray(parsed)) return parsed
@@ -923,7 +923,7 @@ function parseLocatorContent(rawContent: string): UnifiedMessage['content'] {
   return ''
 }
 
-function parseLocatorMeta(rawMeta: string | null): UnifiedMessage['meta'] {
+export function parseLocatorMeta(rawMeta: string | null): UnifiedMessage['meta'] {
   if (!rawMeta) return undefined
   try {
     return JSON.parse(rawMeta) as UnifiedMessage['meta']

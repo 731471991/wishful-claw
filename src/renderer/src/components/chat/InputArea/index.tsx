@@ -451,8 +451,38 @@ export function InputArea({
   const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
   const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
 
- [activeSessionId, editingQueueItemId, t]
+
+  const applyEditorStateFromSerializedText = React.useCallback(
+    (nextText: string, baseFiles: SelectedFileItem[] = selectedFilesRef.current) => {
+      const nextState = deserializeEditorState(nextText, workingFolder, baseFiles)
+      setDocumentNodes(nextState.document)
+      setSelectedFiles(nextState.selectedFiles)
+    },
+    [workingFolder]
   )
+
+  const setText = React.useCallback(
+    (value: string | ((prev: string) => string)) => {
+      const previousText = textRef.current
+      const nextText = typeof value === 'function' ? value(previousText) : value
+      applyEditorStateFromSerializedText(nextText, selectedFilesRef.current)
+    },
+    [applyEditorStateFromSerializedText]
+  )
+
+  const focusInputAtEnd = React.useCallback(() => {
+    editorRef.current?.focusAtEnd()
+  }, [])
+
+  const {
+    isOptimizing, optimizationOptions, showOptimizationDialog,
+    setShowOptimizationDialog, selectedOptionIndex, setSelectedOptionIndex,
+    contentScrollRef, handleOptimizePrompt, handleSelectOption, handleCancelOptimization
+  } = usePromptOptimizer({
+    text, currentLanguage, setText, focusInputAtEnd
+  })
+
+  const hasFileReferences = React.useMemo(() => selectedFiles.length > 0, [selectedFiles])
 
   const replaceSelectionWithText = React.useCallback(
     (
