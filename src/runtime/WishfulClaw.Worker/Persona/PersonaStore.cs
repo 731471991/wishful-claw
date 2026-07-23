@@ -271,20 +271,23 @@ internal sealed class PersonaStore
 
     private static string ReadEmbeddedResource(Assembly assembly, string presetId, string fileName)
     {
-        // Resource name format: WishfulClaw.Worker.Resources.Personas.{presetId}.{fileName}
-        var resourceName = $"{BuiltinResourcePrefix}.{presetId}.{fileName}";
+        // .NET embeds resources with dots as separators.
+        // Directory names with hyphens (e.g. "lao-zheng") become underscores in resource names (e.g. "lao_zheng").
+        // Try both the original name and the underscore-normalized name.
+        var normalizedPresetId = presetId.Replace('-', '_');
 
-        // Try with .md extension stripped (dots in filenames become dots in resource names)
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
+        foreach (var idVariant in new[] { presetId, normalizedPresetId })
         {
-            // Try alternate: directory-style resource name
-            // dotnet embeds files with directory separators as dots
-            WorkerLog.Debug($"embedded resource not found: {resourceName}");
-            return string.Empty;
+            var resourceName = $"{BuiltinResourcePrefix}.{idVariant}.{fileName}";
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream is not null)
+            {
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
         }
 
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        WorkerLog.Debug($"embedded resource not found: {BuiltinResourcePrefix}.{presetId}.{fileName}");
+        return string.Empty;
     }
 }
