@@ -28,7 +28,7 @@
     "back": "Back",
     "welcome": {
       "title": "Welcome to Wishful Claw",
-      "subtitle": "More than an AI assistant — it's your programming partner. Runs locally, your data never leaves your device. Combines a powerful toolchain with customizable personas, so every conversation has personality. Your code, your files, your rhythm — all in your hands.",
+      "subtitle": "More than an AI assistant — it's your programming partner. Your data stays local, privacy by design. Combines a powerful toolchain with customizable personas, so every conversation has personality. Tools at your fingertips, models in the cloud, efficiency by your side.",
       "points": {
         "local": {
           "title": "Local First",

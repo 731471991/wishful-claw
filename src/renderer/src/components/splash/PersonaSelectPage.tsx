@@ -126,7 +126,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                 </h1>
                 <p className="text-sm leading-6 text-muted-foreground">
                   {t('splash.welcome.subtitle', {
-                    defaultValue: '不只是 AI 助手，更是你的编程搭档。本地运行，数据不出设备；融合多源工具链与可定制人格系统，让每次对话都有温度、有性格。你的代码、你的文件、你的节奏，全在掌控之中。'
+                    defaultValue: '不只是 AI 助手，更是你的编程搭档。数据留在本地，隐私不出设备；融合多源工具链与可定制人格系统，让每次对话都有温度、有性格。工具在指尖，模型在云端，效率在身边。'
                   })}
                 </p>
               </div>
@@ -312,7 +312,7 @@ function PersonaCard({
       className={cn(
         'min-h-24 rounded-lg border p-4 text-left transition-colors',
         selected
-          ? 'border-foreground bg-foreground text-background'
+          ? 'border-primary bg-primary/10 text-foreground'
           : 'bg-background hover:bg-muted'
       )}
     >
@@ -323,7 +323,7 @@ function PersonaCard({
             <p
               className={cn(
                 'mt-1 line-clamp-1 text-xs',
-                selected ? 'text-background/75' : 'text-muted-foreground'
+                selected ? 'text-muted-foreground' : 'text-muted-foreground'
               )}
             >
               {persona.tagline}
@@ -333,7 +333,7 @@ function PersonaCard({
             <p
               className={cn(
                 'mt-1.5 line-clamp-2 text-xs leading-5',
-                selected ? 'text-background/60' : 'text-muted-foreground/70'
+                selected ? 'text-muted-foreground/70' : 'text-muted-foreground/70'
               )}
             >
               {persona.description}
