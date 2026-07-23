@@ -469,6 +469,16 @@ export function convertChatMessagesToUnified(messages: readonly unknown[]): Unif
             name: tc.name as string,
             input: (tc.input as Record<string, unknown>) ?? {}
           })
+          // Also add inline tool_result block for completed/errored tools
+          const tcStatus = tc.status as string | undefined
+          if (tcStatus === 'completed' || tcStatus === 'error') {
+            blocks.push({
+              type: 'tool_result',
+              toolUseId: tc.id as string,
+              content: (tc.output as string) ?? '',
+              isError: tcStatus === 'error'
+            })
+          }
         }
       }
     }

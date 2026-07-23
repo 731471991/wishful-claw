@@ -156,6 +156,7 @@ export function MainLayout(): React.JSX.Element {
   // Load projects + sessions from DB on startup, then ensure default project
   useEffect(() => {
     void (async () => {
+      if (useChatStore.getState().sessions.length > 0) return
       const data = await dbLoadAll()
       if (data && data.projects.length > 0) {
         // Build project map for session hydration
