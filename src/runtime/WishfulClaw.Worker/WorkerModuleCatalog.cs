@@ -18,6 +18,7 @@ public static class WorkerModuleCatalog
         new AgentRuntimeModule(),
         new ToolModule(),
         new DbModule(),
-        new PersonaModule()
+        new PersonaModule(),
+        new MemoryModule()
     ];
 }
