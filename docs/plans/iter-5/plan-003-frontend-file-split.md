@@ -94,22 +94,17 @@ components/chat/ToolCallCard/
 
 ---
 
-## Step 3: InputArea/index.tsx — 继续提取 (P2)
+## Step 3: InputArea/index.tsx — 继续提取 (P2) ✅
 
-**现状**：3378行，已有子目录（badges/context-ring/runtime-metrics/runtime-status/types/utils），但主文件仍巨大。
+**现状**：3378行 → 2722行，提取4个自定义hooks。
 
-**拆分方向**：
-- 提取 slash-command 逻辑到 `slash-commands.tsx`
-- 提取 file-search 逻辑到 `file-search.tsx`
-- 提取 image-attachment 逻辑到 `image-attachments.tsx`
-- 提取 editor/textarea 逻辑到 `composer-editor.tsx`
-- 主文件保留组件骨架 + 状态编排
+**已完成**：
+- `use-composer-height.ts`: 拖拽调整、自动高度、布局钳制（全量提取）
+- `use-prompt-optimizer.ts`: 提示词优化状态+处理函数（全量提取）
+- `use-image-attachments.ts`: 图片附件回调函数（混合模式-state留主组件）
+- `use-queued-messages.ts`: 队列状态+回调+effects（全量提取）
 
-**操作步骤**：
-1. 分析 index.tsx 中的 state/ref/逻辑分组
-2. 逐组提取到独立文件
-3. 主文件 import 回来
-4. tsc 编译验证
+commit: 0847ac8
 
 ---
 
