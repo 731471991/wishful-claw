@@ -663,5 +663,20 @@
     "projectTitle": "Project Persona Management",
     "projectSubtitle": "Manage project persona library, independent from global library",
     "copyFromGlobal": "Copy from Global"
+  },
+  "settings": {
+    "persona": {
+      "aiCreate": "AI Create Persona",
+      "aiCreateDesc": "Describe the persona you want and AI will generate complete persona files",
+      "promptPlaceholder": "e.g. I want a tech buddy like Lao Zheng but more humorous",
+      "referencePlaceholder": "Reference persona ID (optional, e.g. lao-zheng)",
+      "generate": "Generate",
+      "generating": "Generating...",
+      "regenerate": "Regenerate",
+      "confirmSave": "Confirm Save",
+      "saving": "Saving...",
+      "noProvider": "Please configure an AI provider first",
+      "noModel": "Please select a model first"
+    }
   }
 }

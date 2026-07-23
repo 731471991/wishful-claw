@@ -663,5 +663,20 @@
     "projectTitle": "项目人格管理",
     "projectSubtitle": "管理项目人格库，独立于全局人格库",
     "copyFromGlobal": "从全局复制"
+  },
+  "settings": {
+    "persona": {
+      "aiCreate": "AI 创建人格",
+      "aiCreateDesc": "输入你想要的人格描述，AI 将为你生成完整的人格文件",
+      "promptPlaceholder": "例如：我要一个像老郑那样但更幽默的技术搭档",
+      "referencePlaceholder": "参考人格 ID（可选，如 lao-zheng）",
+      "generate": "生成",
+      "generating": "生成中...",
+      "regenerate": "重新生成",
+      "confirmSave": "确认保存",
+      "saving": "保存中...",
+      "noProvider": "请先配置 AI 服务商",
+      "noModel": "请先选择模型"
+    }
   }
 }

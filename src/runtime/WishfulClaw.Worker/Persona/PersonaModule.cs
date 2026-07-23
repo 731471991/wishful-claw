@@ -25,6 +25,7 @@ internal sealed class PersonaModule : IWorkerModule
         context.Register("persona/save", Save);
         context.Register("persona/delete", Delete);
         context.Register("persona/apply-to-project", ApplyToProject);
+        context.Register("persona/generate", GenerateAsync);
     }
 
     // ── List ──
@@ -160,6 +161,40 @@ internal sealed class PersonaModule : IWorkerModule
             ["success"] = true,
             ["count"] = count
         });
+    }
+
+    // ── Generate (AI-assisted) ──
+
+    private static async Task<WorkerResponse> GenerateAsync(JsonElement parameters)
+    {
+        var prompt = JsonHelpers.GetString(parameters, "prompt");
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            return ToResponse(Mutation(false, "Missing prompt"));
+        }
+
+        // Extract provider config from parameters
+        if (!parameters.TryGetProperty("provider", out var providerEl) ||
+            providerEl.ValueKind != JsonValueKind.Object)
+        {
+            return ToResponse(Mutation(false, "Missing provider configuration"));
+        }
+
+        var referencePersonaId = JsonHelpers.GetString(parameters, "referencePersonaId");
+        var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+
+        try
+        {
+            var draft = await PersonaGenerator.GenerateAsync(
+                providerEl, prompt, referencePersonaId, workingFolder);
+
+            return ToResponse(draft);
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"persona generation failed: {ex.Message}");
+            return ToResponse(Mutation(false, $"Generation failed: {ex.Message}"));
+        }
     }
 
     // ── Helpers ──

@@ -20,6 +20,7 @@ interface PersonaStore {
   savePersona: (config: PersonaConfig, workingFolder?: string) => Promise<{ success: boolean; id?: string; error?: string }>
   deletePersona: (id: string, workingFolder?: string) => Promise<{ success: boolean; error?: string }>
   applyToProject: (personaId: string | null, projectFolder: string) => Promise<{ success: boolean; count?: number; error?: string }>
+  generatePersona: (prompt: string, provider: Record<string, unknown>, referencePersonaId?: string, workingFolder?: string) => Promise<{ success: boolean; draft?: Partial<import('@renderer/lib/persona/persona-types').PersonaConfig>; error?: string }>
   clearSelection: () => void
   clearError: () => void
 }
@@ -155,6 +156,30 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to apply persona to project'
       set({ error: errorMsg })
+      return { success: false, error: errorMsg }
+    }
+  },
+
+  generatePersona: async (prompt: string, provider: Record<string, unknown>, referencePersonaId?: string, workingFolder?: string) => {
+    set({ loading: true, error: null })
+    try {
+      const result = (await agentBridge.request('persona/generate', {
+        prompt,
+        provider,
+        referencePersonaId: referencePersonaId ?? null,
+        workingFolder: workingFolder ?? null
+      })) as { success?: boolean; name?: string; tagline?: string; description?: string; identityMarkdown?: string; soulMarkdown?: string; ontologyMarkdown?: string; agentsMarkdown?: string; error?: string }
+
+      if (result.success === false) {
+        set({ loading: false, error: result.error ?? 'Generation failed' })
+        return { success: false, error: result.error ?? 'Generation failed' }
+      }
+
+      set({ loading: false })
+      return { success: true, draft: result }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to generate persona'
+      set({ loading: false, error: errorMsg })
       return { success: false, error: errorMsg }
     }
   },

@@ -24,6 +24,15 @@
 - 接收 personaId + workingFolder 参数
 - 组装结果写入 provider 的 systemPrompt
 
+### ✅ 步骤 5: 前端集成
+- chat-store sendMessage 类型添加 personaId/language/userRules 字段
+- use-chat-actions 移除前端 buildSystemPrompt，改为传 personaId/language/userRules 给后端
+- electron-vite build 通过
+
 ### 验证
-- dotnet build 通过
-- 切换人格后同一问题得到风格不同的回答
+- ✅ dotnet build 通过
+- ✅ electron-vite build 通过
+- 切换人格后同一问题得到风格不同的回答（需运行时验证）
+
+## 状态：已完成 ✅
+Commit: 6645580
