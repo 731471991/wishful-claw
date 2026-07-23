@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, GitBranch, MessageSquare } from 'lucide-react'
+import { BookOpen, GitBranch, MessageSquare, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@renderer/components/ui/button'
 import { InputArea } from '@renderer/components/chat/InputArea'
@@ -134,6 +134,15 @@ export function ProjectHomePage(): React.JSX.Element {
               >
                 <GitBranch className="size-3.5" />
                 {t('projectHome.openGit')}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-md border border-border/60 bg-background/50 px-3 text-[11px] text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                onClick={() => useUIStore.getState().navigateToPersona(activeProject.id)}
+              >
+                <User className="size-3.5" />
+                {t('projectHome.openPersona', { defaultValue: '人格管理' })}
               </Button>
             </div>
           </div>

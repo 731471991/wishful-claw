@@ -659,6 +659,9 @@
     "saved": "Persona saved",
     "deleted": "Persona deleted",
     "saveFailed": "Failed to save",
-    "deleteFailed": "Failed to delete"
+    "deleteFailed": "Failed to delete",
+    "projectTitle": "Project Persona Management",
+    "projectSubtitle": "Manage project persona library, independent from global library",
+    "copyFromGlobal": "Copy from Global"
   }
 }

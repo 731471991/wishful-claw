@@ -38,7 +38,8 @@
     "archive": "Archive",
     "git": "Git",
     "channels": "Channels",
-    "settings": "Settings"
+    "settings": "Settings",
+    "persona": "Persona"
   },
   "topbar": {
     "toggleSidebar": "Toggle sidebar",

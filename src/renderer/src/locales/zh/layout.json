@@ -38,7 +38,8 @@
     "archive": "归档",
     "git": "Git",
     "channels": "频道",
-    "settings": "设置"
+    "settings": "设置",
+    "persona": "人格管理"
   },
   "topbar": {
     "toggleSidebar": "切换侧边栏",

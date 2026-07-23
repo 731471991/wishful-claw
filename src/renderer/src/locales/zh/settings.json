@@ -659,6 +659,9 @@
     "saved": "人格已保存",
     "deleted": "人格已删除",
     "saveFailed": "保存失败",
-    "deleteFailed": "删除失败"
+    "deleteFailed": "删除失败",
+    "projectTitle": "项目人格管理",
+    "projectSubtitle": "管理项目人格库，独立于全局人格库",
+    "copyFromGlobal": "从全局复制"
   }
 }

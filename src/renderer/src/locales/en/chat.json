@@ -889,7 +889,8 @@
     "folderLabel": "Working folder",
     "sshLabel": "SSH connection",
     "actionsLabel": "Quick access",
-    "noWorkingFolder": "No working folder configured"
+    "noWorkingFolder": "No working folder configured",
+    "openPersona": "Persona"
   },
   "projectArchive": {
     "noChannelSummary": "View project collaboration channels and connection status.",

@@ -1,13 +1,18 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Sparkles } from 'lucide-react'
+import { Plus, Sparkles, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { usePersonaStore } from '@renderer/stores/persona-store'
 import type { PersonaConfig } from '@renderer/lib/persona/persona-types'
 import { PersonaList } from './persona/PersonaList'
 import { PersonaEditor } from './persona/PersonaEditor'
 
-export function PersonaPanel(): React.JSX.Element {
+interface PersonaPanelProps {
+  /** If provided, operate on project persona library. If omitted, operate on global library. */
+  workingFolder?: string
+}
+
+export function PersonaPanel({ workingFolder }: PersonaPanelProps = {}): React.JSX.Element {
   const { t } = useTranslation('settings')
   const {
     personas,
@@ -20,16 +25,20 @@ export function PersonaPanel(): React.JSX.Element {
     startNewPersona,
     savePersona,
     deletePersona,
+    applyToProject,
     clearError
   } = usePersonaStore()
 
   const [draft, setDraft] = useState<PersonaConfig | null>(null)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [copying, setCopying] = useState(false)
+
+  const wf = workingFolder
 
   useEffect(() => {
-    listPersonas()
-  }, [listPersonas])
+    listPersonas(wf)
+  }, [listPersonas, wf])
 
   useEffect(() => {
     if (selectedPersona) {
@@ -49,9 +58,9 @@ export function PersonaPanel(): React.JSX.Element {
   const handleSave = useCallback(async () => {
     if (!draft) return
     setSaving(true)
-    await savePersona(draft)
+    await savePersona(draft, wf)
     setSaving(false)
-  }, [draft, savePersona])
+  }, [draft, savePersona, wf])
 
   const handleReset = useCallback(() => {
     if (selectedPersona) {
@@ -66,9 +75,9 @@ export function PersonaPanel(): React.JSX.Element {
         const ok = window.confirm(t('persona.unsavedConfirm', { defaultValue: '有未保存的更改，确定切换吗？' }))
         if (!ok) return
       }
-      selectPersona(id)
+      selectPersona(id, wf)
     },
-    [dirty, draft, selectPersona, t]
+    [dirty, draft, selectPersona, wf, t]
   )
 
   const handleNewPersona = useCallback(() => {
@@ -79,20 +88,51 @@ export function PersonaPanel(): React.JSX.Element {
     startNewPersona()
   }, [dirty, draft, startNewPersona, t])
 
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await deletePersona(id, wf)
+    },
+    [deletePersona, wf]
+  )
+
+  const handleCopyFromGlobal = useCallback(async () => {
+    if (!wf) return
+    setCopying(true)
+    const result = await applyToProject(null, wf)
+    setCopying(false)
+    if (result.success) {
+      await listPersonas(wf)
+    }
+  }, [applyToProject, listPersonas, wf])
+
+  const isProject = Boolean(wf)
+  const titleKey = isProject ? 'persona.projectTitle' : 'persona.title'
+  const subtitleKey = isProject ? 'persona.projectSubtitle' : 'persona.subtitle'
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
         <div>
-          <h2 className="text-lg font-semibold">{t('persona.title', { defaultValue: '人格管理' })}</h2>
+          <h2 className="text-lg font-semibold">
+            {t(titleKey, { defaultValue: '人格管理' })}
+          </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {t('persona.subtitle', { defaultValue: '管理全局人格库，编辑人格的身份、灵魂、认知和行为准则' })}
+            {t(subtitleKey, { defaultValue: '管理全局人格库，编辑人格的身份、灵魂、认知和行为准则' })}
           </p>
         </div>
-        <Button size="sm" variant="default" onClick={handleNewPersona}>
-          <Plus className="mr-1.5 size-4" />
-          {t('persona.newPersona', { defaultValue: '新建人格' })}
-        </Button>
+        <div className="flex items-center gap-2">
+          {isProject && (
+            <Button size="sm" variant="outline" onClick={handleCopyFromGlobal} disabled={copying}>
+              <Copy className="mr-1.5 size-4" />
+              {t('persona.copyFromGlobal', { defaultValue: '从全局复制' })}
+            </Button>
+          )}
+          <Button size="sm" variant="default" onClick={handleNewPersona}>
+            <Plus className="mr-1.5 size-4" />
+            {t('persona.newPersona', { defaultValue: '新建人格' })}
+          </Button>
+        </div>
       </div>
 
       {/* Error banner */}
@@ -137,7 +177,7 @@ export function PersonaPanel(): React.JSX.Element {
             onChange={handleFieldChange}
             onSave={handleSave}
             onReset={handleReset}
-            onDelete={deletePersona}
+            onDelete={handleDelete}
           />
         )}
       </div>
