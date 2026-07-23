@@ -1,5 +1,3 @@
-using System.Reflection;
-using System.Text.Json;
 using WishfulClaw.Core.Protocol;
 
 namespace WishfulClaw.Worker.Persona;
@@ -7,28 +5,20 @@ namespace WishfulClaw.Worker.Persona;
 /// <summary>
 /// Reads and writes persona .md files from the global library (~/.wishful-claw/personas/)
 /// or project library ({workingFolder}/.wishful-claw/personas/).
-/// Also loads built-in presets from embedded resources.
+/// Built-in presets are served by <see cref="PersonaPresetService"/>.
 /// </summary>
 internal sealed class PersonaStore
 {
     private const string DataDirectoryName = ".wishful-claw";
-    private const string BuiltinResourcePrefix = "WishfulClaw.Worker.Resources.Personas";
 
     private static readonly Lazy<PersonaStore> _default = new(() => new PersonaStore());
     public static PersonaStore Default => _default.Value;
 
-    // Built-in preset IDs — these cannot be deleted.
-    public static readonly HashSet<string> BuiltinPresetIds =
-    [
-        "default", "lao-zheng", "jarvis", "taozi", "tingjie", "aming"
-    ];
+    // Delegate to PersonaPresetService for built-in lookups
+    private static PersonaPresetService Presets => PersonaPresetService.Default;
 
-    private readonly Dictionary<string, (PersonaSummary Summary, PersonaConfig Config)> _builtinCache = new(StringComparer.Ordinal);
-
-    private PersonaStore()
-    {
-        LoadBuiltinPresets();
-    }
+    /// <summary>Proxy for backward compatibility.</summary>
+    public static HashSet<string> BuiltinPresetIds => PersonaPresetService.BuiltinPresetIds;
 
     // ── Path resolution ──
 
@@ -63,13 +53,7 @@ internal sealed class PersonaStore
     /// </summary>
     public List<PersonaSummary> ListPersonas(string? workingFolder)
     {
-        var result = new List<PersonaSummary>();
-
-        // Add built-in presets first
-        foreach (var (_, pair) in _builtinCache)
-        {
-            result.Add(pair.Summary);
-        }
+        var result = Presets.ListBuiltin();
 
         // Scan custom personas on disk
         var personasDir = GetPersonasDirectory(workingFolder);
@@ -112,8 +96,8 @@ internal sealed class PersonaStore
     /// </summary>
     public PersonaConfig? GetPersona(string personaId, string? workingFolder)
     {
-        // Check built-in cache
-        if (_builtinCache.TryGetValue(personaId, out var builtin))
+        // Check built-in presets
+        if (BuiltinPresetIds.Contains(personaId))
         {
             // If a custom override exists on disk (project scope), prefer it
             if (!string.IsNullOrWhiteSpace(workingFolder))
@@ -121,7 +105,7 @@ internal sealed class PersonaStore
                 var diskConfig = TryReadFromDisk(personaId, workingFolder);
                 if (diskConfig is not null) return diskConfig;
             }
-            return builtin.Config;
+            return Presets.GetBuiltin(personaId);
         }
 
         // Read from disk
@@ -223,71 +207,5 @@ internal sealed class PersonaStore
 
         WorkerLog.Info($"persona copy to project folder={projectFolder} count={count} personaId={personaId ?? "<all>"}");
         return count;
-    }
-
-    // ── Built-in preset loading ──
-
-    private void LoadBuiltinPresets()
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-
-        foreach (var presetId in BuiltinPresetIds)
-        {
-            try
-            {
-                var identity = ReadEmbeddedResource(assembly, presetId, PersonaFileLayout.IdentityFile);
-                var soul = ReadEmbeddedResource(assembly, presetId, PersonaFileLayout.SoulFile);
-                var ontology = ReadEmbeddedResource(assembly, presetId, PersonaFileLayout.OntologyFile);
-                var agents = ReadEmbeddedResource(assembly, presetId, PersonaFileLayout.AgentsFile);
-
-                if (string.IsNullOrWhiteSpace(identity)) continue;
-
-                var meta = PersonaMetadata.Parse(identity);
-                var summary = new PersonaSummary(
-                    presetId,
-                    string.IsNullOrEmpty(meta.Name) ? presetId : meta.Name,
-                    meta.Tagline,
-                    meta.Description,
-                    IsBuiltin: true);
-
-                var config = new PersonaConfig(
-                    presetId,
-                    summary.Name,
-                    summary.Tagline,
-                    summary.Description,
-                    IsBuiltin: true,
-                    identity, soul, ontology, agents);
-
-                _builtinCache[presetId] = (summary, config);
-            }
-            catch (Exception ex)
-            {
-                WorkerLog.Warn($"failed to load builtin persona id={presetId} error={ex.Message}");
-            }
-        }
-
-        WorkerLog.Info($"builtin personas loaded count={_builtinCache.Count}");
-    }
-
-    private static string ReadEmbeddedResource(Assembly assembly, string presetId, string fileName)
-    {
-        // .NET embeds resources with dots as separators.
-        // Directory names with hyphens (e.g. "lao-zheng") become underscores in resource names (e.g. "lao_zheng").
-        // Try both the original name and the underscore-normalized name.
-        var normalizedPresetId = presetId.Replace('-', '_');
-
-        foreach (var idVariant in new[] { presetId, normalizedPresetId })
-        {
-            var resourceName = $"{BuiltinResourcePrefix}.{idVariant}.{fileName}";
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream is not null)
-            {
-                using var reader = new StreamReader(stream);
-                return reader.ReadToEnd();
-            }
-        }
-
-        WorkerLog.Debug($"embedded resource not found: {BuiltinResourcePrefix}.{presetId}.{fileName}");
-        return string.Empty;
     }
 }
