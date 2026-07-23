@@ -2,8 +2,10 @@ using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Worker.Tools.FileTools;
+using WishfulClaw.Worker.Tools.MemoryTools;
 using WishfulClaw.Worker.Tools.SearchTools;
 using WishfulClaw.Worker.Tools.ShellTools;
+using WishfulClaw.Workspace.Memory;
 
 namespace WishfulClaw.Worker.Tools;
 
@@ -31,8 +33,18 @@ public sealed class ToolModule : IWorkerModule
         // Shell tools
         registry.Register(new ShellExecuteTool());
 
+        // Memory tools — shared store + search instances
+        var memoryStore = new MemoryStore();
+        var memorySearch = new Memory.MemoryFtsService();
+        registry.Register(new MemoryAppendTool(memoryStore, memorySearch));
+        registry.Register(new MemorySearchTool(memorySearch));
+        registry.Register(new MemoryReadTool(memoryStore));
+        registry.Register(new MemoryWriteTool(memoryStore, memorySearch));
+
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;
+        ToolModuleState.MemoryStore = memoryStore;
+        ToolModuleState.MemorySearch = memorySearch;
 
         // Register IPC handler: tool/list — returns tool definitions for the LLM
         context.Register("tool/list", _ =>
@@ -65,4 +77,6 @@ public sealed class ToolModule : IWorkerModule
 internal static class ToolModuleState
 {
     public static ToolRegistry? Registry { get; set; }
+    public static IMemoryStore? MemoryStore { get; set; }
+    public static IMemorySearch? MemorySearch { get; set; }
 }

@@ -25,4 +25,5 @@ public sealed record ToolExecutionContext(
     string? WorkingFolder = null,
     string? SessionId = null,
     string? RunId = null,
+    string? ProjectId = null,
     CancellationToken CancellationToken = default);
