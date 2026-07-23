@@ -280,12 +280,17 @@ App 启动
 
 ## Plan 拆分
 
-| Plan | 内容 | 独立验证 |
-|---|---|---|
-| **6-1** | 后端人格核心 — PersonaModels + PersonaStore（读写 .md 文件，全局+项目双库）+ PersonaPresetService（内置 6 套 .md 嵌入资源）+ PromptBuilder + PromptProfile + PromptContextDocument + PersonaModule（IPC 端点：list/get/save/delete/apply-to-project） | `dotnet build` 通过 |
-| **6-2** | AgentLoop 集成 + 前端适配 — AgentLoop 调 PromptBuilder 组装 prompt；前端 use-chat-actions 改为传 personaId；persona-store + persona-types；DB 变更（sessions 加 PersonaId）；settings-store 新增字段 | tsc + build + dotnet 全部通过 |
-| **6-3** | AI 辅助创建 — PersonaGenerator（后端：提示词→调模型→生成 4 个 .md 草稿）+ persona/generate 端点 + 前端 PersonaGenerator 对话框（输入提示→预览→确认保存） | 生成人格 → 确认保存 → 切换使用 |
-| **6-4** | 前端 UI — SplashPage 改造（PersonaSelectPage）+ 设置页 PersonaPanel（列表/预览/编辑/删除）+ 聊天 PersonaSwitcher（会话级切换） | 端到端验证全部通过 |
+**拆分原则**：每个 Plan 2-3 个步骤，一次会话能完成。粒度宁小勿大，进度可控。
+
+| Plan | 内容 | 步骤数 | 独立验证 |
+|---|---|---|---|
+| **6-1** | 后端人格数据层 — PersonaModels（数据模型）+ PersonaStore（读写 .md 文件，全局+项目双库路径解析）+ 内置 6 套 .md 预设文件编写 | 3 | `dotnet build` 通过 |
+| **6-2** | 后端 PromptBuilder + IPC — PromptBuilder + PromptProfile + PromptContextDocument（分段组装+字符预算截断）+ PersonaPresetService（加载内置预设）+ PersonaModule（IPC: list/get/save/delete/apply-to-project） | 3 | `dotnet build` 通过，IPC 端点可调 |
+| **6-3** | AgentLoop 集成 — AgentLoop 执行前调 PromptBuilder 组装 System Prompt；agent/run 参数变更（接收 personaId+workingFolder，不再用 provider.systemPrompt） | 2 | `dotnet build` 通过 |
+| **6-4** | 前端适配 + DB 变更 — persona-types + persona-store；use-chat-actions 改为传 personaId；DB sessions 表加 PersonaId 字段；settings-store 新增 defaultPersonaId/onboardingCompleted | 3 | tsc + build + dotnet 全通过 |
+| **6-5** | AI 辅助创建 — PersonaGenerator（后端：提示词→调模型→生成 4 个 .md 草稿）+ persona/generate 端点 | 2 | `dotnet build` 通过，端点可调 |
+| **6-6** | 前端 UI — SplashPage 改造（PersonaSelectPage 选预设+AI创建入口） | 2 | 首次启动选人格→进入主页 |
+| **6-7** | 前端 UI — 设置页 PersonaPanel（列表/预览/编辑/删除）+ 聊天 PersonaSwitcher（会话级切换）+ AI 创建对话框 | 3 | 端到端：切换人格得到不同风格回答 |
 
 ## 迭代顺序说明
 
