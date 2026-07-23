@@ -3,7 +3,7 @@ import {
   Waypoints, FileCode, Trash2, ListTodo, CalendarClock, Bell, HelpCircle,
   Code2, Globe2, MousePointerClick, Keyboard, ScrollText, Camera, Monitor,
   SquareTerminal, LogIn, LogOut, FileText, Target, Database, Box,
-  Search, FolderTree, Clock, Folder, File
+  Search, FolderTree, Clock
 } from 'lucide-react'
 import type { ToolResultContent } from '@renderer/lib/api/types'
 import {

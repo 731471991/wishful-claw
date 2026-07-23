@@ -13,6 +13,7 @@ import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
 import {
   CopyBtn
 } from '../shared'
+import { getImageBlockPreviewSrc } from '../utils'
 import {
   stripReadLineNumbers,
   detectLang
@@ -57,13 +58,6 @@ export function ImageOutputBlock({ output }: { output: ToolResultContent }): Rea
       )}
     </div>
   )
-}
-
-function getImageBlockPreviewSrc(image: ImageBlock): string {
-  if (image.source.type === 'base64' && image.source.data) {
-    return `data:${image.source.mediaType || 'image/png'};base64,${image.source.data}`
-  }
-  return image.source.url ?? ''
 }
 
 // ── MarkdownOutputBlock ──

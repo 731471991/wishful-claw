@@ -9,10 +9,7 @@ import {
   InputField
 } from './shared'
 import {
-  COMMAND_TOOL_NAMES,
-  STRUCTURED_INPUT_VALUE_CHARS,
-  STRUCTURED_INPUT_OBJECT_KEY_LIMIT,
-  STRUCTURED_INPUT_ARRAY_ITEM_LIMIT
+  COMMAND_TOOL_NAMES
 } from './types'
 import {
   getSkillNameFromInput,
