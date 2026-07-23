@@ -17,6 +17,10 @@
       "general": "基础",
       "aiService": "AI 服务",
       "about": "关于"
+    },
+    "persona": {
+      "label": "人格管理",
+      "desc": "管理人格库，编辑身份、灵魂、认知和行为准则"
     }
   },
   "general": {
@@ -626,5 +630,35 @@
     "openCowork": "OpenCowork — Agent Loop / 工具链 / Provider / 架构",
     "kodaClaw": "KodaClaw — 记忆系统 / 人格系统设计",
     "openClaw": "OpenClaw — 记忆主动回忆机制"
+  },
+  "persona": {
+    "title": "人格管理",
+    "subtitle": "管理全局人格库，编辑人格的身份、灵魂、认知和行为准则",
+    "newPersona": "新建人格",
+    "builtin": "内置",
+    "newBadge": "新建",
+    "empty": "暂无人格",
+    "selectHint": "从左侧选择一个人格，或点击「新建人格」",
+    "unsaved": "未保存",
+    "unsavedConfirm": "有未保存的更改，确定切换吗？",
+    "fieldName": "名称",
+    "fieldTagline": "标语",
+    "fieldDescription": "描述",
+    "namePlaceholder": "人格名称",
+    "taglinePlaceholder": "一句话描述",
+    "descriptionPlaceholder": "更详细的描述",
+    "editorPlaceholder": "在此编写 Markdown 内容...",
+    "save": "保存",
+    "reset": "重置",
+    "delete": "删除",
+    "cancel": "取消",
+    "confirmDelete": "删除",
+    "deleteConfirmTitle": "删除人格",
+    "deleteConfirmDesc": "确定要删除「{{name}}」吗？此操作不可撤销。",
+    "dismiss": "关闭",
+    "saved": "人格已保存",
+    "deleted": "人格已删除",
+    "saveFailed": "保存失败",
+    "deleteFailed": "删除失败"
   }
 }

@@ -93,6 +93,7 @@ export type SettingsTab =
   | 'provider'
   | 'modelManagement'
   | 'general'
+  | 'persona'
   | 'about'
 
 export type DetailPanelContent =

@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Server, Info, Settings } from 'lucide-react'
+import { ArrowLeft, Server, Info, Settings, User } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore, type SettingsTab } from '@renderer/stores/ui-store'
 import { ProviderPanel } from '@renderer/components/settings/ProviderPanel'
 import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
+import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
 
 function SettingsPage(): React.JSX.Element {
@@ -21,7 +22,8 @@ function SettingsPage(): React.JSX.Element {
     {
       label: t('tabs.groups.general'),
       items: [
-        { id: 'general', icon: <Settings className="size-4" />, label: t('tabs.general.label') }
+        { id: 'general', icon: <Settings className="size-4" />, label: t('tabs.general.label') },
+        { id: 'persona', icon: <User className="size-4" />, label: t('tabs.persona.label', { defaultValue: '人格管理' }) }
       ]
     },
     {
@@ -113,6 +115,10 @@ function SettingsPage(): React.JSX.Element {
             ) : settingsTab === 'general' ? (
               <div className="flex-1 overflow-y-auto">
                 <GeneralPanel />
+              </div>
+            ) : settingsTab === 'persona' ? (
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                <PersonaPanel />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
