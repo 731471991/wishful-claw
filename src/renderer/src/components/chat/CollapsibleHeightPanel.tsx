@@ -1,7 +1,6 @@
 import * as React from 'react'
-import { motion } from 'motion/react'
 
-const PANEL_TRANSITION = { duration: 0.2, ease: 'easeInOut' as const }
+const PANEL_TRANSITION = 'height 0.2s ease-in-out, opacity 0.2s ease-in-out'
 
 interface CollapsibleHeightPanelProps {
   open: boolean
@@ -13,15 +12,14 @@ interface CollapsibleHeightPanelProps {
 }
 
 /**
- * Height collapse/expand panel using motion.div.
+ * Height collapse/expand panel using CSS transitions.
  *
- * Uses a two-phase approach for closing:
- * 1. Measure current height and lock it as a px value (sync in layout effect)
- * 2. In the NEXT layout effect (after React commits the px value), animate to 0
+ * Uses a ref-based approach to measure and set pixel heights, avoiding
+ * framer-motion's inability to animate from 'auto' to a numeric value.
  *
- * This avoids React 18 batching issues where setHeight(measured) + setHeight(0)
- * could be merged into a single update, skipping the intermediate px state
- * and causing the animation to fail (height jumps from 'auto' to 0 without animating).
+ * - Open: set height to 0px, then to measured scrollHeight, then to 'auto'
+ *   after transition ends (so content can grow freely).
+ * - Close: set height to current measured px, then to 0px on next frame.
  */
 export function CollapsibleHeightPanel({
   open,
@@ -31,16 +29,24 @@ export function CollapsibleHeightPanel({
   contentClassName
 }: CollapsibleHeightPanelProps): React.JSX.Element | null {
   const [mounted, setMounted] = React.useState(open || !enabled)
-  const [height, setHeight] = React.useState<number | 'auto'>(open || !enabled ? 'auto' : 0)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const openRef = React.useRef(open)
-  // Phase tracking: 'idle' | 'locking' | 'collapsing'
-  const phaseRef = React.useRef<'idle' | 'locking' | 'collapsing'>('idle')
+  const rafRef = React.useRef<number | null>(null)
+
+  // Apply height to the DOM element directly for reliable transitions
+  const applyHeight = React.useCallback((px: number | 'auto') => {
+    const el = panelRef.current
+    if (!el) return
+    if (px === 'auto') {
+      el.style.height = 'auto'
+    } else {
+      el.style.height = `${px}px`
+    }
+  }, [])
 
   React.useLayoutEffect(() => {
     if (!enabled) {
       setMounted(true)
-      setHeight('auto')
       openRef.current = open
       return
     }
@@ -49,53 +55,68 @@ export function CollapsibleHeightPanel({
     openRef.current = open
 
     if (open && !wasOpen) {
-      // Opening: mount, set to 0 first, then measure and animate to measured height
-      phaseRef.current = 'idle'
+      // Opening
       setMounted(true)
-      setHeight(0)
-      requestAnimationFrame(() => {
+      // Start from 0px, then animate to measured height
+      applyHeight(0)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => {
         const measured = panelRef.current?.scrollHeight ?? 0
-        setHeight(measured > 0 ? measured : 'auto')
+        applyHeight(measured > 0 ? measured : 'auto')
       })
       return
     }
 
     if (!open && wasOpen) {
-      // Closing: measure current height and lock it as px (phase 1)
-      const measured = panelRef.current?.getBoundingClientRect().height ?? 0
+      // Closing: lock current height as px, then animate to 0 on next frame
+      const el = panelRef.current
+      if (!el) return
+      const measured = el.getBoundingClientRect().height
       if (measured > 0) {
-        phaseRef.current = 'locking'
-        setHeight(measured)
-      } else {
-        // Can't measure, just collapse immediately
-        phaseRef.current = 'collapsing'
-        setHeight(0)
+        applyHeight(measured)
       }
-      return
-    }
-  }, [enabled, open])
-
-  // Phase 2 for closing: after React commits the locked px height, animate to 0
-  React.useLayoutEffect(() => {
-    if (phaseRef.current === 'locking') {
-      phaseRef.current = 'collapsing'
-      // Use double rAF to ensure the px height is painted before animating to 0
-      requestAnimationFrame(() => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          setHeight(0)
+          applyHeight(0)
         })
       })
+      return
     }
-  }, [height])
+  }, [enabled, open, applyHeight])
 
-  // Content may resize while open (tool output arrives); keep a px lock when still on auto.
+  // After CSS transition ends, switch to 'auto' when open so content can resize
+  const handleTransitionEnd = React.useCallback(() => {
+    if (!enabled) return
+    if (open) {
+      applyHeight('auto')
+    } else {
+      // Fully collapsed - unmount
+      setMounted(false)
+    }
+  }, [enabled, open, applyHeight])
+
+  // Keep height in sync when content changes while open
   React.useLayoutEffect(() => {
     if (!enabled || !open || !mounted) return
-    if (height !== 'auto') return
-    if (phaseRef.current !== 'idle') return
-    const measured = panelRef.current?.scrollHeight ?? 0
-    if (measured > 0) setHeight(measured)
-  }, [children, enabled, height, mounted, open])
+    const el = panelRef.current
+    if (!el) return
+    // Only adjust if currently 'auto' (settled state) - no transition needed
+    if (el.style.height === 'auto' || el.style.height === '') {
+      // Already auto, content flows naturally
+      return
+    }
+    // If we're in a px-locked state during open, update to new content height
+    const measured = el.scrollHeight
+    if (measured > 0) applyHeight(measured)
+  }, [children, enabled, mounted, open, applyHeight])
+
+  // Cleanup rAF on unmount
+  React.useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
 
   if (!enabled) {
     return <div className={className}>{children}</div>
@@ -103,31 +124,19 @@ export function CollapsibleHeightPanel({
 
   if (!mounted) return null
 
-  const visible = open || height === 'auto' || (typeof height === 'number' && height > 0)
-
   return (
-    <motion.div
+    <div
       ref={panelRef}
-      initial={false}
-      animate={{
-        height,
-        opacity: visible ? 1 : 0
+      style={{
+        height: open ? 'auto' : 0,
+        overflow: 'hidden',
+        transition: PANEL_TRANSITION,
+        opacity: open ? 1 : 0
       }}
-      transition={PANEL_TRANSITION}
+      onTransitionEnd={handleTransitionEnd}
       className={className}
-      onAnimationComplete={() => {
-        if (!open && height === 0) {
-          phaseRef.current = 'idle'
-          setMounted(false)
-          return
-        }
-        if (open && typeof height === 'number' && height > 0) {
-          phaseRef.current = 'idle'
-          setHeight('auto')
-        }
-      }}
     >
       <div className={contentClassName}>{children}</div>
-    </motion.div>
+    </div>
   )
 }
