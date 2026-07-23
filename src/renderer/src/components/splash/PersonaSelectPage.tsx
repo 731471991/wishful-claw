@@ -13,7 +13,6 @@ import { usePersonaStore } from '@renderer/stores/persona-store'
 import type { PersonaSummary } from '@renderer/lib/persona/persona-types'
 import { LANGUAGE_OPTIONS, detectSystemLanguage } from '@renderer/lib/i18n-language'
 import { changeI18nLanguage } from '@renderer/locales'
-import { APP_THEME_PRESETS, type AppThemePreset } from '@renderer/lib/theme-presets'
 import { cn } from '@renderer/lib/utils'
 
 type Step = 'setup' | 'persona'
@@ -30,7 +29,6 @@ export function PersonaSelectPage(): React.JSX.Element {
   const updateSettings = useSettingsStore((s) => s.updateSettings)
   const persistedName = useSettingsStore((s) => s.userName)
   const persistedTheme = useSettingsStore((s) => s.theme)
-  const persistedThemePreset = useSettingsStore((s) => s.themePreset)
   const { setTheme } = useTheme()
 
   const { personas, loading, listPersonas } = usePersonaStore()
@@ -38,7 +36,6 @@ export function PersonaSelectPage(): React.JSX.Element {
   const [language, setLanguage] = useState(detectSystemLanguage())
   const [nickname, setNickname] = useState(persistedName ?? '')
   const [themeMode, setThemeMode] = useState<string>(persistedTheme ?? 'dark')
-  const [themePreset, setThemePreset] = useState<AppThemePreset>(persistedThemePreset ?? 'mulberry')
   const [selectedId, setSelectedId] = useState<string>('')
   const [finishing, setFinishing] = useState(false)
 
@@ -63,12 +60,6 @@ export function PersonaSelectPage(): React.JSX.Element {
     setTheme(mode)
     updateSettings({ theme: mode as 'light' | 'dark' | 'system' })
   }, [setTheme, updateSettings])
-
-  // Apply theme preset change immediately
-  const handleThemePresetChange = useCallback((preset: AppThemePreset) => {
-    setThemePreset(preset)
-    updateSettings({ themePreset: preset })
-  }, [updateSettings])
 
   // Load personas when entering persona step
   const handleEnterPersona = useCallback(() => {
@@ -141,9 +132,6 @@ export function PersonaSelectPage(): React.JSX.Element {
 
               {/* Nickname */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  {t('splash.nickname.title', { defaultValue: '你叫什么？' })}
-                </label>
                 <div className="relative max-w-md">
                   <Input
                     value={nickname}
@@ -210,35 +198,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                       </button>
                     ))}
                   </div>
-                  {/* Preset swatches */}
-                  <div className="flex gap-1.5">
-                    {APP_THEME_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => handleThemePresetChange(preset.id)}
-                        className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors',
-                          themePreset === preset.id
-                            ? 'border-foreground'
-                            : 'border-transparent hover:border-muted-foreground'
-                        )}
-                      >
-                        <div className="flex">
-                          {preset.swatches.slice(0, 2).map((color, i) => (
-                            <div
-                              key={i}
-                              className={cn(
-                                'size-3 rounded-full border border-black/10',
-                                i === 0 ? '-mr-1' : ''
-                              )}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+
                 </div>
               </div>
             </div>
