@@ -102,6 +102,9 @@ export const MAX_MAX_PARALLEL_TOOL_CALLS = 16
 export const DEFAULT_MAX_CONCURRENT_SUB_AGENTS = 2
 export const MIN_MAX_CONCURRENT_SUB_AGENTS = 1
 export const MAX_MAX_CONCURRENT_SUB_AGENTS = 8
+export const DEFAULT_MAX_TOOL_CALLS_PER_TURN = 15
+export const MIN_MAX_TOOL_CALLS_PER_TURN = 1
+export const MAX_MAX_TOOL_CALLS_PER_TURN = 50
 
 export interface RecentWorkingTarget {
   workingFolder: string
@@ -265,6 +268,14 @@ export function clampMaxConcurrentSubAgents(value: number): number {
   )
 }
 
+
+export function clampMaxToolCallsPerTurn(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_MAX_TOOL_CALLS_PER_TURN
+  return Math.min(
+    MAX_MAX_TOOL_CALLS_PER_TURN,
+    Math.max(MIN_MAX_TOOL_CALLS_PER_TURN, Math.floor(value))
+  )
+}
 export function normalizeShellExecutionEndpoint(value: unknown): ShellExecutionEndpoint {
   if (
     value === 'auto' ||
@@ -506,6 +517,7 @@ export const useSettingsStore = create<SettingsStore>()(
       editorWorkspaceEnabled: false,
       editorRemoteLanguageServiceEnabled: false,
       maxParallelToolCalls: DEFAULT_MAX_PARALLEL_TOOL_CALLS,
+      maxToolCallsPerTurn: DEFAULT_MAX_TOOL_CALLS_PER_TURN,
       maxConcurrentSubAgents: DEFAULT_MAX_CONCURRENT_SUB_AGENTS,
       toolResultFormat: 'toon',
       fileDiffViewMode: 'split',
