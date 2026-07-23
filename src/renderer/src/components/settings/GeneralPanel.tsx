@@ -156,8 +156,8 @@ function GeneralPanel(): React.JSX.Element {
       {/* Language */}
       <section className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-foreground">Language / 语言</div>
-          <p className="text-xs text-muted-foreground">Interface language</p>
+          <div className="text-sm font-medium text-foreground">{t('general.language.label')}</div>
+          <p className="text-xs text-muted-foreground">{t('general.language.desc')}</p>
         </div>
         <Select value={settings.language} onValueChange={handleLanguageChange}>
           <SelectTrigger className="w-60 text-xs">
@@ -316,7 +316,7 @@ function GeneralPanel(): React.JSX.Element {
               className="h-8 rounded-md border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent"
               onClick={() => settings.updateSettings({ backgroundColor: '' })}
             >
-              {t('general.appearance.backgroundColor.label') === '背景颜色' ? '重置' : 'Reset'}
+              {t('general.reset')}
             </button>
           </div>
         </div>
@@ -325,18 +325,16 @@ function GeneralPanel(): React.JSX.Element {
       {/* Tool Execution */}
       <section className="space-y-4">
         <div>
-          <label className="text-sm font-medium">Tool Execution</label>
-          <p className="text-xs text-muted-foreground">
-            Control how many tools the agent can run at once and per turn.
-          </p>
+          <label className="text-sm font-medium">{t('general.toolExecution.label')}</label>
+          <p className="text-xs text-muted-foreground">{t('general.toolExecution.desc')}</p>
         </div>
 
         {/* Max Parallel Tools */}
         <div className="space-y-2">
           <div className="flex items-center justify-between max-w-lg">
             <div>
-              <label className="text-xs font-medium">Max Parallel Tools</label>
-              <p className="text-xs text-muted-foreground">Number of tools executed simultaneously</p>
+              <label className="text-xs font-medium">{t('general.toolExecution.maxParallel.label')}</label>
+              <p className="text-xs text-muted-foreground">{t('general.toolExecution.maxParallel.desc')}</p>
             </div>
             <span className="text-xs text-muted-foreground">{settings.maxParallelToolCalls}</span>
           </div>
@@ -368,8 +366,8 @@ function GeneralPanel(): React.JSX.Element {
         <div className="space-y-2">
           <div className="flex items-center justify-between max-w-lg">
             <div>
-              <label className="text-xs font-medium">Max Tool Calls Per Turn</label>
-              <p className="text-xs text-muted-foreground">Cap total tool calls in a single AI response (0 = unlimited)</p>
+              <label className="text-xs font-medium">{t('general.toolExecution.maxPerTurn.label')}</label>
+              <p className="text-xs text-muted-foreground">{t('general.toolExecution.maxPerTurn.desc')}</p>
             </div>
             <span className="text-xs text-muted-foreground">{settings.maxToolCallsPerTurn}</span>
           </div>
@@ -401,10 +399,8 @@ function GeneralPanel(): React.JSX.Element {
       {/* Developer Mode */}
       <section className="space-y-3">
         <div>
-          <div className="text-sm font-medium text-foreground">Developer Mode</div>
-          <p className="text-xs text-muted-foreground">
-            Show request parameters (URL, headers, body) for each assistant message. Useful for debugging during development.
-          </p>
+          <div className="text-sm font-medium text-foreground">{t('general.developerMode.label')}</div>
+          <p className="text-xs text-muted-foreground">{t('general.developerMode.desc')}</p>
         </div>
         <div className="flex items-center gap-3">
           <Switch
@@ -412,7 +408,7 @@ function GeneralPanel(): React.JSX.Element {
             onCheckedChange={(checked) => settings.updateSettings({ devMode: checked })}
           />
           <span className="text-xs text-muted-foreground">
-            {settings.devMode ? 'Enabled' : 'Disabled'}
+            {settings.devMode ? t('general.developerMode.enabled') : t('general.developerMode.disabled')}
           </span>
         </div>
       </section>
