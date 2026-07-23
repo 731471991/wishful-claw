@@ -214,7 +214,6 @@ export function InputArea({
   )
   const animationsEnabled = useSettingsStore((state) => state.animationsEnabled)
   const editorRef = React.useRef<FileAwareEditorHandle | null>(null)
-  const queueFileInputRef = React.useRef<HTMLInputElement>(null)
   const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const contextCompressionStatusTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const {
