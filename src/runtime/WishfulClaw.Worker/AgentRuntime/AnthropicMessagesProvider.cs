@@ -105,7 +105,7 @@ internal static partial class AnthropicMessagesProvider
             }
         }
 
-        FlushPendingToolCalls(parseState);
+        await FlushPendingToolCallsAsync(parseState, state, context);
 
         var totalMs = AgentLoop.ElapsedMs(startedAt);
         await AgentRuntimeTools.EmitAsync(

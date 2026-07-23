@@ -148,7 +148,7 @@ internal static class OpenAIChatProvider
                 value => finalStopReason = value);
         }
 
-        FlushRemainingToolBuffers(toolBuffers, toolCalls);
+        await FlushRemainingToolBuffersAsync(toolBuffers, toolCalls, state, context);
 
         var totalMs = AgentLoop.ElapsedMs(startedAt);
         await AgentRuntimeTools.EmitAsync(
@@ -505,13 +505,13 @@ internal static class OpenAIChatProvider
         setStopReason(finishReason);
         if (finishReason is "tool_calls" or "function_call")
         {
-            FlushRemainingToolBuffers(toolBuffers, completedToolCalls);
+            await FlushRemainingToolBuffersAsync(toolBuffers, completedToolCalls, state, context);
             return true;
         }
 
         if (toolBuffers.Count > 0)
         {
-            FlushRemainingToolBuffers(toolBuffers, completedToolCalls);
+            await FlushRemainingToolBuffersAsync(toolBuffers, completedToolCalls, state, context);
         }
 
         return finishReason is "stop" or "length" or "content_filter";
@@ -574,6 +574,18 @@ internal static class OpenAIChatProvider
                     if (TryCreateCompletedToolCall(toolCallElement, out var toolCall))
                     {
                         completedToolCalls.Add(toolCall);
+                        await AgentRuntimeTools.EmitAsync(
+                            state, context,
+                            new AgentRuntimeStreamEvent(
+                                "tool_use_streaming_start",
+                                ToolCallId: toolCall.Id,
+                                ToolName: toolCall.Name));
+                        await AgentRuntimeTools.EmitAsync(
+                            state, context,
+                            new AgentRuntimeStreamEvent(
+                                "tool_use_generated",
+                                ToolCallId: toolCall.Id,
+                                ToolUseBlock: new AgentRuntimeToolUseBlock(toolCall.Id, toolCall.Name, toolCall.Input)));
                     }
                 }
             }
@@ -600,6 +612,7 @@ internal static class OpenAIChatProvider
             buffer.Id = id;
         }
 
+        string? argumentsDelta = null;
         if (fragment.TryGetProperty("function", out var function) &&
             function.ValueKind == JsonValueKind.Object)
         {
@@ -607,7 +620,8 @@ internal static class OpenAIChatProvider
             {
                 buffer.Name = name;
             }
-            if (JsonHelpers.GetString(function, "arguments") is { } argumentsDelta)
+            argumentsDelta = JsonHelpers.GetString(function, "arguments");
+            if (argumentsDelta is not null)
             {
                 buffer.Arguments.Append(argumentsDelta);
             }
@@ -623,11 +637,24 @@ internal static class OpenAIChatProvider
                     ToolCallId: buffer.Id,
                     ToolName: buffer.Name));
         }
+
+        // Emit args delta after streaming_start so frontend has the tool call entry
+        if (buffer.Started && argumentsDelta is { Length: > 0 })
+        {
+            await AgentRuntimeTools.EmitAsync(
+                state, context,
+                new AgentRuntimeStreamEvent(
+                    "tool_use_args_delta",
+                    ToolCallId: buffer.Id,
+                    PartialInput: JsonSerializer.SerializeToElement(argumentsDelta)));
+        }
     }
 
-    private static void FlushRemainingToolBuffers(
+    private static async Task FlushRemainingToolBuffersAsync(
         Dictionary<int, ToolCallBuffer> toolBuffers,
-        List<AgentRuntimeNativeToolCall> completedToolCalls)
+        List<AgentRuntimeNativeToolCall> completedToolCalls,
+        AgentRuntimeRunState state,
+        IWorkerRequestContext context)
     {
         foreach (var buffer in toolBuffers.Values.OrderBy(item => item.Index))
         {
@@ -639,6 +666,12 @@ internal static class OpenAIChatProvider
                 ? parsedInput
                 : AgentRuntimeProviderSupport.CreateEmptyObjectElement();
             completedToolCalls.Add(new AgentRuntimeNativeToolCall(id, name, input));
+            await AgentRuntimeTools.EmitAsync(
+                state, context,
+                new AgentRuntimeStreamEvent(
+                    "tool_use_generated",
+                    ToolCallId: id,
+                    ToolUseBlock: new AgentRuntimeToolUseBlock(id, name, input)));
         }
         toolBuffers.Clear();
     }

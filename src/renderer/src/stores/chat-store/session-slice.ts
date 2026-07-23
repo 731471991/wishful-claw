@@ -16,6 +16,7 @@ export interface SessionSlice {
   deleteSession: (id: string) => void
   setActiveSession: (id: string | null) => void
   updateSessionTitle: (id: string, title: string) => void
+  renameSession: (id: string, title: string) => void
   updateSessionIcon: (id: string, icon: string) => void
   updateSessionMode: (id: string, mode: Session['mode']) => void
   setSessionModelManual: (sessionId: string, providerId: string, modelId: string) => void
@@ -153,6 +154,18 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       }
     })
     void dbUpdateSession(id, { icon, updatedAt: now })
+  },
+
+  renameSession: (id, title) => {
+    const now = Date.now()
+    set((state) => {
+      const session = state.sessions.find((s) => s.id === id)
+      if (session) {
+        session.title = title
+        session.updatedAt = now
+      }
+    })
+    void dbUpdateSession(id, { title, updatedAt: now })
   },
 
   updateSessionMode: (id, mode) => {
