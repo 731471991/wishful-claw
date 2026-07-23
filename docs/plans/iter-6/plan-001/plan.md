@@ -6,14 +6,14 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：数据模型 — PersonaModels.cs
+- [✓] 步骤1：数据模型 — PersonaModels.cs
   - 新建 `src/runtime/WishfulClaw.Worker/Persona/PersonaModels.cs`
   - 定义：PersonaSummary（id, name, tagline, description, isBuiltin）
   - 定义：PersonaConfig（id, name, tagline, description, isBuiltin, identityMd, soulMd, ontologyMd, agentsMd）
   - 定义：PersonaFileLayout 常量（目录名、文件名）
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤2：文件读写层 — PersonaStore.cs
+- [✓] 步骤2：文件读写层 — PersonaStore.cs
   - 新建 `src/runtime/WishfulClaw.Worker/Persona/PersonaStore.cs`
   - 实现路径解析：全局库 `~/.wishful-claw/personas/{id}/`，项目库 `{workingFolder}/.wishful-claw/personas/{id}/`
   - 实现：ListPersonas（扫描目录，返回 PersonaSummary 列表）
@@ -23,7 +23,7 @@
   - 实现：CopyToProject（从源库复制人格到项目库）
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤3：内置 6 套预设 .md 文件
+- [✓] 步骤3：内置 6 套预设 .md 文件
   - 新建 `src/runtime/WishfulClaw.Worker/Resources/Personas/` 目录
   - 编写 6 套人格，每套 4 个 .md 文件：
     - default/（小爪）
