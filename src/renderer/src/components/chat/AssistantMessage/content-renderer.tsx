@@ -35,6 +35,7 @@ import { StreamingMarkdownContent } from './markdown-renderer'
 import { ModelThinkingIndicator, GenerationProcessLine } from './ui-buttons'
 import { ToolBlockRenderer } from './tool-block-renderer'
 import type { ToolBlockRendererProps } from './tool-block-renderer'
+import type { ToolExecutionRun } from '@renderer/stores/agent-store'
 
 export interface ContentRendererProps {
   content: string | ContentBlock[]

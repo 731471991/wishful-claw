@@ -11,6 +11,8 @@ import {
 } from '@renderer/stores/extension-store'
 import { ModelIcon } from '@renderer/components/settings/provider-icons'
 import type { MessageRequestModelMeta } from '@renderer/lib/api/types'
+import type { ImageAttachment } from '@renderer/lib/image-attachments'
+import type { SendMessageOptions, ManualCompressionResult } from '@renderer/hooks/use-chat-actions'
 
 export function ActiveMcpsBadge({ projectId }: { projectId?: string | null }): React.JSX.Element | null {
   const { t } = useTranslation('chat')

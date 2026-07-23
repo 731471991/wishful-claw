@@ -15,6 +15,7 @@ import {
   ANSI_ESCAPE_RE,
   LIVE_SHELL_OUTPUT_MAX_CHARS
 } from './types'
+import { WIDGET_BRIDGE_SOURCE } from './types'
 
 // ── Record / equality helpers ──
 

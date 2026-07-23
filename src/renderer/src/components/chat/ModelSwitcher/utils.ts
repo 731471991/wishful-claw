@@ -7,6 +7,9 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
 import type { ActiveTeam } from '@renderer/stores/team-store'
 import { useTeamStore } from '@renderer/stores/team-store'
+import type { ThinkingConfig, AIProvider, ReasoningEffortLevel, SessionModelSelectionMode } from '@shared/types/provider'
+import { useChannelStore } from '@renderer/stores/channel-store'
+import { useSettingsStore } from '@renderer/stores/settings-store'
 
 export function formatContextLength(length?: number): string | null {
   if (!length) return null

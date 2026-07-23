@@ -15,6 +15,11 @@ import {
 import type { RequestDebugInfo } from '@renderer/lib/api/types'
 import { getLiveOutputShimmerClass } from '@renderer/lib/live-output-animation'
 import type { ModelThinkingIndicatorProps } from './types'
+import { useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { MONO_FONT } from '@renderer/lib/constants'
+import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
 
 export function DebugToggleButton({
   debugInfo,

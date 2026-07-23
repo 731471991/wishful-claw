@@ -7,6 +7,9 @@ import { cn } from '@renderer/lib/utils'
 import { TokenCounter } from '../TokenCounter'
 import type { RuntimeMetricTone } from './types'
 import { normalizeTokenCount } from './utils'
+import type { ContextCompressionStatus } from './types'
+import type { AIModelConfig } from '@shared/types/provider'
+import type { UnifiedMessage, TokenUsage } from '@renderer/lib/api/types'
 
 export function SmoothTokenNumber({
   value,

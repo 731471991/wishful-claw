@@ -206,9 +206,9 @@ export interface MessageRowProps {
   onDeleteMessage?: (messageId: string) => void
 }
 
-const EMPTY_MESSAGES: UnifiedMessage[] = []
-const EMPTY_MESSAGES_RAW: readonly unknown[] = []
-const EMPTY_TEAM_HISTORY: ActiveTeam[] = []
+export const EMPTY_MESSAGES: UnifiedMessage[] = []
+export const EMPTY_MESSAGES_RAW: readonly unknown[] = []
+export const EMPTY_TEAM_HISTORY: ActiveTeam[] = []
 export const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 export const STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD = 80
 export const STREAMING_AUTO_SCROLL_STOP_THRESHOLD = 240
@@ -220,7 +220,7 @@ export const AUTO_SCROLL_MIN_DELTA = 24
 export const PROGRAMMATIC_SCROLL_GUARD_MS = 160
 export const STREAMING_AUTO_SCROLL_POLL_MS = 500
 export const USER_LOCATOR_HIGHLIGHT_MS = 1400
-const ASSISTANT_RAIL_PREVIEW_LIMIT = 120
+export const ASSISTANT_RAIL_PREVIEW_LIMIT = 120
 export const ASSISTANT_RAIL_SCROLL_OFFSET = 28
 export const ASSISTANT_RAIL_DENSE_THRESHOLD = 80
 export const OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD = 72
@@ -229,11 +229,11 @@ export const VIRTUAL_ROW_ESTIMATED_HEIGHT = 180
 export const VIRTUAL_ROW_OVERSCAN = 8
 export const INITIAL_TAIL_RENDER_COUNT = 32
 export const EMPTY_ORCHESTRATION_STATE = { runs: [], byId: new Map(), byMessageId: new Map() }
-const MESSAGE_COLUMN_CLASS = 'mx-auto w-full max-w-[820px] px-5'
-const MESSAGE_COLUMN_COMPACT_CLASS = 'mx-auto w-full max-w-[720px] px-5'
-const MESSAGE_COLUMN_FULL_WIDTH_CLASS = 'mx-auto w-full max-w-none px-5'
+export const MESSAGE_COLUMN_CLASS = 'mx-auto w-full max-w-[820px] px-5'
+export const MESSAGE_COLUMN_COMPACT_CLASS = 'mx-auto w-full max-w-[720px] px-5'
+export const MESSAGE_COLUMN_FULL_WIDTH_CLASS = 'mx-auto w-full max-w-none px-5'
 export const EMPTY_MESSAGE_LOCATOR_ROWS: MessageLocatorIndexRow[] = []
-const EMPTY_ASSISTANT_RAIL_LAYOUT: AssistantRailLayout = {
+export const EMPTY_ASSISTANT_RAIL_LAYOUT: AssistantRailLayout = {
   rows: [],
   items: [],
   totalEstimatedHeight: 0
@@ -264,7 +264,7 @@ export interface SessionScopedTeamSelection {
   signature: string
 }
 
-const EMPTY_MESSAGE_LIST_SESSION_SELECTION: MessageListSessionSelection = {
+export const EMPTY_MESSAGE_LIST_SESSION_SELECTION: MessageListSessionSelection = {
   messages: EMPTY_MESSAGES,
   messagesLoaded: false,
   messageCount: 0,
@@ -273,7 +273,7 @@ const EMPTY_MESSAGE_LIST_SESSION_SELECTION: MessageListSessionSelection = {
   workingFolder: undefined
 }
 
-const EMPTY_SESSION_TEAM_SELECTION: SessionScopedTeamSelection = {
+export const EMPTY_SESSION_TEAM_SELECTION: SessionScopedTeamSelection = {
   activeTeam: null,
   teamHistory: EMPTY_TEAM_HISTORY,
   isTeamRunning: false,
@@ -281,7 +281,7 @@ const EMPTY_SESSION_TEAM_SELECTION: SessionScopedTeamSelection = {
   signature: 'empty'
 }
 
-const sessionScopedTeamSelectionCache = new Map<string, SessionScopedTeamSelection>()
+export const sessionScopedTeamSelectionCache = new Map<string, SessionScopedTeamSelection>()
 
 export function areToolResultsEqual(a?: ToolResultsLookup, b?: ToolResultsLookup): boolean {
   if (a === b) return true
@@ -406,7 +406,7 @@ export function isActiveTeamRunning(team: ActiveTeam): boolean {
 // Cache: ChatMessage[] reference → UnifiedMessage[] conversion result
 // This prevents infinite re-render loops by returning the same array reference
 // when the source messages array hasn't changed.
-const chatMessageConversionCache = new WeakMap<readonly unknown[], UnifiedMessage[]>()
+export const chatMessageConversionCache = new WeakMap<readonly unknown[], UnifiedMessage[]>()
 
 export function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMessage[] {
   const cached = chatMessageConversionCache.get(messages)

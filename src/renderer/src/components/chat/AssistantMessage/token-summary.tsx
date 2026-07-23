@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { ModelIcon } from '@renderer/components/settings/provider-icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { CompletionSummaryData } from './types'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
+import { CircleHelp } from 'lucide-react'
 
 function CompletionTokenSummary({
   summary
