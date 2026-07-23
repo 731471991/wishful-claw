@@ -25,6 +25,9 @@ interface NewSessionProjectSelectorProps {
   projects: NewSessionProjectOption[]
   selectedProjectId: string | null
   allowNoProject?: boolean
+  /** When true, the selector becomes a read-only label (no popover, no "No project" option).
+   *  Used for project-scoped "New session" where the project is fixed. */
+  locked?: boolean
   onSelectProject: (projectId: string | null) => void
   onCreateProject: () => void
   className?: string
@@ -34,6 +37,7 @@ export function NewSessionProjectSelector({
   projects,
   selectedProjectId,
   allowNoProject = true,
+  locked = false,
   onSelectProject,
   onCreateProject,
   className
@@ -73,6 +77,31 @@ export function NewSessionProjectSelector({
     setQuery('')
     onCreateProject()
   }, [onCreateProject])
+
+  if (locked) {
+    return (
+      <div
+        className={cn(
+          'mx-4 -mt-px flex min-h-10 items-center gap-2 rounded-b-[18px] border border-t-0 border-border/45 bg-muted/35 px-3 py-1.5 text-xs shadow-sm backdrop-blur',
+          className
+        )}
+      >
+        <span className="inline-flex h-7 max-w-[220px] min-w-0 items-center gap-1.5 rounded-full bg-background/55 px-2.5 text-muted-foreground">
+          <SelectedProjectIcon className="size-3.5 shrink-0" />
+          <span className="min-w-0 truncate">{projectLabel}</span>
+        </span>
+        <span className="h-4 w-px bg-border/60" />
+        <span className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-full px-2 text-muted-foreground">
+          {selectedProject?.sshConnectionId ? (
+            <Server className="size-3.5 shrink-0" />
+          ) : (
+            <Monitor className="size-3.5 shrink-0" />
+          )}
+          <span className="truncate">{transportLabel}</span>
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div

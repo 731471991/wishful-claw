@@ -305,6 +305,7 @@ export function ChatHomePage(): React.JSX.Element {
               projects={selectableProjects}
               selectedProjectId={selectedProjectId}
               allowNoProject={mode === 'chat'}
+              locked={mode !== 'chat' && !!activeProjectId}
               onSelectProject={handleSelectHomeProject}
               onCreateProject={() => setCreateProjectDialogOpen(true)}
             />
