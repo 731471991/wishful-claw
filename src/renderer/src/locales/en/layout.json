@@ -218,6 +218,34 @@
   },
   "layout": {
     "noSessionSelected": "No session selected",
-    "conversationCleared": "Conversation cleared"
+    "conversationCleared": "Conversation cleared",
+    "splash": {
+      "start": "Get Started",
+      "next": "Next",
+      "back": "Back",
+      "welcome": {
+        "title": "Welcome to Wishful Claw",
+        "subtitle": "Your desktop AI assistant. Local, private, and customizable. Takes one minute to set up.",
+        "points": {
+          "local": {
+            "title": "Local First",
+            "desc": "Data processed on your device, works offline"
+          },
+          "persona": {
+            "title": "Custom Persona",
+            "desc": "Choose or create AI assistants with different personalities"
+          },
+          "powerful": {
+            "title": "Full Toolchain",
+            "desc": "File operations, coding, terminal commands in one place"
+          }
+        }
+      },
+      "nickname": {
+        "title": "What's your name?",
+        "subtitle": "So the AI knows how to address you.",
+        "placeholder": "Enter your name"
+      }
+    }
   }
 }
