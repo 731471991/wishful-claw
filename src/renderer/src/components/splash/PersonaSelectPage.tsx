@@ -306,7 +306,7 @@ export function PersonaSelectPage(): React.JSX.Element {
 
       {/* Persona Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-hidden">
+        <DialogContent className="flex h-[85vh] max-w-3xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedPersona?.name ?? '...'}
@@ -321,7 +321,7 @@ export function PersonaSelectPage(): React.JSX.Element {
               <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
               {/* Tagline & description */}
               {selectedPersona.tagline && (
                 <p className="text-sm font-medium text-foreground">{selectedPersona.tagline}</p>
@@ -331,7 +331,7 @@ export function PersonaSelectPage(): React.JSX.Element {
               )}
 
               {/* Tab bar */}
-              <div className="flex gap-1 border-b">
+              <div className="flex shrink-0 gap-1 border-b">
                 {PERSONA_FILES.map((file) => (
                   <button
                     key={file.key}
@@ -350,12 +350,12 @@ export function PersonaSelectPage(): React.JSX.Element {
               </div>
 
               {/* Tab description */}
-              <p className="text-xs text-muted-foreground">
+              <p className="shrink-0 text-xs text-muted-foreground">
                 {PERSONA_FILES.find((f) => f.key === detailTab)?.description}
               </p>
 
               {/* Markdown content */}
-              <div className="max-h-[40vh] overflow-y-auto rounded-md bg-muted/50 p-4">
+              <div className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted/50 p-4">
                 <pre className="whitespace-pre-wrap text-sm leading-6 text-foreground">
                   {selectedPersona[detailTab] || t('splash.personaSelect.noContent', {
                     defaultValue: '（无内容）'
