@@ -134,9 +134,8 @@ export function buildSystemPrompt(options: {
       `All relative paths should be resolved against this folder. Use this as the default cwd for terminal commands run via the Bash tool.`
     )
   } else {
-    parts.push(
-      `\n**Note:** No working folder is set. Ask the user to select one if file operations are needed.`
-    )
+    // Global session (no project) - assistant mode, not file ops mode.
+    // Don't prompt the user to select a folder; they can use tools if needed.
   }
 
   // User-Defined Rules

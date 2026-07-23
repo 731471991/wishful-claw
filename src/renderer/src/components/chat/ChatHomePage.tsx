@@ -8,7 +8,6 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Project } from '@renderer/stores/chat-store'
 import { useChatActions, type SendMessageOptions } from '@renderer/hooks/use-chat-actions'
 import type { ImageAttachment } from '@renderer/lib/image-attachments'
-import { ensureDefaultChatWorkingFolder } from '@renderer/lib/chat-working-folder'
 import {
   NewSessionProjectSelector,
   type NewSessionProjectOption
@@ -182,14 +181,8 @@ export function ChatHomePage(): React.JSX.Element {
     (text: string, images?: ImageAttachment[], options?: SendMessageOptions): void => {
       void (async () => {
         const chatStore = useChatStore.getState()
-        let chatWorkingFolder: string | undefined
-        if (mode === 'chat') {
-          try {
-            chatWorkingFolder = await ensureDefaultChatWorkingFolder()
-          } catch {
-            chatWorkingFolder = undefined
-          }
-        }
+        // Global sessions (chat mode, no project) don't need a working folder.
+        // Only project-scoped sessions get one from the project.
         const projectIdForSession =
           selectedProjectId &&
           chatStore.projects.some((project) => project.id === selectedProjectId)
@@ -198,8 +191,7 @@ export function ChatHomePage(): React.JSX.Element {
         const sessionId =
           mode === 'chat' && !projectIdForSession
             ? chatStore.createSession(mode, null, {
-                preserveProjectless: true,
-                workingFolder: chatWorkingFolder
+                preserveProjectless: true
               })
             : chatStore.createSession(mode, projectIdForSession ?? activeProject?.id ?? undefined)
         useUIStore.getState().navigateToSession(sessionId)
