@@ -8,8 +8,8 @@ import {
 } from '@renderer/lib/preview/viewers/markdown-components'
 import { MONO_FONT } from '@renderer/lib/constants'
 import type { ImageBlock, TextBlock, ToolResultContent } from '@renderer/lib/api/types'
-import { ImagePreview } from '../ImagePreview'
-import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
+import { ImagePreview } from '../../ImagePreview'
+import { LazySyntaxHighlighter } from '../../LazySyntaxHighlighter'
 import {
   CopyBtn
 } from '../shared'
