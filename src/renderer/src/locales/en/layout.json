@@ -259,5 +259,30 @@
   "layout": {
     "noSessionSelected": "No session selected",
     "conversationCleared": "Conversation cleared"
+  },
+  "memory": {
+    "title": "Memory",
+    "tabActivity": "Activity",
+    "tabMemory": "Memory",
+    "hot": "Hot",
+    "warm": "Warm",
+    "cold": "Cold",
+    "searchPlaceholder": "Search memory...",
+    "search": "Search",
+    "searching": "...",
+    "matches": "{{count}} matches",
+    "noResults": "No matching memory entries found.",
+    "idle": "Search memory or use memory tools in chat.",
+    "loading": "Loading...",
+    "consolidate": "Consolidate memory index",
+    "tier": {
+      "hot": "hot",
+      "warm": "warm",
+      "cold": "cold"
+    },
+    "scope": {
+      "global": "global",
+      "project": "project"
+    }
   }
 }

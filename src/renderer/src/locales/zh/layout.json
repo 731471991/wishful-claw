@@ -259,5 +259,30 @@
   "layout": {
     "noSessionSelected": "未选择会话",
     "conversationCleared": "对话已清空"
+  },
+  "memory": {
+    "title": "记忆",
+    "tabActivity": "执行",
+    "tabMemory": "记忆",
+    "hot": "热记忆",
+    "warm": "温记忆",
+    "cold": "冷记忆",
+    "searchPlaceholder": "搜索记忆...",
+    "search": "搜索",
+    "searching": "...",
+    "matches": "{{count}} 条匹配",
+    "noResults": "未找到匹配的记忆条目。",
+    "idle": "搜索记忆或在对话中使用记忆工具。",
+    "loading": "加载中...",
+    "consolidate": "整合记忆索引",
+    "tier": {
+      "hot": "热",
+      "warm": "温",
+      "cold": "冷"
+    },
+    "scope": {
+      "global": "全局",
+      "project": "项目"
+    }
   }
 }
