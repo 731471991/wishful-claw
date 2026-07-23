@@ -194,8 +194,12 @@ function ToolCallCardInner({
     status !== 'streaming' &&
     status !== 'running' &&
     !!(input.content || input.content_preview)
-  const elapsed =
-    startedAt && completedAt ? ((completedAt - startedAt) / 1000).toFixed(1) + 's' : null
+  const elapsed = (() => {
+    if (!startedAt || !completedAt) return null
+    const diffMs = completedAt - startedAt
+    if (diffMs < 1000) return `${Math.round(diffMs)}ms`
+    return `${(diffMs / 1000).toFixed(1)}s`
+  })()
   const isMcpToolCall = isMcpTool(name)
   const useCompactToolHeader = COMPACT_BUILTIN_TOOL_NAMES.has(name)
   const compactHeader = React.useMemo(() => {
