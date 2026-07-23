@@ -138,6 +138,9 @@ export function ChatHomePage(): React.JSX.Element {
 
   React.useEffect(() => {
     if (mode === 'chat' || selectedProjectId || selectableProjects.length === 0) return
+    // Don't force-select a project if user explicitly clicked "New Chat"
+    // (activeProjectId is null) - respect the global session intent
+    if (!activeProjectId) return
     const nextProjectId = activeProjectId ?? selectableProjects[0].id
     setSelectedProjectId(nextProjectId)
     useChatStore.getState().setActiveProjectHome(nextProjectId)

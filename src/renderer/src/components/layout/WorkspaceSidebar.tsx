@@ -604,6 +604,7 @@ export function WorkspaceSidebar(): React.JSX.Element {
     // Don't create a session yet — just navigate to home.
     // The session is created when the user actually sends a message.
     setActiveProjectHome(null)
+    useUIStore.getState().setMode('chat')
     setActiveNavItem('chat')
     navigateToHome()
   }, [setActiveProjectHome, setActiveNavItem, navigateToHome])
