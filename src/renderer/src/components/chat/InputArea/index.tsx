@@ -142,6 +142,10 @@ import {
 import { ContextRing } from './context-ring'
 import { ActiveMcpsBadge, ActiveExtensionsBadge, ReadOnlyModelBadge } from './badges'
 import { ComposerRuntimeStatus, RuntimeTokenStatistics } from './runtime-status'
+import { useComposerHeight } from './use-composer-height'
+import { useImageAttachments } from './use-image-attachments'
+import { useQueuedMessages } from './use-queued-messages'
+import { usePromptOptimizer } from './use-prompt-optimizer'
 
 export function InputArea({
   sessionId,
@@ -199,15 +203,8 @@ export function InputArea({
   const [attachedImages, setAttachedImages] = React.useState<ImageAttachment[]>([])
   const [previewImage, setPreviewImage] = React.useState<ImageAttachment | null>(null)
   const [pendingImageReads, setPendingImageReads] = React.useState(0)
-  const [isOptimizing, setIsOptimizing] = React.useState(false)
   const [contextCompressionStatus, setContextCompressionStatus] =
     React.useState<ContextCompressionStatus>('idle')
-  const [, setOptimizingText] = React.useState('')
-  const [optimizationOptions, setOptimizationOptions] = React.useState<
-    Array<{ title: string; focus: string; content: string }>
-  >([])
-  const [showOptimizationDialog, setShowOptimizationDialog] = React.useState(false)
-  const [selectedOptionIndex, setSelectedOptionIndex] = React.useState(0)
   const currentLanguage = useSettingsStore((state) => state.language)
   const mainModelSelectionMode = useSettingsStore((state) => state.mainModelSelectionMode)
   const autoApprove = useSettingsStore((state) => state.autoApprove)
@@ -216,185 +213,31 @@ export function InputArea({
     (state) => state.clarifyAutoAcceptRecommended
   )
   const animationsEnabled = useSettingsStore((state) => state.animationsEnabled)
-  const contentScrollRef = React.useRef<HTMLDivElement>(null)
   const editorRef = React.useRef<FileAwareEditorHandle | null>(null)
   const queueFileInputRef = React.useRef<HTMLInputElement>(null)
-  const rootRef = React.useRef<HTMLDivElement>(null)
   const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const contextCompressionStatusTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
-  const [inputHeight, setInputHeight] = React.useState<number | null>(() =>
-    isSessionComposer ? defaultSessionInputHeight : null
-  )
-  const [autoInputHeight, setAutoInputHeight] = React.useState<number>(() => minComposerHeight)
-  const dragRef = React.useRef<{
-    startY: number
-    startH: number
-    minH: number
-    maxH: number
-  } | null>(null)
-  const containerRef = React.useRef<HTMLDivElement>(null)
-  const imagePreviewRef = React.useRef<HTMLDivElement>(null)
-  const bottomToolbarRef = React.useRef<HTMLDivElement>(null)
+  const {
+    rootRef, containerRef, imagePreviewRef, bottomToolbarRef,
+    inputHeight, autoInputHeight, autoMaxInputHeight, handleDragStart
+  } = useComposerHeight({
+    isSessionComposer, defaultSessionInputHeight, editorRef,
+    attachedImagesCount: attachedImages.length, selectedSkill,
+    documentNodes, selectedFiles
+  })
   const textRef = React.useRef(text)
   const documentRef = React.useRef(documentNodes)
   const selectedFilesRef = React.useRef(selectedFiles)
   const isContextCompressing = contextCompressionStatus === 'compressing'
 
-  const getMaxInputHeight = React.useCallback(() => {
-    const container = containerRef.current
-    if (!container) {
-      return Math.max(
-        minComposerHeight,
-        Math.min(MAX_INPUT_HEIGHT, Math.floor(window.innerHeight * FALLBACK_MAX_VIEWPORT_RATIO))
-      )
-    }
-    const root = rootRef.current
-    const messageListEl = root?.parentElement?.querySelector(
-      '[data-message-list]'
-    ) as HTMLElement | null
-    if (messageListEl) {
-      const messageListHeight = messageListEl.getBoundingClientRect().height
-      const available = Math.max(0, messageListHeight - MIN_MESSAGE_LIST_HEIGHT)
-      const dynamicMax = container.offsetHeight + available
-      return Math.max(minComposerHeight, Math.min(MAX_INPUT_HEIGHT, Math.floor(dynamicMax)))
-    }
-    return Math.max(
-      minComposerHeight,
-      Math.min(MAX_INPUT_HEIGHT, Math.floor(window.innerHeight * FALLBACK_MAX_VIEWPORT_RATIO))
-    )
-  }, [minComposerHeight])
-  const [autoMaxInputHeight, setAutoMaxInputHeight] = React.useState(() =>
-    Math.max(
-      MIN_INPUT_HEIGHT,
-      Math.min(MAX_INPUT_HEIGHT, Math.floor(window.innerHeight * FALLBACK_MAX_VIEWPORT_RATIO))
-    )
-  )
   const composerWidthClass = fullWidth
     ? 'mx-auto w-full max-w-none'
     : 'mx-auto w-full max-w-[820px]'
 
   React.useEffect(() => {
-    setInputHeight((current) => {
-      if (!isSessionComposer) {
-        return current === null ? current : null
-      }
-
-      return current ?? defaultSessionInputHeight
-    })
-  }, [defaultSessionInputHeight, isSessionComposer])
-
-  React.useEffect(() => {
     return () => clearTimeout(contextCompressionStatusTimerRef.current)
   }, [])
 
-  const getMinInputHeight = React.useCallback(() => {
-    const container = containerRef.current
-    const editorMetrics = editorRef.current?.getScrollMetrics()
-    const imagePreviewHeight = imagePreviewRef.current?.offsetHeight ?? 0
-    const bottomToolbarHeight = bottomToolbarRef.current?.offsetHeight ?? 0
-    const explicitChromeHeight = imagePreviewHeight + bottomToolbarHeight + 28
-
-    if (!container || !editorMetrics) {
-      return Math.max(minComposerHeight, explicitChromeHeight + EDITOR_MIN_HEIGHT)
-    }
-
-    const chromeHeight = Math.max(0, container.offsetHeight - editorMetrics.clientHeight)
-    return Math.max(
-      minComposerHeight,
-      Math.ceil(Math.max(chromeHeight, explicitChromeHeight) + EDITOR_MIN_HEIGHT)
-    )
-  }, [minComposerHeight])
-
-  React.useEffect(() => {
-    const updateAutoMaxInputHeight = (): void => {
-      setAutoMaxInputHeight(getMaxInputHeight())
-    }
-
-    updateAutoMaxInputHeight()
-
-    const observer =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(() => {
-            updateAutoMaxInputHeight()
-          })
-    const container = containerRef.current
-    const root = rootRef.current
-    const messageListEl = root?.parentElement?.querySelector(
-      '[data-message-list]'
-    ) as HTMLElement | null
-
-    if (observer && container) {
-      observer.observe(container)
-    }
-    if (observer && messageListEl) {
-      observer.observe(messageListEl)
-    }
-
-    window.addEventListener('resize', updateAutoMaxInputHeight)
-    return () => {
-      window.removeEventListener('resize', updateAutoMaxInputHeight)
-      observer?.disconnect()
-    }
-  }, [getMaxInputHeight])
-
-  React.useEffect(() => {
-    const onMouseMove = (e: MouseEvent): void => {
-      if (!dragRef.current) return
-      const delta = dragRef.current.startY - e.clientY
-      const newH = Math.min(
-        dragRef.current.maxH,
-        Math.max(dragRef.current.minH, dragRef.current.startH + delta)
-      )
-      setInputHeight(newH)
-    }
-    const onMouseUp = (): void => {
-      if (dragRef.current) {
-        dragRef.current = null
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-      }
-    }
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
-    }
-  }, [])
-
-  React.useEffect(() => {
-    if (inputHeight === null) return
-    const clampInputHeight = (): void => {
-      const minH = getMinInputHeight()
-      const maxH = Math.max(minH, getMaxInputHeight())
-      setInputHeight((prev) => {
-        if (prev === null) return prev
-        return Math.min(Math.max(prev, minH), maxH)
-      })
-    }
-    clampInputHeight()
-    window.addEventListener('resize', clampInputHeight)
-    return () => window.removeEventListener('resize', clampInputHeight)
-  }, [getMaxInputHeight, getMinInputHeight, inputHeight])
-
-  const handleDragStart = React.useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      const el = containerRef.current
-      if (!el) return
-      const minH = getMinInputHeight()
-      dragRef.current = {
-        startY: e.clientY,
-        startH: el.offsetHeight,
-        minH,
-        maxH: Math.max(minH, getMaxInputHeight())
-      }
-      document.body.style.cursor = 'row-resize'
-      document.body.style.userSelect = 'none'
-    },
-    [getMaxInputHeight, getMinInputHeight]
-  )
   const targetSession = useChatStore(
     useShallow((s) => {
       const targetSessionId = sessionId ?? s.activeSessionId
@@ -603,259 +446,12 @@ export function InputArea({
     context: draftContext
   })
   const draftReadyKeyRef = React.useRef<string | null>(null)
-  const queuedMessagesSnapshotRef = React.useRef<PendingSessionMessageItem[]>(EMPTY_QUEUED_MESSAGES)
-  const getQueuedMessagesSnapshot = React.useCallback(() => {
-    if (suppressPendingQueue) return EMPTY_QUEUED_MESSAGES
-    const next = activeSessionId
-      ? getPendingSessionMessages(activeSessionId)
-      : EMPTY_QUEUED_MESSAGES
-    const prev = queuedMessagesSnapshotRef.current
-    if (prev !== next && areQueuedMessagesEqual(prev, next)) {
-      return prev
-    }
-    queuedMessagesSnapshotRef.current = next
-    return next
-  }, [activeSessionId, suppressPendingQueue])
-  const queuedMessages = React.useSyncExternalStore(
-    subscribePendingSessionMessages,
-    getQueuedMessagesSnapshot,
-    () => EMPTY_QUEUED_MESSAGES
-  )
-  const isQueueDispatchPaused = React.useSyncExternalStore(
-    subscribePendingSessionMessages,
-    () =>
-      !suppressPendingQueue && activeSessionId
-        ? isPendingSessionDispatchPaused(activeSessionId)
-        : false,
-    () => false
-  )
-  const [editingQueueItemId, setEditingQueueItemId] = React.useState<string | null>(null)
-  const [editingQueueText, setEditingQueueText] = React.useState('')
-  const [editingQueueImages, setEditingQueueImages] = React.useState<ImageAttachment[]>([])
-  const [queueClearConfirmOpen, setQueueClearConfirmOpen] = React.useState(false)
   const [autoAcceptCountdown, setAutoAcceptCountdown] = React.useState<number | null>(null)
   const [isWorkspaceAgentsMissing, setIsWorkspaceAgentsMissing] = React.useState(false)
   const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
   const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
 
-  React.useLayoutEffect(() => {
-    if (inputHeight === null) return
-    const minH = getMinInputHeight()
-    const maxH = Math.max(minH, getMaxInputHeight())
-    setInputHeight((prev) => {
-      if (prev === null) return prev
-      if (prev >= minH && prev <= maxH) return prev
-      return Math.min(Math.max(prev, minH), maxH)
-    })
-  }, [attachedImages.length, selectedSkill, getMaxInputHeight, getMinInputHeight, inputHeight])
-
-  const syncAutoInputHeight = React.useCallback(() => {
-    if (inputHeight !== null) return
-    const container = containerRef.current
-    const editorMetrics = editorRef.current?.getScrollMetrics()
-    if (!container || !editorMetrics) return
-
-    const chromeHeight = Math.max(0, container.offsetHeight - editorMetrics.clientHeight)
-    const minHeight = Math.max(minComposerHeight, Math.ceil(chromeHeight + EDITOR_MIN_HEIGHT))
-    const nextHeight = Math.max(
-      minHeight,
-      Math.min(
-        autoMaxInputHeight,
-        Math.ceil(chromeHeight + Math.max(EDITOR_MIN_HEIGHT, editorMetrics.scrollHeight))
-      )
-    )
-
-    setAutoInputHeight((prev) => (prev === nextHeight ? prev : nextHeight))
-  }, [autoMaxInputHeight, inputHeight, minComposerHeight])
-
-  React.useLayoutEffect(() => {
-    syncAutoInputHeight()
-  }, [syncAutoInputHeight, documentNodes, selectedFiles, attachedImages.length, selectedSkill])
-
-  React.useEffect(() => {
-    if (typeof ResizeObserver === 'undefined') return
-
-    const observer = new ResizeObserver(() => {
-      if (inputHeight === null) {
-        syncAutoInputHeight()
-        return
-      }
-
-      const minH = getMinInputHeight()
-      const maxH = Math.max(minH, getMaxInputHeight())
-      setInputHeight((prev) => {
-        if (prev === null) return prev
-        return Math.min(Math.max(prev, minH), maxH)
-      })
-    })
-
-    const container = containerRef.current
-    const imagePreview = imagePreviewRef.current
-    const bottomToolbar = bottomToolbarRef.current
-
-    if (container) observer.observe(container)
-    if (imagePreview) observer.observe(imagePreview)
-    if (bottomToolbar) observer.observe(bottomToolbar)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [getMaxInputHeight, getMinInputHeight, inputHeight, syncAutoInputHeight])
-
-  const startEditQueuedMessage = React.useCallback((msg: PendingSessionMessageItem) => {
-    setEditingQueueItemId(msg.id)
-    setEditingQueueText(msg.text)
-    setEditingQueueImages(cloneImageAttachments(msg.images))
-  }, [])
-
-  const cancelEditQueuedMessage = React.useCallback(() => {
-    setEditingQueueItemId(null)
-    setEditingQueueText('')
-    setEditingQueueImages([])
-  }, [])
-
-  const removeQueuedMessage = React.useCallback(
-    (id: string) => {
-      if (!activeSessionId) return
-      removePendingSessionMessage(activeSessionId, id)
-      if (editingQueueItemId === id) {
-        setEditingQueueItemId(null)
-        setEditingQueueText('')
-        setEditingQueueImages([])
-      }
-    },
-    [activeSessionId, editingQueueItemId]
-  )
-
-  const addQueuedImages = React.useCallback(async (files: File[]) => {
-    const results = await Promise.all(files.map(fileToImageAttachment))
-    const valid = results.filter(Boolean) as ImageAttachment[]
-    if (valid.length > 0) {
-      setEditingQueueImages((prev) => [...prev, ...valid])
-    }
-  }, [])
-
-  const getPastedImageFiles = React.useCallback(
-    (clipboardData: DataTransfer | null | undefined): File[] => {
-      if (!supportsVision || !clipboardData) return []
-      return Array.from(clipboardData.items)
-        .filter((item) => item.kind === 'file' && ACCEPTED_IMAGE_TYPES.includes(item.type))
-        .map((item) => item.getAsFile())
-        .filter(Boolean) as File[]
-    },
-    [supportsVision]
-  )
-
-  const removeQueuedImage = React.useCallback((id: string) => {
-    setEditingQueueImages((prev) => prev.filter((img) => img.id !== id))
-    setPreviewImage((current) => (current?.id === id ? null : current))
-  }, [])
-
-  const saveQueuedMessage = React.useCallback(
-    (id: string) => {
-      if (!activeSessionId) return
-      const targetMessage = queuedMessages.find((msg) => msg.id === id)
-      if (!targetMessage) return
-
-      const nextDraft: EditableUserMessageDraft = {
-        text: editingQueueText.trim(),
-        images: cloneImageAttachments(editingQueueImages),
-        command: targetMessage.command
-      }
-
-      if (!hasEditableDraftContent(nextDraft)) {
-        removePendingSessionMessage(activeSessionId, id)
-        setEditingQueueItemId(null)
-        setEditingQueueText('')
-        setEditingQueueImages([])
-        return
-      }
-
-      updatePendingSessionMessageDraft(activeSessionId, id, nextDraft)
-      setEditingQueueItemId(null)
-      setEditingQueueText('')
-      setEditingQueueImages([])
-    },
-    [activeSessionId, queuedMessages, editingQueueText, editingQueueImages]
-  )
-
-  const clearQueuedMessagesForActiveSession = React.useCallback(() => {
-    if (!activeSessionId) return
-    const cleared = clearPendingSessionMessages(activeSessionId)
-    if (cleared === 0) return
-    setQueueClearConfirmOpen(false)
-    cancelEditQueuedMessage()
-    toast.success(t('input.queueCleared', { defaultValue: 'Queued messages cleared' }))
-  }, [activeSessionId, cancelEditQueuedMessage, t])
-
-  const handleClearQueuedMessages = React.useCallback(() => {
-    if (queuedMessages.length <= 1) {
-      clearQueuedMessagesForActiveSession()
-      return
-    }
-    setQueueClearConfirmOpen(true)
-  }, [clearQueuedMessagesForActiveSession, queuedMessages.length])
-
-  const resumeQueuedMessages = React.useCallback(() => {
-    if (!activeSessionId) return
-    dispatchNextQueuedMessageForSession(activeSessionId)
-  }, [activeSessionId])
-
-  React.useEffect(() => {
-    textRef.current = text
-  }, [text])
-  React.useEffect(() => {
-    documentRef.current = documentNodes
-  }, [documentNodes])
-  React.useEffect(() => {
-    selectedFilesRef.current = selectedFiles
-  }, [selectedFiles])
-
-  React.useEffect(() => {
-    if (!highlightedFileId) return
-    const timer = window.setTimeout(() => {
-      setHighlightedFileId((current) => (current === highlightedFileId ? null : current))
-    }, 1600)
-    return () => window.clearTimeout(timer)
-  }, [highlightedFileId])
-
-  const applyEditorStateFromSerializedText = React.useCallback(
-    (nextText: string, baseFiles: SelectedFileItem[] = selectedFilesRef.current) => {
-      const nextState = deserializeEditorState(nextText, workingFolder, baseFiles)
-      setDocumentNodes(nextState.document)
-      setSelectedFiles(nextState.selectedFiles)
-    },
-    [workingFolder]
-  )
-
-  const setText = React.useCallback(
-    (value: string | ((prev: string) => string)) => {
-      const previousText = textRef.current
-      const nextText = typeof value === 'function' ? value(previousText) : value
-      applyEditorStateFromSerializedText(nextText, selectedFilesRef.current)
-    },
-    [applyEditorStateFromSerializedText]
-  )
-
-  const focusInputAtEnd = React.useCallback(() => {
-    editorRef.current?.focusAtEnd()
-  }, [])
-
-  const hasFileReferences = React.useMemo(() => selectedFiles.length > 0, [selectedFiles])
-
-  const quoteQueuedMessage = React.useCallback(
-    (id: string) => {
-      if (!activeSessionId) return
-      const quoted = quotePendingSessionMessageIntoConversation(activeSessionId, id)
-      if (!quoted) return
-      if (editingQueueItemId === id) {
-        setEditingQueueItemId(null)
-        setEditingQueueText('')
-        setEditingQueueImages([])
-      }
-      toast.success(t('input.queueQuoted', { defaultValue: 'Inserted into conversation' }))
-    },
-    [activeSessionId, editingQueueItemId, t]
+ [activeSessionId, editingQueueItemId, t]
   )
 
   const replaceSelectionWithText = React.useCallback(
@@ -1338,32 +934,6 @@ export function InputArea({
   ])
 
   React.useEffect(() => {
-    setEditingQueueItemId(null)
-    setEditingQueueText('')
-    setEditingQueueImages([])
-    setQueueClearConfirmOpen(false)
-  }, [activeSessionId])
-
-  React.useEffect(() => {
-    if (!editingQueueItemId) return
-    if (queuedMessages.some((msg) => msg.id === editingQueueItemId)) return
-    setEditingQueueItemId(null)
-    setEditingQueueText('')
-    setEditingQueueImages([])
-  }, [queuedMessages, editingQueueItemId])
-
-  React.useEffect(() => {
-    if (!isStreaming) {
-      cancelEditQueuedMessage()
-    }
-  }, [isStreaming, cancelEditQueuedMessage])
-
-  React.useEffect(() => {
-    if (queuedMessages.length > 0) return
-    setQueueClearConfirmOpen(false)
-  }, [queuedMessages.length])
-
-  React.useEffect(() => {
     if (!inputDraftHydrated) return
 
     clearTimeout(draftSaveTimerRef.current)
@@ -1475,50 +1045,6 @@ export function InputArea({
     useUIStore.getState().setPendingInsertText(null)
   }, [pendingInsert, replaceSelectionWithText, text])
 
-  // --- Image helpers ---
-  const addImages = React.useCallback(async (files: File[]) => {
-    if (files.length === 0) return
-
-    setPendingImageReads((prev) => prev + files.length)
-    try {
-      const results = await Promise.all(files.map(fileToImageAttachment))
-      const valid = results.filter(Boolean) as ImageAttachment[]
-      if (valid.length > 0) {
-        setAttachedImages((prev) => [...prev, ...valid])
-      }
-    } finally {
-      setPendingImageReads((prev) => Math.max(0, prev - files.length))
-    }
-  }, [])
-
-  const removeImage = React.useCallback((id: string) => {
-    setAttachedImages((prev) => prev.filter((img) => img.id !== id))
-    setPreviewImage((current) => (current?.id === id ? null : current))
-  }, [])
-
-  const readImagePathAsAttachment = React.useCallback(
-    async (filePath: string): Promise<ImageAttachment | null> => {
-      const mediaType = getImageMediaTypeForPath(filePath)
-      if (!mediaType) return null
-
-      const result = (await ipcClient.invoke(IPC.FS_READ_FILE_BINARY, { path: filePath })) as {
-        data?: string
-        error?: string
-      }
-      if (result.error || !result.data) {
-        console.warn('[InputArea] Failed to read selected image:', result.error ?? filePath)
-        return null
-      }
-
-      return {
-        id: createImageAttachmentId(),
-        dataUrl: `data:${mediaType};base64,${result.data}`,
-        mediaType
-      }
-    },
-    []
-  )
-
   const addFilesToEditor = React.useCallback(
     (filePaths: string[], selection?: { start: number; end: number }) => {
       const nextSelection = selection ??
@@ -1549,85 +1075,26 @@ export function InputArea({
     [editorSelection.end, editorSelection.start, replaceSelectionWithText, workingFolder]
   )
 
-  const handleAttachMedia = React.useCallback(async (): Promise<void> => {
-    try {
-      const result = (await ipcClient.invoke(IPC.FS_SELECT_FILE, {
-        multiSelections: true,
-        filters: [
-          {
-            name: t('input.mediaFilter'),
-            extensions: [
-              'png',
-              'jpg',
-              'jpeg',
-              'gif',
-              'webp',
-              'md',
-              'txt',
-              'docx',
-              'pdf',
-              'html',
-              'csv',
-              'json',
-              'xml',
-              'yaml',
-              'yml',
-              'ts',
-              'js',
-              'tsx',
-              'jsx'
-            ]
-          },
-          { name: t('input.allFilesFilter'), extensions: ['*'] }
-        ]
-      })) as { canceled?: boolean; path?: string; paths?: string[] }
+  const {
+    addImages, removeImage, getPastedImageFiles, handleAttachMedia
+  } = useImageAttachments({
+    supportsVision, t, addFilesToEditor,
+    setAttachedImages, setPreviewImage, setPendingImageReads
+  })
 
-      const paths = Array.from(
-        new Set(
-          (Array.isArray(result.paths) && result.paths.length > 0
-            ? result.paths
-            : result.path
-              ? [result.path]
-              : []
-          ).filter((filePath): filePath is string => Boolean(filePath))
-        )
-      )
-      if (result.canceled || paths.length === 0) return
-
-      const imagePaths = supportsVision
-        ? paths.filter((filePath) => Boolean(getImageMediaTypeForPath(filePath)))
-        : []
-      const filePaths = paths.filter((filePath) => !imagePaths.includes(filePath))
-      const imageFallbackPaths: string[] = []
-
-      if (imagePaths.length > 0) {
-        setPendingImageReads((prev) => prev + imagePaths.length)
-        try {
-          const images = await Promise.all(
-            imagePaths.map(async (filePath) => {
-              const attachment = await readImagePathAsAttachment(filePath)
-              if (!attachment) imageFallbackPaths.push(filePath)
-              return attachment
-            })
-          )
-          const validImages = images.filter((image): image is ImageAttachment => Boolean(image))
-          if (validImages.length > 0) {
-            setAttachedImages((prev) => [...prev, ...validImages])
-          }
-        } finally {
-          setPendingImageReads((prev) => Math.max(0, prev - imagePaths.length))
-        }
-      }
-
-      const pathsForFileReferences = [...filePaths, ...imageFallbackPaths]
-      if (pathsForFileReferences.length > 0) {
-        addFilesToEditor(pathsForFileReferences)
-      }
-    } catch (error) {
-      console.error('[InputArea] Failed to attach media:', error)
-      toast.error(t('input.attachMediaFailed'))
-    }
-  }, [addFilesToEditor, readImagePathAsAttachment, supportsVision, t])
+  const {
+    queuedMessages, isQueueDispatchPaused,
+    editingQueueItemId, editingQueueText, setEditingQueueText,
+    editingQueueImages, queueClearConfirmOpen, setQueueClearConfirmOpen,
+    queueFileInputRef,
+    startEditQueuedMessage, cancelEditQueuedMessage, removeQueuedMessage,
+    addQueuedImages, removeQueuedImage, saveQueuedMessage,
+    clearQueuedMessagesForActiveSession, handleClearQueuedMessages,
+    resumeQueuedMessages, quoteQueuedMessage, handleQueueEditPaste
+  } = useQueuedMessages({
+    activeSessionId, suppressPendingQueue, t, isStreaming,
+    getPastedImageFiles, setPreviewImage
+  })
 
   const handlePreviewFile = React.useCallback(
     (fileId: string) => {
@@ -1969,16 +1436,6 @@ export function InputArea({
     [addImages, editorSelection, getPastedImageFiles, replaceSelectionWithText]
   )
 
-  const handleQueueEditPaste = React.useCallback(
-    (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
-      const imageFiles = getPastedImageFiles(e.clipboardData)
-      if (imageFiles.length === 0) return
-      e.preventDefault()
-      void addQueuedImages(imageFiles)
-    },
-    [addQueuedImages, getPastedImageFiles]
-  )
-
   const getDraggedFilePaths = React.useCallback((dataTransfer: DataTransfer | null): string[] => {
     if (!dataTransfer) return []
     const payload = dataTransfer.getData(INTERNAL_FILE_DRAG_MIME)
@@ -2050,120 +1507,6 @@ export function InputArea({
     },
     [addFilesToEditor, getDraggedFilePaths, handleDropFiles, setDragging]
   )
-
-  // Optimize prompt handler
-  const handleOptimizePrompt = React.useCallback(async () => {
-    const trimmed = text.trim()
-    if (!trimmed || isOptimizing) return
-
-    console.log('[Optimizer] Starting optimization...')
-    setIsOptimizing(true)
-    setOptimizingText('')
-    setOptimizationOptions([])
-
-    try {
-      const { optimizePrompt } = await import('@renderer/lib/prompt-optimizer/optimizer')
-
-      console.log('[Optimizer] Current language:', currentLanguage)
-
-      // Find a fast model (haiku) from available providers
-      const providerStore = useProviderStore.getState()
-      const { providers } = providerStore
-
-      let fastProvider = providers.find(
-        (p) =>
-          p.enabled &&
-          p.models.some(
-            (m) =>
-              m.enabled &&
-              (m.id.includes('haiku') || m.id.includes('4o-mini') || m.id.includes('gpt-4o-mini'))
-          )
-      )
-
-      if (!fastProvider) {
-        fastProvider = providers.find((p) => p.enabled && p.models.some((m) => m.enabled))
-      }
-
-      if (!fastProvider) {
-        console.error('[Optimizer] No enabled provider found')
-        toast.error('No AI provider available', {
-          description: 'Please configure an AI provider in Settings'
-        })
-        setIsOptimizing(false)
-        return
-      }
-
-      const fastModel =
-        fastProvider.models.find(
-          (m) =>
-            m.enabled &&
-            (m.id.includes('haiku') || m.id.includes('4o-mini') || m.id.includes('gpt-4o-mini'))
-        ) || fastProvider.models.find((m) => m.enabled)
-
-      if (!fastModel) {
-        console.error('[Optimizer] No enabled model found')
-        toast.error('No AI model available', { description: 'Please enable a model in Settings' })
-        setIsOptimizing(false)
-        return
-      }
-
-      console.log('[Optimizer] Using provider:', fastProvider.type, 'model:', fastModel.id)
-
-      const providerConfig = {
-        type: fastProvider.type,
-        apiKey: fastProvider.apiKey,
-        baseUrl: fastProvider.baseUrl,
-        model: fastModel.id,
-        providerId: fastProvider.id,
-        maxTokens: 4096,
-        temperature: 0.7,
-        systemPrompt: ''
-      }
-
-      console.log('[Optimizer] Starting optimization stream...')
-      for await (const event of optimizePrompt(trimmed, providerConfig, currentLanguage)) {
-        console.log('[Optimizer] Event:', event.type)
-        if (event.type === 'text') {
-          setOptimizingText((prev) => prev + event.content)
-        } else if (event.type === 'result' && event.options && event.options.length > 0) {
-          console.log('[Optimizer] Got results:', event.options.length, 'options')
-          setOptimizationOptions(event.options)
-          setSelectedOptionIndex(0)
-          setShowOptimizationDialog(true)
-        }
-      }
-      console.log('[Optimizer] Stream completed')
-    } catch (error) {
-      console.error('[Optimizer] Error:', error)
-      toast.error('Optimization failed', {
-        description: error instanceof Error ? error.message : String(error)
-      })
-    } finally {
-      console.log('[Optimizer] Cleanup')
-      setIsOptimizing(false)
-    }
-  }, [text, isOptimizing, currentLanguage])
-
-  const handleSelectOption = React.useCallback(
-    (content: string) => {
-      setText(content)
-      setOptimizationOptions([])
-      setOptimizingText('')
-      setSelectedOptionIndex(0)
-      setShowOptimizationDialog(false)
-      requestAnimationFrame(() => {
-        focusInputAtEnd()
-      })
-    },
-    [focusInputAtEnd, setText]
-  )
-
-  const handleCancelOptimization = React.useCallback(() => {
-    setOptimizationOptions([])
-    setOptimizingText('')
-    setSelectedOptionIndex(0)
-    setShowOptimizationDialog(false)
-  }, [])
 
   const handleCompressContext = React.useCallback(() => {
     if (!onCompressContext || isContextCompressing) return
