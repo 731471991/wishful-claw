@@ -13,14 +13,54 @@
     },
     "loading": "正在进入...",
     "personaSelect": {
-      "title": "选择你的人格",
-      "subtitle": "选择一个 AI 人格作为你的默认助手。不同人格有不同的性格和沟通风格，之后可以随时切换。",
+      "title": "选择你喜欢的沟通角色",
+      "subtitle": "不同角色有不同的性格和沟通风格，之后可以随时切换。",
       "loading": "加载人格列表...",
       "empty": "暂无可用人格",
       "retry": "重试",
       "hint": "可以在设置中随时修改或创建新人格",
       "start": "开始使用",
-      "saved": "人格已设置"
+      "saved": "设置完成",
+      "builtin": "内置"
+    },
+    "start": "开始设置",
+    "next": "下一步",
+    "back": "上一步",
+    "welcome": {
+      "title": "欢迎使用 Wishful Claw",
+      "subtitle": "你的桌面 AI 助手。本地运行、隐私安全、人格可定制。花一分钟完成初始设置。",
+      "points": {
+        "local": {
+          "title": "本地运行",
+          "desc": "数据在你的设备上处理，断网也能用"
+        },
+        "persona": {
+          "title": "人格可定制",
+          "desc": "选择或创建不同性格的 AI 助手"
+        },
+        "powerful": {
+          "title": "工具链完整",
+          "desc": "文件操作、代码编写、终端命令一站搞定"
+        }
+      }
+    },
+    "nickname": {
+      "title": "你叫什么？",
+      "subtitle": "让 AI 知道怎么称呼你。",
+      "placeholder": "输入你的称呼"
+    },
+    "language": {
+      "title": "选择语言",
+      "subtitle": "检测到系统语言，你可以在此更改。"
+    },
+    "theme": {
+      "title": "选择外观",
+      "subtitle": "选择你喜欢的主题模式和配色。",
+      "modes": {
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      }
     }
   },
   "main": {
@@ -218,34 +258,6 @@
   },
   "layout": {
     "noSessionSelected": "未选择会话",
-    "conversationCleared": "对话已清空",
-    "splash": {
-      "start": "开始设置",
-      "next": "下一步",
-      "back": "上一步",
-      "welcome": {
-        "title": "欢迎使用 Wishful Claw",
-        "subtitle": "你的桌面 AI 助手。本地运行、隐私安全、人格可定制。花一分钟完成初始设置。",
-        "points": {
-          "local": {
-            "title": "本地运行",
-            "desc": "数据在你的设备上处理，断网也能用"
-          },
-          "persona": {
-            "title": "人格可定制",
-            "desc": "选择或创建不同性格的 AI 助手"
-          },
-          "powerful": {
-            "title": "工具链完整",
-            "desc": "文件操作、代码编写、终端命令一站搞定"
-          }
-        }
-      },
-      "nickname": {
-        "title": "你叫什么？",
-        "subtitle": "让 AI 知道怎么称呼你。",
-        "placeholder": "输入你的称呼"
-      }
-    }
+    "conversationCleared": "对话已清空"
   }
 }

@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ArrowRight, Check, Loader2, Send, ShieldCheck, Sparkles, PenLine, Users } from 'lucide-react'
+import { ArrowRight, Check, Loader2, Send, ShieldCheck, Sparkles, Users, Languages, Sun, Moon, Monitor, PenLine } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
@@ -10,62 +11,81 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { usePersonaStore } from '@renderer/stores/persona-store'
 import type { PersonaSummary } from '@renderer/lib/persona/persona-types'
+import { LANGUAGE_OPTIONS, detectSystemLanguage } from '@renderer/lib/i18n-language'
+import { changeI18nLanguage } from '@renderer/locales'
+import { APP_THEME_PRESETS, type AppThemePreset } from '@renderer/lib/theme-presets'
 import { cn } from '@renderer/lib/utils'
 
-type Step = 'welcome' | 'nickname' | 'persona'
+type Step = 'setup' | 'persona'
 
-const STEPS: Step[] = ['welcome', 'nickname', 'persona']
+const THEME_MODES = [
+  { value: 'light', icon: Sun, label: '浅色' },
+  { value: 'dark', icon: Moon, label: '深色' },
+  { value: 'system', icon: Monitor, label: '跟随系统' }
+] as const
 
 export function PersonaSelectPage(): React.JSX.Element {
   const { t } = useTranslation('layout')
   const enterMain = useUIStore((s) => s.enterMain)
   const updateSettings = useSettingsStore((s) => s.updateSettings)
   const persistedName = useSettingsStore((s) => s.userName)
+  const persistedTheme = useSettingsStore((s) => s.theme)
+  const persistedThemePreset = useSettingsStore((s) => s.themePreset)
+  const { setTheme } = useTheme()
 
   const { personas, loading, listPersonas } = usePersonaStore()
-  const [step, setStep] = useState<Step>('welcome')
+  const [step, setStep] = useState<Step>('setup')
+  const [language, setLanguage] = useState(detectSystemLanguage())
   const [nickname, setNickname] = useState(persistedName ?? '')
+  const [themeMode, setThemeMode] = useState<string>(persistedTheme ?? 'dark')
+  const [themePreset, setThemePreset] = useState<AppThemePreset>(persistedThemePreset ?? 'mulberry')
   const [selectedId, setSelectedId] = useState<string>('')
   const [finishing, setFinishing] = useState(false)
 
-  const stepIndex = STEPS.indexOf(step)
-  const progress = ((stepIndex + 1) / STEPS.length) * 100
+  const progress = step === 'setup' ? 50 : 100
 
   const canContinue = useMemo(() => {
-    if (step === 'nickname') return nickname.trim().length > 0
+    if (step === 'setup') return nickname.trim().length > 0
     if (step === 'persona') return Boolean(selectedId)
     return true
   }, [nickname, selectedId, step])
 
+  // Apply language change immediately
+  const handleLanguageChange = useCallback((lang: string) => {
+    setLanguage(lang as typeof language)
+    updateSettings({ language: lang })
+    void changeI18nLanguage(lang)
+  }, [updateSettings])
+
+  // Apply theme mode change immediately
+  const handleThemeModeChange = useCallback((mode: string) => {
+    setThemeMode(mode)
+    setTheme(mode)
+    updateSettings({ theme: mode as 'light' | 'dark' | 'system' })
+  }, [setTheme, updateSettings])
+
+  // Apply theme preset change immediately
+  const handleThemePresetChange = useCallback((preset: AppThemePreset) => {
+    setThemePreset(preset)
+    updateSettings({ themePreset: preset })
+  }, [updateSettings])
+
   // Load personas when entering persona step
   const handleEnterPersona = useCallback(() => {
+    updateSettings({ userName: nickname.trim() })
     setStep('persona')
     if (personas.length === 0) {
       listPersonas()
     }
-  }, [personas.length, listPersonas])
+  }, [nickname, updateSettings, personas.length, listPersonas])
 
   // Auto-select default persona
-  useMemo(() => {
+  useEffect(() => {
     if (personas.length > 0 && !selectedId) {
       const defaultP = personas.find((p) => p.id === 'default') ?? personas[0]
       setSelectedId(defaultP.id)
     }
   }, [personas, selectedId])
-
-  const goNext = useCallback(() => {
-    if (step === 'welcome') {
-      setStep('nickname')
-    } else if (step === 'nickname') {
-      updateSettings({ userName: nickname.trim() })
-      handleEnterPersona()
-    }
-  }, [step, nickname, updateSettings, handleEnterPersona])
-
-  const goBack = useCallback(() => {
-    const idx = STEPS.indexOf(step)
-    if (idx > 0) setStep(STEPS[idx - 1])
-  }, [step])
 
   const handleFinish = useCallback(async () => {
     if (!selectedId) return
@@ -95,7 +115,7 @@ export function PersonaSelectPage(): React.JSX.Element {
 
       {/* Main content */}
       <main className="flex min-h-0 flex-1 items-center justify-center px-5 py-8">
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-2xl">
           {/* Progress bar */}
           <div className="mb-8 h-1 w-full overflow-hidden rounded bg-muted">
             <div
@@ -104,9 +124,10 @@ export function PersonaSelectPage(): React.JSX.Element {
             />
           </div>
 
-          {/* ── Step: Welcome ── */}
-          {step === 'welcome' && (
-            <div className="max-w-xl space-y-8">
+          {/* ── Step 1: Setup (welcome + nickname + language + theme) ── */}
+          {step === 'setup' && (
+            <div className="space-y-8">
+              {/* Welcome */}
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold">
                   {t('splash.welcome.title', { defaultValue: '欢迎使用 Wishful Claw' })}
@@ -117,69 +138,122 @@ export function PersonaSelectPage(): React.JSX.Element {
                   })}
                 </p>
               </div>
-              <div className="space-y-5">
-                {([
-                  { icon: ShieldCheck, key: 'local', title: '本地运行', desc: '数据在你的设备上处理，断网也能用' },
-                  { icon: Users, key: 'persona', title: '人格可定制', desc: '选择或创建不同性格的 AI 助手' },
-                  { icon: Sparkles, key: 'powerful', title: '工具链完整', desc: '文件操作、代码编写、终端命令一站搞定' }
-                ] as const).map((item) => (
-                  <div key={item.key} className="grid grid-cols-[34px_1fr] gap-4">
-                    <div className="flex size-8 items-center justify-center rounded-md border bg-background">
-                      <item.icon className="size-4 text-muted-foreground" />
-                    </div>
-                    <div className="space-y-1">
-                      <h2 className="text-base font-semibold">
-                        {t(`splash.welcome.points.${item.key}.title`, { defaultValue: item.title })}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {t(`splash.welcome.points.${item.key}.desc`, { defaultValue: item.desc })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* ── Step: Nickname ── */}
-          {step === 'nickname' && (
-            <div className="max-w-2xl space-y-7">
-              <div className="space-y-3">
-                <h1 className="text-3xl font-semibold">
+              {/* Nickname */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
                   {t('splash.nickname.title', { defaultValue: '你叫什么？' })}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {t('splash.nickname.subtitle', {
-                    defaultValue: '让 AI 知道怎么称呼你。'
-                  })}
-                </p>
+                </label>
+                <div className="relative max-w-md">
+                  <Input
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && nickname.trim()) handleEnterPersona()
+                    }}
+                    autoFocus
+                    className="h-12 rounded-lg pl-10 pr-4 text-base font-medium shadow-sm"
+                    placeholder={t('splash.nickname.placeholder', { defaultValue: '输入你的称呼' })}
+                  />
+                  <PenLine className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
               </div>
-              <div className="relative max-w-xl">
-                <Input
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && nickname.trim()) goNext()
-                  }}
-                  autoFocus
-                  className="h-14 rounded-lg pl-12 pr-4 text-lg font-medium shadow-sm"
-                  placeholder={t('splash.nickname.placeholder', { defaultValue: '输入你的称呼' })}
-                />
-                <PenLine className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+              {/* Language (optional) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t('splash.language.title', { defaultValue: '语言' })}
+                </label>
+                <div className="flex gap-2">
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleLanguageChange(option.value)}
+                      className={cn(
+                        'flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors',
+                        language === option.value
+                          ? 'border-foreground bg-foreground text-background'
+                          : 'bg-background hover:bg-muted'
+                      )}
+                    >
+                      <Languages className="size-4" />
+                      {option.label}
+                      {language === option.value && <Check className="size-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme (optional) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t('splash.theme.title', { defaultValue: '外观' })}
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Mode toggle */}
+                  <div className="flex gap-2">
+                    {THEME_MODES.map((mode) => (
+                      <button
+                        key={mode.value}
+                        type="button"
+                        onClick={() => handleThemeModeChange(mode.value)}
+                        className={cn(
+                          'flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
+                          themeMode === mode.value
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'bg-background hover:bg-muted'
+                        )}
+                      >
+                        <mode.icon className="size-3.5" />
+                        {t(`splash.theme.modes.${mode.value}`, { defaultValue: mode.label })}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Preset swatches */}
+                  <div className="flex gap-1.5">
+                    {APP_THEME_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handleThemePresetChange(preset.id)}
+                        className={cn(
+                          'flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors',
+                          themePreset === preset.id
+                            ? 'border-foreground'
+                            : 'border-transparent hover:border-muted-foreground'
+                        )}
+                      >
+                        <div className="flex">
+                          {preset.swatches.slice(0, 2).map((color, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                'size-3 rounded-full border border-black/10',
+                                i === 0 ? '-mr-1' : ''
+                              )}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* ── Step: Persona ── */}
+          {/* ── Step 2: Persona ── */}
           {step === 'persona' && (
             <div className="space-y-5">
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold">
-                  {t('splash.personaSelect.title', { defaultValue: '选择你的人格' })}
+                  {t('splash.personaSelect.title', { defaultValue: '选择你喜欢的沟通角色' })}
                 </h1>
                 <p className="text-sm leading-6 text-muted-foreground">
                   {t('splash.personaSelect.subtitle', {
-                    defaultValue: '不同人格有不同的性格和沟通风格，之后可以随时切换。'
+                    defaultValue: '不同角色有不同的性格和沟通风格，之后可以随时切换。'
                   })}
                 </p>
               </div>
@@ -187,7 +261,7 @@ export function PersonaSelectPage(): React.JSX.Element {
               {loading ? (
                 <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  {t('splash.personaSelect.loading', { defaultValue: '加载人格列表...' })}
+                  {t('splash.personaSelect.loading', { defaultValue: '加载中...' })}
                 </div>
               ) : personas.length === 0 ? (
                 <div className="flex h-32 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
@@ -199,13 +273,14 @@ export function PersonaSelectPage(): React.JSX.Element {
                   </Button>
                 </div>
               ) : (
-                <div className="grid max-h-[calc(100vh-320px)] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                <div className="grid max-h-[calc(100vh-340px)] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
                   {personas.map((persona) => (
                     <PersonaCard
                       key={persona.id}
                       persona={persona}
                       selected={selectedId === persona.id}
                       onSelect={() => setSelectedId(persona.id)}
+                      t={t}
                     />
                   ))}
                 </div>
@@ -214,39 +289,37 @@ export function PersonaSelectPage(): React.JSX.Element {
           )}
 
           {/* Navigation */}
-          <div className="mt-6 flex items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={goBack}
-              disabled={stepIndex === 0 || finishing}
-              className={cn('text-muted-foreground', stepIndex === 0 && 'invisible')}
-            >
-              <ArrowLeft className="size-4" />
-              {t('splash.back', { defaultValue: '上一步' })}
-            </Button>
-
+          <div className="mt-8 flex items-center justify-end">
             {step === 'persona' ? (
-              <Button
-                className="h-11 min-w-36 px-6"
-                onClick={handleFinish}
-                disabled={!canContinue || finishing}
-              >
-                {finishing ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                {t('splash.personaSelect.start', { defaultValue: '开始使用' })}
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep('setup')}
+                  disabled={finishing}
+                  className="text-muted-foreground"
+                >
+                  {t('splash.back', { defaultValue: '上一步' })}
+                </Button>
+                <Button
+                  className="h-11 min-w-36 px-6"
+                  onClick={handleFinish}
+                  disabled={!canContinue || finishing}
+                >
+                  {finishing ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                  {t('splash.personaSelect.start', { defaultValue: '开始使用' })}
+                </Button>
+              </div>
             ) : (
               <Button
                 className="h-11 min-w-36 px-6"
-                onClick={goNext}
+                onClick={handleEnterPersona}
                 disabled={!canContinue}
               >
-                {step === 'welcome'
-                  ? t('splash.start', { defaultValue: '开始设置' })
-                  : t('splash.next', { defaultValue: '下一步' })}
+                {t('splash.next', { defaultValue: '下一步' })}
                 <ArrowRight className="size-4" />
               </Button>
             )}
@@ -265,11 +338,13 @@ export function PersonaSelectPage(): React.JSX.Element {
 function PersonaCard({
   persona,
   selected,
-  onSelect
+  onSelect,
+  t
 }: {
   persona: PersonaSummary
   selected: boolean
   onSelect: () => void
+  t: (key: string, opts?: { defaultValue?: string }) => string
 }): React.JSX.Element {
   return (
     <button
@@ -311,7 +386,7 @@ function PersonaCard({
       {persona.isBuiltin && (
         <div className="mt-2">
           <Badge variant={selected ? 'secondary' : 'outline'} className="text-[10px]">
-            内置
+            {t('splash.personaSelect.builtin', { defaultValue: '内置' })}
           </Badge>
         </div>
       )}
