@@ -149,3 +149,27 @@ Agent 通用框架，不含任何业务逻辑。
 - 新增模块时在 Worker/Modules 下注册
 - 新增工具时实现工具基类并在对应 Module 中注册
 - 记忆和人格的配置文件使用 Markdown 格式（.wishful-claw/ 目录下）
+
+## 异常日志
+
+项目运行时的所有异常（主进程、渲染进程、Worker、IPC 通道）会自动写入日志文件。
+
+**日志位置**：`<userData>/logs/` 目录下，按日期命名，如 `2026-07-22.log`
+
+其中 `<userData>` 是 Electron 的 `app.getPath('userData')` 返回值：
+- Windows：`%APPDATA%/<appName>`（即 `C:\Users\<用户名>\AppData\Roaming\wishful-claw\logs\`）
+- macOS：`~/Library/Application Support/<appName>/logs/`
+- Linux：`~/.config/<appName>/logs/`
+
+**排查方式**：Agent 排查问题时，优先读取当天日志文件中的 `[ERROR]` 级别条目，获取完整堆栈信息，而非依赖用户口述错误。
+
+日志格式：
+
+```
+[2026-07-22T12:30:45.123Z] [ERROR] [renderer] Uncaught TypeError: Cannot read property 'x' of undefined
+  at handleClick (ChatPage.tsx:45:12)
+  ...
+[2026-07-22T12:30:46.000Z] [ERROR] [ipc] Handler error for 'fs:read-file': ENOENT: no such file...
+```
+
+来源标记：`[main]` 主进程、`[renderer]` 渲染进程、`[worker]` Worker 子进程、`[ipc]` IPC 通道。

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@renderer/components/ui/select'
+import { Switch } from '@renderer/components/ui/switch'
 
 const FONT_OPTIONS = [
   { label: '__default__', value: '__default__' },
@@ -318,6 +319,25 @@ function GeneralPanel(): React.JSX.Element {
               {t('general.appearance.backgroundColor.label') === '背景颜色' ? '重置' : 'Reset'}
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Developer Mode */}
+      <section className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-foreground">Developer Mode</div>
+          <p className="text-xs text-muted-foreground">
+            Show request parameters (URL, headers, body) for each assistant message. Useful for debugging during development.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={settings.devMode}
+            onCheckedChange={(checked) => settings.updateSettings({ devMode: checked })}
+          />
+          <span className="text-xs text-muted-foreground">
+            {settings.devMode ? 'Enabled' : 'Disabled'}
+          </span>
         </div>
       </section>
     </div>

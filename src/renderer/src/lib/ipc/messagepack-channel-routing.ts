@@ -253,6 +253,8 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'input-draft:cleanup',
   'config:get',
   'config:set',
+  'log:write',
+  'log:read',
   'ai-provider:get',
   'ai-provider:set',
   'souls:builtin-list',

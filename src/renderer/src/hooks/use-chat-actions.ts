@@ -60,11 +60,53 @@ export function useChatActions() {
       const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
       const projectName = project?.name
 
-      // Build messages from session history
-      const historyMessages = (session?.messages ?? [])
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .filter((m) => !m.isStreaming)
-        .map((m) => ({ role: m.role, content: m.text }))
+      // Build messages from session history — include tool call context
+      // so the LLM has full conversation history (text + tool_use + tool_result)
+      const historyMessages: Array<{ role: string; content: string | Array<Record<string, unknown>> }> = []
+      for (const m of (session?.messages ?? [])) {
+        if (m.isStreaming) continue
+        if (m.role !== 'user' && m.role !== 'assistant') continue
+
+        if (m.role === 'user') {
+          historyMessages.push({ role: 'user', content: m.text })
+          continue
+        }
+
+        // Assistant message — may have tool calls
+        if (m.toolCalls && m.toolCalls.length > 0) {
+          // Build content blocks: text + tool_use blocks
+          const blocks: Array<Record<string, unknown>> = []
+          if (m.text) {
+            blocks.push({ type: 'text', text: m.text })
+          }
+          for (const tc of m.toolCalls) {
+            blocks.push({
+              type: 'tool_use',
+              id: tc.id,
+              name: tc.name,
+              input: tc.input ?? {}
+            })
+          }
+          historyMessages.push({ role: 'assistant', content: blocks })
+
+          // Emit a user message with tool_result blocks for completed tool calls
+          const completedTools = m.toolCalls.filter(
+            (tc) => tc.status === 'completed' || tc.status === 'error'
+          )
+          if (completedTools.length > 0) {
+            const resultBlocks: Array<Record<string, unknown>> = completedTools.map((tc) => ({
+              type: 'tool_result',
+              toolUseId: tc.id,
+              content: tc.output ?? (tc.error ?? ''),
+              isError: tc.status === 'error'
+            }))
+            historyMessages.push({ role: 'user', content: resultBlocks })
+          }
+        } else {
+          // Plain assistant message with text only
+          historyMessages.push({ role: 'assistant', content: m.text })
+        }
+      }
 
       // Fetch tool definitions
       const tools = await getToolDefinitions()
@@ -85,7 +127,9 @@ export function useChatActions() {
         apiKey: activeProvider.apiKey,
         baseUrl: activeProvider.baseUrl,
         model: modelId,
-        systemPrompt
+        systemPrompt,
+        temperature: settings.temperature ?? undefined,
+        maxTokens: settings.maxTokens ?? undefined
       }
 
       await sendMessage({

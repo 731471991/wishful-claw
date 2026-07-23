@@ -1,0 +1,688 @@
+// Runtime status bar: token/cost/TPS/TTFT metrics + streaming status indicator
+
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  Sparkles, ImageIcon, CheckCircle2, RefreshCcw, ShieldAlert,
+  Wrench, Users, Brain, Activity, Clock, type LucideIcon
+} from 'lucide-react'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
+import { useShallow } from 'zustand/react/shallow'
+import { cn } from '@renderer/lib/utils'
+import { useChatStore } from '@renderer/stores/chat-store'
+import { useAgentStore } from '@renderer/stores/agent-store'
+import { useProviderStore } from '@renderer/stores/provider-store'
+import {
+  calculateCost, calculateCostBreakdown, estimateTokens,
+  formatCacheHitRate, formatCost, formatTokens,
+  getCacheHitRate
+} from '@renderer/lib/format-tokens'
+import type { AIModelConfig, MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
+import type {
+  ComposerRuntimeStatusProps,
+  ContextCompressionStatus,
+  RuntimeStatusView,
+  RuntimeUsageTotals
+} from './types'
+import {
+  RuntimeMetric,
+  RuntimeTextMetric,
+  metricToneClasses,
+  SmoothTokenNumber,
+  MetricHoverTip
+} from './runtime-metrics'
+import {
+  normalizeTokenCount,
+  toFinitePositiveNumber,
+  formatRuntimeThroughput,
+  formatRuntimeTtft,
+  sumNullableCost,
+  createEmptyRuntimeUsageTotals,
+  getBillableInputForUsage,
+  addUsageToTotals,
+  collectRuntimeOutputSnapshot,
+  getLatestRequestTiming
+} from './utils'
+
+export function ComposerRuntimeStatus({
+  sessionId,
+  isStreaming,
+  draftInputTokens,
+  isOptimizing = false,
+  pendingImageReads = 0,
+  contextCompressionStatus,
+  contextCompressionStatusLabel,
+  model,
+  className,
+  messagesOverride,
+  streamingMessageIdOverride,
+  usageOverride,
+  showStatus = true
+}: ComposerRuntimeStatusProps): React.JSX.Element {
+  const { t } = useTranslation('chat')
+  const live = useChatStore(
+    useShallow((s) => {
+      const targetSessionId = sessionId
+      const idx = s.sessionsById[targetSessionId]
+      const sessionMessages = idx !== undefined ? s.sessions[idx]?.messages : undefined
+      const messages = messagesOverride ?? sessionMessages
+      const streamingMessageId = messagesOverride
+        ? (streamingMessageIdOverride ?? null)
+        : (s.streamingMessages[targetSessionId] ?? null)
+      const totals = createEmptyRuntimeUsageTotals()
+      const message = streamingMessageId
+        ? messages?.find((item) => item.id === streamingMessageId)
+        : undefined
+      if (messages) {
+        const { providers } = useProviderStore.getState()
+        for (const item of messages) {
+          const reqModel = item.meta?.requestModel
+          const providerId = reqModel?.providerId ?? item.debugInfo?.providerId ?? null
+          const modelId = reqModel?.modelId ?? item.debugInfo?.model ?? model?.id ?? null
+          const provider = providerId ? (providers.find((p) => p.id === providerId) ?? null) : null
+          const msgModelCfg =
+            (provider && modelId
+              ? (provider.models.find((m) => m.id === modelId) ?? null)
+              : null) ??
+            (model && modelId === model.id ? model : null) ??
+            model ??
+            null
+          addUsageToTotals(totals, item.usage, msgModelCfg)
+        }
+      }
+      let effectiveTotals = totals
+      if (messagesOverride && usageOverride) {
+        const authoritativeTotals = createEmptyRuntimeUsageTotals()
+        addUsageToTotals(authoritativeTotals, usageOverride, model)
+        authoritativeTotals.latestRequestTiming =
+          authoritativeTotals.latestRequestTiming ?? totals.latestRequestTiming
+        effectiveTotals = authoritativeTotals
+      }
+      const messageIndex =
+        messages && streamingMessageId
+          ? messages.findIndex((item) => item.id === streamingMessageId)
+          : -1
+      let previousUserMessage: UnifiedMessage | undefined
+      if (messages && messageIndex > 0) {
+        for (let index = messageIndex - 1; index >= 0; index -= 1) {
+          if (messages[index]?.role === 'user') {
+            previousUserMessage = messages[index]
+            break
+          }
+        }
+      }
+
+      return {
+        targetSessionId,
+        streamingMessageId,
+        content: message?.content,
+        previousUserContent: previousUserMessage?.content,
+        revision: message?._revision ?? 0,
+        currentInputTokens: normalizeTokenCount(message?.usage?.inputTokens),
+        currentOutputTokens: normalizeTokenCount(message?.usage?.outputTokens),
+        currentContextTokens: normalizeTokenCount(message?.usage?.contextTokens),
+        cumulativeInputTokens: effectiveTotals.inputTokens,
+        cumulativeOutputTokens: effectiveTotals.outputTokens,
+        cumulativeBillableInputTokens: effectiveTotals.billableInputTokens,
+        cumulativeCacheReadTokens: effectiveTotals.cacheReadTokens,
+        cumulativeCacheCreationTokens: effectiveTotals.cacheCreationTokens,
+        cumulativeCacheCreation5mTokens: effectiveTotals.cacheCreation5mTokens,
+        cumulativeCacheCreation1hTokens: effectiveTotals.cacheCreation1hTokens,
+        cumulativeInputCost: effectiveTotals.inputCost,
+        cumulativeOutputCost: effectiveTotals.outputCost,
+        cumulativeCacheReadCost: effectiveTotals.cacheReadCost,
+        cumulativeCacheCreationCost: effectiveTotals.cacheCreationCost,
+        cumulativeTotalCost: effectiveTotals.totalCost,
+        latestRequestTiming: effectiveTotals.latestRequestTiming,
+        isGeneratingImage: messagesOverride
+          ? false
+          : streamingMessageId
+            ? Boolean(s.generatingImageMessages[streamingMessageId])
+            : false
+      }
+    })
+  )
+  const targetSessionId = live.targetSessionId
+  const agentRuntime = useAgentStore(
+    useShallow((s) => {
+      if (!showStatus) {
+        return {
+          sessionStatus: null,
+          retryAttempt: null,
+          retryMaxAttempts: null,
+          activeToolName: null,
+          pendingApprovalToolName: null,
+          activeSubAgentCount: 0
+        }
+      }
+
+      const useLiveBuckets = targetSessionId === s.liveSessionId
+      const cache = targetSessionId ? s.sessionToolCallsCache[targetSessionId] : undefined
+      const subAgentCache = targetSessionId
+        ? s.sessionSubAgentLiveCache[targetSessionId]
+        : undefined
+      const pending = useLiveBuckets ? s.pendingToolCalls : (cache?.pending ?? [])
+      const executed = useLiveBuckets ? s.executedToolCalls : (cache?.executed ?? [])
+      const activeSubAgents = useLiveBuckets ? s.activeSubAgents : (subAgentCache?.active ?? {})
+      const allToolCalls = [...pending, ...executed]
+      const activeTool = [...allToolCalls]
+        .reverse()
+        .find((toolCall) => toolCall.status === 'streaming' || toolCall.status === 'running')
+      const pendingApprovalTool = pending.find((toolCall) => toolCall.status === 'pending_approval')
+      const activeSubAgentCount = Object.values(activeSubAgents).filter(
+        (subAgent) => subAgent.isRunning && subAgent.sessionId === targetSessionId
+      ).length
+
+      return {
+        sessionStatus: targetSessionId ? (s.runningSessions[targetSessionId] ?? null) : null,
+        retryAttempt: targetSessionId
+          ? (s.sessionRequestRetryState[targetSessionId]?.attempt ?? null)
+          : null,
+        retryMaxAttempts: targetSessionId
+          ? (s.sessionRequestRetryState[targetSessionId]?.maxAttempts ?? null)
+          : null,
+        activeToolName: activeTool?.name ?? null,
+        pendingApprovalToolName: pendingApprovalTool?.name ?? null,
+        activeSubAgentCount
+      }
+    })
+  )
+  const outputSnapshot = collectRuntimeOutputSnapshot(live.content)
+  const estimatedOutputTokens = React.useMemo(
+    () => estimateTokens(outputSnapshot.text),
+    [outputSnapshot.text]
+  )
+  const previousUserInputSnapshot = collectRuntimeOutputSnapshot(live.previousUserContent)
+  const previousUserInputTokens = React.useMemo(
+    () => estimateTokens(previousUserInputSnapshot.text),
+    [previousUserInputSnapshot.text]
+  )
+  const currentEstimatedInputTokens = Math.max(
+    live.currentInputTokens,
+    live.currentContextTokens,
+    draftInputTokens,
+    previousUserInputTokens
+  )
+  const pendingInputTokens =
+    isStreaming && live.currentInputTokens === 0 ? currentEstimatedInputTokens : draftInputTokens
+  const inputTokens = live.cumulativeBillableInputTokens + pendingInputTokens
+  const outputTokens =
+    live.cumulativeOutputTokens +
+    (isStreaming ? Math.max(0, estimatedOutputTokens - live.currentOutputTokens) : 0)
+  const cacheReadTokens = live.cumulativeCacheReadTokens
+  const cacheCreationTokens = live.cumulativeCacheCreationTokens
+  const cacheCreation5mTokens = live.cumulativeCacheCreation5mTokens
+  const cacheCreation1hTokens = live.cumulativeCacheCreation1hTokens
+  const cacheHitRate = getCacheHitRate(inputTokens, cacheReadTokens, cacheCreationTokens)
+  const streamingExtraUsage = React.useMemo<TokenUsage | null>(() => {
+    if (!isStreaming || !model) return null
+    const estimatedBillableInputTokens =
+      live.currentInputTokens === 0 ? currentEstimatedInputTokens : 0
+    const estimatedOutputDelta = Math.max(0, estimatedOutputTokens - live.currentOutputTokens)
+    if (estimatedBillableInputTokens <= 0 && estimatedOutputDelta <= 0) return null
+    return {
+      inputTokens: estimatedBillableInputTokens,
+      billableInputTokens: estimatedBillableInputTokens,
+      outputTokens: estimatedOutputDelta,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0
+    }
+  }, [
+    currentEstimatedInputTokens,
+    estimatedOutputTokens,
+    isStreaming,
+    live.currentInputTokens,
+    live.currentOutputTokens,
+    model
+  ])
+  const streamingExtraCostBreakdown = React.useMemo(
+    () =>
+      streamingExtraUsage && model ? calculateCostBreakdown(streamingExtraUsage, model) : null,
+    [model, streamingExtraUsage]
+  )
+  const streamingExtraCost =
+    streamingExtraUsage && model ? calculateCost(streamingExtraUsage, model) : null
+  const totalInputCost = sumNullableCost(
+    live.cumulativeInputCost ?? null,
+    streamingExtraCostBreakdown?.inputCost ?? null
+  )
+  const totalOutputCost = sumNullableCost(
+    live.cumulativeOutputCost ?? null,
+    streamingExtraCostBreakdown?.outputCost ?? null
+  )
+  const totalCacheReadCost = sumNullableCost(
+    live.cumulativeCacheReadCost ?? null,
+    streamingExtraCostBreakdown?.cacheReadCost ?? null
+  )
+  const totalCacheCreationCost = sumNullableCost(
+    live.cumulativeCacheCreationCost ?? null,
+    streamingExtraCostBreakdown?.cacheCreationCost ?? null
+  )
+  const totalCost = sumNullableCost(live.cumulativeTotalCost ?? null, streamingExtraCost ?? null)
+  const metricPricing = React.useMemo(() => {
+    const inputPrice = model?.inputPrice ?? null
+    const outputPrice = model?.outputPrice ?? null
+    const cacheReadPrice = model?.cacheHitPrice ?? (inputPrice != null ? inputPrice * 0.1 : null)
+    const cacheCreatePrice =
+      model?.cacheCreationPrice ?? (inputPrice != null ? inputPrice * 1.25 : null)
+    const cacheCreate1hPrice = inputPrice != null ? inputPrice * 2 : null
+    return { inputPrice, outputPrice, cacheReadPrice, cacheCreatePrice, cacheCreate1hPrice }
+  }, [model])
+  const buildCostTitle = React.useCallback(
+    (label: string, tokens: number, pricePerMillion: number | null): string | undefined => {
+      if (pricePerMillion == null || !Number.isFinite(pricePerMillion) || tokens <= 0)
+        return undefined
+      return t('input.runtimeMetrics.cost', {
+        defaultValue: '{{label}}: {{cost}}',
+        label,
+        cost: formatCost((tokens * pricePerMillion) / 1_000_000)
+      })
+    },
+    [t]
+  )
+  // Cache-write tokens are billed at two different TTL rates (5m vs 1h). Split the hover
+  // tooltip so each bucket's tokens and cost are shown separately instead of one lumped total.
+  const cacheCreationTitle = React.useMemo<React.ReactNode>(() => {
+    if (cacheCreationTokens <= 0) return undefined
+    const rows = [
+      {
+        key: '5m',
+        label: t('input.runtimeMetrics.cacheCreate5m', { defaultValue: 'Cache write (5m)' }),
+        tokens: cacheCreation5mTokens,
+        price: metricPricing.cacheCreatePrice
+      },
+      {
+        key: '1h',
+        label: t('input.runtimeMetrics.cacheCreate1h', { defaultValue: 'Cache write (1h)' }),
+        tokens: cacheCreation1hTokens,
+        price: metricPricing.cacheCreate1hPrice
+      }
+    ].filter((row) => row.tokens > 0)
+    if (rows.length === 0) return undefined
+    return (
+      <div className="flex flex-col gap-0.5">
+        {rows.map((row) => {
+          const cost =
+            row.price != null && Number.isFinite(row.price)
+              ? formatCost((row.tokens * row.price) / 1_000_000)
+              : null
+          return (
+            <div key={row.key} className="flex items-center justify-between gap-3 tabular-nums">
+              <span className="text-muted-foreground/70">{row.label}</span>
+              <span>
+                {formatTokens(row.tokens)}
+                {cost ? ` · ${cost}` : ''}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }, [
+    cacheCreationTokens,
+    cacheCreation5mTokens,
+    cacheCreation1hTokens,
+    metricPricing.cacheCreatePrice,
+    metricPricing.cacheCreate1hPrice,
+    t
+  ])
+  const latestTps = toFinitePositiveNumber(live.latestRequestTiming?.tps)
+  const latestTtftMs = toFinitePositiveNumber(live.latestRequestTiming?.ttftMs)
+  const statusView = React.useMemo<RuntimeStatusView>(() => {
+    if (isOptimizing) {
+      return {
+        text: t('input.runtimeStatus.optimizing', { defaultValue: 'Optimizing' }),
+        Icon: Sparkles,
+        className: 'text-violet-500/80 dark:text-violet-300/80'
+      }
+    }
+    if (pendingImageReads > 0) {
+      return {
+        text: t('input.runtimeStatus.loadingMedia', { defaultValue: 'Loading media' }),
+        Icon: ImageIcon,
+        className: 'text-amber-500/85 dark:text-amber-300/85'
+      }
+    }
+    if (contextCompressionStatus !== 'idle' && contextCompressionStatusLabel) {
+      return {
+        text: contextCompressionStatusLabel,
+        Icon: contextCompressionStatus === 'compressed' ? CheckCircle2 : RefreshCcw,
+        className:
+          contextCompressionStatus === 'compressed'
+            ? 'text-emerald-500/80 dark:text-emerald-300/80'
+            : contextCompressionStatus === 'failed'
+              ? 'text-red-500/80 dark:text-red-300/80'
+              : 'text-amber-500/85 dark:text-amber-300/85',
+        spin: contextCompressionStatus === 'compressing'
+      }
+    }
+    if (agentRuntime.pendingApprovalToolName) {
+      return {
+        text: t('input.runtimeStatus.awaitingApproval', {
+          defaultValue: 'Awaiting approval: {{tool}}',
+          tool: agentRuntime.pendingApprovalToolName
+        }),
+        Icon: ShieldAlert,
+        className: 'text-amber-500/90 dark:text-amber-300/90'
+      }
+    }
+    if (agentRuntime.sessionStatus === 'retrying') {
+      const attempt =
+        agentRuntime.retryAttempt && agentRuntime.retryMaxAttempts
+          ? `${agentRuntime.retryAttempt}/${agentRuntime.retryMaxAttempts}`
+          : ''
+      return {
+        text: t('input.runtimeStatus.retrying', {
+          defaultValue: 'Retrying {{attempt}}',
+          attempt
+        }).trim(),
+        Icon: RefreshCcw,
+        className: 'text-amber-500/90 dark:text-amber-300/90',
+        spin: true
+      }
+    }
+    if (live.isGeneratingImage) {
+      return {
+        text: t('input.runtimeStatus.generatingImage', { defaultValue: 'Generating image' }),
+        Icon: ImageIcon,
+        className: 'text-violet-500/80 dark:text-violet-300/80'
+      }
+    }
+    if (agentRuntime.activeToolName) {
+      return {
+        text: t('input.runtimeStatus.runningTool', {
+          defaultValue: 'Running {{tool}}',
+          tool: agentRuntime.activeToolName
+        }),
+        Icon: Wrench,
+        className: 'text-sky-500/85 dark:text-sky-300/85'
+      }
+    }
+    if (agentRuntime.activeSubAgentCount > 0) {
+      return {
+        text: t('input.runtimeStatus.runningSubAgents', {
+          defaultValue: '{{count}} sub-agents running',
+          count: agentRuntime.activeSubAgentCount
+        }),
+        Icon: Users,
+        className: 'text-cyan-500/85 dark:text-cyan-300/85'
+      }
+    }
+    if (isStreaming && outputSnapshot.hasActiveThinking && !outputSnapshot.hasTextOutput) {
+      return {
+        text: t('input.runtimeStatus.thinking', { defaultValue: 'Thinking' }),
+        Icon: Brain,
+        className: 'text-violet-500/85 dark:text-violet-300/85'
+      }
+    }
+    if (isStreaming && (outputTokens > 0 || outputSnapshot.hasTextOutput)) {
+      return {
+        text: t('input.runtimeStatus.receiving', { defaultValue: 'Receiving' }),
+        Icon: Activity,
+        className: 'text-emerald-500/85 dark:text-emerald-300/85'
+      }
+    }
+    if (isStreaming) {
+      return {
+        text: t('input.runtimeStatus.waiting', { defaultValue: 'Waiting' }),
+        Icon: Clock,
+        className: 'text-sky-500/80 dark:text-sky-300/80'
+      }
+    }
+    return {
+      text: t('input.runtimeStatus.ready', { defaultValue: 'Ready' }),
+      Icon: CheckCircle2,
+      className: 'text-muted-foreground/55'
+    }
+  }, [
+    agentRuntime.activeSubAgentCount,
+    agentRuntime.activeToolName,
+    agentRuntime.pendingApprovalToolName,
+    agentRuntime.retryAttempt,
+    agentRuntime.retryMaxAttempts,
+    agentRuntime.sessionStatus,
+    contextCompressionStatus,
+    contextCompressionStatusLabel,
+    isOptimizing,
+    isStreaming,
+    live.isGeneratingImage,
+    outputSnapshot.hasActiveThinking,
+    outputSnapshot.hasTextOutput,
+    outputTokens,
+    pendingImageReads,
+    t
+  ])
+  const StatusIcon = statusView.Icon
+  const totalCostRows = React.useMemo(
+    () =>
+      [
+        {
+          key: 'input',
+          label: t('input.runtimeMetrics.input', { defaultValue: 'Uncached input' }),
+          color: '#38bdf8',
+          value: totalInputCost
+        },
+        {
+          key: 'cacheHit',
+          label: t('input.runtimeMetrics.cacheHit', { defaultValue: 'Cache hit' }),
+          color: '#84cc16',
+          value: totalCacheReadCost
+        },
+        {
+          key: 'cacheCreate',
+          label: t('input.runtimeMetrics.cacheCreate', { defaultValue: 'Cache write' }),
+          color: '#f59e0b',
+          value: totalCacheCreationCost
+        },
+        {
+          key: 'output',
+          label: t('input.runtimeMetrics.output', { defaultValue: 'Output' }),
+          color: '#a855f7',
+          value: totalOutputCost
+        }
+      ].filter(
+        (row): row is { key: string; label: string; color: string; value: number } =>
+          typeof row.value === 'number' && row.value > 0
+      ),
+    [t, totalCacheCreationCost, totalCacheReadCost, totalInputCost, totalOutputCost]
+  )
+
+  return (
+    <div
+      className={cn(
+        'flex min-h-4 min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10px] leading-4 text-muted-foreground/65',
+        className
+      )}
+      aria-live={isStreaming ? 'polite' : 'off'}
+    >
+      <RuntimeMetric
+        label={t('input.runtimeMetrics.input', { defaultValue: 'Uncached input' })}
+        value={inputTokens}
+        tone="input"
+        animate={isStreaming}
+        duration={520}
+        title={buildCostTitle(
+          t('input.runtimeMetrics.input', { defaultValue: 'Uncached input' }),
+          inputTokens,
+          metricPricing.inputPrice
+        )}
+      />
+      <span className="shrink-0 text-muted-foreground/35">/</span>
+      <RuntimeMetric
+        label={t('input.runtimeMetrics.cacheHit', { defaultValue: 'Cache hit' })}
+        value={cacheReadTokens}
+        tone="cacheHit"
+        animate={isStreaming}
+        duration={620}
+        suffix={formatCacheHitRate(cacheHitRate)}
+        title={buildCostTitle(
+          t('input.runtimeMetrics.cacheHit', { defaultValue: 'Cache hit' }),
+          cacheReadTokens,
+          metricPricing.cacheReadPrice
+        )}
+      />
+      <span className="shrink-0 text-muted-foreground/35">/</span>
+      <RuntimeMetric
+        label={t('input.runtimeMetrics.cacheCreate', { defaultValue: 'Cache write' })}
+        value={cacheCreationTokens}
+        tone="cacheCreate"
+        animate={isStreaming}
+        duration={620}
+        title={
+          cacheCreationTitle ??
+          buildCostTitle(
+            t('input.runtimeMetrics.cacheCreate', { defaultValue: 'Cache write' }),
+            cacheCreationTokens,
+            metricPricing.cacheCreatePrice
+          )
+        }
+      />
+      <span className="shrink-0 text-muted-foreground/35">/</span>
+      <RuntimeMetric
+        label={t('input.runtimeMetrics.output', { defaultValue: 'Output' })}
+        value={outputTokens}
+        tone="output"
+        animate
+        duration={760}
+        title={buildCostTitle(
+          t('input.runtimeMetrics.output', { defaultValue: 'Output' }),
+          outputTokens,
+          metricPricing.outputPrice
+        )}
+      />
+      {latestTps !== null && (
+        <>
+          <span className="shrink-0 text-muted-foreground/35">/</span>
+          <RuntimeTextMetric
+            label={t('input.runtimeMetrics.tps', { defaultValue: 'TPS' })}
+            value={formatRuntimeThroughput(latestTps)}
+            tone="speed"
+            hint={t('input.runtimeMetrics.tpsHint', {
+              defaultValue: 'Output tokens generated per second'
+            })}
+          />
+        </>
+      )}
+      {latestTtftMs !== null && (
+        <>
+          <span className="shrink-0 text-muted-foreground/35">/</span>
+          <RuntimeTextMetric
+            label={t('input.runtimeMetrics.ttft', { defaultValue: 'TTFT' })}
+            value={formatRuntimeTtft(latestTtftMs)}
+            tone="latency"
+            hint={t('input.runtimeMetrics.ttftHint', {
+              defaultValue: 'Time to first token'
+            })}
+          />
+        </>
+      )}
+      {showStatus ? (
+        <>
+          <span className="shrink-0 text-muted-foreground/35">/</span>
+          <span
+            className={cn('inline-flex min-w-0 items-center gap-1 truncate', statusView.className)}
+          >
+            <StatusIcon className={cn('size-3 shrink-0', statusView.spin && 'animate-spin')} />
+            <span className="min-w-0 truncate">{statusView.text}</span>
+          </span>
+        </>
+      ) : null}
+      {totalCost !== null && totalCost > 0 && (
+        <>
+          <span className="shrink-0 text-muted-foreground/35">/</span>
+          <HoverCard openDelay={180} closeDelay={100}>
+            <HoverCardTrigger asChild>
+              <span className="shrink-0 cursor-help tabular-nums text-muted-foreground/60">
+                <span className="text-muted-foreground/60">
+                  {t('input.runtimeMetrics.totalCost', { defaultValue: 'Cost' })}
+                </span>{' '}
+                <span className="font-medium text-emerald-500/85 dark:text-emerald-300/85">
+                  {formatCost(totalCost)}
+                </span>
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent
+              side="top"
+              align="end"
+              sideOffset={6}
+              className="w-[280px] rounded-lg border-[#262626] bg-[#101010] p-3 text-zinc-100 shadow-2xl"
+            >
+              <div className="space-y-1">
+                {totalCostRows.map((row) => (
+                  <div key={row.key} className="flex items-center justify-between gap-4 text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5 text-zinc-400">
+                      <span
+                        className="size-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: row.color }}
+                      />
+                      <span className="truncate">{row.label}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-zinc-100">
+                      {formatCost(row.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 border-t border-white/9 pt-2">
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <span className="truncate text-zinc-400">
+                    {t('input.runtimeMetrics.totalCost', { defaultValue: 'Cost' })}
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-zinc-100">
+                    {formatCost(totalCost)}
+                  </span>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        </>
+      )}
+    </div>
+  )
+}
+
+export function RuntimeTokenStatistics({
+  sessionId,
+  messages,
+  streamingMessageId,
+  usage,
+  requestModel,
+  isStreaming = false,
+  className
+}: {
+  sessionId: string
+  messages: readonly UnifiedMessage[]
+  streamingMessageId?: string | null
+  usage?: TokenUsage
+  requestModel?: MessageRequestModelMeta | null
+  isStreaming?: boolean
+  className?: string
+}): React.JSX.Element {
+  const model = useProviderStore(
+    useShallow((state) => {
+      if (!requestModel?.modelId) return null
+      const provider = state.providers.find(
+        (item) =>
+          (!!requestModel.providerId && item.id === requestModel.providerId) ||
+          (!!requestModel.providerBuiltinId && item.builtinId === requestModel.providerBuiltinId)
+      )
+      return provider?.models.find((item) => item.id === requestModel.modelId) ?? null
+    })
+  )
+
+  return (
+    <ComposerRuntimeStatus
+      sessionId={sessionId}
+      isStreaming={isStreaming}
+      draftInputTokens={0}
+      contextCompressionStatus="idle"
+      contextCompressionStatusLabel=""
+      model={model}
+      messagesOverride={messages}
+      streamingMessageIdOverride={streamingMessageId}
+      usageOverride={usage}
+      showStatus={false}
+      className={className}
+    />
+  )
+}

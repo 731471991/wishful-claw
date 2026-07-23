@@ -207,6 +207,8 @@ export function MainLayout(): React.JSX.Element {
         // Load messages for the active session (like OpenCowork does)
         if (nextActiveSessionId) {
           await useChatStore.getState().loadRecentSessionMessages(nextActiveSessionId)
+          // Navigate to session view so user sees the conversation directly
+          useUIStore.getState().navigateToSession(nextActiveSessionId)
         }
       } else {
         // No projects in DB, ensure default

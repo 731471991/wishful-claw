@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -467,22 +467,54 @@ function convertChatMessagesToUnified(messages: readonly unknown[]): UnifiedMess
     // Build content blocks from ChatMessage fields
     const blocks: ContentBlock[] = []
 
-    if (thinking) {
-      blocks.push({ type: 'thinking', thinking })
-    }
+    // Use segments for temporal ordering if available (preserves iteration boundaries)
+    const segments = msg.segments as Array<Record<string, unknown>> | undefined
+    if (segments && segments.length > 0) {
+      for (const seg of segments) {
+        const segType = seg.type as string
+        if (segType === 'thinking' && seg.thinking) {
+          blocks.push({ type: 'thinking', thinking: seg.thinking as string, startedAt: seg.startedAt as number | undefined, completedAt: seg.completedAt as number | undefined })
+        } else if (segType === 'text' && seg.text) {
+          blocks.push({ type: 'text', text: seg.text as string })
+        } else if (segType === 'tool_use' && seg.toolCallId) {
+          blocks.push({
+            type: 'tool_use',
+            id: seg.toolCallId as string,
+            name: (seg.toolName as string) ?? 'unknown',
+            input: (seg.input as Record<string, unknown>) ?? {}
+          })
+          // Also add inline tool_result block for completed/errored tools
+          // so that resolveToolCallStatus finds a result instead of falling back to 'canceled'
+          const segStatus = seg.status as string | undefined
+          if (segStatus === 'completed' || segStatus === 'error') {
+            blocks.push({
+              type: 'tool_result',
+              toolUseId: seg.toolCallId as string,
+              content: (seg.output as string) ?? '',
+              isError: segStatus === 'error'
+            })
+          }
+        }
+      }
+    } else {
+      // Fallback: old format without temporal ordering
+      if (thinking) {
+        blocks.push({ type: 'thinking', thinking })
+      }
 
-    if (text) {
-      blocks.push({ type: 'text', text })
-    }
+      if (text) {
+        blocks.push({ type: 'text', text })
+      }
 
-    if (toolCalls && toolCalls.length > 0) {
-      for (const tc of toolCalls) {
-        blocks.push({
-          type: 'tool_use',
-          id: tc.id as string,
-          name: tc.name as string,
-          input: (tc.input as Record<string, unknown>) ?? {}
-        })
+      if (toolCalls && toolCalls.length > 0) {
+        for (const tc of toolCalls) {
+          blocks.push({
+            type: 'tool_use',
+            id: tc.id as string,
+            name: tc.name as string,
+            input: (tc.input as Record<string, unknown>) ?? {}
+          })
+        }
       }
     }
 

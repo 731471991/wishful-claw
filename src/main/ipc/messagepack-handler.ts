@@ -4,6 +4,7 @@ import {
   encodeMessagePackPayload,
   toMessagePackChannel
 } from '../../shared/messagepack/binary-ipc'
+import { logError, extractStack, extractMessage } from '../lib/logger'
 
 export function registerMessagePackHandler<TArgs, TResult = unknown>(
   channel: string,
@@ -14,8 +15,11 @@ export function registerMessagePackHandler<TArgs, TResult = unknown>(
       const args = decodeMessagePackPayload<TArgs>(bytes)
       return encodeMessagePackPayload(await handler(args, event))
     } catch (err) {
-      console.error(`[IPC] Handler error for '${channel}':`, err instanceof Error ? err.message : String(err))
-      return encodeMessagePackPayload({ error: err instanceof Error ? err.message : String(err) })
+      const msg = extractMessage(err)
+      const stack = extractStack(err)
+      console.error(`[IPC] Handler error for '${channel}':`, msg)
+      logError('ipc', `Handler error for '${channel}': ${msg}`, { stack, extra: { channel } })
+      return encodeMessagePackPayload({ error: msg })
     }
   })
 }

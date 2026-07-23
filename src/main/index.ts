@@ -3,6 +3,7 @@ import { join } from 'path'
 import * as fs from 'fs'
 
 import { getNativeWorker } from './lib/native-worker'
+import { logError, logWarn, logInfo, installGlobalExceptionHandlers, readRecentLogs } from './lib/logger'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
@@ -42,8 +43,17 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
-  mainWindow.webContents.on("console-message", (_e, level, message, line, src) => { console.log(`[renderer:${["LOG","WARN","ERROR"][level] ?? "LOG"}] ${message} (${src}:${line})`) })
-  mainWindow.webContents.on("render-process-gone", (_e, details) => { console.error("[renderer:CRASH]", details.reason, details.exitCode) })
+  mainWindow.webContents.on("console-message", (_e, level, message, line, src) => {
+    const levelStr = ["LOG","WARN","ERROR"][level] ?? "LOG"
+    console.log(`[renderer:${levelStr}] ${message} (${src}:${line})`)
+    if (level >= 1) {
+      logWarn("renderer", `${message} (${src}:${line})`)
+    }
+  })
+  mainWindow.webContents.on("render-process-gone", (_e, details) => {
+    console.error("[renderer:CRASH]", details.reason, details.exitCode)
+    logError("renderer", `Render process gone: ${details.reason} (exit code: ${details.exitCode})`)
+  })
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -78,6 +88,8 @@ function registerWindowControlHandlers(): void {
 }
 
 app.whenReady().then(() => {
+  installGlobalExceptionHandlers()
+  logInfo('main', 'Application started')
   app.setAppUserModelId('com.wishfulclaw.app')
 
   // Window control handlers (minimize / maximize / close / isMaximized)
@@ -423,16 +435,6 @@ app.whenReady().then(() => {
     'agent-history:replace',
     async () => undefined
   )
-  // ── Agent changes stub handlers ──
-  registerMessagePackHandler<unknown, unknown[]>(
-    'agent:changes:list-session',
-    async () => []
-  )
-  registerMessagePackHandler<unknown, unknown[]>(
-    'agent:changes:list-project',
-    async () => []
-  )
-
   // ── SSH stub handlers ──
   registerMessagePackHandler<unknown, unknown[]>(
     'ssh:connection:list',
@@ -513,6 +515,10 @@ app.whenReady().then(() => {
     'agent:changes:list-session',
     async () => []
   )
+  registerMessagePackHandler<unknown, unknown[]>(
+    'agent:changes:list-project',
+    async () => []
+  )
   registerMessagePackHandler<unknown, unknown>(
     'agent:changes:diff-content',
     async () => null
@@ -524,6 +530,22 @@ app.whenReady().then(() => {
   registerMessagePackHandler<unknown, { success: boolean }>(
     'agent:changes:undo-file',
     async () => ({ success: false })
+  )
+
+  // -- Log handlers --
+  registerMessagePackHandler<{ level: string; message: string; stack?: string; extra?: Record<string, unknown> }, void>(
+    'log:write',
+    async (args) => {
+      const fn = args.level === 'error' ? logError : args.level === 'warn' ? logWarn : logInfo
+      fn('renderer', args.message, { stack: args.stack, extra: args.extra })
+    }
+  )
+
+  registerMessagePackHandler<{ maxLines?: number }, string>(
+    'log:read',
+    async (args) => {
+      return readRecentLogs(args.maxLines ?? 500)
+    }
   )
 
   createWindow()

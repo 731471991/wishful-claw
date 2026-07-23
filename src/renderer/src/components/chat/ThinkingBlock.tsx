@@ -48,6 +48,15 @@ export const ThinkingBlock = memo(function ThinkingBlock({
   const [liveElapsed, setLiveElapsed] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Auto-collapse when thinking transitions from active to completed
+  const prevIsThinkingRef = useRef(isThinking)
+  useEffect(() => {
+    if (prevIsThinkingRef.current && !isThinking) {
+      setCollapsed(true)
+    }
+    prevIsThinkingRef.current = isThinking
+  }, [isThinking])
+
   // Live timer while thinking
   useEffect(() => {
     if (!isThinking || !startedAt) return
