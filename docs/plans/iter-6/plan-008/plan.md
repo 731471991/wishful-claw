@@ -31,6 +31,9 @@
 - 从 persona-store 获取人格列表
 
 ### 验证
-- dotnet build 通过
-- electron-vite build 通过
-- 创建会话→切换人格→发消息→风格不同
+- ✅ dotnet build 通过
+- ✅ electron-vite build 通过
+- 创建会话→切换人格→发消息→风格不同（需运行时验证）
+
+## 状态：已完成 ✅
+Commit: a9804bf
