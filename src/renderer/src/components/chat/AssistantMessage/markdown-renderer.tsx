@@ -446,7 +446,7 @@ const MarkdownContent = React.memo(function MarkdownContent({
   )
 })
 
-function StreamingMarkdownContent({
+export function StreamingMarkdownContent({
   text,
   isStreaming
 }: {

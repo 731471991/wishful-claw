@@ -133,6 +133,6 @@ function CompletionTokenSummary({
   )
 }
 
-function CompletionSummaryBar({ summary }: { summary: CompletionSummaryData }): React.JSX.Element {
+export function CompletionSummaryBar({ summary }: { summary: CompletionSummaryData }): React.JSX.Element {
   return <CompletionTokenSummary summary={summary} />
 }

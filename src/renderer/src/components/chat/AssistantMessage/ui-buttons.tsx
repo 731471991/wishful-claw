@@ -16,7 +16,7 @@ import type { RequestDebugInfo } from '@renderer/lib/api/types'
 import { getLiveOutputShimmerClass } from '@renderer/lib/live-output-animation'
 import type { ModelThinkingIndicatorProps } from './types'
 
-function DebugToggleButton({
+export function DebugToggleButton({
   debugInfo,
   sessionId
 }: {
@@ -161,7 +161,7 @@ function DebugToggleButton({
   )
 }
 
-function CopyButton({ text }: { text: string }): React.JSX.Element {
+export function CopyButton({ text }: { text: string }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const [copied, setCopied] = useState(false)
   const handleCopy = useCallback(() => {
@@ -182,7 +182,7 @@ function CopyButton({ text }: { text: string }): React.JSX.Element {
   )
 }
 
-function ActionIconButton({
+export function ActionIconButton({
   label,
   icon,
   onClick,
@@ -213,7 +213,7 @@ function ActionIconButton({
   )
 }
 
-function GenerationProcessLine({
+export function GenerationProcessLine({
   active,
   label,
   detail,
@@ -270,7 +270,7 @@ function GenerationProcessLine({
   return <div className={className}>{content}</div>
 }
 
-function ModelThinkingIndicator({
+export function ModelThinkingIndicator({
   modelName,
   label
 }: ModelThinkingIndicatorProps): React.JSX.Element {
