@@ -10,15 +10,15 @@ import {
 import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
 import { MONO_FONT } from '@renderer/lib/constants'
 import {
-  MARKDOWN_REHYPE_PLUGINS, MARKDOWN_REMARK_PLUGINS
+  MARKDOWN_REHYPE_PLUGINS, MARKDOWN_REMARK_PLUGINS,
+  resolveLocalFilePath, openLocalFilePath, openMarkdownHref
 } from '@renderer/lib/preview/viewers/markdown-components'
 import { useStreamingRenderPool } from '@renderer/hooks/use-typewriter'
+import { useStreamingMarkdownBlocks } from '@renderer/hooks/use-streaming-markdown-blocks'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { CopyButton } from './ui-buttons'
 import { useEffect, useId } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@renderer/components/ui/dialog'
-import { resolveLocalFilePath, openLocalFilePath, openMarkdownHref } from '@renderer/lib/file-utils'
-import { useStreamingMarkdownBlocks } from '@renderer/lib/markdown-streaming'
 
 function MermaidImageCopyButton({ svg }: { svg: string }): React.JSX.Element {
   const [copied, setCopied] = useState(false)

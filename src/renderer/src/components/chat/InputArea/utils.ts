@@ -7,10 +7,9 @@ import { IMAGE_PLUGIN_ID, BROWSER_PLUGIN_ID } from '@renderer/lib/app-plugin/typ
 import type { PendingSessionMessageItem } from '@renderer/hooks/use-chat-actions'
 import type { SelectedFileItem, SelectedFileReference, EditorDocumentNode } from '@renderer/lib/select-file-editor'
 import { IMAGE_MEDIA_TYPE_BY_EXTENSION } from './types'
-import { calculateCost, calculateCostBreakdown, getBillableInputTokens, getCacheCreationTokens } from '@renderer/lib/format-tokens'
-import { formatDurationMs } from '@renderer/lib/format-tokens'
-import { getCacheCreationSplit } from '@renderer/lib/usage-utils'
-import { selectFileTextToPlainText } from '@renderer/lib/tools/tool-result-format'
+import { calculateCost, calculateCostBreakdown, getBillableInputTokens, getCacheCreationTokens, getCacheCreationSplit } from '@renderer/lib/format-tokens'
+import { formatDurationMs } from '@renderer/lib/format-duration'
+import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
 
 export function normalizeTokenCount(value: number | null | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 0
