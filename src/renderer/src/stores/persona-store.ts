@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { agentBridge } from '@renderer/lib/ipc/agent-bridge'
 import type { PersonaSummary, PersonaConfig } from '@renderer/lib/persona/persona-types'
 import { createEmptyPersonaConfig } from '@renderer/lib/persona/persona-types'
 
@@ -36,7 +35,7 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
   listPersonas: async (workingFolder?: string) => {
     set({ loading: true, error: null })
     try {
-      const result = (await agentBridge.request('persona/list', {
+      const result = (await window.api.workerRequest('persona/list', {
         workingFolder: workingFolder ?? null
       })) as { personas: PersonaSummary[] }
 
@@ -52,7 +51,7 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
   selectPersona: async (id: string, workingFolder?: string) => {
     set({ loading: true, error: null })
     try {
-      const result = (await agentBridge.request('persona/get', {
+      const result = (await window.api.workerRequest('persona/get', {
         id,
         workingFolder: workingFolder ?? null
       })) as PersonaConfig & { success?: boolean; error?: string }
@@ -88,7 +87,7 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
   savePersona: async (config: PersonaConfig, workingFolder?: string) => {
     set({ error: null })
     try {
-      const result = (await agentBridge.request('persona/save', {
+      const result = (await window.api.workerRequest('persona/save', {
         id: config.id || null,
         name: config.name,
         tagline: config.tagline,
@@ -121,7 +120,7 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
   deletePersona: async (id: string, workingFolder?: string) => {
     set({ error: null })
     try {
-      const result = (await agentBridge.request('persona/delete', {
+      const result = (await window.api.workerRequest('persona/delete', {
         id,
         workingFolder: workingFolder ?? null
       })) as { success: boolean; error?: string }
@@ -147,7 +146,7 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
   applyToProject: async (personaId: string | null, projectFolder: string) => {
     set({ error: null })
     try {
-      const result = (await agentBridge.request('persona/apply-to-project', {
+      const result = (await window.api.workerRequest('persona/apply-to-project', {
         personaId: personaId ?? null,
         projectFolder
       })) as { success: boolean; count?: number; error?: string }
@@ -163,7 +162,7 @@ export const usePersonaStore = create<PersonaStore>((set, get) => ({
   generatePersona: async (prompt: string, provider: Record<string, unknown>, referencePersonaId?: string, workingFolder?: string) => {
     set({ loading: true, error: null })
     try {
-      const result = (await agentBridge.request('persona/generate', {
+      const result = (await window.api.workerRequest('persona/generate', {
         prompt,
         provider,
         referencePersonaId: referencePersonaId ?? null,
