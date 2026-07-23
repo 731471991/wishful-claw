@@ -111,7 +111,7 @@ export function PersonaSelectPage(): React.JSX.Element {
           {/* Progress bar */}
           <div className="mb-8 h-1 w-full overflow-hidden rounded bg-muted">
             <div
-              className="h-full bg-foreground transition-all duration-300"
+              className="h-full bg-primary transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
