@@ -147,58 +147,38 @@ export function PersonaSelectPage(): React.JSX.Element {
                 </div>
               </div>
 
-              {/* Language (optional) */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t('splash.language.title', { defaultValue: '语言' })}
-                </label>
-                <div className="flex gap-2">
-                  {LANGUAGE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleLanguageChange(option.value)}
-                      className={cn(
-                        'flex h-10 items-center gap-2 rounded-lg border px-4 text-sm font-medium transition-colors',
-                        language === option.value
-                          ? 'border-foreground bg-foreground text-background'
-                          : 'bg-background hover:bg-muted'
-                      )}
-                    >
-                      <Languages className="size-4" />
-                      {option.label}
-                      {language === option.value && <Check className="size-3.5" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Theme (optional) */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t('splash.theme.title', { defaultValue: '外观' })}
-                </label>
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Mode toggle */}
-                  <div className="flex gap-2">
-                    {THEME_MODES.map((mode) => (
-                      <button
-                        key={mode.value}
-                        type="button"
-                        onClick={() => handleThemeModeChange(mode.value)}
-                        className={cn(
-                          'flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors',
-                          themeMode === mode.value
-                            ? 'border-foreground bg-foreground text-background'
-                            : 'bg-background hover:bg-muted'
-                        )}
-                      >
-                        <mode.icon className="size-3.5" />
-                        {t(`splash.theme.modes.${mode.value}`, { defaultValue: mode.label })}
-                      </button>
+              {/* Language & Theme (compact, optional) */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                {/* Language */}
+                <div className="flex items-center gap-2">
+                  <Languages className="size-3.5" />
+                  <select
+                    value={language}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="h-8 rounded-md border bg-background px-2 text-sm outline-none cursor-pointer hover:bg-muted"
+                  >
+                    {LANGUAGE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
-                  </div>
-
+                  </select>
+                </div>
+                {/* Theme mode */}
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const CurrentIcon = THEME_MODES.find((m) => m.value === themeMode)?.icon ?? Sun
+                    return <CurrentIcon className="size-3.5" />
+                  })()}
+                  <select
+                    value={themeMode}
+                    onChange={(e) => handleThemeModeChange(e.target.value)}
+                    className="h-8 rounded-md border bg-background px-2 text-sm outline-none cursor-pointer hover:bg-muted"
+                  >
+                    {THEME_MODES.map((mode) => (
+                      <option key={mode.value} value={mode.value}>
+                        {t(`splash.theme.modes.${mode.value}`, { defaultValue: mode.label })}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
