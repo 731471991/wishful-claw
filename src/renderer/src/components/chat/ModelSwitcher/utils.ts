@@ -16,8 +16,8 @@ export function formatContextLength(length?: number): string | null {
   return String(length)
 }
 
-const MIN_ANTHROPIC_THINKING_BUDGET = 1024
-const DEFAULT_ANTHROPIC_THINKING_BUDGET = 10000
+export const MIN_ANTHROPIC_THINKING_BUDGET = 1024
+export const DEFAULT_ANTHROPIC_THINKING_BUDGET = 10000
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

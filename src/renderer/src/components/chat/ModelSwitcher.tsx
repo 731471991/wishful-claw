@@ -51,6 +51,7 @@ import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolu
 import { ReasoningEffortSlider } from './ReasoningEffortSlider'
 import {
   type ProviderGroup, type ModelSwitcherSessionSnapshot,
+  MIN_ANTHROPIC_THINKING_BUDGET, DEFAULT_ANTHROPIC_THINKING_BUDGET,
   formatContextLength, isRecord, formatTokenCount, formatPrice,
   readAnthropicThinkingBudget, clampThinkingBudget, buildAnthropicThinkingConfigWithBudget,
   supportsPriorityServiceTier, selectModel, selectFastModel,
