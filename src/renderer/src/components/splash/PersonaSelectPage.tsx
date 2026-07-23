@@ -126,7 +126,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                 </h1>
                 <p className="text-sm leading-6 text-muted-foreground">
                   {t('splash.welcome.subtitle', {
-                    defaultValue: '不只是 AI 助手，更是你的编程搭档。本地运行，数据不出设备；融合多源工具链与可定制人格系统，让每次对话都有温度、有性格。断网照样干活，联网如虎添翼。'
+                    defaultValue: '不只是 AI 助手，更是你的编程搭档。本地运行，数据不出设备；融合多源工具链与可定制人格系统，让每次对话都有温度、有性格。你的代码、你的文件、你的节奏，全在掌控之中。'
                   })}
                 </p>
               </div>
