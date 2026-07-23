@@ -9,7 +9,7 @@ import type { AgentRunFileChange } from '@renderer/stores/agent-store'
 import type { OrchestrationRun } from '@renderer/lib/orchestration/types'
 import type { TFunction } from 'i18next'
 import {
-  buildToolExecutionOutline
+  buildToolExecutionOutline, type ToolExecutionRun
 } from '../execution-outline'
 import { ThinkingBlock } from '../ThinkingBlock'
 import { CollapsibleHeightPanel } from '../CollapsibleHeightPanel'
@@ -35,7 +35,6 @@ import { StreamingMarkdownContent } from './markdown-renderer'
 import { ModelThinkingIndicator, GenerationProcessLine } from './ui-buttons'
 import { ToolBlockRenderer } from './tool-block-renderer'
 import type { ToolBlockRendererProps } from './tool-block-renderer'
-import type { ToolExecutionRun } from '@renderer/stores/agent-store'
 
 export interface ContentRendererProps {
   content: string | ContentBlock[]
