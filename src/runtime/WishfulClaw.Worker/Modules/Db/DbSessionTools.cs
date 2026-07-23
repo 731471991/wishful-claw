@@ -187,7 +187,8 @@ internal static class DbSessionTools
             ProviderId = providerId,
             ModelId = modelId,
             ModelSelectionMode = DbProjectTools.NormalizeOptional(JsonHelpers.GetString(parameters, "modelSelectionMode")) ??
-                (providerId is not null && modelId is not null ? "manual" : "inherit")
+                (providerId is not null && modelId is not null ? "manual" : "inherit"),
+            PersonaId = DbProjectTools.NormalizeOptional(JsonHelpers.GetString(parameters, "personaId"))
         };
     }
 
@@ -229,6 +230,7 @@ internal static class DbSessionTools
         TryPatchNullableString(patch, "providerId", v => row.ProviderId = v);
         TryPatchNullableString(patch, "modelId", v => row.ModelId = v);
         TryPatchNullableString(patch, "modelSelectionMode", v => row.ModelSelectionMode = v ?? "inherit");
+        TryPatchNullableString(patch, "personaId", v => row.PersonaId = v);
 
         if (patch.TryGetProperty("pinned", out var pinnedEl))
         {

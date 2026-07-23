@@ -87,6 +87,9 @@ public class SessionEntity
 
     [SugarColumn(ColumnName = "model_selection_mode")]
     public string ModelSelectionMode { get; set; } = "inherit";
+
+    [SugarColumn(ColumnName = "persona_id", IsNullable = true)]
+    public string? PersonaId { get; set; }
 }
 
 // ─── Message Entity ───
@@ -166,6 +169,7 @@ public sealed class SessionRow
     public string? ProviderId { get; set; }
     public string? ModelId { get; set; }
     public string? ModelSelectionMode { get; set; }
+    public string? PersonaId { get; set; }
 
     public static SessionRow FromEntity(SessionEntity e) => new()
     {
@@ -185,7 +189,8 @@ public sealed class SessionRow
         ExternalChatId = e.ExternalChatId,
         ProviderId = e.ProviderId,
         ModelId = e.ModelId,
-        ModelSelectionMode = e.ModelSelectionMode
+        ModelSelectionMode = e.ModelSelectionMode,
+        PersonaId = e.PersonaId
     };
 }
 

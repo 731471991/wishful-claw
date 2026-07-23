@@ -29,6 +29,9 @@
 - 可嵌入 PersonaPanel 和 PersonaSelectPage
 
 ### 验证
-- dotnet build 通过
-- electron-vite build 通过
-- 输入提示词 → 生成草稿 → 预览 → 保存 → 人格列表出现新人格
+- ✅ dotnet build 通过
+- ✅ electron-vite build 通过
+- 输入提示词 → 生成草稿 → 预览 → 保存 → 人格列表出现新人格（需运行时验证）
+
+## 状态：已完成 ✅
+Commit: 6ae1591

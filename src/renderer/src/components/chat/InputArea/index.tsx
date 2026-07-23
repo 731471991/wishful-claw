@@ -72,6 +72,7 @@ import {
 } from '@renderer/lib/select-file-editor'
 import { SkillsMenu } from '../SkillsMenu'
 import { ModelSwitcher } from '../ModelSwitcher'
+import { PersonaSwitcher } from '../PersonaSwitcher'
 import { ModelIcon } from '@renderer/components/settings/provider-icons'
 import { FileAwareEditor, type FileAwareEditorHandle } from '../FileAwareEditor'
 import { TokenCounter } from '../TokenCounter'
@@ -2659,6 +2660,11 @@ export function InputArea({
                     <ModelSwitcher modelRoute={modelRoute} sessionId={draftSessionId} />
                   )}
                 </div>
+                {draftSessionId && (
+                  <div className="shrink-0">
+                    <PersonaSwitcher sessionId={draftSessionId} />
+                  </div>
+                )}
                 {webSearchToggleControl}
                 {skillsMenuControl}
                 {activeMcpBadge}

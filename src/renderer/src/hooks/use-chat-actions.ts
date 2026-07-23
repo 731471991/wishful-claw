@@ -134,7 +134,7 @@ export function useChatActions() {
         maxIterations: 10,
         maxParallelTools: settings.maxParallelToolCalls,
         maxToolCallsPerTurn: settings.maxToolCallsPerTurn,
-        personaId: settings.defaultPersonaId || undefined,
+        personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,
         language: settings.language,
         userRules: settings.systemPrompt || undefined
       })

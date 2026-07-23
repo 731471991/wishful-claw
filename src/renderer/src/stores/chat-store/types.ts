@@ -77,6 +77,7 @@ export interface Session {
   modelSelectionMode?: SessionModelSelectionMode
   providerId?: string
   modelId?: string
+  personaId?: string
 }
 
 // ─── Project ───

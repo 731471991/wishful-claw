@@ -71,6 +71,9 @@ internal static class DbClient
                 typeof(SessionEntity),
                 typeof(MessageEntity));
 
+            // ── Migrations: add columns that CodeFirst doesn't add to existing tables ──
+            EnsureColumn(_db, "sessions", "persona_id", "TEXT");
+
             _initialized = true;
             return new DbInitializeResult(true, dbPath, null);
         }
@@ -112,6 +115,43 @@ internal static class DbClient
             {
                 throw new InvalidOperationException($"DB initialization failed: {result.Error}");
             }
+        }
+    }
+
+    /// <summary>
+    /// Adds a column to an existing table if it doesn't exist.
+    /// CodeFirst.InitTables only creates new tables, not new columns on existing ones.
+    /// </summary>
+    private static void EnsureColumn(SqlSugarScope db, string table, string column, string columnType)
+    {
+        try
+        {
+            // Check if column exists (SQLite PRAGMA table_info)
+            var columns = db.Ado.SqlQuery<string>($"PRAGMA table_info({table});");
+            var hasColumn = false;
+            // PRAGMA table_info returns rows with columns: cid, name, type, notnull, dflt_value, pk
+            // SqlSugar might return the name column; let's use a safer approach
+            var dt = db.Ado.GetDataTable($"PRAGMA table_info({table});");
+            if (dt.Columns.Contains("name"))
+            {
+                foreach (System.Data.DataRow row in dt.Rows)
+                {
+                    if (string.Equals(row["name"]?.ToString(), column, StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasColumn = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasColumn)
+            {
+                db.Ado.ExecuteCommand($"ALTER TABLE {table} ADD COLUMN {column} {columnType};");
+            }
+        }
+        catch
+        {
+            // Ignore migration errors (column may already exist or table not created yet)
         }
     }
 }

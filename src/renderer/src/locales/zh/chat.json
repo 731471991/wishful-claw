@@ -1284,5 +1284,11 @@
     "reveal": "在 Finder 中显示",
     "open": "打开",
     "more": "还有 {{count}} 个"
+  },
+  "chat": {
+    "personaSwitcher": {
+      "title": "切换人格",
+      "none": "默认"
+    }
   }
 }
