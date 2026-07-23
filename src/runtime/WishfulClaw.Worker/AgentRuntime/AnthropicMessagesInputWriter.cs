@@ -18,7 +18,7 @@ internal static partial class AnthropicMessagesProvider
         IReadOnlyList<AgentRuntimeChatMessage> conversation)
     {
         var buffer = new ArrayBufferWriter<byte>();
-        var omitted = AgentRuntimeProviderSupport.GetOmittedBodyKeys(provider);
+        var omitted = ProviderRequestOverrides.GetOmittedBodyKeys(provider);
 
         using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
         {
@@ -61,7 +61,7 @@ internal static partial class AnthropicMessagesProvider
                 writer.WriteNumber("temperature", temperature);
             }
 
-            AgentRuntimeProviderSupport.WriteBodyOverrides(writer, provider, omitted);
+            ProviderRequestOverrides.WriteBodyOverrides(writer, provider, omitted);
 
             writer.WriteEndObject();
         }
@@ -109,7 +109,7 @@ internal static partial class AnthropicMessagesProvider
                     }
                     else
                     {
-                        writer.WriteStringValue(AgentRuntimeProviderSupport.ToolResultToString(toolResult.Content));
+                        writer.WriteStringValue(ProviderContentHelpers.ToolResultToString(toolResult.Content));
                     }
                     if (toolResult.IsError.HasValue)
                     {

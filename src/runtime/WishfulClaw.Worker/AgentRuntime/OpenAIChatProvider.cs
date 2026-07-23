@@ -180,7 +180,7 @@ internal static class OpenAIChatProvider
         IReadOnlyList<AgentRuntimeChatMessage> conversation)
     {
         var buffer = new ArrayBufferWriter<byte>();
-        var omitted = AgentRuntimeProviderSupport.GetOmittedBodyKeys(provider);
+        var omitted = ProviderRequestOverrides.GetOmittedBodyKeys(provider);
         using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
         {
             writer.WriteStartObject();
@@ -231,7 +231,7 @@ internal static class OpenAIChatProvider
             }
 
             WriteThinkingConfig(writer, provider, omitted);
-            AgentRuntimeProviderSupport.WriteBodyOverrides(writer, provider, omitted);
+            ProviderRequestOverrides.WriteBodyOverrides(writer, provider, omitted);
 
             writer.WriteEndObject();
         }
@@ -416,7 +416,7 @@ internal static class OpenAIChatProvider
             request.Headers.TryAddWithoutValidation("OpenAI-Project", project);
         }
 
-        AgentRuntimeProviderSupport.ApplyHttpHeaderOverrides(request, provider);
+        ProviderRequestOverrides.ApplyHttpHeaderOverrides(request, provider);
         ApiUserAgent.Ensure(request, provider);
     }
 
@@ -428,7 +428,7 @@ internal static class OpenAIChatProvider
             ["Authorization"] = "Bearer ***"
         };
         ApiUserAgent.ApplyDebug(headers, provider);
-        AgentRuntimeProviderSupport.ApplyDebugHeaderOverrides(headers, provider);
+        ProviderRequestOverrides.ApplyDebugHeaderOverrides(headers, provider);
         ApiUserAgent.EnsureDebug(headers, provider);
         return headers;
     }
