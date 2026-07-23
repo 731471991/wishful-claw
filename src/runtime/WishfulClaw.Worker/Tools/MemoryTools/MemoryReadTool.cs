@@ -29,7 +29,7 @@ public sealed class MemoryReadTool : IToolExecutor
     public async Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
     {
         var target = GetString(input, "target") ?? "memory";
-        var scope = MemoryAppendTool.ResolveScope(input, context);
+        var scope = MemoryToolHelpers.ResolveScope(input, context);
 
         await _store.EnsureMemoryLayoutAsync(scope, context.CancellationToken);
 

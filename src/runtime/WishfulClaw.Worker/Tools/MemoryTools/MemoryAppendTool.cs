@@ -12,11 +12,6 @@ using static WishfulClaw.Worker.Tools.ToolHelpers;
 /// </summary>
 public sealed class MemoryAppendTool : IToolExecutor
 {
-    private static readonly HashSet<string> ValidPriorities = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "permanent", "lasting", "standard", "ephemeral"
-    };
-
     private readonly IMemoryStore _store;
     private readonly IMemorySearch _search;
 
@@ -44,9 +39,9 @@ public sealed class MemoryAppendTool : IToolExecutor
             return new ToolResult("memory_append requires a non-empty 'content' parameter", true);
 
         var priorityStr = GetString(input, "priority") ?? "standard";
-        var priority = NormalizePriority(priorityStr);
+        var priority = MemoryToolHelpers.NormalizePriority(priorityStr);
 
-        var scope = ResolveScope(input, context);
+        var scope = MemoryToolHelpers.ResolveScope(input, context);
 
         await _store.EnsureMemoryLayoutAsync(scope, context.CancellationToken);
         await _store.AppendDailyAsync(scope, content!, priority, context.CancellationToken);
@@ -60,36 +55,5 @@ public sealed class MemoryAppendTool : IToolExecutor
         return new ToolResult($"Memory appended successfully (scope={scope}, priority={priority.ToString().ToLowerInvariant()}, date={date})");
     }
 
-    internal static string ResolveScope(JsonElement input, ToolExecutionContext context)
-    {
-        var scope = GetString(input, "scope");
-        if (!string.IsNullOrWhiteSpace(scope))
-        {
-            if (scope == "project" && !string.IsNullOrWhiteSpace(context.WorkingFolder))
-                return $"project:{context.WorkingFolder}";
-            if (scope == "global")
-                return "global";
-            return scope;
-        }
 
-        // Default: project scope if workingFolder available, otherwise global
-        return !string.IsNullOrWhiteSpace(context.WorkingFolder)
-            ? $"project:{context.WorkingFolder}"
-            : "global";
-    }
-
-    internal static MemoryPriority NormalizePriority(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return MemoryPriority.Standard;
-
-        return value.Trim().ToLowerInvariant() switch
-        {
-            "permanent" or "p0" => MemoryPriority.Permanent,
-            "lasting" or "p1" => MemoryPriority.Lasting,
-            "standard" or "p2" => MemoryPriority.Standard,
-            "ephemeral" or "p3" => MemoryPriority.Ephemeral,
-            _ => MemoryPriority.Standard
-        };
-    }
 }

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Buffers;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -12,7 +10,7 @@ namespace WishfulClaw.Worker.AgentRuntime;
 /// Design fused from:
 /// - KodaClaw: Step abstraction (iteration = model call + optional tool execution)
 /// - OpenCowork: SSE parsing, provider dispatch
-/// - OpenClaw.net: TryInjectRecallAsync placeholder (iteration 6)
+/// - OpenClaw.net: TryInjectRecallAsync (iteration 7)
 /// </summary>
 internal static partial class AgentLoop
 {
@@ -231,62 +229,6 @@ internal static partial class AgentLoop
             new AgentRuntimeStreamEvent("loop_end", Reason: reason));
     }
 
-
-    // ── Memory recall injection ──
-
-    private static async Task TryInjectMemoryRecallAsync(
-        JsonElement parameters,
-        List<AgentRuntimeChatMessage> conversation,
-        AgentRuntimeRunState state,
-        IWorkerRequestContext context)
-    {
-        try
-        {
-            var memorySearch = Tools.ToolModuleState.MemorySearch;
-            if (memorySearch is null)
-                return;
-
-            var userMessage = conversation
-                .Where(m => m.Role == "user")
-                .Select(m => m.Text)
-                .LastOrDefault();
-
-            if (string.IsNullOrWhiteSpace(userMessage))
-                return;
-
-            var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
-            var scope = !string.IsNullOrWhiteSpace(workingFolder)
-                ? $"project:{workingFolder}"
-                : "global";
-
-            var recall = new Memory.MemoryRecallService(
-                memorySearch,
-                new WishfulClaw.Workspace.Memory.ContextBudgetPlanner());
-
-            var injected = await recall.TryInjectRecallAsync(
-                userMessage, scope, maxChars: 4000,
-                state.CancellationToken);
-
-            if (!string.IsNullOrWhiteSpace(injected))
-            {
-                conversation.Insert(1, AgentRuntimeChatMessage.User(injected));
-                WorkerLog.Info($"memory recall injected runId={state.RunId} length={injected.Length}");
-            }
-            else
-            {
-                WorkerLog.Debug($"memory recall: no relevant memories found runId={state.RunId}");
-            }
-        }
-        catch (OperationCanceledException) when (state.CancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            WorkerLog.Warn($"memory recall injection failed runId={state.RunId} error={ex.GetType().Name}: {ex.Message}");
-        }
-    }
-
     // ── Provider dispatch ──
 
     private static async Task<AgentRuntimeProviderTurnResult> ExecuteTurnAsync(
@@ -338,149 +280,5 @@ internal static partial class AgentLoop
         var reserved = contextLength - DefaultContextCompressionReservedOutputTokens - ContextCompressionAutoBufferTokens;
         var trigger = Math.Min(threshold, reserved);
         return inputTokens >= trigger;
-    }
-
-    // ── JSON helper methods ──
-
-    /// <summary>
-    /// Replaces or adds the systemPrompt field in the provider JSON element.
-    /// </summary>
-    private static JsonElement InjectSystemPrompt(JsonElement provider, string systemPrompt)
-    {
-        if (string.IsNullOrWhiteSpace(systemPrompt)) return provider;
-
-        var buffer = new ArrayBufferWriter<byte>();
-        using (var writer = new Utf8JsonWriter(buffer))
-        {
-            writer.WriteStartObject();
-            var hasSystemPrompt = false;
-            foreach (var prop in provider.EnumerateObject())
-            {
-                if (prop.NameEquals("systemPrompt"))
-                {
-                    writer.WriteString("systemPrompt", systemPrompt);
-                    hasSystemPrompt = true;
-                }
-                else
-                {
-                    prop.WriteTo(writer);
-                }
-            }
-            if (!hasSystemPrompt)
-            {
-                writer.WriteString("systemPrompt", systemPrompt);
-            }
-            writer.WriteEndObject();
-        }
-        using var doc = JsonDocument.Parse(buffer.WrittenMemory);
-        return doc.RootElement.Clone();
-    }
-
-    internal static JsonElement GetObject(JsonElement element, string propertyName)
-    {
-        if (element.ValueKind == JsonValueKind.Object &&
-            element.TryGetProperty(propertyName, out var property) &&
-            property.ValueKind == JsonValueKind.Object)
-        {
-            return property;
-        }
-        return default;
-    }
-
-    internal static string? ReadString(JsonElement element, string propertyName)
-    {
-        if (element.ValueKind == JsonValueKind.Object &&
-            element.TryGetProperty(propertyName, out var property) &&
-            property.ValueKind == JsonValueKind.String)
-        {
-            return property.GetString();
-        }
-        return null;
-    }
-
-    internal static int ReadInt(JsonElement element, string propertyName)
-    {
-        if (element.ValueKind != JsonValueKind.Object ||
-            !element.TryGetProperty(propertyName, out var property))
-        {
-            return 0;
-        }
-        if (property.ValueKind == JsonValueKind.Number &&
-            property.TryGetInt64(out var longValue))
-        {
-            return longValue > int.MaxValue ? int.MaxValue : (int)Math.Max(0, longValue);
-        }
-        if (property.ValueKind == JsonValueKind.String &&
-            long.TryParse(property.GetString(), out longValue))
-        {
-            return longValue > int.MaxValue ? int.MaxValue : (int)Math.Max(0, longValue);
-        }
-        return 0;
-    }
-
-    internal static bool TryParseJsonObject(string value, out JsonElement element)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            element = AgentRuntimeProviderSupport.CreateEmptyObjectElement();
-            return false;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(value);
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                element = AgentRuntimeProviderSupport.CreateEmptyObjectElement();
-                return false;
-            }
-            element = document.RootElement.Clone();
-            return true;
-        }
-        catch (JsonException)
-        {
-            element = AgentRuntimeProviderSupport.CreateEmptyObjectElement();
-            return false;
-        }
-    }
-
-    // ── Timing helpers ──
-
-    internal static long ElapsedMs(long startedAt)
-    {
-        return (long)Math.Round(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-    }
-
-    internal static long NowMs()
-    {
-        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    }
-
-    internal static string NewMessageId()
-    {
-        return $"wc_{Guid.NewGuid():N}";
-    }
-
-    internal static int EstimateTokenCount(string text)
-    {
-        return string.IsNullOrWhiteSpace(text) ? 0 : Math.Max(1, text.Length / 4);
-    }
-
-    internal static double? ComputeTps(int outputTokens, long? firstTokenMs, long completedMs)
-    {
-        if (!firstTokenMs.HasValue || outputTokens <= 0)
-        {
-            return null;
-        }
-        var durationMs = completedMs - firstTokenMs.Value;
-        return durationMs <= 0 ? null : outputTokens / (durationMs / 1000.0);
-    }
-
-    internal static bool IsReasoningModel(string model)
-    {
-        return model.StartsWith("o1", StringComparison.OrdinalIgnoreCase) ||
-            model.StartsWith("o2", StringComparison.OrdinalIgnoreCase) ||
-            model.StartsWith("o3", StringComparison.OrdinalIgnoreCase) ||
-            model.StartsWith("o4", StringComparison.OrdinalIgnoreCase);
     }
 }
