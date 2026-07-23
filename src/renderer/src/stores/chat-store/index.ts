@@ -7,7 +7,7 @@ import { createSessionSlice, type SessionSlice } from './session-slice'
 import { createProjectSlice, type ProjectSlice } from './project-slice'
 import { createStreamingSlice, type StreamingSlice } from './streaming-slice'
 import type { ChatMessage } from './types'
-import { dbUpsertMessage } from './db-helpers'
+import { dbUpsertMessage, dbUpdateSession, awaitSessionCreated } from './db-helpers'
 import { setLastDebugInfo } from '@renderer/lib/debug-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
 
@@ -46,6 +46,7 @@ export const useChatStore = create<ChatStore>()(
     // ─── Agent Actions ───
     sendMessage: async (params) => {
       const get = args[1] as () => ChatStore
+      const set = args[0] as (fn: (state: ChatStore) => void) => void
       const state = get()
       const sessionId = params.sessionId ?? state.activeSessionId
       if (!sessionId) return
@@ -94,9 +95,22 @@ export const useChatStore = create<ChatStore>()(
       agentStore.switchToolCallSession(null, sessionId)
 
       // Auto-generate title from first user message
-      const session = state.sessions.find((s) => s.id === sessionId)
-      if (session && session.title === 'New Conversation' && userText) {
-        state.updateSessionTitle(sessionId, userText.slice(0, 40) + (userText.length > 40 ? '...' : ''))
+      const titleSession = get().sessions.find((s) => s.id === sessionId)
+      if (titleSession && titleSession.title === 'New Conversation' && userText) {
+        const newTitle = userText.slice(0, 40) + (userText.length > 40 ? '...' : '')
+        const titleNow = Date.now()
+        set((state) => {
+          const sess = state.sessions.find((s) => s.id === sessionId)
+          if (sess) {
+            sess.title = newTitle
+            sess.updatedAt = titleNow
+          }
+        })
+        // Ensure the session row exists in DB before updating (createSession's
+        // dbCreateSession is fire-and-forget; the worker processes requests
+        // concurrently, so db/sessions-update could arrive before db/sessions-create)
+        await awaitSessionCreated(sessionId)
+        await dbUpdateSession(sessionId, { title: newTitle, updatedAt: titleNow })
       }
 
       try {

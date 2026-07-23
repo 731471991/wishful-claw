@@ -195,9 +195,15 @@ export async function ensureDbInitialized(): Promise<void> {
 
 // ─── Session DB Operations ───
 
+/** Tracks in-flight session creation promises so callers can await them
+ *  before issuing updates (prevents race condition where db/sessions-update
+ *  reaches the worker before db/sessions-create, causing a silent no-op). */
+const sessionCreatePromises = new Map<string, Promise<void>>()
+
 export async function dbCreateSession(session: Session): Promise<void> {
-  await ensureDbInitialized()
-  await window.api.workerRequest('db/sessions-create', {
+  const promise = (async () => {
+    await ensureDbInitialized()
+    await window.api.workerRequest('db/sessions-create', {
     id: session.id,
     title: session.title,
     icon: session.icon ?? null,
@@ -212,7 +218,18 @@ export async function dbCreateSession(session: Session): Promise<void> {
     providerId: session.providerId ?? null,
     modelId: session.modelId ?? null,
     modelSelectionMode: session.modelSelectionMode ?? 'inherit'
-  })
+    })
+  })()
+  sessionCreatePromises.set(session.id, promise)
+  promise.finally(() => sessionCreatePromises.delete(session.id))
+  return promise
+}
+
+/** Await a pending dbCreateSession for the given session id.
+ *  No-op if creation already completed or was never initiated. */
+export async function awaitSessionCreated(sessionId: string): Promise<void> {
+  const promise = sessionCreatePromises.get(sessionId)
+  if (promise) await promise
 }
 
 export async function dbDeleteSession(sessionId: string): Promise<void> {
