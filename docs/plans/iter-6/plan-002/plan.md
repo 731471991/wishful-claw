@@ -6,13 +6,13 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：PersonaModule + IPC 端点注册
+- [✓] 步骤1：PersonaModule + IPC 端点注册
   - 新建 `src/runtime/WishfulClaw.Worker/Persona/PersonaModule.cs`
   - 实现 IWorkerModule，注册端点：persona/list、persona/get、persona/save、persona/delete、persona/apply-to-project
   - 在 WorkerHostBuilder 中注册 PersonaModule
   - 验证：`dotnet build` 通过
 
-- [ ] 步骤2：端点逻辑实现
+- [✓] 步骤2：端点逻辑实现
   - persona/list：调用 PersonaStore.ListPersonas，返回 PersonaSummary 列表
   - persona/get：调用 PersonaStore.GetPersona，返回完整 PersonaConfig
   - persona/save：接收 PersonaConfig，调用 PersonaStore.SavePersona
