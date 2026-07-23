@@ -10,6 +10,17 @@
       "extensibleDesc": "创建专属助手，委派任务，保持人工参与的协作流程。",
       "intelligent": "人格与记忆",
       "intelligentDesc": "选择 SOUL.md 人格设定，让每次对话都从合适的协作风格开始。"
+    },
+    "loading": "正在进入...",
+    "personaSelect": {
+      "title": "选择你的人格",
+      "subtitle": "选择一个 AI 人格作为你的默认助手。不同人格有不同的性格和沟通风格，之后可以随时切换。",
+      "loading": "加载人格列表...",
+      "empty": "暂无可用人格",
+      "retry": "重试",
+      "hint": "可以在设置中随时修改或创建新人格",
+      "start": "开始使用",
+      "saved": "人格已设置"
     }
   },
   "main": {

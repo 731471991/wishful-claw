@@ -10,6 +10,17 @@
       "extensibleDesc": "Create focused assistants, delegate tasks, and keep a human-in-the-loop workflow.",
       "intelligent": "Identity and memory",
       "intelligentDesc": "Choose a SOUL.md persona so every conversation starts from the right collaboration style."
+    },
+    "loading": "Loading...",
+    "personaSelect": {
+      "title": "Choose Your Persona",
+      "subtitle": "Select an AI persona as your default assistant. Different personas have different personalities and communication styles. You can switch anytime.",
+      "loading": "Loading personas...",
+      "empty": "No personas available",
+      "retry": "Retry",
+      "hint": "You can modify or create new personas in Settings anytime",
+      "start": "Get Started",
+      "saved": "Persona set"
     }
   },
   "main": {
