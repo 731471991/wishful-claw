@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, Check, ChevronDown, Loader2, Send, ShieldCheck, Sparkles, Users, Languages, Sun, Moon, Monitor, PenLine } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, Loader2, Send, Languages, Sun, Moon, Monitor, PenLine, Eye } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
@@ -10,11 +10,24 @@ import { WindowControls } from '@renderer/components/layout/WindowControls'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { usePersonaStore } from '@renderer/stores/persona-store'
-import type { PersonaSummary } from '@renderer/lib/persona/persona-types'
+import type { PersonaSummary, PersonaConfig, PersonaFileKey } from '@renderer/lib/persona/persona-types'
+import { PERSONA_FILES } from '@renderer/lib/persona/persona-types'
 import { LANGUAGE_OPTIONS, detectSystemLanguage } from '@renderer/lib/i18n-language'
 import { changeI18nLanguage } from '@renderer/locales'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@renderer/components/ui/dialog'
 import { cn } from '@renderer/lib/utils'
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@renderer/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem
+} from '@renderer/components/ui/dropdown-menu'
 
 type Step = 'setup' | 'persona'
 
@@ -32,13 +45,16 @@ export function PersonaSelectPage(): React.JSX.Element {
   const persistedTheme = useSettingsStore((s) => s.theme)
   const { setTheme } = useTheme()
 
-  const { personas, loading, listPersonas } = usePersonaStore()
+  const { personas, loading, listPersonas, selectPersona, selectedPersona } = usePersonaStore()
   const [step, setStep] = useState<Step>('setup')
   const [language, setLanguage] = useState(detectSystemLanguage())
   const [nickname, setNickname] = useState(persistedName ?? '')
   const [themeMode, setThemeMode] = useState<string>(persistedTheme ?? 'dark')
   const [selectedId, setSelectedId] = useState<string>('')
   const [finishing, setFinishing] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailTab, setDetailTab] = useState<PersonaFileKey>('identityMarkdown')
 
   const progress = step === 'setup' ? 50 : 100
 
@@ -48,21 +64,18 @@ export function PersonaSelectPage(): React.JSX.Element {
     return true
   }, [nickname, selectedId, step])
 
-  // Apply language change immediately
   const handleLanguageChange = useCallback((lang: string) => {
     setLanguage(lang as typeof language)
     updateSettings({ language: lang })
     void changeI18nLanguage(lang)
   }, [updateSettings])
 
-  // Apply theme mode change immediately
   const handleThemeModeChange = useCallback((mode: string) => {
     setThemeMode(mode)
     setTheme(mode)
     updateSettings({ theme: mode as 'light' | 'dark' | 'system' })
   }, [setTheme, updateSettings])
 
-  // Load personas when entering persona step
   const handleEnterPersona = useCallback(() => {
     updateSettings({ userName: nickname.trim() })
     setStep('persona')
@@ -71,13 +84,24 @@ export function PersonaSelectPage(): React.JSX.Element {
     }
   }, [nickname, updateSettings, personas.length, listPersonas])
 
-  // Auto-select default persona
   useEffect(() => {
     if (personas.length > 0 && !selectedId) {
       const defaultP = personas.find((p) => p.id === 'default') ?? personas[0]
       setSelectedId(defaultP.id)
     }
   }, [personas, selectedId])
+
+  // Open detail dialog — fetch full persona config
+  const handleViewDetail = useCallback(async (persona: PersonaSummary) => {
+    setDetailOpen(true)
+    setDetailLoading(true)
+    setDetailTab('identityMarkdown')
+    try {
+      await selectPersona(persona.id)
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [selectPersona])
 
   const handleFinish = useCallback(async () => {
     if (!selectedId) return
@@ -116,10 +140,9 @@ export function PersonaSelectPage(): React.JSX.Element {
             />
           </div>
 
-          {/* ── Step 1: Setup (welcome + nickname + language + theme) ── */}
+          {/* ── Step 1: Setup ── */}
           {step === 'setup' && (
             <div className="space-y-8">
-              {/* Welcome */}
               <div className="space-y-3">
                 <h1 className="text-3xl font-semibold">
                   {t('splash.welcome.title', { defaultValue: '欢迎使用 Wishful Claw' })}
@@ -131,7 +154,6 @@ export function PersonaSelectPage(): React.JSX.Element {
                 </p>
               </div>
 
-              {/* Nickname */}
               <div className="space-y-2">
                 <div className="relative max-w-md">
                   <Input
@@ -148,9 +170,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                 </div>
               </div>
 
-              {/* Language & Theme (compact dropdowns) */}
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {/* Language */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex h-8 items-center gap-1.5 rounded-md border bg-background px-2.5 text-sm outline-none cursor-pointer hover:bg-muted">
@@ -160,10 +180,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuRadioGroup
-                      value={language}
-                      onValueChange={handleLanguageChange}
-                    >
+                    <DropdownMenuRadioGroup value={language} onValueChange={handleLanguageChange}>
                       {LANGUAGE_OPTIONS.map((opt) => (
                         <DropdownMenuRadioItem key={opt.value} value={opt.value}>
                           {opt.label}
@@ -172,7 +189,6 @@ export function PersonaSelectPage(): React.JSX.Element {
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {/* Theme mode */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="flex h-8 items-center gap-1.5 rounded-md border bg-background px-2.5 text-sm outline-none cursor-pointer hover:bg-muted">
@@ -187,10 +203,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
-                    <DropdownMenuRadioGroup
-                      value={themeMode}
-                      onValueChange={handleThemeModeChange}
-                    >
+                    <DropdownMenuRadioGroup value={themeMode} onValueChange={handleThemeModeChange}>
                       {THEME_MODES.map((mode) => (
                         <DropdownMenuRadioItem key={mode.value} value={mode.value}>
                           {t(`splash.theme.modes.${mode.value}`, { defaultValue: mode.label })}
@@ -239,6 +252,7 @@ export function PersonaSelectPage(): React.JSX.Element {
                       persona={persona}
                       selected={selectedId === persona.id}
                       onSelect={() => setSelectedId(persona.id)}
+                      onViewDetail={() => handleViewDetail(persona)}
                       t={t}
                     />
                   ))}
@@ -286,10 +300,72 @@ export function PersonaSelectPage(): React.JSX.Element {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="flex h-8 shrink-0 items-center justify-center text-[11px] text-muted-foreground/50">
         Wishful Claw · v0.6.0-dev
       </footer>
+
+      {/* Persona Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-h-[80vh] max-w-2xl overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedPersona?.name ?? '...'}
+              {selectedPersona?.isBuiltin && (
+                <Badge variant="outline" className="text-[10px]">内置</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailLoading || !selectedPersona ? (
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {/* Tagline & description */}
+              {selectedPersona.tagline && (
+                <p className="text-sm font-medium text-foreground">{selectedPersona.tagline}</p>
+              )}
+              {selectedPersona.description && (
+                <p className="text-sm text-muted-foreground">{selectedPersona.description}</p>
+              )}
+
+              {/* Tab bar */}
+              <div className="flex gap-1 border-b">
+                {PERSONA_FILES.map((file) => (
+                  <button
+                    key={file.key}
+                    type="button"
+                    onClick={() => setDetailTab(file.key)}
+                    className={cn(
+                      'border-b-2 px-3 py-1.5 text-xs font-medium transition-colors',
+                      detailTab === file.key
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {file.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab description */}
+              <p className="text-xs text-muted-foreground">
+                {PERSONA_FILES.find((f) => f.key === detailTab)?.description}
+              </p>
+
+              {/* Markdown content */}
+              <div className="max-h-[40vh] overflow-y-auto rounded-md bg-muted/50 p-4">
+                <pre className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                  {selectedPersona[detailTab] || t('splash.personaSelect.noContent', {
+                    defaultValue: '（无内容）'
+                  })}
+                </pre>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -298,49 +374,52 @@ function PersonaCard({
   persona,
   selected,
   onSelect,
+  onViewDetail,
   t
 }: {
   persona: PersonaSummary
   selected: boolean
   onSelect: () => void
+  onViewDetail: () => void
   t: (key: string, opts?: { defaultValue?: string }) => string
 }): React.JSX.Element {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <div
       className={cn(
-        'min-h-24 rounded-lg border p-4 text-left transition-colors',
+        'min-h-24 rounded-lg border p-4 transition-colors',
         selected
           ? 'border-primary bg-primary/10 text-foreground'
           : 'bg-background hover:bg-muted'
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        {/* Click area: select */}
+        <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
           <h2 className="truncate text-sm font-semibold">{persona.name}</h2>
           {persona.tagline && (
-            <p
-              className={cn(
-                'mt-1 line-clamp-1 text-xs',
-                selected ? 'text-muted-foreground' : 'text-muted-foreground'
-              )}
-            >
-              {persona.tagline}
-            </p>
+            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{persona.tagline}</p>
           )}
           {persona.description && (
-            <p
-              className={cn(
-                'mt-1.5 line-clamp-2 text-xs leading-5',
-                selected ? 'text-muted-foreground/70' : 'text-muted-foreground/70'
-              )}
-            >
+            <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-muted-foreground/70">
               {persona.description}
             </p>
           )}
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {selected && <Check className="size-5 text-primary" />}
+          {/* Detail button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onViewDetail()
+            }}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={t('splash.personaSelect.viewDetail', { defaultValue: '查看详情' })}
+          >
+            <Eye className="size-3.5" />
+          </button>
         </div>
-        {selected ? <Check className="size-5 shrink-0" /> : null}
       </div>
       {persona.isBuiltin && (
         <div className="mt-2">
@@ -349,6 +428,6 @@ function PersonaCard({
           </Badge>
         </div>
       )}
-    </button>
+    </div>
   )
 }
