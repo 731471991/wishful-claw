@@ -17,7 +17,7 @@ export interface TaskItem {
   subject: string
   description: string
   activeForm?: string
-  status: 'pending' | 'in_progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed' | string
   owner?: string | null
   blocks: string[]
   blockedBy: string[]

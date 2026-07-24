@@ -36,7 +36,7 @@ export interface CopilotQuota {
 }
 
 
-export interface KimiQuota { [key: string]: unknown }
+export interface KimiQuota { type?: 'kimi'; [key: string]: unknown }
 export interface KimiQuotaWindow { [key: string]: unknown }
 
 export type ProviderQuota = CodexQuota | CopilotQuota | KimiQuota

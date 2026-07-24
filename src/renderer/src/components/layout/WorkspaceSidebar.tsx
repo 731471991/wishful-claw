@@ -529,7 +529,7 @@ function renderNavItem(item: NavButtonItem): React.JSX.Element {
 
 // ─── Main WorkspaceSidebar (single column, OpenCowork-style) ───
 
-export function WorkspaceSidebar(): React.JSX.Element {
+export function WorkspaceSidebar(): React.JSX.Element | null {
   const { t } = useTranslation('layout')
   const leftSidebarOpen = useUIStore((s) => s.leftSidebarOpen)
   const leftSidebarWidth = useUIStore((s) => s.leftSidebarWidth)

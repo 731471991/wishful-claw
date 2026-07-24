@@ -48,6 +48,11 @@ export type {
   AccountRateLimit
 } from '@shared/types/provider'
 
+// --- Plugin Permissions ---
+export interface PluginPermissions {
+  [key: string]: unknown
+}
+
 // --- Token Usage ---
 
 export interface RequestTiming {
@@ -361,7 +366,7 @@ export interface StreamEvent {
   text?: string
   thinking?: string
   thinkingEncryptedContent?: string
-  thinkingEncryptedProvider?: 'anthropic' | 'openai-responses' | 'google'
+  thinkingEncryptedProvider?: string
   toolCallId?: string
   toolName?: string
   argumentsDelta?: string
@@ -407,7 +412,7 @@ export interface ProviderConfig {
   type?: ProviderType
   apiKey?: string
   baseUrl?: string
-  model: string
+  model?: string
   category?: ModelCategory
   providerId?: string
   providerBuiltinId?: string

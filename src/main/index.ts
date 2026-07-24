@@ -190,7 +190,7 @@ app.whenReady().then(() => {
     }
   )
 
-  registerMessagePackHandler<{ path: string; content: string; encoding?: string }, void>(
+  registerMessagePackHandler<{ path: string; content: string; encoding?: BufferEncoding }, void>(
     'fs:write-file',
     async (args) => {
       await fs.promises.writeFile(args.path, args.content, args.encoding ?? 'utf-8')

@@ -38,7 +38,7 @@ interface ProviderState {
   getProviderConfigById: (id: string, _modelId?: string) => AIProvider | null
   getActiveModelConfig: () => { responseSummary?: any; enablePromptCache?: boolean; enableSystemPromptCache?: boolean } | null
   getEffectiveMaxTokens: (userDefault?: number | null, modelId?: string) => number
-  getCompressionProviderConfig: () => { providerId: string | null; model: string } | null
+  getCompressionProviderConfig: () => { providerId: string | undefined; model: string } | null
   getTranslationProviderConfig: () => { providerId: string | null; model: string } | null
   activeImageProviderId: string | null
   activeImageModelId: string

@@ -2,6 +2,7 @@ import * as React from 'react'
 
 interface ProjectTerminalDockProps {
   projectName?: string
+  workingFolder?: string | null
   sshConnectionId?: string | null
   projectId: string
 }

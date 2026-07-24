@@ -587,7 +587,7 @@ export function AssistantMessage({
         lastStructuredTextIdx={lastStructuredTextIdx}
         isGeneratingImage={isGeneratingImage}
         imageGenerationTiming={imageGenerationTiming}
-        generatingImagePreview={generatingImagePreview}
+        generatingImagePreview={generatingImagePreview as { source: { type: string; data?: string; mediaType?: string; url?: string; filePath?: string } } | null | undefined}
         toolExecutionOutline={toolExecutionOutline}
         toolRunSummaryById={toolRunSummaryById}
         getToolRunCollapsed={getToolRunCollapsed}

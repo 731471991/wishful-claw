@@ -24,7 +24,7 @@ export interface TeamTask {
   id: string
   description: string
   subject: string
-  status: 'pending' | 'in_progress' | 'completed'
+  status: 'pending' | 'in_progress' | 'completed' | string
   activeForm?: string
   assignedTo?: string
   owner?: string

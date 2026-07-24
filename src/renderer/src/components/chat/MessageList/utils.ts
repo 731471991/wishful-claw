@@ -352,7 +352,7 @@ export function buildTeamMemberRenderSignature(team: ActiveTeam): string {
         String(member.startedAt),
         String(member.completedAt ?? ''),
         member.streamingText ?? '',
-        String(member.toolCalls.length)
+        String(member.toolCalls?.length ?? 0)
       ].join(':')
     )
     .join('|')

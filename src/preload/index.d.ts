@@ -15,7 +15,7 @@ declare global {
       log: (payload: { level: string; message: string; stack?: string; extra?: Record<string, unknown> }) => Promise<void>
       /** Read recent log lines from today's log file. */
       readLogs: (maxLines?: number) => Promise<string>
-      fetchImageBase64: (url: string | { url: string }) => Promise<{ error?: string; data?: string }>
+      fetchImageBase64: (url: string | { url: string }) => Promise<{ error?: string; data?: string; mimeType?: string }>
       downloadImage: (url: string | { url: string; defaultName?: string }) => Promise<{ error?: string; canceled?: boolean }>
       writeImageToClipboard: (imageData: string | { data: string }) => Promise<{ error?: string }>
       // Team runtime IPC stubs

@@ -314,7 +314,7 @@ interface UIStore {
   // File preview
   openFilePreview: (
     filePath: string,
-    viewMode?: 'split' | 'inline' | 'preview',
+    viewMode?: 'split' | 'inline' | 'preview' | 'code',
     sshConnectionId?: string | null,
     sessionId?: string | null,
     targetLine?: number,

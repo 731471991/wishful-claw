@@ -4,9 +4,12 @@ export async function generateCommitMessage(_changes: unknown[]): Promise<string
 
 
 export async function generateCommitMessageFromStagedDiff(
-  _workingFolder: string,
-  _provider?: unknown,
-  _modelId?: string
+  _stat?: unknown,
+  _patch?: unknown,
+  _lang?: unknown,
+  _branch?: unknown,
+  _unused1?: unknown,
+  _repoPath?: unknown
 ): Promise<string> {
   return ''
 }

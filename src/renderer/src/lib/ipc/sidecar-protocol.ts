@@ -104,7 +104,7 @@ export interface SidecarProviderConfig {
   type?: string
   apiKey?: string
   baseUrl?: string
-  model: string
+  model?: string
   category?: string
   maxTokens?: number
   temperature?: number
@@ -374,7 +374,7 @@ function normalizeRequestContextTexts(value: readonly string[] | null | undefine
 }
 
 /** Minimal provider shape accepted by sidecar mapping functions. Accepts both full ProviderConfig and lightweight { providerId, model } selections. */
-type SidecarProviderInput = Partial<Omit<ProviderConfig, 'providerId'>> & { model: string; providerId?: string | null }
+type SidecarProviderInput = Partial<Omit<ProviderConfig, 'providerId'>> & { model?: string; providerId?: string | null }
 
 export function isNativeSidecarProviderConfig(provider: SidecarProviderInput): boolean {
   if (

@@ -66,7 +66,7 @@ export function PersonaSelectPage(): React.JSX.Element {
 
   const handleLanguageChange = useCallback((lang: string) => {
     setLanguage(lang as typeof language)
-    updateSettings({ language: lang })
+    updateSettings({ language: lang as 'en' | 'zh' })
     void changeI18nLanguage(lang)
   }, [updateSettings])
 
