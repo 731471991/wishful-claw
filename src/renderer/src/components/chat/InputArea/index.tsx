@@ -482,6 +482,9 @@ export function InputArea({
     text, currentLanguage, setText, focusInputAtEnd
   })
 
+  // Lock input while optimizing OR while the optimization dialog is open
+  const isOptimizingLocked = isOptimizing || showOptimizationDialog
+
   const hasFileReferences = React.useMemo(() => selectedFiles.length > 0, [selectedFiles])
 
   const replaceSelectionWithText = React.useCallback(
@@ -536,7 +539,7 @@ export function InputArea({
     ? t('input.recommendationInitWorkspace')
     : t(defaultRecommendationKeys[mode])
   const shouldAutoAcceptRecommendation =
-    mode === 'clarify' && clarifyAutoAcceptRecommended && !disabled && !isOptimizing && !isStreaming
+    mode === 'clarify' && clarifyAutoAcceptRecommended && !disabled && !isOptimizingLocked && !isStreaming
   const getCaretAtEnd = React.useCallback(() => {
     return editorSelection.start === editorSelection.end && editorSelection.end === text.length
   }, [editorSelection.end, editorSelection.start, text.length])
@@ -557,7 +560,7 @@ export function InputArea({
     getRecentMessages: getSessionMessages,
     selectedSkill,
     images: attachedImages,
-    disabled: disabled || isOptimizing,
+    disabled: disabled || isOptimizingLocked,
     isStreaming,
     fallbackSuggestion: recommendationFallback,
     getCaretAtEnd
@@ -1310,7 +1313,7 @@ export function InputArea({
 
   const handleGoalModeChange = React.useCallback(
     (enabled: boolean): void => {
-      if (disabled || isStreaming || isOptimizing || pendingImageReads > 0) return
+      if (disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0) return
 
       if (!enabled) {
         setPendingGoalMode(false)
@@ -1350,7 +1353,7 @@ export function InputArea({
     (e: React.KeyboardEvent<HTMLDivElement>): void => {
       // keyCode 229 marks the keydown that starts an IME composition, which
       // fires before nativeEvent.isComposing becomes true.
-      if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229 || isOptimizing) return
+      if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229 || isOptimizingLocked) return
 
       if (fileMenuOpen) {
         if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowDown') {
@@ -1632,7 +1635,7 @@ export function InputArea({
       planModeEnabled={planMode}
       goalModeEnabled={goalModeEnabled}
       planModeDisabled={disabled || isStreaming || !projectScoped}
-      goalModeDisabled={disabled || isStreaming || isOptimizing || pendingImageReads > 0}
+      goalModeDisabled={disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0}
       onPlanModeChange={handlePlanModeChange}
       onGoalModeChange={handleGoalModeChange}
     />
@@ -1665,7 +1668,7 @@ export function InputArea({
           size="icon-sm"
           className={composerIconControlClass}
           onClick={handleOptimizePrompt}
-          disabled={!text.trim() || disabled || isOptimizing}
+          disabled={!text.trim() || disabled || isOptimizingLocked}
         >
           {isOptimizing ? <Spinner className="size-4" /> : <Wand2 className="size-4" />}
         </Button>
@@ -1805,7 +1808,7 @@ export function InputArea({
                 disabled ||
                 needsWorkingFolder ||
                 pendingImageReads > 0 ||
-                isOptimizing
+                isOptimizingLocked
           }
           aria-label={isStreaming ? t('input.stopTooltip') : t('input.sendTooltip')}
         >
@@ -2429,7 +2432,7 @@ export function InputArea({
                 ref={editorRef}
                 document={documentNodes}
                 files={selectedFiles}
-                disabled={disabled || isOptimizing}
+                disabled={disabled || isOptimizingLocked}
                 placeholder={
                   pendingReviewPlanId
                     ? t('input.placeholderPlanReview', {
