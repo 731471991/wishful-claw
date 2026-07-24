@@ -2333,84 +2333,90 @@ export function InputArea({
               </DialogHeader>
 
               {/* Tab-style Layout */}
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-0">
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                 {/* Tabs - Options as tabs at top */}
                 <div className="flex gap-2 border-b border-border shrink-0">
-                  {optimizationOptions.map((option, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className={`flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 transition-all ${
-                        selectedOptionIndex === idx
-                          ? 'border-primary bg-primary/5 -mb-[2px] border-b-2 border-b-background'
-                          : 'border-transparent hover:bg-muted/30'
-                      }`}
-                      onClick={() => {
-                        setSelectedOptionIndex(idx)
-                        if (contentScrollRef.current) {
-                          contentScrollRef.current.scrollTop = 0
-                        }
-                      }}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        <span
-                          className={`inline-flex items-center justify-center size-6 rounded-full text-xs font-bold ${
-                            selectedOptionIndex === idx
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                        <div className="text-left">
-                          <p className="text-sm font-semibold text-foreground">{option.title}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {option.focus}
-                          </p>
+                  {/* Render 3 slots: filled or loading */}
+                  {Array.from({ length: 3 }).map((_, slotIdx) => {
+                    const option = optimizationOptions[slotIdx]
+                    const isLoaded = !!option
+                    return option ? (
+                      <button
+                        key={slotIdx}
+                        type="button"
+                        className={`flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 transition-all ${
+                          selectedOptionIndex === slotIdx
+                            ? 'border-primary bg-primary/5 -mb-[2px] border-b-2 border-b-background'
+                            : 'border-transparent hover:bg-muted/30'
+                        }`}
+                        onClick={() => {
+                          setSelectedOptionIndex(slotIdx)
+                          if (contentScrollRef.current) {
+                            contentScrollRef.current.scrollTop = 0
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <span
+                            className={`inline-flex items-center justify-center size-6 rounded-full text-xs font-bold ${
+                              selectedOptionIndex === slotIdx
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {slotIdx + 1}
+                          </span>
+                          <div className="text-left">
+                            <p className="text-sm font-semibold text-foreground">{option.title}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                              {option.focus}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
-                  {/* Loading placeholder tabs */}
-                  {isOptimizing &&
-                    Array.from({ length: Math.max(0, 3 - optimizationOptions.length) }).map((_, i) => (
+                      </button>
+                    ) : (
                       <div
-                        key={`loading-${i}`}
+                        key={`loading-${slotIdx}`}
                         className="flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 border-transparent"
                       >
                         <div className="flex items-center justify-center gap-2 opacity-50">
                           <span className="inline-flex items-center justify-center size-6 rounded-full text-xs font-bold bg-muted text-muted-foreground">
-                            {optimizationOptions.length + i + 1}
+                            {slotIdx + 1}
                           </span>
                           <div className="text-left">
-                            <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
-                            <div className="h-2.5 w-16 bg-muted rounded animate-pulse mt-1" />
+                            {isOptimizing ? (
+                              <>
+                                <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
+                                <div className="h-2.5 w-16 bg-muted rounded animate-pulse mt-1" />
+                              </>
+                            ) : (
+                              <div className="h-3.5 w-20" />
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
+                    )
+                  })}
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 min-h-0 mt-2 overflow-hidden rounded-lg border border-border bg-background">
-                  <div ref={contentScrollRef} className="h-full overflow-y-auto px-6 py-4">
-                    {optimizationOptions[selectedOptionIndex] ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
-                          {optimizationOptions[selectedOptionIndex]?.content}
-                        </div>
+                <div className="flex-1 min-h-0 mt-2 overflow-y-auto rounded-lg border border-border bg-background px-6 py-4">
+                  {optimizationOptions[selectedOptionIndex] ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
+                        {optimizationOptions[selectedOptionIndex]?.content}
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Spinner className="size-4" />
-                          <span className="text-sm">
-                            {t('input.optimizing', { defaultValue: 'Optimizing your prompt...' })}
-                          </span>
-                        </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Spinner className="size-4" />
+                        <span className="text-sm">
+                          {t('input.optimizing', { defaultValue: 'Optimizing your prompt...' })}
+                        </span>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
