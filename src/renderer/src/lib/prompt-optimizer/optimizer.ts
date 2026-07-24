@@ -157,12 +157,14 @@ Begin with Step 1 now.`,
     iterationCount++
 
     try {
+      console.error('[Optimizer] iteration', iterationCount, 'calling streamSidecarProviderTurn')
       for await (const event of streamSidecarProviderTurn({
         messages,
         tools,
         provider: { ...providerConfig, systemPrompt: OPTIMIZER_SYSTEM_PROMPT },
         signal
       })) {
+        console.error('[Optimizer] stream event:', event.type, event.type === 'error' ? JSON.stringify(event) : '')
         if (event.type === 'text_delta' && event.text) {
           yield { type: 'text', content: event.text }
         } else if (event.type === 'thinking_delta' && event.thinking) {
@@ -187,6 +189,10 @@ Begin with Step 1 now.`,
               }
             }
           }
+        } else if (event.type === 'error') {
+          console.error('[Optimizer] streamSidecarProviderTurn error event:', JSON.stringify(event))
+        } else if (event.type === 'message_end') {
+          console.error('[Optimizer] message_end: stopReason=', (event as Record<string, unknown>).stopReason)
         }
       }
 
@@ -196,6 +202,7 @@ Begin with Step 1 now.`,
         return
       }
 
+      console.error('[Optimizer] iteration end: hasToolCall=', hasToolCall, 'optionsCount=', optimizedOptions.length, 'iteration=', iterationCount)
       // If no tool call after first iteration, prompt the model to continue
       if (!hasToolCall && iterationCount < MAX_ITERATIONS) {
         messages.push({
@@ -214,6 +221,7 @@ Begin with Step 1 now.`,
     }
   }
 
+  console.error('[Optimizer] exhausted all iterations, optimizedOptions.length=', optimizedOptions.length)
   // If we still don't have results, yield empty
   if (optimizedOptions.length === 0) {
     yield { type: 'result', content: '', options: [] }

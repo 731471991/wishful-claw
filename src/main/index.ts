@@ -8,6 +8,7 @@ import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
 import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
+import { registerSidecarHandlers } from './ipc/sidecar-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -121,6 +122,9 @@ app.whenReady().then(() => {
 
   // Agent stream event forwarder (worker → renderer)
   registerAgentStreamForwarder()
+
+  // Sidecar/agent IPC handlers (used by agentBridge: prompt optimizer, context compression, etc.)
+  registerSidecarHandlers()
 
   // Dialog: open folder selector
   registerMessagePackHandler<Record<string, unknown>, { folderPath: string | null; canceled: boolean }>(

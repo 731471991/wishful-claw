@@ -88,7 +88,9 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
         systemPrompt: ''
       }
 
+      console.error('[PromptOptimizer] providerConfig:', { type: providerConfig.type, model: providerConfig.model, baseUrl: providerConfig.baseUrl })
       for await (const event of optimizePrompt(trimmed, providerConfig, currentLanguage)) {
+        console.error('[PromptOptimizer] event:', event.type, event.options ? `${event.options.length} options` : '')
         if (event.type === 'text') {
           setOptimizingText((prev) => prev + event.content)
         } else if (event.type === 'result' && event.options && event.options.length > 0) {
@@ -97,7 +99,9 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
           setShowOptimizationDialog(true)
         }
       }
+      console.error('[PromptOptimizer] loop ended')
     } catch (error) {
+      console.error('[PromptOptimizer] CAUGHT ERROR:', error)
       toast.error('Optimization failed', {
         description: error instanceof Error ? error.message : String(error)
       })

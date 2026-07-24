@@ -242,19 +242,21 @@ internal static partial class OpenAIChatProvider
         if (string.IsNullOrEmpty(finishReason)) return false;
 
         setStopReason(finishReason);
+
+        // Flush tool buffers for tool_calls/function_call finish reasons.
         if (finishReason is "tool_calls" or "function_call")
         {
             await FlushRemainingToolBuffersAsync(toolBuffers, completedToolCalls, state, context);
-            return true;
         }
-
-        if (toolBuffers.Count > 0)
+        else if (toolBuffers.Count > 0)
         {
             await FlushRemainingToolBuffersAsync(toolBuffers, completedToolCalls, state, context);
         }
 
-        // Do NOT return true for "stop"/"length"/"content_filter" — the usage chunk
-        // (choices:[] + usage) typically arrives AFTER the finish_reason chunk.
+        // Do NOT return true for ANY finish_reason — the usage chunk
+        // (choices:[] + usage) typically arrives AFTER the finish_reason chunk
+        // when stream_options.include_usage is enabled. This applies to ALL
+        // finish reasons: stop, length, content_filter, tool_calls, function_call.
         // Returning true would break the outer loop and miss the usage data.
         // Only [DONE] returns true; finish_reason just sets the stop reason.
         return false;

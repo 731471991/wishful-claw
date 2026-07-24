@@ -156,7 +156,10 @@ internal static partial class OpenAIChatProvider
 
         var inputTokens = AgentLoop.ReadInt(usage, "prompt_tokens");
         var outputTokens = AgentLoop.ReadInt(usage, "completion_tokens");
-        var cachedTokens = ReadFirstPositiveInt(usage, "cached_tokens", "cache_read_tokens", "cache_read_input_tokens", "cached_input_tokens");
+        // DeepSeek puts prompt_cache_hit_tokens at the top level;
+        // OpenAI/MiMo put cached_tokens under prompt_tokens_details.
+        // We check all known field names for maximum provider compatibility.
+        var cachedTokens = ReadFirstPositiveInt(usage, "cached_tokens", "cache_read_tokens", "cache_read_input_tokens", "cached_input_tokens", "prompt_cache_hit_tokens");
         var cacheWriteTokens = ReadFirstPositiveInt(usage, "cache_write_tokens", "cache_write_input_tokens", "cache_creation_tokens", "cache_creation_input_tokens");
         var reasoningTokens = ReadFirstPositiveInt(usage, "reasoning_tokens");
 
