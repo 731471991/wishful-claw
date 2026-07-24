@@ -33,6 +33,9 @@ public sealed class ToolModule : IWorkerModule
         // Shell tools
         registry.Register(new ShellExecuteTool());
 
+        // Sub-agent Task tool (definition only — execution intercepted by ToolCallProcessor)
+        registry.Register(new TaskTool());
+
         // Memory tools — shared store + search instances
         var memoryStore = new MemoryStore();
         var memorySearch = new Memory.MemoryFtsService();

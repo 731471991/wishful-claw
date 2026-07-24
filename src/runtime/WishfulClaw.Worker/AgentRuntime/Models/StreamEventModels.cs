@@ -49,4 +49,11 @@ internal sealed record AgentRuntimeStreamEvent(
     int? Attempt = null,
     int? MaxAttempts = null,
     int? DelayMs = null,
-    int? StatusCode = null);
+    int? StatusCode = null,
+    // Sub-agent event fields
+    string? SubAgentName = null,
+    string? Report = null,
+    string? Status = null,
+    JsonElement? Input = null,
+    JsonElement? PromptMessage = null,
+    JsonElement? Result = null);

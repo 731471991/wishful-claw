@@ -79,6 +79,13 @@ internal static class AgentStreamMessagePackEmitter
         WriteOptionalInt(writer, "maxAttempts", streamEvent.MaxAttempts);
         WriteOptionalInt(writer, "delayMs", streamEvent.DelayMs);
         WriteOptionalInt(writer, "statusCode", streamEvent.StatusCode);
+        // Sub-agent fields
+        WriteOptionalString(writer, "subAgentName", streamEvent.SubAgentName);
+        WriteOptionalString(writer, "report", streamEvent.Report);
+        WriteOptionalString(writer, "status", streamEvent.Status);
+        WriteOptionalJson(writer, "input", streamEvent.Input);
+        WriteOptionalJson(writer, "promptMessage", streamEvent.PromptMessage);
+        WriteOptionalJson(writer, "result", streamEvent.Result);
     }
 
     private static int CountEventProperties(AgentRuntimeStreamEvent streamEvent)
@@ -115,6 +122,13 @@ internal static class AgentStreamMessagePackEmitter
         if (streamEvent.MaxAttempts.HasValue) count++;
         if (streamEvent.DelayMs.HasValue) count++;
         if (streamEvent.StatusCode.HasValue) count++;
+        // Sub-agent fields
+        if (streamEvent.SubAgentName is not null) count++;
+        if (streamEvent.Report is not null) count++;
+        if (streamEvent.Status is not null) count++;
+        if (HasJson(streamEvent.Input)) count++;
+        if (HasJson(streamEvent.PromptMessage)) count++;
+        if (HasJson(streamEvent.Result)) count++;
         return count;
     }
 

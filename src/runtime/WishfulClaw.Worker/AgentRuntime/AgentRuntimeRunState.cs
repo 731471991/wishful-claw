@@ -29,6 +29,20 @@ internal sealed class AgentRuntimeRunState : IDisposable
     public long StartedAt { get; }
     public JsonElement Parameters { get; private set; }
     public CancellationToken CancellationToken => _cancellation.Token;
+
+    /// <summary>
+    /// When true, events emitted via EmitAsync are NOT sent to the frontend.
+    /// Used by sub-agents: the parent executor captures events via EventObserver
+    /// and selectively forwards them to the parent's stream.
+    /// </summary>
+    public bool SuppressTransportEvents { get; set; }
+
+    /// <summary>
+    /// Optional callback invoked for every event when SuppressTransportEvents is true.
+    /// The SubAgentExecutor uses this to collect text/tool events from the child loop.
+    /// </summary>
+    public Func<AgentRuntimeStreamEvent, ValueTask>? EventObserver { get; set; }
+
     public int QueuedMessageCount => Volatile.Read(ref _queuedMessageCount);
     public bool IsCancellationRequested => _cancellation.IsCancellationRequested;
     public bool IsStopRequested => Volatile.Read(ref _stopRequested) != 0;

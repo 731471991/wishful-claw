@@ -145,6 +145,18 @@ internal static class AgentRuntimeTools
             return;
         }
 
+        // Sub-agent event interception: when SuppressTransportEvents is true,
+        // events are routed to the EventObserver instead of the frontend.
+        // This allows the SubAgentExecutor to capture child loop events.
+        if (state.SuppressTransportEvents && state.EventObserver is not null)
+        {
+            foreach (var evt in events)
+            {
+                await state.EventObserver(evt);
+            }
+            return;
+        }
+
         var envelope = new AgentRuntimeStreamEnvelope(
             ProtocolVersion,
             state.RunId,

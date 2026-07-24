@@ -98,7 +98,27 @@ internal static class ToolCallProcessor
             string toolOutput;
             bool isToolError = false;
 
-            if (registry is not null && registry.TryGetExecutor(toolCall.Name, out var executor))
+            // Intercept Task tool calls for sub-agent execution
+            if (SubAgentExecutor.IsTaskTool(toolCall.Name))
+            {
+                try
+                {
+                    var result = await SubAgentExecutor.ExecuteAsync(
+                        toolCall.Input, state.Parameters, state, context, toolCall.Id);
+                    toolOutput = result.Content;
+                    isToolError = result.IsError;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Sub-agent execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            else if (registry is not null && registry.TryGetExecutor(toolCall.Name, out var executor))
             {
                 try
                 {
