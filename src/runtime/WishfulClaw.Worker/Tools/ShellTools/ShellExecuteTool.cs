@@ -234,13 +234,13 @@ public sealed class ShellExecuteTool : IToolExecutor
             {
                 yield return new ShellLaunch(preferred, []);
             }
-            // cmd.exe (ComSpec) — most compatible
-            yield return new ShellLaunch(
-                Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe", []);
-            // PowerShell (Windows PowerShell 5.x)
+            // Windows default: PowerShell (most capable for scripting)
             yield return new ShellLaunch("powershell.exe", []);
             // pwsh (PowerShell 7+)
             yield return new ShellLaunch("pwsh.exe", []);
+            // cmd.exe as last-resort fallback
+            yield return new ShellLaunch(
+                Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe", []);
             yield break;
         }
 
