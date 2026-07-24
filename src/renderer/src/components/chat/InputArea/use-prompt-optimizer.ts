@@ -98,8 +98,8 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
           // Progressive: add options as they arrive
           setOptimizationOptions((prev) => [...prev, ...event.options!])
         } else if (event.type === 'result' && event.options && event.options.length > 0) {
-          // Final batch — replace in case some were missed
-          setOptimizationOptions(event.options)
+          // Final batch — only set if we don't already have options from tool_call
+          setOptimizationOptions((prev) => prev.length > 0 ? prev : event.options!)
           setSelectedOptionIndex(0)
         }
       }

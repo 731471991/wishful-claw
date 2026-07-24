@@ -149,12 +149,14 @@ Begin with Step 1 now.`,
   ]
 
   let optimizedOptions: OptimizationOption[] = []
-  let hasToolCall = false
   let iterationCount = 0
-  const MAX_ITERATIONS = 3
+  const TARGET_OPTION_COUNT = 3
+  const MAX_ITERATIONS = 5
 
-  while (iterationCount < MAX_ITERATIONS) {
+  while (iterationCount < MAX_ITERATIONS && optimizedOptions.length < TARGET_OPTION_COUNT) {
     iterationCount++
+
+    let gotToolCallThisIteration = false
 
     try {
       for await (const event of streamSidecarProviderTurn({
@@ -172,14 +174,16 @@ Begin with Step 1 now.`,
           event.toolName === 'WriteOptimizedPrompts' &&
           event.toolCallInput
         ) {
-          hasToolCall = true
+          gotToolCallThisIteration = true
           const input = event.toolCallInput as { options?: OptimizationOption[] }
           if (input.options && Array.isArray(input.options) && input.options.length > 0) {
-            optimizedOptions = input.options
+            // Merge new options into our collection
+            const newOptions = input.options
+            optimizedOptions = [...optimizedOptions, ...newOptions]
             yield {
               type: 'tool_call',
               content: 'Generated optimization options',
-              options: optimizedOptions,
+              options: newOptions,
               toolCall: {
                 id: event.toolCallId || 'tool-call',
                 name: 'WriteOptimizedPrompts',
@@ -190,23 +194,14 @@ Begin with Step 1 now.`,
         }
       }
 
-      // If we got a tool call with results, we're done
-      if (hasToolCall && optimizedOptions.length > 0) {
-        yield { type: 'result', content: 'Optimization complete', options: optimizedOptions }
-        return
-      }
-
-      // If no tool call after first iteration, prompt the model to continue
-      if (!hasToolCall && iterationCount < MAX_ITERATIONS) {
+      // If model didn't call the tool this iteration, nudge it
+      if (!gotToolCallThisIteration && optimizedOptions.length < TARGET_OPTION_COUNT) {
         messages.push({
           id: `retry-${iterationCount}`,
           role: 'user',
-          content:
-            'Please use the WriteOptimizedPrompts tool to provide 1-3 optimized options. Do not just write them in your response.',
+          content: `Please use the WriteOptimizedPrompts tool to provide ${TARGET_OPTION_COUNT - optimizedOptions.length} more optimized option(s) with a different focus. You have already provided ${optimizedOptions.length} option(s).`,
           createdAt: Date.now()
         })
-      } else {
-        break
       }
     } catch (error) {
       console.error('Optimization error:', error)
@@ -214,8 +209,6 @@ Begin with Step 1 now.`,
     }
   }
 
-  // If we still don't have results, yield empty
-  if (optimizedOptions.length === 0) {
-    yield { type: 'result', content: '', options: [] }
-  }
+  // Yield final result with all collected options
+  yield { type: 'result', content: 'Optimization complete', options: optimizedOptions }
 }
