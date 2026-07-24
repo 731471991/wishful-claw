@@ -49,7 +49,7 @@ public sealed class ShellExecuteTool : IToolExecutor
             },
             "shell": {
               "type": "string",
-              "description": "Preferred shell executable. On Windows: cmd.exe, powershell.exe, pwsh.exe. On Unix: zsh, bash, sh. Defaults to platform default."
+              "description": "Preferred shell executable. On Windows: powershell.exe, pwsh.exe, cmd.exe. On Unix: zsh, bash, sh. Defaults to platform default."
             },
             "env": {
               "type": "object",
@@ -87,10 +87,9 @@ public sealed class ShellExecuteTool : IToolExecutor
             var (stdout, stderr, exitCode, timedOut, spawnMs, firstChunkMs) = await RunProcessAsync(
                 command, cwd, launch, input, timeoutMs, context.CancellationToken);
 
-            var totalMs = (long)Math.Round(
-                Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+            var totalMs = ElapsedMs(startedAt);
 
-            var result = FormatOutput(
+            var result = ShellOutputFormatter.Format(
                 stdout, stderr, exitCode, timedOut,
                 cwd, command, launch.Shell, totalMs, spawnMs, firstChunkMs);
 
@@ -103,9 +102,8 @@ public sealed class ShellExecuteTool : IToolExecutor
         }
         catch (Exception ex)
         {
-            var totalMs = (long)Math.Round(
-                Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-            var result = FormatOutput(
+            var totalMs = ElapsedMs(startedAt);
+            var result = ShellOutputFormatter.Format(
                 string.Empty, ex.Message, -1, false,
                 cwd, command, launch.Shell, totalMs, 0, null);
             return new ToolResult(result, IsError: true, Error: ex.Message);
@@ -219,7 +217,7 @@ public sealed class ShellExecuteTool : IToolExecutor
         }
 
         return OperatingSystem.IsWindows()
-            ? new ShellLaunch(Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe", [])
+            ? new ShellLaunch("powershell.exe", [])
             : new ShellLaunch("/bin/sh", []);
     }
 
@@ -358,161 +356,10 @@ public sealed class ShellExecuteTool : IToolExecutor
         }
     }
 
-    // ── Output formatting ──
-
-    private static string FormatOutput(
-        string stdout, string stderr, int exitCode, bool timedOut,
-        string cwd, string command, string shell,
-        long totalMs, long spawnMs, long? firstChunkMs)
-    {
-        var builder = new StringBuilder();
-        builder.Append("{\"exitCode\":");
-        builder.Append(exitCode);
-
-        builder.Append(",\"shell\":\"");
-        builder.Append(EscapeJson(shell));
-        builder.Append('"');
-
-        builder.Append(",\"cwd\":\"");
-        builder.Append(EscapeJson(cwd));
-        builder.Append('"');
-
-        builder.Append(",\"command\":\"");
-        builder.Append(EscapeJson(command));
-        builder.Append('"');
-
-        builder.Append(",\"totalMs\":");
-        builder.Append(totalMs);
-
-        builder.Append(",\"spawnMs\":");
-        builder.Append(spawnMs);
-
-        if (firstChunkMs.HasValue)
-        {
-            builder.Append(",\"firstChunkMs\":");
-            builder.Append(firstChunkMs.Value);
-        }
-
-        if (timedOut)
-        {
-            builder.Append(",\"timedOut\":true");
-        }
-
-        if (!string.IsNullOrEmpty(stdout))
-        {
-            builder.Append(",\"stdout\":\"");
-            builder.Append(EscapeJson(stdout));
-            builder.Append('"');
-        }
-
-        if (!string.IsNullOrEmpty(stderr))
-        {
-            builder.Append(",\"stderr\":\"");
-            builder.Append(EscapeJson(stderr));
-            builder.Append('"');
-        }
-
-        builder.Append('}');
-        return builder.ToString();
-    }
-
-    private static string EscapeJson(string s)
-    {
-        var builder = new StringBuilder(s.Length);
-        foreach (var c in s)
-        {
-            switch (c)
-            {
-                case '\\': builder.Append("\\\\"); break;
-                case '"': builder.Append("\\\""); break;
-                case '\n': builder.Append("\\n"); break;
-                case '\r': builder.Append("\\r"); break;
-                case '\t': builder.Append("\\t"); break;
-                default:
-                    if (c < 32)
-                    {
-                        builder.Append($"\\u{(int)c:X4}");
-                    }
-                    else
-                    {
-                        builder.Append(c);
-                    }
-                    break;
-            }
-        }
-        return builder.ToString();
-    }
+    // ── Timing helper ──
 
     private static long ElapsedMs(long startedAt)
     {
         return (long)Math.Round(Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-    }
-
-    // ── Inner types ──
-
-    private sealed record ShellLaunch(string Shell, string[] Args);
-
-    private sealed class RunningProcess
-    {
-        public Process Process { get; }
-        public string? AbortReason { get; private set; }
-
-        public RunningProcess(Process process) => Process = process;
-
-        public void Abort(string reason)
-        {
-            AbortReason ??= reason;
-            try
-            {
-                if (!Process.HasExited)
-                {
-                    Process.Kill(entireProcessTree: true);
-                }
-            }
-            catch { }
-        }
-    }
-
-    /// <summary>
-    /// Collects output with a character limit, truncating gracefully.
-    /// </summary>
-    private sealed class OutputCollector
-    {
-        private readonly int _maxChars;
-        private readonly StringBuilder _builder = new();
-        private bool _truncated;
-
-        public OutputCollector(int maxChars) => _maxChars = maxChars;
-
-        public void Append(char[] buffer, int offset, int count)
-        {
-            if (_truncated) return;
-
-            var remaining = _maxChars - _builder.Length;
-            if (remaining <= 0)
-            {
-                Truncate();
-                return;
-            }
-
-            if (count <= remaining)
-            {
-                _builder.Append(buffer, offset, count);
-                return;
-            }
-
-            _builder.Append(buffer, offset, remaining);
-            Truncate();
-        }
-
-        private void Truncate()
-        {
-            if (_truncated) return;
-            _truncated = true;
-            _builder.AppendLine();
-            _builder.Append($"[output truncated at {_maxChars} chars]");
-        }
-
-        public override string ToString() => _builder.ToString();
     }
 }
