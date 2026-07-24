@@ -2319,7 +2319,7 @@ export function InputArea({
           {/* Optimization Dialog */}
           <Dialog open={showOptimizationDialog} onOpenChange={setShowOptimizationDialog}>
             <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col gap-4 sm:max-w-7xl">
-              <DialogHeader className="space-y-2">
+              <DialogHeader className="space-y-2 shrink-0">
                 <DialogTitle className="text-xl flex items-center gap-2">
                   <Wand2 className="size-5 text-primary" />
                   {t('input.optimizationResults', { defaultValue: 'Optimized Prompt Options' })}
@@ -2333,9 +2333,9 @@ export function InputArea({
               </DialogHeader>
 
               {/* Tab-style Layout */}
-              <div className="flex-1 flex flex-col overflow-hidden gap-4">
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-0">
                 {/* Tabs - Options as tabs at top */}
-                <div className="flex gap-2 border-b border-border pb-2">
+                <div className="flex gap-2 border-b border-border shrink-0">
                   {optimizationOptions.map((option, idx) => (
                     <button
                       key={idx}
@@ -2347,7 +2347,6 @@ export function InputArea({
                       }`}
                       onClick={() => {
                         setSelectedOptionIndex(idx)
-                        // Scroll content to top when switching tabs
                         if (contentScrollRef.current) {
                           contentScrollRef.current.scrollTop = 0
                         }
@@ -2372,25 +2371,55 @@ export function InputArea({
                       </div>
                     </button>
                   ))}
+                  {/* Loading placeholder tabs */}
+                  {isOptimizing &&
+                    Array.from({ length: Math.max(0, 3 - optimizationOptions.length) }).map((_, i) => (
+                      <div
+                        key={`loading-${i}`}
+                        className="flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 border-transparent"
+                      >
+                        <div className="flex items-center justify-center gap-2 opacity-50">
+                          <span className="inline-flex items-center justify-center size-6 rounded-full text-xs font-bold bg-muted text-muted-foreground">
+                            {optimizationOptions.length + i + 1}
+                          </span>
+                          <div className="text-left">
+                            <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
+                            <div className="h-2.5 w-16 bg-muted rounded animate-pulse mt-1" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                 </div>
 
-                {/* Content Area - Show selected option's detailed content */}
-                <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background">
+                {/* Content Area */}
+                <div className="flex-1 min-h-0 mt-2 overflow-hidden rounded-lg border border-border bg-background">
                   <div ref={contentScrollRef} className="h-full overflow-y-auto px-6 py-4">
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
-                        {optimizationOptions[selectedOptionIndex]?.content}
+                    {optimizationOptions[selectedOptionIndex] ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
+                          {optimizationOptions[selectedOptionIndex]?.content}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Spinner className="size-4" />
+                          <span className="text-sm">
+                            {t('input.optimizing', { defaultValue: 'Optimizing your prompt...' })}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <DialogFooter className="flex items-center justify-between">
+              <DialogFooter className="flex items-center justify-between shrink-0">
                 <Button variant="outline" onClick={handleCancelOptimization}>
                   {t('action.cancel', { ns: 'common' })}
                 </Button>
                 <Button
+                  disabled={!optimizationOptions[selectedOptionIndex]}
                   onClick={() =>
                     handleSelectOption(optimizationOptions[selectedOptionIndex]?.content)
                   }

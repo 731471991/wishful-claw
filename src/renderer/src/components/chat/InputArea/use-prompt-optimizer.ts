@@ -35,6 +35,9 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
     setIsOptimizing(true)
     setOptimizingText('')
     setOptimizationOptions([])
+    setSelectedOptionIndex(0)
+    // Show dialog immediately — options will load progressively
+    setShowOptimizationDialog(true)
 
     try {
       const { optimizePrompt } = await import('@renderer/lib/prompt-optimizer/optimizer')
@@ -91,10 +94,13 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
       for await (const event of optimizePrompt(trimmed, providerConfig, currentLanguage)) {
         if (event.type === 'text') {
           setOptimizingText((prev) => prev + event.content)
+        } else if (event.type === 'tool_call' && event.options && event.options.length > 0) {
+          // Progressive: add options as they arrive
+          setOptimizationOptions((prev) => [...prev, ...event.options!])
         } else if (event.type === 'result' && event.options && event.options.length > 0) {
+          // Final batch — replace in case some were missed
           setOptimizationOptions(event.options)
           setSelectedOptionIndex(0)
-          setShowOptimizationDialog(true)
         }
       }
     } catch (error) {
