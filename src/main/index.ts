@@ -8,7 +8,6 @@ import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
 import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
-import { registerSidecarHandlers } from './ipc/sidecar-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -108,11 +107,11 @@ app.whenReady().then(() => {
 
   // Generic worker request forwarder: renderer calls window.api.workerRequest(method, params)
   // and main forwards to the worker via named pipe IPC.
-  registerMessagePackHandler<{ method: string; params?: unknown }, unknown>(
+  registerMessagePackHandler<{ method: string; params?: unknown; timeoutMs?: number }, unknown>(
     'worker:request',
     async (args) => {
       const worker = getNativeWorker()
-      return worker.request(args.method, args.params ?? {})
+      return worker.request(args.method, args.params ?? {}, args.timeoutMs)
     }
   )
 
@@ -123,8 +122,6 @@ app.whenReady().then(() => {
   // Agent stream event forwarder (worker → renderer)
   registerAgentStreamForwarder()
 
-  // Sidecar/agent IPC handlers (used by agentBridge: prompt optimizer, context compression, etc.)
-  registerSidecarHandlers()
 
   // Dialog: open folder selector
   registerMessagePackHandler<Record<string, unknown>, { folderPath: string | null; canceled: boolean }>(

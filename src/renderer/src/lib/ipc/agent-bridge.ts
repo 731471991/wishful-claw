@@ -21,10 +21,8 @@ import type {
   SidecarSystemCommandContext
 } from '@renderer/lib/ipc/sidecar-protocol'
 import { agentStream } from '@renderer/lib/ipc/agent-stream-receiver'
-import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { toAgentEvent } from '@renderer/lib/agent/stream-event-adapter'
-import { toMessagePackChannel } from '../../../../shared/messagepack/binary-ipc'
 
 class AgentBridgeClient {
   private initialized = false
@@ -46,20 +44,9 @@ class AgentBridgeClient {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const result = (await ipcClient.invoke('sidecar:start')) as { ok: boolean }
-        if (!result.ok) {
-          throw new Error('sidecar:start returned ok=false')
-        }
-
-        // Explicit timeout: an omitted timeoutMs crosses MessagePack as nil/null,
-        // which main-side default parameters do not catch.
-        await this.request(
-          'initialize',
-          {
-            workingFolder: undefined
-          },
-          30_000
-        )
+        // worker:request auto-starts the worker via ensureStarted(); a ping
+        // verifies the named-pipe connection is live.
+        await ipcClient.invoke('worker:request', { method: 'worker/ping', params: {} })
         this.initialized = true
         return true
       } catch (err) {
@@ -67,9 +54,6 @@ class AgentBridgeClient {
         console.error(`[AgentBridge] Initialize failed (attempt ${attempt}/${maxAttempts}):`, err)
 
         if (attempt < maxAttempts) {
-          // Recycle replaces the worker OS process; a plain sidecar:stop only
-          // sends a shutdown RPC that a wedged process would survive.
-          await ipcClient.invoke('sidecar:recycle').catch(() => {})
           await new Promise((resolve) => setTimeout(resolve, 250))
           continue
         }
@@ -82,11 +66,7 @@ class AgentBridgeClient {
   }
 
   async request(method: string, params?: unknown, timeoutMs?: number): Promise<unknown> {
-    return await invokeMessagePackBinary(toMessagePackChannel('sidecar:request'), {
-      method,
-      params,
-      timeoutMs
-    })
+    return await ipcClient.invoke('worker:request', { method, params, timeoutMs })
   }
 
   notify(method: string, params?: unknown): void {
@@ -94,23 +74,25 @@ class AgentBridgeClient {
   }
 
   async isRunning(): Promise<boolean> {
-    const result = (await ipcClient.invoke('sidecar:status')) as {
-      running: boolean
+    try {
+      await ipcClient.invoke('worker:request', { method: 'worker/ping', params: {} })
+      return true
+    } catch {
+      return false
     }
-    return result.running
   }
 
   async runAgent(params: unknown): Promise<{ started: boolean; runId: string }> {
-    return await invokeMessagePackBinary<{ started: boolean; runId: string }>(
-      toMessagePackChannel('agent:run'),
-      params
+    return await ipcClient.invoke<{ started: boolean; runId: string }>(
+      'worker:request',
+      { method: 'agent/run', params }
     )
   }
 
   async cancelAgent(runId: string): Promise<{ cancelled: boolean; runId?: string }> {
-    return await invokeMessagePackBinary<{ cancelled: boolean; runId?: string }>(
-      toMessagePackChannel('agent:cancel'),
-      { runId }
+    return await ipcClient.invoke<{ cancelled: boolean; runId?: string }>(
+      'worker:request',
+      { method: 'agent/cancel', params: { runId } }
     )
   }
 
@@ -129,9 +111,9 @@ class AgentBridgeClient {
   }
 
   async requestStopAgent(runId: string): Promise<{ stopped: boolean; runId?: string }> {
-    return await invokeMessagePackBinary<{ stopped: boolean; runId?: string }>(
-      toMessagePackChannel('agent:request-stop'),
-      { runId }
+    return await ipcClient.invoke<{ stopped: boolean; runId?: string }>(
+      'worker:request',
+      { method: 'agent/request-stop', params: { runId } }
     )
   }
 
@@ -139,18 +121,15 @@ class AgentBridgeClient {
     runId: string,
     messages: UnifiedMessage[]
   ): Promise<{ appended: boolean; runId?: string; count: number }> {
-    return await invokeMessagePackBinary<{ appended: boolean; runId?: string; count: number }>(
-      toMessagePackChannel('agent:append-messages'),
-      {
-        runId,
-        messages
-      }
+    return await ipcClient.invoke<{ appended: boolean; runId?: string; count: number }>(
+      'worker:request',
+      { method: 'agent/append-messages', params: { runId, messages } }
     )
   }
 
   async stop(): Promise<void> {
+    // Worker lifecycle is managed by the main process; renderer stop is a no-op.
     this.initializePromise = null
-    await ipcClient.invoke('sidecar:stop')
     this.initialized = false
   }
 
@@ -165,11 +144,14 @@ class AgentBridgeClient {
  * Check if a capability is available via the main-process runtime bridge.
  */
 export async function canSidecarHandle(capability: string): Promise<boolean> {
-  try {
-    return Boolean(await ipcClient.invoke('sidecar:can-handle', capability))
-  } catch {
-    return false
+  // The worker supports agent.run, openai-chat, and anthropic providers.
+  // No IPC round-trip needed — these are statically known.
+  if (capability === 'agent.run') return true
+  if (capability.startsWith('provider.')) {
+    const providerType = capability.slice('provider.'.length)
+    return providerType === 'openai-chat' || providerType === 'anthropic'
   }
+  return false
 }
 
 /**
@@ -653,21 +635,24 @@ export async function runSidecarContextCompression(args: {
     return meta ? { ...message, meta } : { ...message, meta: undefined }
   })
 
-  const result = await invokeMessagePackBinary<{
+  const result = await ipcClient.invoke<{
     messages: UnifiedMessage[]
     result: CompressionResult
-  }>(toMessagePackChannel('agent:compress-context'), {
-    provider: args.provider,
-    messages,
-    ...(typeof args.preserveCount === 'number' && Number.isFinite(args.preserveCount)
-      ? { preserveCount: args.preserveCount }
-      : {}),
-    ...(args.focusPrompt ? { focusPrompt: args.focusPrompt } : {}),
-    ...(args.pinnedContext ? { pinnedContext: args.pinnedContext } : {}),
-    ...(args.trigger ? { trigger: args.trigger } : {}),
-    ...(typeof args.preTokens === 'number' && Number.isFinite(args.preTokens)
-      ? { preTokens: args.preTokens }
-      : {})
+  }>('worker:request', {
+    method: 'agent/compress-context',
+    params: {
+      provider: args.provider,
+      messages,
+      ...(typeof args.preserveCount === 'number' && Number.isFinite(args.preserveCount)
+        ? { preserveCount: args.preserveCount }
+        : {}),
+      ...(args.focusPrompt ? { focusPrompt: args.focusPrompt } : {}),
+      ...(args.pinnedContext ? { pinnedContext: args.pinnedContext } : {}),
+      ...(args.trigger ? { trigger: args.trigger } : {}),
+      ...(typeof args.preTokens === 'number' && Number.isFinite(args.preTokens)
+        ? { preTokens: args.preTokens }
+        : {})
+    }
   })
 
   if (args.signal?.aborted) {
