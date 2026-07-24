@@ -214,21 +214,26 @@ git push origin --delete dev/iter-{N}
 
 ---
 
-### 迭代十：子 Agent（Sub-Agent）
+### 迭代十：子 Agent（Sub-Agent）✅ 进行中
 
 **目标**：实现子 Agent 的创建、执行、事件流和前端渲染。
 
-| 步骤 | 内容 |
-|------|------|
-| 1 | 后端子 Agent 生命周期管理 — 独立 runId，挂载到父 Agent state，支持并发执行 |
-| 2 | Task 工具实现 — 父 Agent 通过工具调用启动子 Agent，传入子任务描述和配置 |
-| 3 | 子 Agent 事件流 — `sub_agent_start` / `sub_agent_progress` / `sub_agent_end` 事件定义和发送 |
-| 4 | 前端事件适配和渲染 — 复用已有 `OrchestrationBlock`、`OrchestrationMemberStrip`、`SubAgentCard` 组件骨架 |
-| 5 | 子 Agent 取消机制 — 父 Agent 或用户可中断子 Agent 执行 |
+| 步骤 | 内容 | 状态 |
+|------|------|------|
+| 1 | 后端子 Agent 生命周期管理 — `SubAgentExecutor.cs`，独立 runId，子 `AgentRuntimeRunState` | ✅ 完成 |
+| 2 | Task 工具实现 — `TaskTool.cs` 定义 + `ToolCallProcessor` 拦截 → `SubAgentExecutor.ExecuteAsync` | ✅ 完成 |
+| 3 | 子 Agent 事件流 — `sub_agent_start` / `sub_agent_end` 事件，`StreamEventModels` 扩展字段 | ✅ 完成 |
+| 4 | 前端事件适配和渲染 — `handleEnvelope` 路由 `sub_agent_*` → `handleSubAgentEvent`，`SubAgentCard` 已有 | ✅ 完成 |
+| 5 | 子 Agent 取消机制 — 父 CancellationToken → 子 state.Cancel | ✅ 完成 |
+| 6 | 子 Agent 定义加载 — `~/.wishful-claw/agents/*.md` YAML frontmatter | ✅ 完成 |
+| 7 | 深度限制 — max 2 层嵌套 | ✅ 完成 |
+| 8 | 事件抑制机制 — `SuppressTransportEvents` + `EventObserver` 收集子 loop 文本 | ✅ 完成 |
+| 9 | 示例定义 — reviewer.md, researcher.md | ✅ 完成 |
+| 10 | 集成验证 — 实际对话测试 Task 工具触发子 Agent | ⏳ 待验证 |
 
 **验证标准**：主 Agent 在对话中通过 Task 工具启动子 Agent 执行子任务 → 前端展示子 Agent 运行状态 → 子 Agent 完成后结果回传主 Agent 继续。
 
-**参考来源**：OpenCowork `sub-agents/` 目录、`agent-bridge.ts` 中的子 Agent 事件处理
+**参考来源**：OpenCowork `AgentRuntimeSubAgentExecutor.cs`、Reasonix `task.go`
 
 ---
 
