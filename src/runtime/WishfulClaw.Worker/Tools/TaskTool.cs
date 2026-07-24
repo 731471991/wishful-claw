@@ -8,6 +8,11 @@ namespace WishfulClaw.Worker.Tools;
 /// The actual execution is intercepted by ToolCallProcessor and routed to SubAgentExecutor.
 /// This executor exists only to provide the tool definition (name, description, inputSchema)
 /// to the ToolRegistry so the LLM knows the Task tool is available.
+///
+/// Design: The Task tool is fully dynamic — the parent agent passes a prompt describing
+/// what the sub-agent should do, and the sub-agent runs with a general-purpose system
+/// prompt. No pre-defined agent types are required. The .md file loading in
+/// SubAgentDefinitionLoader is an optional preset mechanism, not the primary path.
 /// </summary>
 public sealed class TaskTool : IToolExecutor
 {
@@ -17,11 +22,12 @@ public sealed class TaskTool : IToolExecutor
 
     public string Description =>
         "Launch a sub-agent to handle a complex, multi-step task autonomously. " +
-        "The sub-agent runs in its own session with a focused system prompt and " +
+        "The sub-agent runs in its own session with a focused default system prompt and " +
         "inherits the parent agent's tools. Only its final answer is returned to you. " +
         "Use this for: multi-file investigation, parallel research, focused sub-tasks " +
         "that would clutter your context. Each sub-agent invocation is stateless — " +
-        "it does not see the current conversation history.";
+        "it does not see the current conversation history. " +
+        "Write a self-contained prompt that includes all context the sub-agent needs.";
 
     public JsonElement InputSchema => CachedSchema;
 
@@ -43,19 +49,14 @@ public sealed class TaskTool : IToolExecutor
               "properties": {
                 "description": {
                   "type": "string",
-                  "description": "A short (3-5 word) description of the task"
+                  "description": "A short (3-5 word) description of the task, used for display"
                 },
                 "prompt": {
                   "type": "string",
-                  "description": "The task for the sub-agent to perform. Be specific about the deliverable."
-                },
-                "subagent_type": {
-                  "type": "string",
-                  "description": "The type of sub-agent to use. Use 'custom' for a general-purpose sub-agent.",
-                  "default": "custom"
+                  "description": "The task for the sub-agent to perform. Be specific about the deliverable — the sub-agent does not see this conversation. Include all necessary context."
                 }
               },
-              "required": ["description", "prompt", "subagent_type"],
+              "required": ["description", "prompt"],
               "additionalProperties": false
             }
             """);

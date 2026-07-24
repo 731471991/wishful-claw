@@ -36,12 +36,9 @@ internal static class SubAgentExecutor
         IWorkerRequestContext context,
         string toolCallId)
     {
-        var subAgentType = JsonHelpers.GetString(input, "subagent_type")?.Trim() ?? string.Empty;
-        if (subAgentType.Length == 0)
-        {
-            return ErrorResult("`subagent_type` is required for the Task tool.");
-        }
-
+        // Sub-agent type is optional — defaults to "custom" (general-purpose).
+        // The .md file preset mechanism is available but not required.
+        var subAgentType = JsonHelpers.GetString(input, "subagent_type")?.Trim() ?? CustomSubAgentType;
         var definition = ResolveDefinition(subAgentType, parameters, input);
         if (definition is null)
         {
