@@ -45,11 +45,11 @@
   - plan-002: AgentLoop 工具执行集成 + 前端工具 UI — 替换占位代码实现完整工具调用循环，前端 ToolCallCard 组件 + 事件处理 + sendMessage 传入 tools/workingFolder。tsc+build+dotnet 全部通过。
 
 ## 迭代五：项目注册 + 会话历史
-- 状态：进行中（plan-001 + plan-002 代码完成，待用户端到端验证）
-- 分支：dev/iter-5
+- 状态：已完成
+- 分支：dev/iter-5（已合并 main）
 - Plan: docs/plans/iter-5/plan-001/ + docs/plans/iter-5/plan-002/
-- VERDICT: PASS (编译验证 + 端到端 DB 测试) / 待用户端到端验证
-- Tag: —（待验证后打 v0.5.0）
+- VERDICT: PASS (编译验证 + 端到端 DB 测试)
+- Tag: v0.5.0
 - Commit: 48e6aec (plan-001) / 45104f1 (plan-002)
 - 日期: 2026-07-22
 - 备注：
@@ -59,11 +59,11 @@
   - tsc + electron-vite build + dotnet build 全部通过
 
 ## 迭代六：人格系统
-- 状态：代码完成（8 个 Plan 全部完成，待运行时端到端验证）
-- 分支：dev/iter-6
+- 状态：已完成
+- 分支：dev/iter-6（已合并 main）
 - Plan: docs/plans/iter-6/plan-001 ~ plan-008
-- VERDICT: PASS (编译验证 tsc + electron-vite build + dotnet build 全部通过) / 待运行时验证
-- Tag: —（待验证后打 v0.6.0）
+- VERDICT: PASS (编译验证 tsc + electron-vite build + dotnet build 全部通过)
+- Tag: v0.6.0
 - Commit: 1a8289f ~ a9804bf
 - 日期: 2026-07-23
 - 备注：
@@ -76,12 +76,13 @@
   - plan-007: AI 辅助创建人格 — PersonaGenerator（单轮 LLM 调用）+ persona/generate 端点 + PersonaGeneratorDialog
   - plan-008: 会话级人格切换 + DB 变更 — SessionEntity 加 PersonaId + ALTER TABLE 迁移 + PersonaSwitcher 组件
   - PersonaStore 耦合拆分：PersonaStore(文件 CRUD) + PersonaPresetService(预设加载)
+
 ## 迭代七：记忆系统
-- 状态：代码完成（8 个 Plan 全部完成，待运行时端到端验证）
-- 分支：dev/iter-7
+- 状态：已完成
+- 分支：dev/iter-7（已合并 main）
 - Plan: docs/plans/iter-7/plan.md (Plan 1~8)
-- VERDICT: PASS (编译验证 tsc + dotnet build 全部通过) / 待运行时验证
-- Tag: —（待验证后打 v0.7.0）
+- VERDICT: PASS (编译验证 tsc + dotnet build 全部通过)
+- Tag: v0.7.0
 - Commit: c8b481b ~ aac4ba0
 - 日期: 2026-07-23
 - 备注：
@@ -96,12 +97,83 @@
   - 三层架构：Hot (MEMORY.md 文件) / Warm (dormant/*.md 文件) / Cold (SQLite memory_archive 表 + FTS5)
   - scope 字段区分：global (~/.wishful-claw/) 或 project:{workingFolder} ({工作区}/.wishful-claw/)
   - TryInjectRecall 注入为 User Message，标注 untrusted reference data 防 prompt injection
-  - 迭代六已合并到 main，dev/iter-7 已 rebase 到最新 main
 
 ## 迭代八：集成验证
-- 状态：未开始
+- 状态：已完成
+- 分支：main
 - Plan: —
-- VERDICT: —
-- Tag: —
-- Commit: —
-- 日期: —
+- VERDICT: PASS
+- Tag: v0.8.0
+- Commit: 32ed2a6
+- 日期: 2026-07-23
+- 备注：
+  - 记忆系统全链路修复（FTS5外部内容表、触发器语法、参数绑定）
+  - Worker 进程防崩溃
+  - 日志等级控制
+  - 记忆工具预览 UI
+  - 消息时间戳
+  - 历史消息加载修复
+  - Agent Loop 迭代限制去除
+  - Base Instruction 人格冲突修复（改为运行环境介绍而非身份定义）
+  - 代码已合并到 main，旧开发分支已清理
+
+---
+
+## 后续迭代规划
+
+### 迭代九：输入框修复 + 提示词优化器
+- 状态：未开始
+- 优先级：高 — 直接影响使用体验
+- 目标：修复输入框底部 token 统计全为 0 的问题；实现提示词优化器功能
+
+| Plan | 内容 | 涉及文件 | 说明 |
+|------|------|----------|------|
+| 9-1 | 提示词优化器实现 | `src/renderer/src/lib/prompt-optimizer/optimizer.ts` | 从 OpenCowork 移植，复用已有 `streamSidecarProviderTurn` + `usePromptOptimizer` hook。当前 optimizer.ts 是空壳 stub |
+| 9-2 | Token 统计修复 | `OpenAIChatSseParser.cs` / `runtime-status.tsx` | 排查 usage 是否为 null（疑似中转商不支持 `stream_options.include_usage`）。若确认无 usage 返回，后端做 fallback 估算 |
+| 9-3 | AGENTS.md 路径修正 | `AGENTS.md` | 参考项目路径从 `D:\gy\*` 更新为 `D:\claw\*`（笔记本实际路径） |
+
+- 技术要点：
+  - 提示词优化器：OpenCowork 方案是用 `streamSidecarProviderTurn`（`providerTurnOnly: true`）做单轮 LLM 调用，给模型提供 `WriteOptimizedPrompts` 工具返回 1-3 个优化方案。wishful-claw 已有 `streamSidecarProviderTurn`，可直接复用
+  - Token 统计：数据链路（C# Worker → MessagePack 编码 → IPC → 前端解码 → chat-store → ComposerRuntimeStatus）代码逻辑无误，最可能是中转商不返回 usage。需加日志确认
+
+### 迭代十：子 Agent（Sub-Agent）
+- 状态：未开始
+- 优先级：高 — 功能扩展核心方向
+- 目标：实现子 Agent 的创建、执行、事件流和前端渲染
+- 前端已有骨架：`OrchestrationBlock`、`OrchestrationMemberStrip`、`SubAgentCard` 等组件
+- 参考来源：OpenCowork `sub-agents/` 目录
+- 技术要点：
+  - 子 Agent 生命周期管理（独立 runId，挂载到父 Agent state）
+  - 事件流（`sub_agent_start` / `sub_agent_progress` / `sub_agent_end`）
+  - Task 工具：父 Agent 通过工具调用启动子 Agent
+  - 前端事件适配和渲染
+
+### 迭代十一：聊天窗渲染调整（参考灵犀）
+- 状态：未开始
+- 优先级：中 — 可与迭代十穿插进行
+- 目标：优化聊天交互的视觉和交互体验
+- 技术要点：
+  - 工具调用卡片的折叠/展开交互
+  - Thinking block 展示优化
+  - 消息间距和视觉层次
+  - Agent Loop 多轮迭代的展示方式（当前平铺在一条消息内，可能调整为分段展示）
+
+### 迭代十二：Skill 市场
+- 状态：未开始
+- 优先级：中 — 生态扩展
+- 目标：实现 Skill 的安装/卸载/列表管理和在线市场
+- 前端已有骨架：`SkillsMenu` 组件、`skills-store`
+- 技术要点：
+  - SKILL.md 解析和工具注册
+  - Skill 安装/卸载/列表管理
+  - 在线 Skill 市场浏览和安装
+
+### 迭代十三：MCP 管理
+- 状态：未开始
+- 优先级：中 — 生态扩展
+- 目标：实现 MCP Server 的配置管理和工具调用
+- 前端已有骨架：`mcp-store`
+- 技术要点：
+  - MCP Server 配置管理
+  - MCP 工具动态注册和调用
+  - MCP 状态监控

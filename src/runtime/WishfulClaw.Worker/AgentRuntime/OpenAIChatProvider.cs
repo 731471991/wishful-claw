@@ -253,7 +253,11 @@ internal static partial class OpenAIChatProvider
             await FlushRemainingToolBuffersAsync(toolBuffers, completedToolCalls, state, context);
         }
 
-        return finishReason is "stop" or "length" or "content_filter";
+        // Do NOT return true for "stop"/"length"/"content_filter" — the usage chunk
+        // (choices:[] + usage) typically arrives AFTER the finish_reason chunk.
+        // Returning true would break the outer loop and miss the usage data.
+        // Only [DONE] returns true; finish_reason just sets the stop reason.
+        return false;
     }
 
     private static async Task ProcessJsonResponseAsync(

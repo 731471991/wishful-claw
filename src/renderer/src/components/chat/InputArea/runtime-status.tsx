@@ -459,13 +459,13 @@ export function ComposerRuntimeStatus({
       [
         {
           key: 'input',
-          label: t('input.runtimeMetrics.input', { defaultValue: 'Uncached input' }),
+          label: t('input.runtimeMetrics.input', { defaultValue: '未命中' }),
           color: '#38bdf8',
           value: totalInputCost
         },
         {
           key: 'cacheHit',
-          label: t('input.runtimeMetrics.cacheHit', { defaultValue: 'Cache hit' }),
+          label: t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' }),
           color: '#84cc16',
           value: totalCacheReadCost
         },
@@ -497,47 +497,32 @@ export function ComposerRuntimeStatus({
       aria-live={isStreaming ? 'polite' : 'off'}
     >
       <RuntimeMetric
-        label={t('input.runtimeMetrics.input', { defaultValue: 'Uncached input' })}
+        label={t('input.runtimeMetrics.input', { defaultValue: '未命中' })}
         value={inputTokens}
         tone="input"
         animate={isStreaming}
         duration={520}
         title={buildCostTitle(
-          t('input.runtimeMetrics.input', { defaultValue: 'Uncached input' }),
+          t('input.runtimeMetrics.input', { defaultValue: '未命中' }),
           inputTokens,
           metricPricing.inputPrice
         )}
       />
       <span className="shrink-0 text-muted-foreground/35">/</span>
       <RuntimeMetric
-        label={t('input.runtimeMetrics.cacheHit', { defaultValue: 'Cache hit' })}
+        label={t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' })}
         value={cacheReadTokens}
         tone="cacheHit"
         animate={isStreaming}
         duration={620}
         suffix={formatCacheHitRate(cacheHitRate)}
         title={buildCostTitle(
-          t('input.runtimeMetrics.cacheHit', { defaultValue: 'Cache hit' }),
+          t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' }),
           cacheReadTokens,
           metricPricing.cacheReadPrice
         )}
       />
-      <span className="shrink-0 text-muted-foreground/35">/</span>
-      <RuntimeMetric
-        label={t('input.runtimeMetrics.cacheCreate', { defaultValue: 'Cache write' })}
-        value={cacheCreationTokens}
-        tone="cacheCreate"
-        animate={isStreaming}
-        duration={620}
-        title={
-          cacheCreationTitle ??
-          buildCostTitle(
-            t('input.runtimeMetrics.cacheCreate', { defaultValue: 'Cache write' }),
-            cacheCreationTokens,
-            metricPricing.cacheCreatePrice
-          )
-        }
-      />
+
       <span className="shrink-0 text-muted-foreground/35">/</span>
       <RuntimeMetric
         label={t('input.runtimeMetrics.output', { defaultValue: 'Output' })}

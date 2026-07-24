@@ -102,9 +102,9 @@
     "compressionBudget": "压缩预算",
     "remaining": "剩余",
     "runtimeMetrics": {
-      "input": "未缓存输入",
+      "input": "未命中",
       "cache": "缓存",
-      "cacheHit": "缓存命中",
+      "cacheHit": "缓存",
       "cacheCreate": "创建缓存",
       "cacheCreate5m": "创建缓存（5m）",
       "cacheCreate1h": "创建缓存（1h）",

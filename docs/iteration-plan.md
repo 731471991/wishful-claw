@@ -1,6 +1,6 @@
 # Wishful Claw 迭代计划
 
-基于 MVP 边界，拆分为 8 个迭代，每个迭代独立可验证。
+基于 MVP 边界，拆分为多个迭代，每个迭代独立可验证。
 
 ## 迭代拆分规则
 
@@ -50,7 +50,9 @@ git push origin --delete dev/iter-{N}
 
 ---
 
-## 迭代一：项目骨架
+## 已完成迭代（一~八）
+
+### 迭代一：项目骨架
 
 **目标**：Electron + .NET 工程跑起来，前后端能通信。
 
@@ -65,17 +67,9 @@ git push origin --delete dev/iter-{N}
 
 **验证标准**：前端发 "ping"，后端回 "pong"，MessagePack 编解码正常。
 
-**建议 Plan 拆分**：
-
-| Plan | 内容 | 独立验证 |
-|------|------|----------|
-| 1.1 | .NET 工程搭建（sln + 4 项目 + 基础脚手架 + Worker Program.cs） | `dotnet build` 通过 |
-| 1.2 | Electron + React 前端工程搭建（参考 OpenCowork 脚手架 + 目录结构） | `npm run dev` 能启动 |
-| 1.3 | IPC 通信打通（Worker 进程拉起 + MessagePack 协议 + ping/pong） | 前端发 ping 后端回 pong |
-
 ---
 
-## 迭代二：AI 服务商 + 模型管理
+### 迭代二：AI 服务商 + 模型管理
 
 **目标**：能配置 Provider，选择模型，为后续对话做准备。
 
@@ -89,11 +83,9 @@ git push origin --delete dev/iter-{N}
 
 **验证标准**：添加一个 OpenAI 兼容 Provider → 填 API Key 和 Base URL → 测试连通性通过 → 能看到可用模型列表。
 
-**注意**：OpenCowork 的 Provider 配置字段和页面非常全面，直接搬用。唯一需要处理的是清理 routin.ai 相关的私货（预设端点、模型预设、token 中转硬编码），其余全部保留，不重新造轮子。
-
 ---
 
-## 迭代三：Agent Loop + 对话
+### 迭代三：Agent Loop + 对话
 
 **目标**：能跟模型对话，流式输出。
 
@@ -110,7 +102,7 @@ git push origin --delete dev/iter-{N}
 
 ---
 
-## 迭代四：工具链（最小集）
+### 迭代四：工具链（最小集）
 
 **目标**：Agent 能调工具操作文件和执行命令。
 
@@ -127,7 +119,7 @@ git push origin --delete dev/iter-{N}
 
 ---
 
-## 迭代五：项目注册 + 会话历史
+### 迭代五：项目注册 + 会话历史
 
 **目标**：能管理项目，对话有历史记录。
 
@@ -143,7 +135,26 @@ git push origin --delete dev/iter-{N}
 
 ---
 
-## 迭代六：记忆系统
+### 迭代六：人格系统
+
+**目标**：不同人格，输出风格不同。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 实现 Identity / Soul 文件读写（全局 + 项目级） |
+| 2 | 实现 PersonaPreset 预设管理（内置 6 种 + 自定义） |
+| 3 | 实现 PromptBuilder（分段组装 System Prompt + 字符预算） |
+| 4 | System Prompt 构建从前端移到后端（runtime 侧组装） |
+| 5 | 实现人格在最终输出时体现（输出层加工，不介入 Loop 决策） |
+| 6 | 前端人格切换面板（选择/预览/自定义人格） |
+
+**验证标准**：切换"极简执行者"和"深度分析师"两种人格，同一个问题得到风格明显不同的回答。
+
+> **执行记录**：迭代六实际做了人格系统（原计划为记忆系统，执行顺序与迭代七对调）。8 个 Plan 全部完成。PromptBuilder 分段组装 System Prompt + 字符预算截断 + InjectSystemPrompt。Base Instruction 在迭代八中改为运行环境介绍而非身份定义。
+
+---
+
+### 迭代七：记忆系统
 
 **目标**：记忆用上了，不是黑箱。
 
@@ -159,26 +170,11 @@ git push origin --delete dev/iter-{N}
 
 **验证标准**：对话中告诉 Agent "记住我是前端工程师" → 关闭重开 → 新对话中 Agent 知道你是前端工程师（通过主动回忆注入，不是用户重新说）。
 
----
-
-## 迭代七：人格系统
-
-**目标**：不同人格，输出风格不同。
-
-| 步骤 | 内容 |
-|------|------|
-| 1 | 实现 Identity / Soul 文件读写（全局 + 项目级） |
-| 2 | 实现 PersonaPreset 预设管理（内置 6 种 + 自定义） |
-| 3 | 实现 PromptBuilder（分段组装 System Prompt + 字符预算） |
-| 4 | System Prompt 构建从前端移到后端（runtime 侧组装） |
-| 5 | 实现人格在最终输出时体现（输出层加工，不介入 Loop 决策） |
-| 6 | 前端人格切换面板（选择/预览/自定义人格） |
-
-**验证标准**：切换"极简执行者"和"深度分析师"两种人格，同一个问题得到风格明显不同的回答。
+> **执行记录**：迭代七实际做了记忆系统（与迭代六对调）。8 个 Plan 全部完成。三层架构 Hot/Warm/Cold + FTS5。scope 隔离设计（global / project:{workingFolder}）。TryInjectRecall 注入为 User Message，标注 untrusted reference data。
 
 ---
 
-## 迭代八：集成验证
+### 迭代八：集成验证
 
 **目标**：整体跑通，日常可用。
 
@@ -192,26 +188,124 @@ git push origin --delete dev/iter-{N}
 
 **验证标准**：日常使用一周，记忆持续有效，人格稳定，工具正常，无崩溃。
 
+> **执行记录**：记忆系统全链路修复（FTS5外部内容表、触发器语法、参数绑定）、Worker进程防崩溃、日志等级控制、记忆工具预览UI、消息时间戳、历史消息加载修复、Agent Loop迭代限制去除、Base Instruction人格冲突修复。代码已合并到 main，旧开发分支已清理。打包测试未执行。
+
+---
+
+## 后续迭代（九~十三）
+
+### 迭代九：输入框修复 + 提示词优化器
+
+**目标**：修复输入框底部 token 统计全为 0 的问题；实现提示词优化器功能。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 提示词优化器实现 — 从 OpenCowork 移植 `optimizer.ts`，复用已有 `streamSidecarProviderTurn` + `usePromptOptimizer` hook。当前 optimizer.ts 是空壳 stub |
+| 2 | Token 统计修复 — 排查 usage 是否为 null（疑似中转商不支持 `stream_options.include_usage`）。若确认无 usage 返回，后端做 fallback 估算 |
+| 3 | AGENTS.md 路径修正 — 参考项目路径从 `D:\gy\*` 更新为 `D:\claw\*`（笔记本实际路径） |
+
+**验证标准**：
+- 提示词优化器：输入框输入文本 → 点击优化按钮 → 看到 1-3 个优化方案 → 选择后替换输入框内容
+- Token 统计：对话过程中输入框底部实时显示 input/output token 数量（非全 0）
+
+**技术要点**：
+- 提示词优化器：OpenCowork 方案是用 `streamSidecarProviderTurn`（`providerTurnOnly: true`）做单轮 LLM 调用，给模型提供 `WriteOptimizedPrompts` 工具返回 1-3 个优化方案。wishful-claw 已有 `streamSidecarProviderTurn`，可直接复用
+- Token 统计：数据链路（C# Worker → MessagePack 编码 → IPC → 前端解码 → chat-store → ComposerRuntimeStatus）代码逻辑无误，最可能是中转商不返回 usage。需加日志确认
+
+---
+
+### 迭代十：子 Agent（Sub-Agent）
+
+**目标**：实现子 Agent 的创建、执行、事件流和前端渲染。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 后端子 Agent 生命周期管理 — 独立 runId，挂载到父 Agent state，支持并发执行 |
+| 2 | Task 工具实现 — 父 Agent 通过工具调用启动子 Agent，传入子任务描述和配置 |
+| 3 | 子 Agent 事件流 — `sub_agent_start` / `sub_agent_progress` / `sub_agent_end` 事件定义和发送 |
+| 4 | 前端事件适配和渲染 — 复用已有 `OrchestrationBlock`、`OrchestrationMemberStrip`、`SubAgentCard` 组件骨架 |
+| 5 | 子 Agent 取消机制 — 父 Agent 或用户可中断子 Agent 执行 |
+
+**验证标准**：主 Agent 在对话中通过 Task 工具启动子 Agent 执行子任务 → 前端展示子 Agent 运行状态 → 子 Agent 完成后结果回传主 Agent 继续。
+
+**参考来源**：OpenCowork `sub-agents/` 目录、`agent-bridge.ts` 中的子 Agent 事件处理
+
+---
+
+### 迭代十一：聊天窗渲染调整（参考灵犀）
+
+**目标**：优化聊天交互的视觉和交互体验，参考灵犀的聊天窗设计。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 工具调用卡片的折叠/展开交互优化 |
+| 2 | Thinking block 展示优化（折叠默认、可展开） |
+| 3 | 消息间距和视觉层次调整 |
+| 4 | Agent Loop 多轮迭代的展示方式调整（当前平铺在一条消息内，评估是否调整为分段展示） |
+
+**验证标准**：聊天界面交互流畅，工具调用和思考过程可折叠/展开，多轮迭代清晰可辨。
+
+---
+
+### 迭代十二：Skill 市场
+
+**目标**：实现 Skill 的安装/卸载/列表管理和在线市场。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | SKILL.md 解析和工具注册 — 读取 Skill 目录下的 SKILL.md，解析工具定义并注册到 ToolRegistry |
+| 2 | Skill 安装/卸载/列表管理 — 复用已有 `SkillsMenu` 组件和 `skills-store` |
+| 3 | 在线 Skill 市场浏览和安装 — 对接 Skill 仓库 API，浏览/搜索/安装 |
+
+**验证标准**：从 Skill 市场安装一个 Skill → Agent 对话中能使用该 Skill 提供的工具 → 卸载后工具不可用。
+
+---
+
+### 迭代十三：MCP 管理
+
+**目标**：实现 MCP Server 的配置管理和工具调用。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | MCP Server 配置管理 — 复用已有 `mcp-store`，实现增删改查 |
+| 2 | MCP 工具动态注册和调用 — MCP Server 启动后自动发现工具并注册 |
+| 3 | MCP 状态监控 — 连接状态、工具列表、调用日志 |
+
+**验证标准**：配置一个 MCP Server → 启动后自动发现其工具 → Agent 对话中能调用 MCP 工具 → 停止后工具不可用。
+
 ---
 
 ## 迭代依赖关系
 
 ```
+已完成
 迭代一（骨架）
   ↓
 迭代二（AI 服务商 + 模型管理）
   ↓
-迭代三（Agent Loop + 对话）← 依赖迭代二的 Provider
+迭代三（Agent Loop + 对话）
   ↓
-迭代四（工具链）← 依赖迭代三的 Loop
+迭代四（工具链）
   ↓
-迭代五（项目注册 + 会话）← 独立，但建议在工具链后做
+迭代五（项目注册 + 会话）
   ↓
-迭代六（记忆系统）← 依赖迭代五的 SQLite
+迭代六（人格系统）
   ↓
-迭代七（人格系统）← 依赖迭代六的 PromptBuilder
+迭代七（记忆系统）
   ↓
-迭代八（集成验证）← 依赖全部
+迭代八（集成验证）
+
+后续
+迭代九（输入框修复 + 提示词优化器）  ← 当前最高优先级
+  ↓
+迭代十（子 Agent）  ← 功能扩展核心方向
+  ↓
+迭代十一（聊天窗渲染调整）  ← 可与迭代十穿插
+  ↓
+迭代十二（Skill 市场）  ← 生态扩展
+  ↓
+迭代十三（MCP 管理）  ← 生态扩展
 ```
 
-迭代四和迭代五可以并行（如果两台机器同时开发）。
+迭代十和迭代十一可以部分并行（渲染调整不依赖子 Agent 后端）。
+迭代十二和迭代十三可以并行（Skill 和 MCP 是独立生态）。

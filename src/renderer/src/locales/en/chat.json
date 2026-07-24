@@ -102,9 +102,9 @@
     "compressionBudget": "Compression Budget",
     "remaining": "remaining",
     "runtimeMetrics": {
-      "input": "Uncached input",
+      "input": "未命中",
       "cache": "Cache",
-      "cacheHit": "Cache hit",
+      "cacheHit": "缓存",
       "cacheCreate": "Cache write",
       "cacheCreate5m": "Cache write (5m)",
       "cacheCreate1h": "Cache write (1h)",
