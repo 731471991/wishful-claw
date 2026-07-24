@@ -84,8 +84,8 @@ Agent 通用框架，不含任何业务逻辑。
 
 | 项目 | 路径 | 参考内容 |
 |------|------|---------|
-| OpenCowork | `D:\gy\OpenCowork` | Agent Loop（sidecars/.../OpenAIChatRuntime.cs）、工具链（.../AgentRuntime*Executor.cs）、Provider、流式协议 |
-| KodaClaw | `D:\gy\koda-claw\koda-claw` | 记忆系统（products/KodaClaw/src/.../Workspace/）、人格系统（.../Prompt/、persona-presets.json）、PromptBuilder |
+| OpenCowork | `D:\claw\OpenCowork` | Agent Loop（sidecars/.../OpenAIChatRuntime.cs）、工具链（.../AgentRuntime*Executor.cs）、Provider、流式协议 |
+| KodaClaw | `D:\claw\koda-claw` | 记忆系统（products/KodaClaw/src/.../Workspace/）、人格系统（.../Prompt/、persona-presets.json）、PromptBuilder |
 | OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆（src/OpenClaw.Agent/AgentRuntime.cs TryInjectRecallAsync）、记忆工具（.../Tools/Memory*Tool.cs）、上下文预算（.../Memory/ContextBudgetPlanner.cs） |
 
 ## 参考源码适配规范
