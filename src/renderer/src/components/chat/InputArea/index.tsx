@@ -6,48 +6,29 @@ import { toast } from 'sonner'
 import {
   Send, FolderOpen, AlertTriangle, FileUp, FileCode2,
   Sparkles, X, Trash2, ImagePlus, ClipboardList, Globe, Wand2,
-  CornerDownRight, Ellipsis, Command, Target, Puzzle,
-  CheckCircle2, CircleHelp, Clock, ImageIcon, RefreshCcw,
-  ShieldAlert, ShieldCheck, Check, Shapes, Users, Wrench,
-  type LucideIcon
+  CornerDownRight, Ellipsis, Command, Target, Puzzle
 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger
+  DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { Textarea } from '@renderer/components/ui/textarea'
 import { Spinner } from '@renderer/components/ui/spinner'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
 import type {
-  AIModelConfig, MessageRequestModelMeta, RequestTiming,
-  SelectedFileReference, TokenUsage, UnifiedMessage
+  AIModelConfig
 } from '@renderer/lib/api/types'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { AnimatePresence, motion } from 'motion/react'
 import { updateWebSearchToolRegistration } from '@renderer/lib/tools'
-import { useUIStore, type AppMode } from '@renderer/stores/ui-store'
-import {
-  calculateCost, calculateCostBreakdown, estimateTokens,
-  formatCacheHitRate, formatCost, formatTokens,
-  getBillableInputTokens, getCacheCreationTokens,
-  getCacheCreationSplit, getCacheHitRate
-} from '@renderer/lib/format-tokens'
-import { formatDurationMs } from '@renderer/lib/format-duration'
-import {
-  getEffectiveContextWindow,
-  resolveCompressionContextLength,
-  resolveCompressionReservedOutputBudget,
-  resolveCompressionThreshold
-} from '@renderer/lib/agent/context-compression'
+import { useUIStore } from '@renderer/stores/ui-store'
 import { useDebouncedTokens } from '@renderer/hooks/use-estimated-tokens'
 import { usePromptRecommendation } from '@renderer/hooks/use-prompt-recommendation'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useChannelStore } from '@renderer/stores/channel-store'
-import { useAgentStore } from '@renderer/stores/agent-store'
 import {
   getHomeInputDraftKey, getProjectInputDraftKey, getSessionInputDraftKey,
   type InputDraftContext
@@ -56,9 +37,8 @@ import { useInputDraftPersistence } from '@renderer/hooks/use-input-draft-persis
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import {
-  ACCEPTED_IMAGE_TYPES, cloneImageAttachments, fileToImageAttachment,
-  hasEditableDraftContent,
-  type EditableUserMessageDraft, type ImageAttachment
+  ACCEPTED_IMAGE_TYPES, cloneImageAttachments,
+  type ImageAttachment
 } from '@renderer/lib/image-attachments'
 import {
   createSelectFileToken, getSelectFileMentionQuery, selectFileTextToPlainText
@@ -73,14 +53,8 @@ import {
 import { SkillsMenu } from '../SkillsMenu'
 import { ModelSwitcher } from '../ModelSwitcher'
 import { PersonaSwitcher } from '../PersonaSwitcher'
-import { ModelIcon } from '@renderer/components/settings/provider-icons'
 import { FileAwareEditor, type FileAwareEditorHandle } from '../FileAwareEditor'
-import { TokenCounter } from '../TokenCounter'
 import { listCommands, type CommandCatalogItem } from '@renderer/lib/commands/command-loader'
-import { resolveConfiguredActiveMcpIds, useMcpStore } from '@renderer/stores/mcp-store'
-import {
-  resolveEffectiveActiveExtensionIds, useExtensionStore
-} from '@renderer/stores/extension-store'
 import { usePlanStore } from '@renderer/stores/plan-store'
 import { useGoalStore } from '@renderer/stores/goal-store'
 import { useSkillsStore } from '@renderer/stores/skills-store'
@@ -88,16 +62,11 @@ import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolu
 import { resolvePluginsForProject, useAppPluginStore } from '@renderer/stores/app-plugin-store'
 import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
 import {
-  APP_PLUGIN_DESCRIPTORS, BROWSER_PLUGIN_ID, IMAGE_PLUGIN_ID,
+  APP_PLUGIN_DESCRIPTORS,
   type AppPluginId
 } from '@renderer/lib/app-plugin/types'
 import {
-  clearPendingSessionMessages, dispatchNextQueuedMessageForSession,
-  getPendingSessionMessages, isPendingSessionDispatchPaused,
-  quotePendingSessionMessageIntoConversation, removePendingSessionMessage,
-  subscribePendingSessionMessages, updatePendingSessionMessageDraft,
-  type SendMessageOptions, type PendingSessionMessageItem,
-  type ManualCompressionResult
+  clearPendingSessionMessages, type SendMessageOptions
 } from '@renderer/hooks/use-chat-actions'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -105,11 +74,9 @@ import {
   AlertDialogTitle, AlertDialogTrigger
 } from '@renderer/components/ui/alert-dialog'
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle
+  Dialog, DialogContent, DialogTitle
 } from '@renderer/components/ui/dialog'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { IPC } from '@renderer/lib/ipc/channels'
 import { cn } from '@renderer/lib/utils'
 import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
 import { isProjectSession, workspaceContextAvailable } from '@renderer/lib/session-scope'
@@ -117,36 +84,24 @@ import { getDroppedLocalPaths } from '@renderer/lib/drag-folder'
 import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
 
 // Extracted modules
-import type {
-  InputAreaProps, FileSearchItem, SlashSuggestionItem, AppPluginPromptItem,
-  ContextCompressionStatus, RuntimeOutputSnapshot
+import {
+  InputAreaProps, FileSearchItem, SlashSuggestionItem, AppPluginPromptItem, ContextCompressionStatus
 } from './types'
 import {
-  EMPTY_QUEUED_MESSAGES, INTERNAL_FILE_DRAG_MIME,
-  IMAGE_MEDIA_TYPE_BY_EXTENSION, MIN_INPUT_HEIGHT,
-  DEFAULT_SESSION_INPUT_HEIGHT, MAX_INPUT_HEIGHT,
-  MIN_MESSAGE_LIST_HEIGHT, EDITOR_MIN_HEIGHT,
-  FALLBACK_MAX_VIEWPORT_RATIO, MAX_SLASH_COMMAND_RESULTS,
-  BUILTIN_SLASH_COMMANDS,
-  placeholderKeys, defaultRecommendationKeys
+  INTERNAL_FILE_DRAG_MIME, MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, MAX_SLASH_COMMAND_RESULTS, BUILTIN_SLASH_COMMANDS, placeholderKeys, defaultRecommendationKeys
 } from './types'
 import {
-  normalizeTokenCount, toFinitePositiveNumber, getLatestRequestTiming,
-  formatRuntimeThroughput, formatRuntimeTtft, sumNullableCost,
-  createEmptyRuntimeUsageTotals, getBillableInputForUsage,
-  addUsageToTotals, collectRuntimeOutputSnapshot,
-  getAppPluginPromptContent, getSlashCommandQuery, scoreSlashCommand,
-  areQueuedMessagesEqual, summarizeQueuedMessage,
-  isReferenceOnlyDocument, getImageMediaTypeForPath,
-  createImageAttachmentId, selectedFileItemToReference
+  getAppPluginPromptContent, getSlashCommandQuery, scoreSlashCommand, summarizeQueuedMessage, isReferenceOnlyDocument, selectedFileItemToReference
 } from './utils'
 import { ContextRing } from './context-ring'
 import { ActiveMcpsBadge, ActiveExtensionsBadge, ReadOnlyModelBadge } from './badges'
-import { ComposerRuntimeStatus, RuntimeTokenStatistics } from './runtime-status'
+import { ComposerRuntimeStatus } from './runtime-status'
 import { useComposerHeight } from './use-composer-height'
 import { useImageAttachments } from './use-image-attachments'
 import { useQueuedMessages } from './use-queued-messages'
 import { usePromptOptimizer } from './use-prompt-optimizer'
+import { OptimizationDialog } from './optimization-dialog'
+import { PermissionControl } from './permission-control'
 
 export function InputArea({
   sessionId,
@@ -477,7 +432,7 @@ export function InputArea({
   const {
     isOptimizing, optimizationOptions, showOptimizationDialog,
     setShowOptimizationDialog, selectedOptionIndex, setSelectedOptionIndex,
-    contentScrollRef, handleOptimizePrompt, handleSelectOption, handleCancelOptimization
+    handleOptimizePrompt, handleSelectOption, handleCancelOptimization
   } = usePromptOptimizer({
     text, currentLanguage, setText, focusInputAtEnd
   })
@@ -1708,85 +1663,11 @@ export function InputArea({
   }
 
   const permissionControl = (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                composerIconControlClass,
-                'gap-1.5 px-2 text-xs font-medium',
-                permissionMode === 'fullAccess' && 'text-amber-600 dark:text-amber-400',
-                permissionMode === 'whitelist' && 'text-emerald-600 dark:text-emerald-400'
-              )}
-              aria-label={t('permission.label')}
-            >
-              {permissionMode === 'fullAccess' ? (
-                <ShieldAlert className="size-3.5" />
-              ) : (
-                <ShieldCheck className="size-3.5" />
-              )}
-              <span className="max-w-24 truncate">
-                {permissionMode === 'fullAccess'
-                  ? t('permission.fullAccess')
-                  : permissionMode === 'whitelist'
-                    ? t('permission.whitelist')
-                    : t('permission.default')}
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{t('permission.tooltip')}</TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent align="end" className="min-w-56">
-        <DropdownMenuItem
-          className="flex-col items-start gap-0.5"
-          onSelect={() => void handleSelectPermissionMode('default')}
-        >
-          <div className="flex w-full items-center gap-2">
-            <ShieldCheck className="size-3.5" />
-            <span className="flex-1 font-medium">{t('permission.default')}</span>
-            {permissionMode === 'default' && <Check className="size-3.5" />}
-          </div>
-          <span className="pl-[1.375rem] text-xs text-muted-foreground">
-            {t('permission.defaultDesc')}
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex-col items-start gap-0.5"
-          onSelect={() => void handleSelectPermissionMode('whitelist')}
-        >
-          <div className="flex w-full items-center gap-2">
-            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="flex-1 font-medium">{t('permission.whitelist')}</span>
-            {permissionMode === 'whitelist' && <Check className="size-3.5" />}
-          </div>
-          <span className="pl-[1.375rem] text-xs text-muted-foreground">
-            {t('permission.whitelistDesc')}
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex-col items-start gap-0.5"
-          onSelect={() => void handleSelectPermissionMode('fullAccess')}
-        >
-          <div className="flex w-full items-center gap-2">
-            <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
-            <span className="flex-1 font-medium">{t('permission.fullAccess')}</span>
-            {permissionMode === 'fullAccess' && <Check className="size-3.5" />}
-          </div>
-          <span className="pl-[1.375rem] text-xs text-muted-foreground">
-            {t('permission.fullAccessDesc')}
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => openSettings('permission')}>
-          <span className="text-xs">{t('permission.manageWhitelist')}</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <PermissionControl
+      permissionMode={permissionMode}
+      onSelectMode={handleSelectPermissionMode}
+      onOpenSettings={(tab) => openSettings(tab as never)}
+    />
   )
 
   const sendControl = (
@@ -2317,124 +2198,16 @@ export function InputArea({
           )}
 
           {/* Optimization Dialog */}
-          <Dialog open={showOptimizationDialog} onOpenChange={setShowOptimizationDialog}>
-            <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col gap-4 sm:max-w-7xl">
-              <DialogHeader className="space-y-2 shrink-0">
-                <DialogTitle className="text-xl flex items-center gap-2">
-                  <Wand2 className="size-5 text-primary" />
-                  {t('input.optimizationResults', { defaultValue: 'Optimized Prompt Options' })}
-                </DialogTitle>
-                <DialogDescription className="text-sm">
-                  {t('input.optimizationResultsDesc', {
-                    defaultValue:
-                      'Select one of the optimized versions below to use in your prompt.'
-                  })}
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Tab-style Layout */}
-              <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                {/* Tabs - Options as tabs at top */}
-                <div className="flex gap-2 border-b border-border shrink-0">
-                  {/* Render 3 slots: filled or loading */}
-                  {Array.from({ length: 3 }).map((_, slotIdx) => {
-                    const option = optimizationOptions[slotIdx]
-                    const isLoaded = !!option
-                    return option ? (
-                      <button
-                        key={slotIdx}
-                        type="button"
-                        className={`flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 transition-all ${
-                          selectedOptionIndex === slotIdx
-                            ? 'border-primary bg-primary/5 -mb-[2px] border-b-2 border-b-background'
-                            : 'border-transparent hover:bg-muted/30'
-                        }`}
-                        onClick={() => {
-                          setSelectedOptionIndex(slotIdx)
-                          if (contentScrollRef.current) {
-                            contentScrollRef.current.scrollTop = 0
-                          }
-                        }}
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          <span
-                            className={`inline-flex items-center justify-center size-6 rounded-full text-xs font-bold ${
-                              selectedOptionIndex === slotIdx
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {slotIdx + 1}
-                          </span>
-                          <div className="text-left">
-                            <p className="text-sm font-semibold text-foreground">{option.title}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              {option.focus}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ) : (
-                      <div
-                        key={`loading-${slotIdx}`}
-                        className="flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 border-transparent"
-                      >
-                        <div className="flex items-center justify-center gap-2 opacity-50">
-                          <span className="inline-flex items-center justify-center size-6 rounded-full text-xs font-bold bg-muted text-muted-foreground">
-                            {slotIdx + 1}
-                          </span>
-                          <div className="text-left">
-                            {isOptimizing ? (
-                              <>
-                                <div className="h-3.5 w-20 bg-muted rounded animate-pulse" />
-                                <div className="h-2.5 w-16 bg-muted rounded animate-pulse mt-1" />
-                              </>
-                            ) : (
-                              <div className="h-3.5 w-20" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Content Area */}
-                <div className="flex-1 min-h-0 mt-2 overflow-y-auto rounded-lg border border-border bg-background px-6 py-4">
-                  {optimizationOptions[selectedOptionIndex] ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
-                        {optimizationOptions[selectedOptionIndex]?.content}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-32">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Spinner className="size-4" />
-                        <span className="text-sm">
-                          {t('input.optimizing', { defaultValue: 'Optimizing your prompt...' })}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <DialogFooter className="flex items-center justify-between shrink-0">
-                <Button variant="outline" onClick={handleCancelOptimization}>
-                  {t('action.cancel', { ns: 'common' })}
-                </Button>
-                <Button
-                  disabled={!optimizationOptions[selectedOptionIndex]}
-                  onClick={() =>
-                    handleSelectOption(optimizationOptions[selectedOptionIndex]?.content)
-                  }
-                >
-                  {t('input.useThisOption', { defaultValue: 'Use This' })}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <OptimizationDialog
+            open={showOptimizationDialog}
+            onOpenChange={setShowOptimizationDialog}
+            options={optimizationOptions}
+            selectedOptionIndex={selectedOptionIndex}
+            onSelectOption={setSelectedOptionIndex}
+            onUseOption={handleSelectOption}
+            onCancel={handleCancelOptimization}
+            isOptimizing={isOptimizing}
+          />
 
           {/* Text input area */}
           <div
