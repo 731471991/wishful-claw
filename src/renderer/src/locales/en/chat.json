@@ -494,7 +494,12 @@
       "TaskUpdate": "Update Task",
       "TaskList": "List Tasks",
       "Delete": "Delete",
-      "Skill": "Skill"
+      "Skill": "Skill",
+      "memory_hot_read": "Hot Read",
+      "memory_hot_write": "Hot Write",
+      "memory_search": "Search",
+      "memory_append": "Append",
+      "memory_update": "Update"
     }
   },
   "toolCall": {

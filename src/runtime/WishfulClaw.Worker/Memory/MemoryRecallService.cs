@@ -5,10 +5,7 @@ namespace WishfulClaw.Worker.Memory;
 
 /// <summary>
 /// Memory recall service — injects relevant memories before the Agent Loop.
-///
-/// Design fused from:
-/// - OpenClaw.net: TryInjectRecallAsync (search before loop, inject as user message, "untrusted" label)
-/// - KodaClaw: scope-aware search (project first, then global)
+/// Searches SQLite memory_entries via FTS/LIKE.
 /// </summary>
 public sealed class MemoryRecallService : IMemoryRecall
 {
@@ -37,24 +34,13 @@ public sealed class MemoryRecallService : IMemoryRecall
 
         if (!string.IsNullOrWhiteSpace(scope) && scope != "global")
         {
-            hits = await _search.SearchAsync(userMessage, scope, limit: 5, ct);
-
-            // Fallback to global if no project-scoped results
+            hits = await _search.SearchAsync(userMessage, scope, limit: 5, ct: ct);
             if (hits.Count == 0)
-            {
-                hits = await _search.SearchAsync(userMessage, "global", limit: 5, ct);
-            }
+                hits = await _search.SearchAsync(userMessage, "global", limit: 5, ct: ct);
         }
         else
         {
-            hits = await _search.SearchAsync(userMessage, null, limit: 5, ct);
-        }
-
-        // Also search cold memory
-        if (hits.Count < 3)
-        {
-            var coldHits = await _search.SearchColdAsync(userMessage, scope, limit: 3, ct);
-            hits = hits.Concat(coldHits).Take(5).ToList();
+            hits = await _search.SearchAsync(userMessage, null, limit: 5, ct: ct);
         }
 
         if (hits.Count == 0)
@@ -71,7 +57,7 @@ public sealed class MemoryRecallService : IMemoryRecall
                 break;
 
             var updated = hit.UpdatedAt == default ? "" : $" updated={hit.UpdatedAt:O}";
-            var header = string.IsNullOrWhiteSpace(hit.Key) ? "- (note)" : $"- {hit.Title}";
+            var header = string.IsNullOrWhiteSpace(hit.Title) ? $"- [id={hit.Id}]" : $"- [id={hit.Id}] {hit.Title}";
             sb.Append(header);
             sb.Append(updated);
             sb.AppendLine();
@@ -79,7 +65,7 @@ public sealed class MemoryRecallService : IMemoryRecall
             var content = hit.Content ?? "";
             content = content.Replace("\r\n", "\n", StringComparison.Ordinal);
             if (content.Length > 2000)
-                content = content[..2000] + "…";
+                content = content[..2000] + "\u2026";
 
             sb.AppendLine("  ---");
             sb.AppendLine(Indent(content, "  "));
@@ -88,7 +74,7 @@ public sealed class MemoryRecallService : IMemoryRecall
 
         var text = sb.ToString().TrimEnd();
         if (text.Length > budget)
-            text = text[..budget] + "…";
+            text = text[..budget] + "\u2026";
 
         return text;
     }

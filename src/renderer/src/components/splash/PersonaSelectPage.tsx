@@ -49,7 +49,7 @@ export function PersonaSelectPage(): React.JSX.Element {
   const [step, setStep] = useState<Step>('setup')
   const [language, setLanguage] = useState(detectSystemLanguage())
   const [nickname, setNickname] = useState(persistedName ?? '')
-  const [themeMode, setThemeMode] = useState<string>(persistedTheme ?? 'dark')
+  const [themeMode, setThemeMode] = useState<string>(persistedTheme ?? 'system')
   const [selectedId, setSelectedId] = useState<string>('')
   const [finishing, setFinishing] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)

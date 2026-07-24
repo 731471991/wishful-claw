@@ -70,12 +70,12 @@ public sealed record MemoryEntry
 /// </summary>
 public sealed record MemorySearchResult
 {
-    public required string Key { get; init; }
+    public required long Id { get; init; }
     public required string Title { get; init; }
     public required string Content { get; init; }
     public required string Scope { get; init; }
-    public MemoryTier Tier { get; init; }
-    public double Score { get; init; }
+    public required string Priority { get; init; }
+    public required string Status { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 }
 

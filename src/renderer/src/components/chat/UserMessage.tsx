@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
@@ -68,6 +68,7 @@ interface UserMessageProps {
   meta?: MessageMeta
   source?: UnifiedMessage['source']
   isLast?: boolean
+  createdAt?: number
   onEdit?: (messageId: string, draft: EditableUserMessageDraft) => void
   onDelete?: (messageId: string) => void
 }
@@ -441,6 +442,7 @@ export function UserMessage({
   content,
   meta,
   source,
+  createdAt,
   onEdit,
   onDelete
 }: UserMessageProps): React.JSX.Element {
@@ -791,6 +793,11 @@ export function UserMessage({
               </DialogContent>
             </Dialog>
           </div>
+        )}
+        {!editing && createdAt && (
+          <p className="mt-1 pr-1 text-right text-[10px] text-muted-foreground/50 tabular-nums">
+            {new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
         )}
         {!editing && displayText.length > 50 && (
           <p className="mt-1 pr-1 text-right text-[10px] text-muted-foreground/0 transition-colors tabular-nums group-hover/user:text-muted-foreground/40">

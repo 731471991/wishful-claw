@@ -1,4 +1,4 @@
-// Extracted types, interfaces, and constants for AssistantMessage
+﻿// Extracted types, interfaces, and constants for AssistantMessage
 
 import type { ContentBlock, RequestDebugInfo, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ToolCallState, ToolCallStatus, RequestRetryState } from '@renderer/lib/agent/types'
@@ -10,6 +10,7 @@ export type AssistantRenderMode = 'default' | 'transcript' | 'static'
 export interface AssistantMessageProps {
   content: string | ContentBlock[]
   isStreaming?: boolean
+  createdAt?: number
   usage?: TokenUsage
   toolResults?: Map<string, { content: ToolResultContent; isError?: boolean }>
   liveToolCallMap?: Map<string, ToolCallState> | null

@@ -872,7 +872,14 @@ export function InputArea({
     },
     [insertPluginPrompt, insertSlashCommand, selectSlashSkill]
   )
-  const hasApiKey = !!activeProvider?.apiKey || activeProvider?.requiresApiKey === false
+  const activeProviderForAuth = useProviderStore(
+    useShallow((s) => {
+      const provider = s.providers.find((p) => p.id === s.activeProviderId)
+      return provider ? { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey } : null
+    })
+  )
+  const providersCount = useProviderStore((s) => s.providers.length)
+  const hasApiKey = providersCount === 0 || !!activeProviderForAuth?.apiKey || activeProviderForAuth?.requiresApiKey === false
   const needsWorkingFolder = projectScoped && !workingFolder && Boolean(onSelectFolder)
   const planMode = useUIStore((s) =>
     draftSessionId ? Boolean(s.planModesBySession[draftSessionId]) : pendingPlanMode

@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Workspace.Memory;
@@ -50,9 +50,10 @@ internal static class PromptBuilder
             parts.Add(BuildContextDocuments(docs, budget));
         }
 
-        // ── Memory Context (MEMORY.md Critical sections) ──
+        // ── Memory Guidelines + Memory Context (MEMORY.md) ──
         if (profile == PromptProfile.Main)
         {
+            parts.Add(BuildMemoryGuidelines());
             parts.Add(BuildMemoryContext(workingFolder));
         }
 
@@ -87,8 +88,8 @@ You will receive a user's description and generate persona files in response.
         }
 
         return """
-You are **WishfulClaw**, an agentic AI assistant running as a desktop application.
-You help users with coding, research, file operations, shell commands, and other development-adjacent tasks.
+You are running inside **WishfulClaw**, a desktop AI agent application.
+The application provides tools for coding, research, file operations, shell commands, and other development-adjacent tasks.
 Be mindful that you are not the only one working in this computing environment. Do not overstep your bounds or create unnecessary files.
 """;
     }
@@ -154,6 +155,36 @@ Be mindful that you are not the only one working in this computing environment. 
 
         parts.Add("</persona>");
         return string.Join('\n', parts);
+    }
+
+    private static string BuildMemoryGuidelines()
+    {
+        return """
+<memory_guidelines>
+You have two memory tiers. Use them strategically:
+
+**Hot Memory (MEMORY.md)** — always loaded into your system prompt at startup.
+- Use `memory_hot_read` to see current hot memory contents.
+- Use `memory_hot_write` to add/update/delete sections.
+- **What belongs here:** User identity, preferences, relationship context, core project background, critical decisions that shape every future conversation. Things you need to know *before* the user says anything.
+- **What does NOT belong here:** Transient facts, searchable knowledge, session-specific details, things that change frequently.
+- **Keep it lean:** Hot memory has a character budget. If it grows too large, proactively use `memory_hot_write` to move less-critical sections out (delete the section, the data still exists in SQLite if previously appended).
+- **Proactive judgment:** When the user shares important personal context, long-term preferences, or cross-session decisions, you should *proactively* write it to hot memory without being asked. Use your judgment — not every detail needs to be in hot memory, only what you would want to know at the start of every new conversation.
+
+**Database Memory (SQLite)** — searchable via `memory_search`, persisted across sessions.
+- Use `memory_append` to record facts, decisions, insights worth remembering.
+- Use `memory_search` to find relevant past memories by keyword.
+- Use `memory_update` to correct or deprecate outdated entries (set status='deprecated').
+- **What belongs here:** Everything worth remembering that isn't hot-memory-critical. Project decisions, technical notes, user preferences that are contextual rather than always-needed.
+- **All writes go to SQLite first.** If something is also hot-memory-critical, additionally call `memory_hot_write`.
+
+**Workflow:**
+1. At conversation start, hot memory is already in your system prompt — no need to call `memory_hot_read` unless you need to refresh mid-conversation.
+2. When the user shares important context, judge: is this something I should know at the start of every future conversation? If yes → `memory_hot_write`. Regardless → `memory_append` for the searchable record.
+3. When you need to recall past information, use `memory_search` with relevant keywords.
+4. When you discover a memory is wrong or outdated, use `memory_update` to correct or deprecate it.
+</memory_guidelines>
+""";
     }
 
     private static string BuildMemoryContext(string? workingFolder)

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SqlSugar;
+using WishfulClaw.Core.Protocol;
 
 namespace WishfulClaw.Worker.Modules.Db;
 
@@ -66,42 +67,78 @@ internal static class DbClient
             });
 
             // CodeFirst 建表（已存在则跳过）
+            WorkerLog.Info("DbClient: starting CodeFirst.InitTables");
             _db.CodeFirst.InitTables(
                 typeof(ProjectEntity),
                 typeof(SessionEntity),
-                typeof(MessageEntity),
-                typeof(MemoryArchiveEntity));
+                typeof(MessageEntity));
+            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (3 entities, MemoryArchiveEntity excluded)");
 
-            // FTS5 虚拟表（记忆全文搜索）
+            // memory_entries 表（手动创建，不通过 CodeFirst）
+            WorkerLog.Info("DbClient: creating memory_entries table");
+            _db!.Ado.ExecuteCommand(
+                "CREATE TABLE IF NOT EXISTS memory_entries (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "scope TEXT NOT NULL DEFAULT 'global', " +
+                "title TEXT, " +
+                "content TEXT NOT NULL DEFAULT '', " +
+                "priority TEXT NOT NULL DEFAULT 'standard', " +
+                "status TEXT NOT NULL DEFAULT 'active', " +
+                "created_at INTEGER NOT NULL, " +
+                "updated_at INTEGER NOT NULL);");
+            WorkerLog.Info("DbClient: memory_entries table ready");
+
+            // FTS5 虚拟表（记忆全文搜索）— 外部内容表模式 + trigram 分词器
+            // content='memory_entries' 让 FTS5 通过主表 rowid 关联，支持 'delete' 命令
+            WorkerLog.Info("DbClient: creating memory_fts virtual table (external content)");
             _db!.Ado.ExecuteCommand(
                 "CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(" +
-                "scope UNINDEXED, key UNINDEXED, title, content, tier UNINDEXED);");
+                "title, content, content='memory_entries', content_rowid='id', tokenize='trigram');");
+            WorkerLog.Info("DbClient: memory_fts virtual table ready");
 
-            // memory_archive → memory_fts 同步触发器
-            _db.Ado.ExecuteCommand(
-                "CREATE TRIGGER IF NOT EXISTS memory_archive_ai AFTER INSERT ON memory_archive BEGIN " +
-                "INSERT INTO memory_fts(scope, key, title, content, tier) " +
-                "VALUES (new.scope, new.key, new.title, new.content, 'cold'); END;");
-            _db.Ado.ExecuteCommand(
-                "CREATE TRIGGER IF NOT EXISTS memory_archive_ad AFTER DELETE ON memory_archive BEGIN " +
-                "INSERT INTO memory_fts(memory_fts, scope, key, title, content, tier) " +
-                "VALUES ('delete', old.scope, old.key, old.title, old.content, 'cold'); END;");
-            _db.Ado.ExecuteCommand(
-                "CREATE TRIGGER IF NOT EXISTS memory_archive_au AFTER UPDATE ON memory_archive BEGIN " +
-                "INSERT INTO memory_fts(memory_fts, scope, key, title, content, tier) " +
-                "VALUES ('delete', old.scope, old.key, old.title, old.content, 'cold'); " +
-                "INSERT INTO memory_fts(scope, key, title, content, tier) " +
-                "VALUES (new.scope, new.key, new.title, new.content, 'cold'); END;");
+            // memory_entries → memory_fts 同步触发器（自动维护索引）
+            // 使用原生 Microsoft.Data.Sqlite 执行触发器创建，避免 SqlSugar ExecuteCommand 对 SQL 做预处理
+            var triggerSqls = new[]
+            {
+                "CREATE TRIGGER IF NOT EXISTS memory_entries_ai AFTER INSERT ON memory_entries BEGIN " +
+                "INSERT INTO memory_fts(rowid, title, content) " +
+                "VALUES (new.id, COALESCE(new.title, ''), new.content); END;",
+                "CREATE TRIGGER IF NOT EXISTS memory_entries_ad AFTER DELETE ON memory_entries BEGIN " +
+                "INSERT INTO memory_fts(memory_fts, title, content) " +
+                "VALUES ('delete', COALESCE(old.title, ''), old.content); END;",
+                "CREATE TRIGGER IF NOT EXISTS memory_entries_au_del AFTER UPDATE ON memory_entries BEGIN " +
+                "INSERT INTO memory_fts(memory_fts, title, content) " +
+                "VALUES ('delete', COALESCE(old.title, ''), old.content); END;",
+                "CREATE TRIGGER IF NOT EXISTS memory_entries_au_ins AFTER UPDATE ON memory_entries BEGIN " +
+                "INSERT INTO memory_fts(rowid, title, content) " +
+                "VALUES (new.id, COALESCE(new.title, ''), new.content); END;"
+            };
+            WorkerLog.Info($"DbClient: creating {triggerSqls.Length} triggers via raw SqliteCommand");
+            using (var trigConn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}"))
+            {
+                trigConn.Open();
+                foreach (var tsql in triggerSqls)
+                {
+                    using var tcmd = trigConn.CreateCommand();
+                    tcmd.CommandText = tsql;
+                    tcmd.ExecuteNonQuery();
+                }
+                WorkerLog.Info("DbClient: all triggers created successfully");
+            }
 
             // ── Migrations: add columns that CodeFirst doesn't add to existing tables ──
+            WorkerLog.Info("DbClient: running EnsureColumn migrations");
             EnsureColumn(_db, "sessions", "persona_id", "TEXT");
+            WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;
+            WorkerLog.Info($"DbClient: initialization completed successfully dbPath={dbPath}");
             return new DbInitializeResult(true, dbPath, null);
         }
         catch (Exception ex)
         {
             _initialized = false;
+            WorkerLog.Error($"DbClient: initialization FAILED at dbPath={dbPath} error={ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
             return new DbInitializeResult(false, dbPath, ex.Message);
         }
     }

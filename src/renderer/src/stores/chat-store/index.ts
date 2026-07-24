@@ -193,7 +193,9 @@ export const useChatStore = create<ChatStore>()(
         if (!isChatStreamEvent(event)) continue
 
         switch (event.type) {
-          case 'text_delta':
+          case 'text_delta': {
+            // Clear retry state — retry succeeded, actual content is arriving
+            useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
             set((state) => {
               const session = state.sessions.find((s) => s.id === targetSessionId)
               if (session) {
@@ -218,6 +220,7 @@ export const useChatStore = create<ChatStore>()(
               }
             })
             break
+          }
 
           case 'iteration_start':
             set((state) => {
@@ -529,6 +532,17 @@ export const useChatStore = create<ChatStore>()(
               }
             }
             break
+
+          case 'request_retry': {
+            useAgentStore.getState().setSessionRequestRetryState(targetSessionId, {
+              attempt: event.attempt,
+              maxAttempts: event.maxAttempts,
+              delayMs: event.delayMs,
+              statusCode: event.statusCode,
+              reason: event.reason
+            })
+            break
+          }
 
           case 'request_debug': {
             if (event.debugInfo) {

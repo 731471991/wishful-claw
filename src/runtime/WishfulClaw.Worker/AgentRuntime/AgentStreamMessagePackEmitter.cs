@@ -75,6 +75,10 @@ internal static class AgentStreamMessagePackEmitter
         WriteOptionalMessages(writer, "compactArtifacts", streamEvent.CompactArtifacts);
         WriteOptionalMessages(writer, "messages", streamEvent.Messages);
         WriteOptionalString(writer, "toolUseId", streamEvent.ToolUseId);
+        WriteOptionalInt(writer, "attempt", streamEvent.Attempt);
+        WriteOptionalInt(writer, "maxAttempts", streamEvent.MaxAttempts);
+        WriteOptionalInt(writer, "delayMs", streamEvent.DelayMs);
+        WriteOptionalInt(writer, "statusCode", streamEvent.StatusCode);
     }
 
     private static int CountEventProperties(AgentRuntimeStreamEvent streamEvent)
@@ -107,6 +111,10 @@ internal static class AgentStreamMessagePackEmitter
         if (streamEvent.CompactArtifacts is not null) count++;
         if (streamEvent.Messages is not null) count++;
         if (streamEvent.ToolUseId is not null) count++;
+        if (streamEvent.Attempt.HasValue) count++;
+        if (streamEvent.MaxAttempts.HasValue) count++;
+        if (streamEvent.DelayMs.HasValue) count++;
+        if (streamEvent.StatusCode.HasValue) count++;
         return count;
     }
 

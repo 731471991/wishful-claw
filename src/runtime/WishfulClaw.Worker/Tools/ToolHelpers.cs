@@ -30,6 +30,17 @@ internal static class ToolHelpers
         return defaultValue;
     }
 
+    public static long GetLong(JsonElement element, string name, long defaultValue = 0)
+    {
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(name, out var prop) &&
+            prop.ValueKind == JsonValueKind.Number)
+        {
+            return prop.GetInt64();
+        }
+        return defaultValue;
+    }
+
     public static bool GetBool(JsonElement element, string name, bool defaultValue)
     {
         if (element.ValueKind == JsonValueKind.Object &&

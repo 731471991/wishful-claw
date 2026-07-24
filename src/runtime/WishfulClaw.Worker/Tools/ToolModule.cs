@@ -36,10 +36,11 @@ public sealed class ToolModule : IWorkerModule
         // Memory tools — shared store + search instances
         var memoryStore = new MemoryStore();
         var memorySearch = new Memory.MemoryFtsService();
-        registry.Register(new MemoryAppendTool(memoryStore, memorySearch));
+        registry.Register(new MemoryHotReadTool(memoryStore));
+        registry.Register(new MemoryHotWriteTool(memoryStore));
+        registry.Register(new MemoryAppendTool());
+        registry.Register(new MemoryUpdateTool());
         registry.Register(new MemorySearchTool(memorySearch));
-        registry.Register(new MemoryReadTool(memoryStore));
-        registry.Register(new MemoryWriteTool(memoryStore, memorySearch));
 
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;

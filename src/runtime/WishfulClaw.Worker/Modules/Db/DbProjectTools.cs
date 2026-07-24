@@ -30,6 +30,7 @@ internal static class DbProjectTools
         }
         catch (Exception ex)
         {
+            WorkerLog.Error($"DbProjectTools.List failed: {ex.GetType().Name}: {ex.Message} | StackTrace: {ex.StackTrace}");
             return WorkerResponse.Error(ex.Message);
         }
     }

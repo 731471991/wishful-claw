@@ -53,7 +53,7 @@ function App(): React.JSX.Element | null {
   }
 
   return (
-    <ThemeProvider defaultTheme="dark">
+    <ThemeProvider defaultTheme="system">
       <ThemeRuntimeSync />
       <ErrorBoundary>
         <TooltipProvider delayDuration={0}>

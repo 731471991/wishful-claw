@@ -33,17 +33,19 @@ function ProviderPanel(): React.JSX.Element {
   const providers = useProviderStore((s) => s.providers)
   const deleteProvider = useProviderStore((s) => s.deleteProvider)
 
-  const [selectedId, setSelectedId] = useState<string | null>(
-    () => providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null
-  )
+  const activeProviderId = useProviderStore((s) => s.activeProviderId)
+  // userSelectedId tracks manual user clicks; default selection derives from store state
+  const [userSelectedId, setUserSelectedId] = useState<string | null>(null)
+
   const [searchQuery, setSearchQuery] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null)
 
+  const selectedId = userSelectedId ?? activeProviderId ?? providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null
   const resolvedSelectedId =
     selectedId && providers.some((p) => p.id === selectedId)
       ? selectedId
-      : (providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null)
+      : (activeProviderId ?? providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null)
 
   const selectedProvider = resolvedSelectedId
     ? (providers.find((p) => p.id === resolvedSelectedId) ?? null)
@@ -74,7 +76,7 @@ function ProviderPanel(): React.JSX.Element {
         <ContextMenuTrigger asChild>
           <button
             type="button"
-            onClick={() => setSelectedId(provider.id)}
+            onClick={() => setUserSelectedId(provider.id)}
             className={cn(
               'group/provider relative mt-1 flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors',
               resolvedSelectedId === provider.id
@@ -209,7 +211,7 @@ function ProviderPanel(): React.JSX.Element {
               onClick={() => {
                 if (deleteTarget) {
                   deleteProvider(deleteTarget.id)
-                  if (selectedId === deleteTarget.id) setSelectedId(null)
+                  if (selectedId === deleteTarget.id) setUserSelectedId(null)
                   toast.success(t('provider.list.providerDeleted'))
                 }
                 setDeleteTarget(null)

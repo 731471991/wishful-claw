@@ -70,7 +70,16 @@ public sealed class LocalIpcWorkerServer
             }
 
             WorkerLog.Debug("client connected transport=named-pipe");
-            var sawTraffic = await HandleClientAsync(pipe, cancellationToken);
+            bool sawTraffic;
+            try
+            {
+                sawTraffic = await HandleClientAsync(pipe, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                WorkerLog.Error($"HandleClientAsync crashed (named-pipe) error={ex.GetType().Name}: {ex.Message}");
+                sawTraffic = true; // treat as disconnected, let supervisor respawn
+            }
             if (sawTraffic)
             {
                 WorkerLog.Info("client disconnected transport=named-pipe; exiting so the supervisor owns respawn");
@@ -114,7 +123,15 @@ public sealed class LocalIpcWorkerServer
                 using (client)
                 {
                     await using var stream = new NetworkStream(client, ownsSocket: true);
-                    sawTraffic = await HandleClientAsync(stream, cancellationToken);
+                    try
+                    {
+                        sawTraffic = await HandleClientAsync(stream, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        WorkerLog.Error($"HandleClientAsync crashed (unix-socket) error={ex.GetType().Name}: {ex.Message}");
+                        sawTraffic = true;
+                    }
                 }
 
                 if (sawTraffic)

@@ -55,7 +55,24 @@ internal static class AgentRuntimeTools
 
         var backgroundContext = context.ForBackgroundOperation();
         _ = Task.Run(
-            async () => await ExecuteRunAsync(state, backgroundContext),
+            async () =>
+            {
+                try
+                {
+                    await ExecuteRunAsync(state, backgroundContext);
+                }
+                catch (Exception ex)
+                {
+                    // ExecuteRunAsync already has internal try-catch,
+                    // but if EmitAsync itself fails (e.g. client disconnected),
+                    // the exception would escape as an unobserved task exception.
+                    // Catch it here to prevent process crash.
+                    WorkerLog.Error($"agent run outer crash runId={state.RunId} error={ex.GetType().Name}: {ex.Message}");
+                    try { ActiveRuns.TryRemove(state.RunId, out _); } catch { }
+                    try { RunSlots.Release(); } catch { }
+                    try { state.Dispose(); } catch { }
+                }
+            },
             CancellationToken.None);
 
         return Task.FromResult(WorkerResponse.Json(

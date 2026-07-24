@@ -71,9 +71,10 @@ internal static partial class OpenAIChatProvider
             request, HttpCompletionOption.ResponseHeadersRead, state.CancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(state.CancellationToken);
-            throw new InvalidOperationException(
-                $"OpenAI-compatible chat request failed HTTP {(int)response.StatusCode}: {errorBody}");
+            throw await ProviderHttpException.CreateAsync(
+                "OpenAI-compatible chat",
+                response,
+                state.CancellationToken);
         }
 
         await using var responseStream = await response.Content.ReadAsStreamAsync(state.CancellationToken);

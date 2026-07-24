@@ -2,79 +2,172 @@ import { toolRegistry } from '../agent/tool-registry'
 import { encodeStructuredToolResult } from './tool-result-format'
 import type { ToolHandler } from './tool-types'
 
-const MEMORY_READ_FILES = ['memory_summary.md', 'MEMORY.md', 'USER.md', 'raw_memories.md'] as const
-
-function encodeNativeOnlyMemoryResult(toolName: string): string {
+function nativeOnlyResult(toolName: string): string {
   return encodeStructuredToolResult({
     error: `${toolName} execution has migrated to .NET Native Worker.`
   })
 }
 
-const listHandler: ToolHandler = {
+const hotReadHandler: ToolHandler = {
   definition: {
-    name: 'MemoryList',
+    name: 'memory_hot_read',
     description:
-      'List available OpenCowork memory roots. Use before reading memory so citations can distinguish global and project memory.',
+      'Read the full hot memory (MEMORY.md). Returns all sections with their content. ' +
+      'Hot memory contains the most important, always-loaded context.',
     inputSchema: {
       type: 'object',
       properties: {
         scope: {
           type: 'string',
-          enum: ['global', 'project', 'both'],
-          description: 'Which memory scope to list. Defaults to both.'
+          description: "Scope: 'global' or 'project'. Defaults to current project."
         }
       },
       required: []
     }
   },
-  execute: async () => encodeNativeOnlyMemoryResult('MemoryList'),
+  execute: async () => nativeOnlyResult('memory_hot_read'),
   requiresApproval: () => false
 }
 
-const readHandler: ToolHandler = {
+const hotWriteHandler: ToolHandler = {
   definition: {
-    name: 'MemoryRead',
+    name: 'memory_hot_write',
     description:
-      'Read a scoped OpenCowork memory file. The result includes scope, memoryRootId, path, and numbered lines for citation.',
+      'Write, update, or delete a section in hot memory (MEMORY.md). ' +
+      'Set content to empty string to delete the section.',
     inputSchema: {
       type: 'object',
       properties: {
-        scope: { type: 'string', enum: ['global', 'project', 'both'] },
-        memoryRootId: { type: 'string', description: 'Specific memory root id from MemoryList' },
-        file: {
+        section: {
           type: 'string',
-          enum: [...MEMORY_READ_FILES],
-          description: 'Memory file to read. Defaults to memory_summary.md.'
+          description: 'Section title (the ## heading in MEMORY.md)'
+        },
+        content: {
+          type: 'string',
+          description: 'Markdown content for the section. Empty string to delete.'
+        },
+        scope: {
+          type: 'string',
+          description: "Scope: 'global' or 'project'. Defaults to current project."
         }
       },
-      required: []
+      required: ['section']
     }
   },
-  execute: async () => encodeNativeOnlyMemoryResult('MemoryRead'),
+  execute: async () => nativeOnlyResult('memory_hot_write'),
+  requiresApproval: () => false
+}
+
+const appendHandler: ToolHandler = {
+  definition: {
+    name: 'memory_append',
+    description:
+      'Append a new memory entry to the database. ' +
+      'Returns the entry id for future updates via memory_update.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        content: {
+          type: 'string',
+          description: 'The memory entry to append. Markdown text.'
+        },
+        title: {
+          type: 'string',
+          description: 'Short title for the memory entry. Auto-generated if omitted.'
+        },
+        priority: {
+          type: 'string',
+          enum: ['permanent', 'lasting', 'standard', 'ephemeral'],
+          default: 'standard',
+          description: 'Memory priority level'
+        },
+        scope: {
+          type: 'string',
+          description: "Memory scope: 'global' or 'project'. Defaults to current project."
+        }
+      },
+      required: ['content']
+    }
+  },
+  execute: async () => nativeOnlyResult('memory_append'),
+  requiresApproval: () => false
+}
+
+const updateHandler: ToolHandler = {
+  definition: {
+    name: 'memory_update',
+    description:
+      'Update a memory entry in the database by id. Can update content, priority, or mark as deprecated.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'number',
+          description: 'The memory entry id (from memory_search results)'
+        },
+        content: {
+          type: 'string',
+          description: 'New content. Omit to keep existing.'
+        },
+        priority: {
+          type: 'string',
+          enum: ['permanent', 'lasting', 'standard', 'ephemeral'],
+          description: 'New priority. Omit to keep existing.'
+        },
+        status: {
+          type: 'string',
+          enum: ['active', 'deprecated'],
+          description: "New status. Use 'deprecated' to mark as outdated."
+        }
+      },
+      required: ['id']
+    }
+  },
+  execute: async () => nativeOnlyResult('memory_update'),
   requiresApproval: () => false
 }
 
 const searchHandler: ToolHandler = {
   definition: {
-    name: 'MemorySearch',
+    name: 'memory_search',
     description:
-      'Search scoped OpenCowork memory files. Results include scope, memoryRootId, path, line, and text for citation.',
+      'Search memory entries in the database by keyword. ' +
+      'Results include entry id — use memory_update to modify entries.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Case-insensitive text to search for' },
-        scope: { type: 'string', enum: ['global', 'project', 'both'] },
-        limit: { type: 'number', description: 'Maximum matches to return, default 20' }
+        query: {
+          type: 'string',
+          description: 'Search query'
+        },
+        scope: {
+          type: 'string',
+          description: "Scope filter: 'global', 'project', or omit to search all"
+        },
+        include_deprecated: {
+          type: 'boolean',
+          default: false,
+          description: 'Include deprecated entries in results'
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum results to return',
+          default: 10,
+          minimum: 1,
+          maximum: 50
+        }
       },
       required: ['query']
     }
   },
-  execute: async () => encodeNativeOnlyMemoryResult('MemorySearch'),
+  execute: async () => nativeOnlyResult('memory_search'),
   requiresApproval: () => false
 }
 
 export function registerMemoryTools(): void {
-  toolRegistry.register(listHandler)
-  toolRegistry.register(readHandler)
+  toolRegistry.register(hotReadHandler)
+  toolRegistry.register(hotWriteHandler)
+  toolRegistry.register(appendHandler)
+  toolRegistry.register(updateHandler)
   toolRegistry.register(searchHandler)
 }

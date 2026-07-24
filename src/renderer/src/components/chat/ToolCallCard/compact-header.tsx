@@ -116,7 +116,7 @@ function getBuiltinToolIcon(name: string): React.ReactNode {
   if (name === 'ExitPlanMode') return <LogOut className="size-3.5" />
   if (name === 'Skill') return <FileText className="size-3.5" />
   if (name.endsWith('goal')) return <Target className="size-3.5" />
-  if (name.startsWith('Memory')) return <Database className="size-3.5" />
+  if (name.startsWith('memory_')) return <Database className="size-3.5" />
   return <Box className="size-3.5" />
 }
 
@@ -127,7 +127,7 @@ export function getToolNamespace(name: string): string {
   if (name.startsWith('Browser') || name === 'WebSearch' || name === 'WebFetch') return 'web'
   if (name.startsWith('Task')) return 'tasks'
   if (name.startsWith('Cron')) return 'cron'
-  if (name.startsWith('Memory')) return 'memory'
+  if (name.startsWith('memory_')) return 'memory'
   if (name.endsWith('goal')) return 'goal'
   if (name === 'visualize_show_widget') return 'widget'
   if (name === 'Notify') return 'notify'
@@ -390,9 +390,6 @@ export function buildCompactToolHeaderModel({
       'get_goal',
       'create_goal',
       'update_goal',
-      'MemoryList',
-      'MemoryRead',
-      'MemorySearch'
     ].includes(name)
   ) {
     const primary = firstStringInput(input, [
@@ -410,6 +407,60 @@ export function buildCompactToolHeaderModel({
       primary: primary || summary || displayName,
       displayName
     })
+  }
+
+  if (name === 'memory_hot_read') {
+    const scope = firstStringInput(input, ['scope'])
+    return {
+      icon: getBuiltinToolIcon(name),
+      primary: scope || summary || displayName,
+      secondary: undefined,
+      badges: [],
+      title: scope || summary || displayName
+    }
+  }
+
+  if (name === 'memory_hot_write') {
+    const section = firstStringInput(input, ['section'])
+    return {
+      icon: getBuiltinToolIcon(name),
+      primary: section || summary || displayName,
+      secondary: undefined,
+      badges: [],
+      title: section || summary || displayName
+    }
+  }
+
+  if (name === 'memory_search') {
+    const query = firstStringInput(input, ['query'])
+    const scope = firstStringInput(input, ['scope'])
+    return {
+      icon: getBuiltinToolIcon(name),
+      primary: query ? `/${query}/` : (summary || displayName),
+      secondary: scope || undefined,
+      badges: [],
+      title: [query, scope].filter(Boolean).join('\n') || summary || displayName
+    }
+  }
+
+  if (name === 'memory_append') {
+    return {
+      icon: getBuiltinToolIcon(name),
+      primary: summary || displayName,
+      badges: [],
+      title: summary || displayName
+    }
+  }
+
+  if (name === 'memory_update') {
+    const id = firstStringInput(input, ['id'])
+    return {
+      icon: getBuiltinToolIcon(name),
+      primary: id ? `#${id}` : (summary || displayName),
+      secondary: undefined,
+      badges: [],
+      title: summary || displayName
+    }
   }
 
   return {

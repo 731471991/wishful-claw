@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import Markdown from 'react-markdown'
 import { Users, CircleUserRound, ChevronDown } from 'lucide-react'
 import { SlideIn } from '@renderer/components/animate-ui'
@@ -52,10 +52,6 @@ interface MessageItemProps {
 function getContentFallbackSignal(content: UnifiedMessage['content']): string {
   if (typeof content === 'string') return `s:${content.length}`
   return `a:${content.length}`
-}
-
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
 function AgentWakeNotification({ content }: { content: string }): React.JSX.Element {
@@ -170,6 +166,7 @@ function MessageItemInner({
             meta={message.meta}
             source={message.source}
             isLast={isLastUserMessage}
+            createdAt={message.createdAt}
             onEdit={onEditUserMessage}
             onDelete={onDeleteMessage}
           />
@@ -194,6 +191,7 @@ function MessageItemInner({
             onContinue={onContinueAssistantMessage}
             onDelete={onDeleteMessage}
             liveToolCallMap={liveToolCallMap}
+            createdAt={message.createdAt}
             renderMode={renderMode}
             orchestrationRun={orchestrationRun}
             hiddenToolUseIds={hiddenToolUseIds}
@@ -220,9 +218,6 @@ function MessageItemInner({
     // cost and is neutralized globally by data-animations='disabled'.
     return (
       <div className="group/ts relative animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
-        <span className="absolute -left-12 top-1 hidden group-hover/ts:block text-[10px] text-muted-foreground/40 whitespace-nowrap">
-          {formatTime(message.createdAt)}
-        </span>
         {inner}
       </div>
     )
@@ -230,9 +225,6 @@ function MessageItemInner({
 
   return (
     <SlideIn className="group/ts relative" direction="up" offset={10} duration={0.3}>
-      <span className="absolute -left-12 top-1 hidden group-hover/ts:block text-[10px] text-muted-foreground/40 whitespace-nowrap">
-        {formatTime(message.createdAt)}
-      </span>
       {inner}
     </SlideIn>
   )

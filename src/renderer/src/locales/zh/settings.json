@@ -121,7 +121,17 @@
       "providerDeleted": "服务商已删除",
       "deleteProviderConfirm": "服务商已删除"
     },
-    "add": "添加",
+    "add": {
+      "title": "添加自定义服务商",
+      "desc": "连接自定义 OpenAI 兼容 API",
+      "name": "服务商名称",
+      "namePlaceholder": "我的服务商",
+      "type": "协议类型",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "baseUrlHint": "兼容 OpenAI 格式的 API 地址",
+      "added": "服务商 {{name}} 已添加"
+    },
     "config": {
       "apiKey": "API Key",
       "apiKeyPlaceholder": "输入 API Key",

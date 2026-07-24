@@ -10,22 +10,39 @@ public static class WorkerLog
 
     public static int SlowRequestMs { get; } = ResolveSlowRequestMs();
 
+    /// <summary>
+    /// Minimum log level. Levels: DEBUG=0, INFO=1, WARN=2, ERROR=3.
+    /// Default is WARN (production). Set WISHFUL_CLAW_LOG_LEVEL=info or debug for more verbosity.
+    /// </summary>
+    public static int MinLevel { get; } = ResolveLogLevel();
+
+    public const int LevelDebug = 0;
+    public const int LevelInfo = 1;
+    public const int LevelWarn = 2;
+    public const int LevelError = 3;
+
     public static void Info(string message)
     {
-        Write("INFO", message);
+        if (MinLevel <= LevelInfo)
+            Write("INFO", message);
     }
 
     public static void Warn(string message)
     {
-        Write("WARN", message);
+        if (MinLevel <= LevelWarn)
+            Write("WARN", message);
+    }
+
+    public static void Error(string message)
+    {
+        if (MinLevel <= LevelError)
+            Write("ERROR", message);
     }
 
     public static void Debug(string message)
     {
-        if (DebugEnabled)
-        {
+        if (MinLevel <= LevelDebug)
             Write("DEBUG", message);
-        }
     }
 
     public static void RequestCompleted(
@@ -76,6 +93,27 @@ public static class WorkerLog
             value > 0
                 ? value
                 : DefaultSlowRequestMs;
+    }
+
+    /// <summary>
+    /// Resolve min log level from WISHFUL_CLAW_LOG_LEVEL env var.
+    /// Default: warn (production — only warnings and errors).
+    /// </summary>
+    private static int ResolveLogLevel()
+    {
+        // WISHFUL_CLAW_DEBUG=true is shorthand for log level=debug (backward compat)
+        if (DebugEnabled)
+            return LevelDebug;
+
+        var raw = Environment.GetEnvironmentVariable("WISHFUL_CLAW_LOG_LEVEL");
+        return raw?.Trim().ToLowerInvariant() switch
+        {
+            "debug" or "0" => LevelDebug,
+            "info" or "1" => LevelInfo,
+            "warn" or "warning" or "2" => LevelWarn,
+            "error" or "3" => LevelError,
+            _ => LevelWarn // default: production
+        };
     }
 
     private static bool? ReadBooleanEnvironment(string name)

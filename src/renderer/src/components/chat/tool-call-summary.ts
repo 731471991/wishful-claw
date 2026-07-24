@@ -279,6 +279,28 @@ export function inputSummary(
     const kind = widgetCode.startsWith('<svg') ? 'SVG' : 'HTML'
     return title ? `${title} (${kind})` : kind
   }
+  if (name === 'memory_hot_read') {
+    const scope = typeof input.scope === 'string' ? input.scope : ''
+    return scope ? `read (${scope})` : 'read hot'
+  }
+  if (name === 'memory_hot_write') {
+    const section = typeof input.section === 'string' ? input.section.slice(0, 60) : ''
+    return section || 'write section'
+  }
+  if (name === 'memory_search') {
+    const query = typeof input.query === 'string' ? input.query.slice(0, 60) : ''
+    return query ? `search: ${query}` : 'search memory'
+  }
+  if (name === 'memory_append') {
+    const priority = typeof input.priority === 'string' ? input.priority : 'standard'
+    const content = typeof input.content === 'string' ? input.content.slice(0, 50) : ''
+    return content ? `${priority}: ${content}` : `append (${priority})`
+  }
+  if (name === 'memory_update') {
+    const id = typeof input.id === 'number' ? String(input.id) : ''
+    const status = typeof input.status === 'string' ? input.status : ''
+    return id ? `update #${id}${status ? ` (${status})` : ''}` : 'update'
+  }
   const keys = Object.keys(input)
   if (keys.length === 0) return ''
   const first = input[keys[0]]

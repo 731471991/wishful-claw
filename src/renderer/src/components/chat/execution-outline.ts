@@ -99,9 +99,12 @@ const ORDINARY_CONTEXT_TOOL_NAMES = new Set([
   'LS',
   'WebFetch',
   'WebSearch',
-  'MemoryList',
-  'MemoryRead',
-  'MemorySearch'
+  'memory_hot_read',
+  'memory_hot_write',
+  'memory_append',
+  'memory_update',
+  'memory_search',
+  'memory_append'
 ])
 const FILE_CHANGE_TOOL_NAMES = new Set(['Write', 'Edit', 'Delete', 'NotebookEdit', 'SavePlan'])
 const INTERACTIVE_TOOL_NAMES = new Set([

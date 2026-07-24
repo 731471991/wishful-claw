@@ -44,6 +44,7 @@ import {
   OutputBlock,
   ReadOutputBlock
 } from './output-blocks/text-output'
+import { MemoryOutputBlock } from './output-blocks/memory-output'
 import {
   buildCompactToolHeaderModel,
   compactStatusLabel,
@@ -239,9 +240,10 @@ function ToolCallCardInner({
     shouldRenderOutputPanels &&
     (hasFocusedExpandedOutput(name, output, outputText) || bashHasFocusedOutput)
   const suppressSkillOutput = name === 'Skill'
-  const shouldShowStructuredInput = !(showSettledWriteContent || hasFocusedOutput)
+  const isMemoryTool = name.startsWith("memory_")
+  const shouldShowStructuredInput = !(showSettledWriteContent || hasFocusedOutput) && !isMemoryTool
   const shouldShowResultHeader =
-    !suppressSkillOutput &&
+    !suppressSkillOutput && !isMemoryTool &&
     shouldRenderOutputPanels &&
     (Boolean(output) ||
       (isCommandTool &&
@@ -528,8 +530,14 @@ function ToolCallCardInner({
               outputText && <MarkdownOutputBlock output={outputText} />}
             {shouldRenderOutputPanels &&
               output &&
+              name.startsWith('memory_') &&
+              !(status === 'streaming' || status === 'running') &&
+              outputText && <MemoryOutputBlock name={name} input={input} output={outputText} />}
+            {shouldRenderOutputPanels &&
+              output &&
               !extensionToolResult &&
               !name.startsWith('codegraph_') &&
+              !name.startsWith('memory_') &&
               ![
                 'Read',
                 'Bash',

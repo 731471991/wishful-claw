@@ -121,7 +121,17 @@
       "providerDeleted": "Provider deleted",
       "deleteProviderConfirm": "Provider deleted"
     },
-    "add": "Add",
+    "add": {
+      "title": "Add Custom Provider",
+      "desc": "Connect a custom OpenAI-compatible API",
+      "name": "Provider Name",
+      "namePlaceholder": "My Provider",
+      "type": "Protocol Type",
+      "baseUrl": "Base URL",
+      "baseUrlPlaceholder": "https://api.example.com/v1",
+      "baseUrlHint": "OpenAI-compatible API endpoint",
+      "added": "Provider {{name}} added"
+    },
     "config": {
       "apiKey": "API Key",
       "apiKeyPlaceholder": "Enter API Key",

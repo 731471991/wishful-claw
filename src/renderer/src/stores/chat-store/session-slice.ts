@@ -1,7 +1,7 @@
-import { nanoid } from 'nanoid'
+﻿import { nanoid } from 'nanoid'
 import type { StateCreator } from 'zustand'
 import type { Session, CreateSessionOptions, ChatMessage } from './types'
-import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage } from './db-helpers'
+import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage, dbGetMessageCount } from './db-helpers'
 
 export interface SessionSlice {
   sessions: Session[]
@@ -454,20 +454,23 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
     }
 
     try {
-      // Load the most recent messages (like OpenCowork: tail page)
-      const limit = Math.min(_limit ?? 100, knownCount)
-      const offset = Math.max(0, knownCount - limit)
+      // Load the most recent messages (like OpenCowork: tail page).
+      // Query the actual count from DB — don't trust session.messageCount,
+      // which can be stale and cause the newest messages to be dropped.
+      const actualCount = await dbGetMessageCount(sessionId)
+      const limit = _limit ?? 100
+      const offset = Math.max(0, actualCount - limit)
       const messages = await dbListMessagesPage({ sessionId, limit, offset })
 
       set((state) => {
         const target = state.sessions.find((s) => s.id === sessionId)
         if (!target) return
         target.messages = messages
-        target.messageCount = messages.length
+        target.messageCount = actualCount
         target.messagesLoaded = true
         target.loadedRangeStart = offset
         target.loadedRangeEnd = offset + messages.length
-        target.lastKnownMessageCount = knownCount
+        target.lastKnownMessageCount = actualCount
       })
     } catch (err) {
       console.error('[DB] loadRecentSessionMessages failed:', err)

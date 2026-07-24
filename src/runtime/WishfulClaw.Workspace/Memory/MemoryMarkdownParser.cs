@@ -86,6 +86,30 @@ public static class MemoryMarkdownParser
     }
 
     /// <summary>
+    /// Delete a section from MEMORY.md content by title.
+    /// Returns the original content if the section is not found.
+    /// </summary>
+    public static string DeleteSection(string content, string title)
+    {
+        var matches = SectionHeadingRegex.Matches(content);
+        for (var i = 0; i < matches.Count; i++)
+        {
+            if (string.Equals(matches[i].Groups[1].Value.Trim(), title, StringComparison.OrdinalIgnoreCase))
+            {
+                var start = matches[i].Index;
+                var end = i + 1 < matches.Count
+                    ? matches[i + 1].Index
+                    : content.Length;
+                // Also remove preceding newlines
+                while (start > 0 && (content[start - 1] == '\n' || content[start - 1] == '\r'))
+                    start--;
+                return content[..start] + content[end..];
+            }
+        }
+        return content;
+    }
+
+    /// <summary>
     /// Normalize a section title to a key suitable for file naming or lookup.
     /// Lowercases, replaces spaces with hyphens, removes special chars, preserves CJK.
     /// </summary>

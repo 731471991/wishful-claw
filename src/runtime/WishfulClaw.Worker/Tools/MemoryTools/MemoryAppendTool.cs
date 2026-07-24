@@ -1,5 +1,6 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Core.Tools;
+using WishfulClaw.Worker.Modules.Db;
 using WishfulClaw.Workspace.Memory;
 
 namespace WishfulClaw.Worker.Tools.MemoryTools;
@@ -7,53 +8,54 @@ namespace WishfulClaw.Worker.Tools.MemoryTools;
 using static WishfulClaw.Worker.Tools.ToolHelpers;
 
 /// <summary>
-/// Append a memory entry to today's daily log.
-/// Adapted from KodaClaw's WorkspaceMemoryAppendTool.
+/// Append a new memory entry to SQLite.
 /// </summary>
 public sealed class MemoryAppendTool : IToolExecutor
 {
-    private readonly IMemoryStore _store;
-    private readonly IMemorySearch _search;
-
-    public MemoryAppendTool(IMemoryStore store, IMemorySearch search)
-    {
-        _store = store;
-        _search = search;
-    }
-
     public string Name => "memory_append";
 
     public string Description =>
-        "Append a memory entry to today's daily memory log. " +
-        "Use this to record important facts, decisions, or insights worth remembering across sessions. " +
-        "Specify priority: permanent (core identity), lasting (important decisions), " +
-        "standard (general, default), ephemeral (transient info).";
+        "Append a new memory entry to the database. " +
+        "Use this to record facts, decisions, or insights worth remembering across sessions. " +
+        "Specify priority: permanent (core identity, never demote), lasting (important decisions), " +
+        "standard (general, default), ephemeral (transient info). " +
+        "Returns the entry id for future updates.";
 
     public JsonElement InputSchema => ParseSchema(
-        """{"type":"object","properties":{"content":{"type":"string","description":"The memory entry to append. Markdown text describing a fact, decision, or insight worth remembering."},"priority":{"type":"string","enum":["permanent","lasting","standard","ephemeral"],"default":"standard","description":"Memory priority level"},"scope":{"type":"string","description":"Memory scope: 'global' or 'project'. Defaults to current project if available."}},"required":["content"]}""");
+        """{"type":"object","properties":{"content":{"type":"string","description":"The memory entry to append. Markdown text describing a fact, decision, or insight worth remembering."},"title":{"type":"string","description":"Short title for the memory entry. Auto-generated from content if omitted."},"priority":{"type":"string","enum":["permanent","lasting","standard","ephemeral"],"default":"standard","description":"Memory priority level"},"scope":{"type":"string","description":"Memory scope: 'global' or 'project'. Defaults to current project if available."}},"required":["content"]}""");
 
-    public async Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
+    public Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
     {
         var content = GetString(input, "content");
         if (string.IsNullOrWhiteSpace(content))
-            return new ToolResult("memory_append requires a non-empty 'content' parameter", true);
+            return Task.FromResult(new ToolResult("memory_append requires a non-empty 'content' parameter", true));
 
+        var title = GetString(input, "title") ?? GenerateTitle(content!);
         var priorityStr = GetString(input, "priority") ?? "standard";
         var priority = MemoryToolHelpers.NormalizePriority(priorityStr);
-
         var scope = MemoryToolHelpers.ResolveScope(input, context);
 
-        await _store.EnsureMemoryLayoutAsync(scope, context.CancellationToken);
-        await _store.AppendDailyAsync(scope, content!, priority, context.CancellationToken);
+        var db = DbClient.GetClient();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var entry = new MemoryEntryEntity
+        {
+            Scope = scope,
+            Title = title,
+            Content = content!,
+            Priority = priority.ToString().ToLowerInvariant(),
+            Status = "active",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        var id = db.Insertable(entry).ExecuteReturnIdentity();
 
-        // Also index in FTS for immediate searchability
-        var date = DateTimeOffset.Now.ToString("yyyy-MM-dd");
-        var key = $"daily-{date}";
-        var title = $"Daily Memory {date}";
-        await _search.IndexAsync(scope, key, title, content!, context.CancellationToken);
-
-        return new ToolResult($"Memory appended successfully (scope={scope}, priority={priority.ToString().ToLowerInvariant()}, date={date})");
+        return Task.FromResult(new ToolResult(
+            $"Memory entry #{id} appended successfully (priority={priority.ToString().ToLowerInvariant()}, scope={scope})."));
     }
 
-
+    private static string GenerateTitle(string content)
+    {
+        var firstLine = content.Split('\n')[0].Trim();
+        return firstLine.Length > 80 ? firstLine[..80] + "\u2026" : firstLine;
+    }
 }

@@ -4,6 +4,27 @@ using WishfulClaw.Worker;
 
 Console.OutputEncoding = Encoding.UTF8;
 
+// Register global exception handlers so crashes are logged before the process dies
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    var ex = e.ExceptionObject as Exception;
+    try
+    {
+        WorkerLog.Error($"[FATAL] AppDomain.UnhandledException: {ex?.GetType().Name}: {ex?.Message} | StackTrace: {ex?.StackTrace}");
+    }
+    catch { /* logging itself failed, nothing more we can do */ }
+};
+
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    try
+    {
+        WorkerLog.Error($"[FATAL] TaskScheduler.UnobservedTaskException: {e.Exception.GetType().Name}: {e.Exception.Message} | StackTrace: {e.Exception.StackTrace}");
+    }
+    catch { }
+    e.SetObserved(); // prevent process crash
+};
+
 try
 {
     var endpoint = WorkerEndpoint.Parse(args);
@@ -12,6 +33,6 @@ try
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine(ex);
+    WorkerLog.Error($"[FATAL] Program.Main uncaught: {ex.GetType().Name}: {ex.Message} | StackTrace: {ex.StackTrace}");
     return 1;
 }

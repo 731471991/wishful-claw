@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Worker.Persona;
@@ -57,7 +57,7 @@ internal static partial class AgentLoop
             WorkerLog.Info($"persona system prompt built id={personaId} length={builtPrompt.Length}");
         }
 
-        var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 1);
+        var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 0); // 0 = unlimited
         var hasIterationLimit = requestedMaxIterations > 0;
         var providerTurnOnly = JsonHelpers.GetBool(parameters, "providerTurnOnly", false);
         var lastInputTokens = 0;
@@ -152,8 +152,11 @@ internal static partial class AgentLoop
                 await TryInjectMemoryRecallAsync(parameters, conversation, state, context);
             }
 
-            // ── Execute provider turn ──
-            var turn = await ExecuteTurnAsync(parameters, provider, conversation, state, context);
+            // ── Execute provider turn (with retry policy for 429/5xx) ──
+            var turn = await ProviderRetryPolicy.ExecuteAsync(
+                () => ExecuteTurnAsync(parameters, provider, conversation, state, context),
+                state,
+                context);
             conversation.Add(turn.AssistantMessage);
             var assistantWireMessage = CreateAssistantWireMessage(turn.AssistantMessage, turn.Usage);
             wireConversation.Add(assistantWireMessage);

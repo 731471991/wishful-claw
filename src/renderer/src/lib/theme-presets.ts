@@ -72,7 +72,7 @@ export type ThemePresetDefinition = {
   ssh: Record<AppThemeMode, SshChromePalette>
 }
 
-export const DEFAULT_APP_THEME_PRESET: AppThemePreset = 'mulberry'
+export const DEFAULT_APP_THEME_PRESET: AppThemePreset = 'ocean'
 export const DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = DEFAULT_APP_THEME_PRESET
 
 function createTerminalTheme(colors: {

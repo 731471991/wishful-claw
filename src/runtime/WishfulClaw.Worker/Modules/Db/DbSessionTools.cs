@@ -41,6 +41,7 @@ internal static class DbSessionTools
         }
         catch (Exception ex)
         {
+            WorkerLog.Error($"DbSessionTools.List failed: {ex.GetType().Name}: {ex.Message} | StackTrace: {ex.StackTrace}");
             return WorkerResponse.Error(ex.Message);
         }
     }

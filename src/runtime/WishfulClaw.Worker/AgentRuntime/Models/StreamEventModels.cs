@@ -45,4 +45,8 @@ internal sealed record AgentRuntimeStreamEvent(
     int? KeptMessageCount = null,
     JsonElement[]? Messages = null,
     JsonElement[]? CompactArtifacts = null,
-    string? ToolUseId = null);
+    string? ToolUseId = null,
+    int? Attempt = null,
+    int? MaxAttempts = null,
+    int? DelayMs = null,
+    int? StatusCode = null);

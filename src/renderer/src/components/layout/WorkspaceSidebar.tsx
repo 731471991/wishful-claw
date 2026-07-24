@@ -814,15 +814,15 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
       </div>
 
       {/* Bottom: Settings + version */}
-      <div className="flex items-center justify-between border-t px-2 py-1.5">
+      <div className="border-t px-2 py-1.5">
         <button
           onClick={() => useUIStore.getState().openSettings('provider')}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Settings className="size-3.5" />
           {t('navRail.settings', { defaultValue: 'Settings' })}
+          <span className="ml-auto text-[9px] text-muted-foreground/40 select-none">v0.4.0</span>
         </button>
-        <span className="text-[9px] text-muted-foreground/40 select-none">v0.4.0</span>
       </div>
 
       <ResizeHandle />

@@ -35,9 +35,12 @@ export function AddProviderDialog({
   const [type, setType] = useState<ProviderType>('openai-chat')
   const [baseUrl, setBaseUrl] = useState('')
 
+  const setActiveProvider = useProviderStore((s) => s.setActiveProvider)
+
   const handleAdd = (): void => {
     if (!name.trim()) return
-    addCustomProvider(name.trim(), type, baseUrl.trim())
+    const provider = addCustomProvider(name.trim(), type, baseUrl.trim())
+    setActiveProvider(provider.id)
     toast.success(ts('provider.add.added', { name: name.trim() }))
     setName('')
     setBaseUrl('')

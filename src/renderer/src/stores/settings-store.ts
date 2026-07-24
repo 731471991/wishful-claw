@@ -84,7 +84,7 @@ export type ShellExecutionEndpoint =
   | 'pwsh'
   | 'cmd'
   | 'custom'
-export const DEFAULT_THEME_MODE = 'dark' as const
+export const DEFAULT_THEME_MODE = 'system' as const
 export const DEFAULT_SHELL_EXECUTION_ENDPOINT: ShellExecutionEndpoint = 'auto'
 const LEGACY_DEFAULT_THEME_MODE = 'system' as const
 const LEGACY_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'studio'

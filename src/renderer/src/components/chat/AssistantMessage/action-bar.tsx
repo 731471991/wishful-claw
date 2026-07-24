@@ -1,4 +1,4 @@
-// Bottom action bar for AssistantMessage: copy, fork, translate, speak, share, retry, delete, etc.
+﻿// Bottom action bar for AssistantMessage: copy, fork, translate, speak, share, retry, delete, etc.
 
 import * as React from 'react'
 import { useState, useCallback } from 'react'
@@ -29,6 +29,7 @@ export interface ActionBarProps {
   isLiveMode: boolean
   sessionId?: string | null
   msgId?: string
+  createdAt?: number
   showRetry?: boolean
   showContinue?: boolean
   onRetry?: (messageId: string) => void
@@ -66,6 +67,7 @@ export function AssistantActionBar({
   renderMode,
   renderContent,
   completionSummary,
+  createdAt,
   t
 }: ActionBarProps): React.JSX.Element {
   const openTranslatePage = useUIStore((s) => s.openTranslatePage)
@@ -192,6 +194,11 @@ export function AssistantActionBar({
               <CompletionSummaryBar summary={completionSummary} />
             )}
           </>
+        )}
+        {createdAt && (
+          <p className="mt-1.5 text-[10px] text-muted-foreground/50 tabular-nums">
+            {new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
         )}
         {!isStreaming &&
           (plainText ||

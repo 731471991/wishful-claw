@@ -494,7 +494,12 @@
       "TaskUpdate": "更新任务",
       "TaskList": "任务列表",
       "Delete": "删除",
-      "Skill": "技能"
+      "Skill": "技能",
+      "memory_hot_read": "热读",
+      "memory_hot_write": "热写",
+      "memory_search": "搜索",
+      "memory_append": "追加",
+      "memory_update": "更新"
     }
   },
   "toolCall": {

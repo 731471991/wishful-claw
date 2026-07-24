@@ -134,7 +134,7 @@ export function useChatActions() {
         sessionId: targetSessionId,
         tools: tools ?? undefined,
         workingFolder,
-        maxIterations: 10,
+        maxIterations: 0, // 0 = unlimited, agent runs until no more tool calls
         maxParallelTools: settings.maxParallelToolCalls,
         maxToolCallsPerTurn: settings.maxToolCallsPerTurn,
         personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,

@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -109,7 +109,8 @@ export function AssistantMessage({
   hiddenToolUseIds,
   requestRetryState,
   requestDebugInfo,
-  meta
+  meta,
+  createdAt
 }: AssistantMessageProps): React.JSX.Element {
   const { t } = useTranslation('chat')
   const devMode = useSettingsStore((s) => s.devMode)
@@ -648,6 +649,7 @@ export function AssistantMessage({
       renderMode={renderMode}
       renderContent={renderContent}
       completionSummary={completionSummary}
+      createdAt={createdAt}
       t={t}
     />
   )

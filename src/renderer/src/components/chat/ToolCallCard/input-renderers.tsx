@@ -579,6 +579,88 @@ export function StructuredInput({
     )
   }
 
+  if (name === 'memory_hot_read') {
+    const scope = input.scope ? String(input.scope) : null
+    return (
+      <div className="space-y-0.5">
+        {scope && <InputField label="scope" value={scope} />}
+      </div>
+    )
+  }
+
+  if (name === 'memory_hot_write') {
+    const section = String(input.section ?? '')
+    const contentVal = typeof input.content === 'string' ? input.content : ''
+    return (
+      <div className="space-y-1">
+        <InputField label="section" value={section} mono />
+        {contentVal && (
+          <pre
+            className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/70 bg-muted/20 px-2.5 py-2 text-[11px] text-foreground/80 dark:bg-zinc-950 dark:text-zinc-300/80"
+            style={{ fontFamily: MONO_FONT }}
+          >
+            {contentVal.length > 300 ? contentVal.slice(0, 300) + '…' : contentVal}
+          </pre>
+        )}
+      </div>
+    )
+  }
+
+  if (name === 'memory_search') {
+    const query = String(input.query ?? '')
+    const scope = input.scope ? String(input.scope) : null
+    const includeDeprecated = input.include_deprecated === true
+    return (
+      <div className="space-y-0.5">
+        <InputField label="query" value={query} mono />
+        {includeDeprecated && <InputField label="include_deprecated" value="true" />}
+        {scope && <InputField label="scope" value={scope} />}
+      </div>
+    )
+  }
+
+  if (name === 'memory_append') {
+    const priority = String(input.priority ?? 'standard')
+    const title = input.title ? String(input.title) : null
+    const contentVal = typeof input.content === 'string' ? input.content : ''
+    return (
+      <div className="space-y-1">
+        <InputField label="priority" value={priority} />
+        {title && <InputField label="title" value={title} />}
+        {contentVal && (
+          <pre
+            className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/70 bg-muted/20 px-2.5 py-2 text-[11px] text-foreground/80 dark:bg-zinc-950 dark:text-zinc-300/80"
+            style={{ fontFamily: MONO_FONT }}
+          >
+            {contentVal.length > 300 ? contentVal.slice(0, 300) + '…' : contentVal}
+          </pre>
+        )}
+      </div>
+    )
+  }
+
+  if (name === 'memory_update') {
+    const id = String(input.id ?? '')
+    const status = input.status ? String(input.status) : null
+    const priority = input.priority ? String(input.priority) : null
+    const contentVal = typeof input.content === 'string' ? input.content : ''
+    return (
+      <div className="space-y-1">
+        <InputField label="id" value={id} />
+        {status && <InputField label="status" value={status} />}
+        {priority && <InputField label="priority" value={priority} />}
+        {contentVal && (
+          <pre
+            className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/70 bg-muted/20 px-2.5 py-2 text-[11px] text-foreground/80 dark:bg-zinc-950 dark:text-zinc-300/80"
+            style={{ fontFamily: MONO_FONT }}
+          >
+            {contentVal.length > 300 ? contentVal.slice(0, 300) + '…' : contentVal}
+          </pre>
+        )}
+      </div>
+    )
+  }
+
   const entries = Object.entries(input).filter(([, v]) => v != null && v !== '')
   if (entries.length === 0) return <></>
   return (
