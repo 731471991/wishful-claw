@@ -2318,13 +2318,13 @@ export function InputArea({
 
           {/* Optimization Dialog */}
           <Dialog open={showOptimizationDialog} onOpenChange={setShowOptimizationDialog}>
-            <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col gap-4">
-              <DialogHeader className="space-y-2">
-                <DialogTitle className="text-xl flex items-center gap-2">
-                  <Wand2 className="size-5 text-primary" />
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col gap-3 p-6">
+              <DialogHeader className="space-y-1 shrink-0">
+                <DialogTitle className="text-lg flex items-center gap-2">
+                  <Wand2 className="size-4 text-primary" />
                   {t('input.optimizationResults', { defaultValue: 'Optimized Prompt Options' })}
                 </DialogTitle>
-                <DialogDescription className="text-sm">
+                <DialogDescription className="text-xs text-muted-foreground">
                   {t('input.optimizationResultsDesc', {
                     defaultValue:
                       'Select one of the optimized versions below to use in your prompt.'
@@ -2333,29 +2333,28 @@ export function InputArea({
               </DialogHeader>
 
               {/* Tab-style Layout */}
-              <div className="flex-1 flex flex-col overflow-hidden gap-4">
+              <div className="flex-1 flex flex-col overflow-hidden gap-2 min-h-0">
                 {/* Tabs - Options as tabs at top */}
-                <div className="flex gap-2 border-b border-border pb-2">
+                <div className="flex gap-1.5 border-b border-border shrink-0">
                   {optimizationOptions.map((option, idx) => (
                     <button
                       key={idx}
                       type="button"
-                      className={`flex-1 px-4 py-3 rounded-t-lg border-2 border-b-0 transition-all ${
+                      className={`flex-1 px-3 py-2 rounded-t-lg border-2 border-b-0 transition-all ${
                         selectedOptionIndex === idx
                           ? 'border-primary bg-primary/5 -mb-[2px] border-b-2 border-b-background'
                           : 'border-transparent hover:bg-muted/30'
                       }`}
                       onClick={() => {
                         setSelectedOptionIndex(idx)
-                        // Scroll content to top when switching tabs
                         if (contentScrollRef.current) {
                           contentScrollRef.current.scrollTop = 0
                         }
                       }}
                     >
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1.5">
                         <span
-                          className={`inline-flex items-center justify-center size-6 rounded-full text-xs font-bold ${
+                          className={`inline-flex items-center justify-center size-5 rounded-full text-[10px] font-bold shrink-0 ${
                             selectedOptionIndex === idx
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted text-muted-foreground'
@@ -2363,9 +2362,9 @@ export function InputArea({
                         >
                           {idx + 1}
                         </span>
-                        <div className="text-left">
-                          <p className="text-sm font-semibold text-foreground">{option.title}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                        <div className="text-left min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">{option.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
                             {option.focus}
                           </p>
                         </div>
@@ -2374,13 +2373,11 @@ export function InputArea({
                   ))}
                 </div>
 
-                {/* Content Area - Show selected option's detailed content */}
-                <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background">
-                  <div ref={contentScrollRef} className="h-full overflow-y-auto px-6 py-4">
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
-                        {optimizationOptions[selectedOptionIndex]?.content}
-                      </div>
+                {/* Content Area */}
+                <div className="flex-1 overflow-hidden rounded-lg border border-border bg-background min-h-0">
+                  <div ref={contentScrollRef} className="h-full overflow-y-auto px-5 py-3">
+                    <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed font-sans">
+                      {optimizationOptions[selectedOptionIndex]?.content}
                     </div>
                   </div>
                 </div>
