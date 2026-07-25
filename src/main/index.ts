@@ -181,6 +181,10 @@ app.whenReady().then(() => {
   registerFsHandlers()
 
   // ── Agent history handlers (forwarded to C# Worker SQLite) ──
+  registerMessagePackHandler<{ toolUseId: string }, unknown>(
+    'agent-history:read-by-tool-use-id',
+    async (args) => getNativeWorker().request('db/sub-agent-read-by-tool-use-id', args)
+  )
   registerMessagePackHandler<void, { total: number; sessions: unknown[] }>(
     'agent-history:index',
     async () => getNativeWorker().request('db/sub-agent-index', {})

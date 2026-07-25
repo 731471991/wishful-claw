@@ -43,6 +43,7 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/messages-truncate-from", DbMessageTools.TruncateFrom);
 
         // ── Sub-Agent Runs ──
+        context.Register("db/sub-agent-read-by-tool-use-id", DbSubAgentTools.ReadByToolUseId);
         context.Register("db/sub-agent-read-session", DbSubAgentTools.ReadSession);
         context.Register("db/sub-agent-index", DbSubAgentTools.Index);
         context.Register("db/sub-agent-apply", DbSubAgentTools.Apply);

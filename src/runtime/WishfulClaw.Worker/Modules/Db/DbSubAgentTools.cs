@@ -12,6 +12,35 @@ namespace WishfulClaw.Worker.Modules.Db;
 /// </summary>
 internal static class DbSubAgentTools
 {
+    // ── Read: single sub-agent run by toolUseId ──
+
+    public static WorkerResponse ReadByToolUseId(JsonElement parameters)
+    {
+        try
+        {
+            var toolUseId = RequireString(parameters, "toolUseId");
+            DbClient.EnsureInitialized(parameters);
+            var db = DbClient.GetClient(parameters);
+
+            var entity = db.Queryable<SubAgentRunEntity>()
+                .First(e => e.ToolUseId == toolUseId);
+
+            if (entity is null)
+                return WorkerResponse.Json(new { found = false });
+
+            return WorkerResponse.Json(new
+            {
+                found = true,
+                data = JsonSerializer.Deserialize<JsonElement>(entity.Data, WorkerJsonHelper.JsonOptions)
+            });
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Error($"DbSubAgentTools.ReadByToolUseId failed: {ex.GetType().Name}: {ex.Message}");
+            return WorkerResponse.Error(ex.Message);
+        }
+    }
+
     // ── Read: list all sub-agent runs for a session ──
 
     public static WorkerResponse ReadSession(JsonElement parameters)

@@ -1,7 +1,7 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { Bot } from 'lucide-react'
+import { Bot, Loader2 } from 'lucide-react'
 import { RuntimeTokenStatistics } from '@renderer/components/chat/InputArea'
 import { TranscriptMessageList } from '@renderer/components/chat/TranscriptMessageList'
 import { buildRenderableMessageMeta } from '@renderer/components/chat/transcript-utils'
@@ -15,6 +15,7 @@ import type {
 } from '@renderer/lib/api/types'
 import { cn } from '@renderer/lib/utils'
 import { parseSubAgentMeta } from '@renderer/lib/agent/sub-agents/create-tool'
+import { readSubAgentByToolUseId } from '@renderer/lib/ipc/agent-history-storage'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import type { ToolCallState } from '@renderer/lib/agent/types'
 
@@ -245,12 +246,46 @@ export function SubAgentExecutionDetail({
   )
   const executedToolCalls = useAgentStore((s) => s.executedToolCalls)
   const agent = agentDetail.agent
-  const hasRenderableAgentTranscript = agent?.transcript.length
-    ? buildRenderableMessageMeta(agent.transcript, agent.currentAssistantMessageId).length > 0
+  const hasRenderableAgentTranscript = effectiveAgent?.transcript.length
+    ? buildRenderableMessageMeta(effectiveAgent.transcript, effectiveAgent.currentAssistantMessageId).length > 0
     : false
 
+  // On-demand load: if agent exists but has no transcript (built from message summary),
+  // fetch the full persisted state by toolUseId from SQLite
+  const [loadedAgent, setLoadedAgent] = React.useState<SubAgentState | null>(null)
+  const [loadingFromDb, setLoadingFromDb] = React.useState(false)
+
+  // Use loaded agent if available, otherwise fall back to store agent
+  const effectiveAgent = loadedAgent ?? agent
+
+  React.useEffect(() => {
+    if (!toolUseId) return
+    // Skip if we already have a live agent with transcript
+    if (effectiveAgent && effectiveAgent.transcript.length > 0) return
+    // Skip if already loaded
+    if (loadedAgent) return
+
+    let cancelled = false
+    setLoadingFromDb(true)
+    readSubAgentByToolUseId(toolUseId)
+      .then((result) => {
+        if (cancelled) return
+        if (result.found && result.data) {
+          setLoadedAgent(result.data as SubAgentState)
+        }
+      })
+      .catch(() => {
+        // Not found in DB — agent may have been created before persistence was implemented
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingFromDb(false)
+      })
+
+    return () => { cancelled = true }
+  }, [toolUseId, effectiveAgent, loadedAgent])
+
   const fallbackReportText = React.useMemo(() => {
-    const fromAgent = agent?.errorMessage?.trim() || agent?.report.trim() || ''
+    const fromAgent = effectiveAgent?.errorMessage?.trim() || effectiveAgent?.report.trim() || ''
     if (fromAgent) return fromAgent
 
     const fromMessages = getFallbackReportFromMessages(toolUseId, sessionMessages)
@@ -261,7 +296,7 @@ export function SubAgentExecutionDetail({
           executedToolCalls.find((item) => item.id === toolUseId)?.output
         )
       : ''
-  }, [agent?.errorMessage, agent?.report, toolUseId, sessionMessages, executedToolCalls])
+  }, [effectiveAgent?.errorMessage, effectiveAgent?.report, toolUseId, sessionMessages, executedToolCalls])
 
   const fallbackDetailText = (fallbackReportText.trim() || inlineText?.trim() || '').trim()
   const fallbackInput = React.useMemo(
@@ -269,9 +304,9 @@ export function SubAgentExecutionDetail({
     [toolUseId, sessionMessages]
   )
   const fallbackDescription =
-    agent?.description.trim() ||
+    effectiveAgent?.description.trim() ||
     (fallbackInput?.description ? String(fallbackInput.description) : '')
-  const fallbackPrompt = agent?.prompt.trim() || getPromptText(fallbackInput)
+  const fallbackPrompt = effectiveAgent?.prompt.trim() || getPromptText(fallbackInput)
   const fallbackTranscript = React.useMemo(
     () =>
       buildFallbackTranscript({
@@ -283,10 +318,10 @@ export function SubAgentExecutionDetail({
     [toolUseId, fallbackDescription, fallbackPrompt, fallbackDetailText]
   )
 
-  const usesAgentTranscript = Boolean(agent && hasRenderableAgentTranscript)
-  const transcript = usesAgentTranscript && agent ? agent.transcript : fallbackTranscript
-  const subAgentRequestModel = agent?.requestModel ?? getLatestTranscriptRequestModel(transcript)
-  const streamingMessageId = usesAgentTranscript ? (agent?.currentAssistantMessageId ?? null) : null
+  const usesAgentTranscript = Boolean(effectiveAgent && hasRenderableAgentTranscript)
+  const transcript = usesAgentTranscript && effectiveAgent ? effectiveAgent.transcript : fallbackTranscript
+  const subAgentRequestModel = effectiveAgent?.requestModel ?? getLatestTranscriptRequestModel(transcript)
+  const streamingMessageId = usesAgentTranscript ? (effectiveAgent?.currentAssistantMessageId ?? null) : null
   const transcriptRevisionKey = usesAgentTranscript
     ? agentDetail.signature
     : [
@@ -294,7 +329,7 @@ export function SubAgentExecutionDetail({
         agentDetail.signature,
         ...fallbackTranscript.map((message) => `${message.id}:${message._revision ?? 0}`)
       ].join('|')
-  const toolCalls = agent?.toolCalls
+  const toolCalls = effectiveAgent?.toolCalls
   const liveToolCallMap = React.useMemo(
     () => (toolCalls ? buildLiveToolCallMap(toolCalls) : null),
     [toolCalls]
@@ -308,9 +343,15 @@ export function SubAgentExecutionDetail({
           embedded ? 'bg-transparent' : 'bg-background'
         )}
       >
-        <Bot className="mb-3 size-8 text-muted-foreground/40" />
+        {loadingFromDb ? (
+          <Loader2 className="mb-3 size-8 animate-spin text-muted-foreground/40" />
+        ) : (
+          <Bot className="mb-3 size-8 text-muted-foreground/40" />
+        )}
         <p className="text-sm text-muted-foreground">
-          {t('detailPanel.noSubAgentRecords', { defaultValue: 'No sub-agent records' })}
+          {loadingFromDb
+            ? t('detailPanel.loadingSubAgent', { defaultValue: 'Loading sub-agent details...' })
+            : t('detailPanel.noSubAgentRecords', { defaultValue: 'No sub-agent records' })}
         </p>
       </div>
     )
@@ -327,7 +368,7 @@ export function SubAgentExecutionDetail({
         revisionKey={transcriptRevisionKey}
         sessionId={resolvedSessionId}
         liveToolCallMap={liveToolCallMap}
-        autoScrollToBottom={Boolean(agent?.isRunning)}
+        autoScrollToBottom={Boolean(effectiveAgent?.isRunning)}
       />
       {resolvedSessionId ? (
         <div className="shrink-0 border-t border-border/60 bg-background/95 px-4 py-2 backdrop-blur-sm">
@@ -335,9 +376,9 @@ export function SubAgentExecutionDetail({
             sessionId={resolvedSessionId}
             messages={transcript}
             streamingMessageId={streamingMessageId}
-            usage={agent?.usage}
+            usage={effectiveAgent?.usage}
             requestModel={subAgentRequestModel}
-            isStreaming={Boolean(agent?.isRunning)}
+            isStreaming={Boolean(effectiveAgent?.isRunning)}
             className="overflow-x-auto [scrollbar-width:none]"
           />
         </div>

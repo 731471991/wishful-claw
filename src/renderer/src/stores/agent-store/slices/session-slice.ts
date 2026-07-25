@@ -1,4 +1,4 @@
-import type { StateCreator } from 'zustand'
+﻿import type { StateCreator } from 'zustand'
 import type { AgentStore } from '../types'
 import { emitAgentRuntimeSync, isAgentRuntimeSyncSuppressed } from '../../../lib/agent-runtime-sync'
 import { useTeamStore } from '../../team-store'
@@ -132,9 +132,8 @@ export const createSessionSlice: Slice = (set, get) => ({
             }
           }
         })
-        if (nextSessionId) {
-          void loadAgentHistorySession(nextSessionId)
-        }
+        // Sub-agent history is loaded on-demand by toolUseId when user clicks a sub-agent message
+        // No bulk session-level load needed
       },
       loadSubAgentHistoryForSession: loadAgentHistorySession,
 

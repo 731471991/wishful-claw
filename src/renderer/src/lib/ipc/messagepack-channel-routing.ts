@@ -239,6 +239,7 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'settings:get',
   'settings:set',
   'agent-history:index',
+  'agent-history:read-by-tool-use-id',
   'agent-history:read',
   'agent-history:apply',
   'agent-history:replace',
