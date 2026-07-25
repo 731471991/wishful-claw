@@ -184,6 +184,14 @@ public sealed class ShellExecuteTool : IToolExecutor
             startInfo.ArgumentList.Add(arg);
         }
 
+        // Ensure child processes use UTF-8 for console I/O (fixes Chinese garbled output)
+        startInfo.Environment["PYTHONUTF8"] = "1";
+        startInfo.Environment["PYTHONIOENCODING"] = "utf-8";
+        if (OperatingSystem.IsWindows())
+        {
+            startInfo.Environment["LANG"] = "zh_CN.UTF-8";
+        }
+
         ApplyEnvironment(startInfo, input);
         return startInfo;
     }
@@ -267,10 +275,16 @@ public sealed class ShellExecuteTool : IToolExecutor
         {
             if (IsPowerShell(launch.Shell))
             {
-                return ["-NoLogo", "-NoProfile", "-Command", command];
+                // Prepend chcp 65001 to force UTF-8 console output,
+                // then set OutputEncoding so PowerShell pipes UTF-8 too.
+                var wrappedCommand =
+                    "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " +
+                    "$OutputEncoding = [System.Text.Encoding]::UTF8; " +
+                    command;
+                return ["-NoLogo", "-NoProfile", "-Command", wrappedCommand];
             }
-            // cmd.exe
-            return ["/d", "/s", "/c", command];
+            // cmd.exe — use chcp 65001 to switch console to UTF-8
+            return ["/d", "/s", "/c", "chcp 65001 >nul && " + command];
         }
 
         // Unix: interactive flags from launch + -lc command
