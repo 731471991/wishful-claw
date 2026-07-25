@@ -1,9 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePersonaStore } from '@renderer/stores/persona-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { dbUpdateSession } from '@renderer/stores/chat-store/db-helpers'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import {
+  Popover, PopoverContent, PopoverTrigger
+} from '@renderer/components/ui/popover'
+import { cn } from '@renderer/lib/utils'
 
 interface PersonaSwitcherProps {
   sessionId: string
@@ -19,7 +23,6 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
   const { t } = useTranslation()
   const { personas, listPersonas } = usePersonaStore()
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
   const session = useChatStore((s) => s.sessions.find((sess) => sess.id === sessionId))
   const settings = useSettingsStore()
   const currentPersonaId = session?.personaId ?? settings.defaultPersonaId
@@ -27,17 +30,6 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
   useEffect(() => {
     listPersonas(workingFolder)
   }, [workingFolder, listPersonas])
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
 
   const currentPersona = personas.find((p) => p.id === currentPersonaId)
 
@@ -61,39 +53,53 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
   }
 
   return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-        title={t('chat.personaSwitcher.title')}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+          title={t('chat.personaSwitcher.title')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span className="max-w-[80px] truncate">
+            {currentPersona?.name ?? t('chat.personaSwitcher.none')}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        side="top"
+        sideOffset={4}
+        className="max-h-60 w-48 overflow-y-auto p-1"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-        <span className="max-w-[80px] truncate">
-          {currentPersona?.name ?? t('chat.personaSwitcher.none')}
-        </span>
-      </button>
-
-      {open && (
-        <div className="absolute bottom-full left-0 mb-1 max-h-60 w-48 overflow-y-auto rounded-md border border-border bg-popover py-1 shadow-xl">
-          {personas.map((p) => (
+        {personas.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            {t('chat.personaSwitcher.empty', { defaultValue: 'No personas available' })}
+          </div>
+        ) : (
+          personas.map((p) => (
             <button
               key={p.id}
+              type="button"
               onClick={() => handleSelect(p.id)}
-              className={`flex w-full flex-col items-start px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted/50 ${
-                p.id === currentPersonaId ? 'text-primary font-medium' : 'text-muted-foreground'
-              }`}
+              className={cn(
+                'flex w-full flex-col items-start rounded px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted/50',
+                p.id === currentPersonaId
+                  ? 'text-primary font-medium'
+                  : 'text-muted-foreground'
+              )}
             >
               <span className="font-medium">{p.name}</span>
               {p.tagline && (
                 <span className="text-[10px] text-muted-foreground/60">{p.tagline}</span>
               )}
             </button>
-          ))}
-        </div>
-      )}
-    </div>
+          ))
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
