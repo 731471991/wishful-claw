@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Worker.Persona;
@@ -164,6 +164,16 @@ internal static partial class AgentLoop
             if (turn.Usage?.ContextTokens is > 0)
             {
                 lastInputTokens = turn.Usage.ContextTokens.Value;
+            }
+
+            // ── Emit text_phase if this turn has both text and tool calls ──
+            // The text was streamed before tool execution — mark it as 'pre_tool'
+            // so the UI can visually distinguish planning text from final conclusions.
+            if (turn.ToolCalls.Count > 0 && !string.IsNullOrWhiteSpace(turn.AssistantMessage.Text))
+            {
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent("text_phase", Reason: "pre_tool"));
             }
 
             // ── Check for tool calls ──

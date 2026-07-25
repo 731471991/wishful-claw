@@ -303,6 +303,22 @@ export const useChatStore = create<ChatStore>()(
             }
             break
 
+          case 'text_phase': {
+            // Mark the current assistant message as 'pre-tool' phase.
+            // The text was generated before tool execution — it's planning/intent,
+            // not final conclusions. UI will render it with visual distinction.
+            set((state) => {
+              const session = state.sessions.find((s) => s.id === targetSessionId)
+              if (session) {
+                const msg = session.messages.find((m) => m.id === envelope.runId)
+                if (msg) {
+                  msg.preToolPhase = true
+                }
+              }
+            })
+            break
+          }
+
           case 'iteration_end': {
             // One iteration of the agent loop finished (e.g., after tool calls).
             // In wishful-claw, tool calls and results live in the same assistant message's

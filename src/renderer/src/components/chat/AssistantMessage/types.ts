@@ -1,4 +1,4 @@
-﻿// Extracted types, interfaces, and constants for AssistantMessage
+// Extracted types, interfaces, and constants for AssistantMessage
 
 import type { ContentBlock, RequestDebugInfo, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ToolCallState, ToolCallStatus, RequestRetryState } from '@renderer/lib/agent/types'
@@ -31,6 +31,7 @@ export interface AssistantMessageProps {
   requestRetryState?: RequestRetryState | null
   requestDebugInfo?: RequestDebugInfo
   meta?: MessageMeta
+  preToolPhase?: boolean
 }
 
 export type AssistantRenderItem = { kind: 'block'; index: number } | { kind: 'tool-run'; runId: string }

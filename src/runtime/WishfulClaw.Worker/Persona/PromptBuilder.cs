@@ -253,6 +253,12 @@ Use tools when needed. Follow these rules:
 - Batch independent tool calls in the same assistant turn; keep sequential only when dependent.
 - Use Glob/Grep/Read before assuming structure.
 
+**Pre-tool output discipline:**
+- When you plan to call tools in the current turn, text output BEFORE the tool calls must be **planning/intent only** (e.g. "Let me check the project structure").
+- NEVER state results, conclusions, or checkmarks (e.g. "✅", "done", "confirmed") for tool calls that have not yet executed.
+- All conclusions and result summaries MUST come AFTER tool results are returned, in the next turn.
+- If you find yourself writing conclusion-like text before tool calls, stop and move the tool calls earlier — the tools should come first, the summary afterward.
+
 **When NOT to use specific tools:**
 - Do not use Bash when Read/Edit/Write/Glob/Grep apply.
 - Do not use Write when Edit can make a precise change.

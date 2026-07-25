@@ -40,6 +40,7 @@ export interface ActionBarProps {
   renderContent: () => React.JSX.Element
   completionSummary: CompletionSummaryData | null
   t: (key: string, options?: Record<string, unknown>) => string
+  preToolPhase?: boolean
 }
 
 export function AssistantActionBar({
@@ -61,7 +62,8 @@ export function AssistantActionBar({
   renderContent,
   completionSummary,
   createdAt,
-  t
+  t,
+  preToolPhase
 }: ActionBarProps): React.JSX.Element {
   const openTranslatePage = useUIStore((s) => s.openTranslatePage)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
@@ -148,10 +150,18 @@ export function AssistantActionBar({
           </div>
         ) : (
           <>
-            {renderContent()}
-            {!isStreaming && renderMode !== 'transcript' && completionSummary && (
-              <CompletionSummaryBar summary={completionSummary} />
+            {preToolPhase && plainText.trim() && (
+              <div className='mb-1.5 flex items-center gap-1.5 text-[10px] font-medium text-amber-600/80 dark:text-amber-400/80'>
+                <span className='inline-block size-1.5 rounded-full bg-amber-500/60' />
+                {t('assistantMessage.planningPhase', { defaultValue: 'Planning' })}
+              </div>
             )}
+            <div className={preToolPhase ? 'opacity-70' : ''}>
+              {renderContent()}
+              {!isStreaming && renderMode !== 'transcript' && completionSummary && (
+                <CompletionSummaryBar summary={completionSummary} />
+              )}
+            </div>
           </>
         )}
         {createdAt && (

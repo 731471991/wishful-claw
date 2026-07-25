@@ -88,6 +88,8 @@ export type AgentStreamEvent =
   | { type: 'iteration_start'; iteration: number }
   | { type: 'iteration_end'; stopReason: string; toolResults?: ToolResultWire[] }
   | { type: 'loop_end'; reason: LoopEndReasonWire; messages?: unknown[] }
+  // Text phase annotation (marks text before tool calls as planning)
+  | { type: 'text_phase'; reason: 'pre_tool' }
   // Streaming deltas
   | { type: 'text_delta'; text: string }
   | { type: 'thinking_delta'; thinking: string }

@@ -80,6 +80,7 @@ function serializeMessage(msg: ChatMessage, sortOrder: number): {
   if (msg.isStreaming) meta.isStreaming = msg.isStreaming
   if (msg.segments && msg.segments.length > 0) meta.segments = msg.segments
   if (msg.error) meta.error = msg.error
+  if (msg.preToolPhase) meta.preToolPhase = msg.preToolPhase
 
   return {
     id: msg.id,
@@ -112,6 +113,7 @@ function deserializeMessage(row: MessageRow): ChatMessage {
       if (meta.segments) msg.segments = meta.segments as ChatMessage["segments"]
       if (meta.isStreaming) msg.isStreaming = meta.isStreaming as boolean
       if (meta.error) msg.error = meta.error as string
+      if (meta.preToolPhase) msg.preToolPhase = meta.preToolPhase as boolean
     } catch {
       // ignore parse errors
     }

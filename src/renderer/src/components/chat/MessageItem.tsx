@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import Markdown from 'react-markdown'
 import { Users, CircleUserRound, ChevronDown } from 'lucide-react'
 import { SlideIn } from '@renderer/components/animate-ui'
@@ -198,6 +198,7 @@ function MessageItemInner({
             requestRetryState={isLastAssistantMessage ? requestRetryState : null}
             requestDebugInfo={message.debugInfo}
             meta={message.meta}
+            preToolPhase={message.preToolPhase}
           />
         )
       case 'system':

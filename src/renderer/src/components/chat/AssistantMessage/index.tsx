@@ -109,7 +109,8 @@ export function AssistantMessage({
   hiddenToolUseIds,
   requestDebugInfo,
   meta,
-  createdAt
+  createdAt,
+  preToolPhase
 }: AssistantMessageProps): React.JSX.Element {
   const { t } = useTranslation('chat')
   const devMode = useSettingsStore((s) => s.devMode)
@@ -647,6 +648,7 @@ export function AssistantMessage({
       completionSummary={completionSummary}
       createdAt={createdAt}
       t={t}
+      preToolPhase={preToolPhase}
     />
   )
 }

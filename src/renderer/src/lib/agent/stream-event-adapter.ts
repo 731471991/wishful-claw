@@ -6,6 +6,7 @@ export function toAgentEvent(e: AgentStreamEvent): AgentEvent | null {
   switch (e.type) {
     case 'loop_start':
     case 'iteration_start':
+    case 'text_phase':
     case 'text_delta':
     case 'thinking_delta':
     case 'translation_buffer_update':

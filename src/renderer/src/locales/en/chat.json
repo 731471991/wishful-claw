@@ -1103,7 +1103,8 @@
       "copied": "Copied"
     },
     "ranCommandsInline_one": "Ran {{count}} command",
-    "ranCommandsInline_other": "Ran {{count}} commands"
+    "ranCommandsInline_other": "Ran {{count}} commands",
+    "planningPhase": "Planning"
   },
   "messageActions": {
     "fork": "Fork",

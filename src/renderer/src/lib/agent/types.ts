@@ -114,6 +114,7 @@ export interface RequestRetryState {
 export type AgentEvent =
   | { type: 'loop_start' }
   | { type: 'iteration_start'; iteration: number }
+  | { type: 'text_phase'; reason: 'pre_tool' }
   | { type: 'text_delta'; text: string }
   | { type: 'thinking_delta'; thinking: string }
   | {

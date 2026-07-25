@@ -49,6 +49,7 @@ export interface ChatMessage {
   debugInfo?: RequestDebugInfo
   meta?: MessageMeta
   content?: string | ContentBlock[]
+  preToolPhase?: boolean
   _revision?: number
   createdAt: number
 }
