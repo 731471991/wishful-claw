@@ -1,66 +1,219 @@
-import { useState as useReactState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
-import { PanelRightClose, Activity, Brain } from 'lucide-react'
-import { useUIStore } from '@renderer/stores/ui-store'
+import { Loader2 } from 'lucide-react'
+import { useUIStore, type RightPanelTabInstance } from '@renderer/stores/ui-store'
+import { useChatStore } from '@renderer/stores/chat-store'
+import { useAppPluginStore } from '@renderer/stores/app-plugin-store'
+import { BROWSER_PLUGIN_ID } from '@renderer/lib/app-plugin/types'
+import { cn } from '@renderer/lib/utils'
+import { RightPanelHeader } from './RightPanelHeader'
 import { ActivityPanel } from '@renderer/components/activity/ActivityPanel'
 import { MemoryPanel } from '@renderer/components/memory/MemoryPanel'
-import { useChatStore } from '@renderer/stores/chat-store'
+import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
-type PanelTab = 'activity' | 'memory'
-
-const activeTab = 'activity' as PanelTab
-const currentTab = activeTab
-
-/**
- * Right Panel — Activity + Memory tabs.
- */
 export function RightPanel(): React.JSX.Element {
   const { t } = useTranslation('layout')
-  const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen)
-  const [tab, setTab] = useReactState<PanelTab>(currentTab)
-  const workingFolder = useChatStore((s) => {
-    const project = s.projects.find((p) => p.id === s.activeProjectId)
+  const rightPanelOpen = useUIStore((state) => state.rightPanelOpen)
+  const rightPanelWidth = useUIStore((state) => state.rightPanelWidth)
+  const rightPanelTabs = useUIStore((state) => state.rightPanelTabs)
+  const activeTabId = useUIStore((state) => state.rightPanelActiveTabId)
+  const setRightPanelOpen = useUIStore((state) => state.setRightPanelOpen)
+  const setRightPanelWidth = useUIStore((state) => state.setRightPanelWidth)
+  const setRightPanelActiveTab = useUIStore((state) => state.setRightPanelActiveTab)
+  const closeRightPanelTab = useUIStore((state) => state.closeRightPanelTab)
+  const ensureBrowserTab = useUIStore((state) => state.ensureBrowserTab)
+  const activeScopedSessionId = useUIStore((state) => state.activeScopedSessionId)
+
+  const activeProjectId = useChatStore((state) => {
+    const targetSessionId = activeScopedSessionId ?? state.activeSessionId
+    const targetSession = targetSessionId
+      ? state.sessions.find((item) => item.id === targetSessionId)
+      : null
+    return targetSession?.projectId ?? state.activeProjectId
+  })
+  const activeSessionId = useChatStore((state) => state.activeSessionId)
+  const panelSessionId = activeScopedSessionId ?? activeSessionId ?? null
+  const workingFolder = useChatStore((state) => {
+    const project = state.projects.find((p) => p.id === state.activeProjectId)
     return project?.workingFolder ?? null
   })
+  const browserPluginEnabled = useAppPluginStore((state) =>
+    Boolean(state.getPlugin(BROWSER_PLUGIN_ID, activeProjectId)?.enabled)
+  )
+
+  const tabs = useMemo(() => {
+    const visibleTabs = rightPanelTabs
+    if (!rightPanelOpen) return visibleTabs
+    return visibleTabs.map((tab) => {
+      if (tab.kind === 'activity') {
+        return { ...tab, title: t('sectionExecution.title', { defaultValue: 'Activity' }) }
+      }
+      if (tab.kind === 'memory') {
+        return { ...tab, title: t('memory.tabMemory', { defaultValue: 'Memory' }) }
+      }
+      if (tab.kind === 'browser') {
+        return { ...tab, title: t('rightPanel.browser', { defaultValue: 'Browser' }) }
+      }
+      if (tab.kind !== 'subagent') return tab
+      const title = t('subAgentsPanel.title', { defaultValue: 'SubAgents' })
+      return title === tab.title ? tab : { ...tab, title }
+    })
+  }, [rightPanelOpen, rightPanelTabs, t])
+
+  const selectedTab =
+    tabs.find((tab) => tab.id === activeTabId) ??
+    tabs.find((tab) => tab.kind === 'activity') ??
+    tabs[0]
+
+  // The browser webview stays mounted whenever a browser tab exists and the plugin
+  // is enabled — independent of whether the panel is open. This lets agent-driven
+  // browser tools keep working in the background even while the panel is collapsed.
+  const browserTabAlive = tabs.some((tab) => tab.kind === 'browser') && browserPluginEnabled
+  const browserPanelKey = panelSessionId
+    ? `session:${panelSessionId}`
+    : activeProjectId
+      ? `project:${activeProjectId}`
+      : 'global'
+
+  const activeTab = rightPanelOpen ? selectedTab : undefined
+
+  const draggingRef = useRef(false)
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(rightPanelWidth)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const targetPanelWidth = clampRightPanelWidth(rightPanelWidth)
+
+  useEffect(() => {
+    if (rightPanelWidth === 0) setRightPanelWidth(RIGHT_PANEL_DEFAULT_WIDTH)
+  }, [rightPanelWidth, setRightPanelWidth])
+
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (event: MouseEvent): void => {
+      if (!draggingRef.current) return
+      const delta = startXRef.current - event.clientX
+      setRightPanelWidth(clampRightPanelWidth(startWidthRef.current + delta))
+    }
+
+    const handleMouseUp = (): void => {
+      draggingRef.current = false
+      setIsDragging(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, setRightPanelWidth])
+
+  const startResize = (event: React.MouseEvent): void => {
+    if (!rightPanelOpen) return
+    event.preventDefault()
+    draggingRef.current = true
+    startXRef.current = event.clientX
+    startWidthRef.current = targetPanelWidth
+    setIsDragging(true)
+  }
+
+  const renderActivePanel = (tab: RightPanelTabInstance | undefined): React.ReactNode => {
+    if (!tab) return null
+    if (tab.kind === 'activity') {
+      return <ActivityPanel />
+    }
+    if (tab.kind === 'memory') {
+      return <MemoryPanel workingFolder={workingFolder} />
+    }
+    if (tab.kind === 'subagent') {
+      // SubAgentsPanel will be added in Plan 11-2
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          {t('subAgentsPanel.title', { defaultValue: 'SubAgents' })} — Coming soon
+        </div>
+      )
+    }
+    if (tab.kind === 'browser') {
+      // BrowserPanel will be added in Plan 11-3
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+          {t('rightPanel.browser', { defaultValue: 'Browser' })} — Coming soon
+        </div>
+      )
+    }
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        {t('thinking.thinkingEllipsis', { ns: 'chat', defaultValue: 'Loading...' })}
+      </div>
+    )
+  }
 
   return (
-    <div className="flex h-full w-full flex-col border-l bg-card/50">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setTab('activity')}
-            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-              tab === 'activity' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Activity className="h-3.5 w-3.5" />
-            {t('sectionExecution.title', { defaultValue: 'Activity' })}
-          </button>
-          <button
-            onClick={() => setTab('memory')}
-            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-              tab === 'memory' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Brain className="h-3.5 w-3.5" />
-            {t('memory.tabMemory', { defaultValue: 'Memory' })}
-          </button>
-        </div>
-        <button
-          onClick={() => setRightPanelOpen(false)}
-          className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <PanelRightClose className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {tab === 'activity' && <ActivityPanel />}
-        {tab === 'memory' && <MemoryPanel workingFolder={workingFolder} />}
-      </div>
+    <div
+      data-tour="right-panel"
+      className="relative z-40 h-full shrink-0 overflow-hidden transition-[width] duration-300 ease-out"
+      style={{ width: rightPanelOpen ? targetPanelWidth : 0 }}
+    >
+      <aside
+        className={cn(
+          'relative flex h-full w-full flex-col border-l border-border/60 bg-background shadow-[-18px_0_42px_rgba(0,0,0,0.16)] transition-[opacity,transform] duration-300 ease-out',
+          rightPanelOpen
+            ? 'translate-x-0 opacity-100'
+            : 'pointer-events-none translate-x-full opacity-0'
+        )}
+      >
+        {rightPanelOpen ? (
+          <>
+            <RightPanelHeader
+              tabs={tabs}
+              activeTabId={activeTab?.id ?? 'activity'}
+              browserEnabled={browserPluginEnabled}
+              onSelectTab={setRightPanelActiveTab}
+              onCloseTab={closeRightPanelTab}
+              onAddBrowser={() => ensureBrowserTab(undefined, panelSessionId)}
+              onClosePanel={() => setRightPanelOpen(false)}
+              t={t}
+            />
+
+            <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
+              <AnimatePresence mode="wait">
+                {activeTab?.kind !== 'browser' ? (
+                  <motion.div
+                    key={activeTab?.id ?? 'empty'}
+                    className="absolute inset-0 min-h-0"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -6 }}
+                    transition={{ duration: 0.16, ease: 'easeOut' }}
+                  >
+                    {renderActivePanel(activeTab)}
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </div>
+
+            <div
+              className="absolute left-0 top-0 bottom-0 z-[60] w-1.5 cursor-col-resize transition-colors hover:bg-primary/30"
+              onMouseDown={startResize}
+            />
+          </>
+        ) : null}
+
+        {/* Persistent browser layer placeholder — BrowserPanel will be mounted here in Plan 11-3.
+            The webview stays in the DOM (connected) even when the panel is closed or another
+            tab is active, so agent browser tools keep working in the background. */}
+        {browserTabAlive ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 top-10 -z-10 opacity-0">
+            {/* BrowserPanel key={browserPanelKey} sessionId={panelSessionId} projectId={activeProjectId} */}
+          </div>
+        ) : null}
+      </aside>
+
+      {isDragging && <div className="fixed inset-0 z-[100] cursor-col-resize" />}
     </div>
   )
-}
-
-export function RightPanelHeader(): React.JSX.Element | null {
-  return null
 }

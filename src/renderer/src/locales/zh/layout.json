@@ -1,4 +1,4 @@
-{
+﻿{
   "splash": {
     "enterMain": "进入主页",
     "enterSettings": "AI 服务商设置",
@@ -284,5 +284,41 @@
       "global": "全局",
       "project": "项目"
     }
+  },
+  "rightPanel": {
+    "browser": "浏览器",
+    "browserLoadFailed": "页面加载失败",
+    "browserRetry": "重试",
+    "browserEmptyState": "输入网址开始浏览"
+  },
+  "rightPanelAction": {
+    "closePanel": "关闭面板"
+  },
+  "subAgentsPanel": {
+    "title": "子Agent",
+    "started": "进行中",
+    "noStarted": "没有子Agent在运行",
+    "completedGroup": "已完成",
+    "queued": "排队中",
+    "running": "运行中",
+    "maxIterations": "已达迭代上限",
+    "aborted": "已中止",
+    "completed": "已完成",
+    "stop": "停止此子Agent",
+    "backToList": "返回子Agent列表",
+    "durationSeconds": "{{count}}秒",
+    "durationMinutes": "{{count}}分",
+    "durationHours": "{{count}}时",
+    "groupToday": "今天",
+    "groupYesterday": "昨天"
+  },
+  "browser": {
+    "back": "后退",
+    "forward": "前进",
+    "refresh": "刷新",
+    "stop": "停止",
+    "go": "前往",
+    "urlPlaceholder": "输入网址或搜索...",
+    "blockedByRules": "被浏览器访问规则阻止"
   }
 }

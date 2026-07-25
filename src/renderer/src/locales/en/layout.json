@@ -1,4 +1,4 @@
-{
+﻿{
   "splash": {
     "enterMain": "Enter Main",
     "enterSettings": "AI Provider Settings",
@@ -284,5 +284,41 @@
       "global": "global",
       "project": "project"
     }
+  },
+  "rightPanel": {
+    "browser": "Browser",
+    "browserLoadFailed": "Failed to load page",
+    "browserRetry": "Retry",
+    "browserEmptyState": "Enter a URL to start browsing"
+  },
+  "rightPanelAction": {
+    "closePanel": "Close panel"
+  },
+  "subAgentsPanel": {
+    "title": "SubAgents",
+    "started": "Started",
+    "noStarted": "No SubAgents have been started",
+    "completedGroup": "Completed",
+    "queued": "Queued",
+    "running": "Running",
+    "maxIterations": "Iteration limit reached",
+    "aborted": "Aborted",
+    "completed": "Completed",
+    "stop": "Stop this SubAgent",
+    "backToList": "Back to SubAgents",
+    "durationSeconds": "{{count}}s",
+    "durationMinutes": "{{count}}m",
+    "durationHours": "{{count}}h",
+    "groupToday": "Today",
+    "groupYesterday": "Yesterday"
+  },
+  "browser": {
+    "back": "Back",
+    "forward": "Forward",
+    "refresh": "Refresh",
+    "stop": "Stop",
+    "go": "Go",
+    "urlPlaceholder": "Enter URL or search...",
+    "blockedByRules": "Blocked by browser access rules"
   }
 }
