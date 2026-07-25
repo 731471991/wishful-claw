@@ -794,6 +794,9 @@ export function InputArea({
 
 
       <div className={composerWidthClass}>
+        {draftSessionId && (
+          <RetryBanner sessionId={draftSessionId} />
+        )}
         <div
           ref={containerRef}
           className={cn(
@@ -944,9 +947,6 @@ export function InputArea({
           />
         </div>
 
-        {draftSessionId && (
-          <RetryBanner sessionId={draftSessionId} />
-        )}
         {draftSessionId && (
           <ComposerRuntimeStatus
             sessionId={draftSessionId}
