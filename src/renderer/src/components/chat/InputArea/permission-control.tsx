@@ -23,7 +23,7 @@ export function PermissionControl({
   onSelectMode,
   onOpenSettings
 }: PermissionControlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('chat')
   const composerIconControlClass = 'composer-control rounded-xl'
 
   return (
