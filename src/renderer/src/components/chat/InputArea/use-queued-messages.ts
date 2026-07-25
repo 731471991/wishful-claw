@@ -22,7 +22,7 @@ import {
   type PendingSessionMessageItem
 } from '@renderer/hooks/use-chat-actions'
 import { EMPTY_QUEUED_MESSAGES } from './types'
-import { areQueuedMessagesEqual, summarizeQueuedMessage } from './utils'
+import { areQueuedMessagesEqual } from './utils'
 
 export interface UseQueuedMessagesOptions {
   activeSessionId: string | null
@@ -221,6 +221,7 @@ export function useQueuedMessages(opts: UseQueuedMessagesOptions) {
     editingQueueText,
     setEditingQueueText,
     editingQueueImages,
+    setEditingQueueImages,
     queueClearConfirmOpen,
     setQueueClearConfirmOpen,
     queueFileInputRef,

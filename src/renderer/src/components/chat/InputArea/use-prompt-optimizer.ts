@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 import { useProviderStore } from '@renderer/stores/provider-store'
-import { useSettingsStore } from '@renderer/stores/settings-store'
 import type { AppLanguage } from '@renderer/lib/i18n-language'
 
 export interface UsePromptOptimizerOptions {

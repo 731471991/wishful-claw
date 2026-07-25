@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Shapes, Wrench } from 'lucide-react'
+import { Shapes } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useMcpStore, resolveConfiguredActiveMcpIds } from '@renderer/stores/mcp-store'
 import {
@@ -11,8 +11,6 @@ import {
 } from '@renderer/stores/extension-store'
 import { ModelIcon } from '@renderer/components/settings/provider-icons'
 import type { MessageRequestModelMeta } from '@renderer/lib/api/types'
-import type { ImageAttachment } from '@renderer/lib/image-attachments'
-import type { SendMessageOptions, ManualCompressionResult } from '@renderer/hooks/use-chat-actions'
 
 export function ActiveMcpsBadge({ projectId }: { projectId?: string | null }): React.JSX.Element | null {
   const { t } = useTranslation('chat')
@@ -136,26 +134,5 @@ export function ReadOnlyModelBadge({
       <span className="min-w-0 truncate text-xs font-medium">{modelName}</span>
     </div>
   )
-}
-
-interface InputAreaProps {
-  sessionId?: string | null
-  onSend: (text: string, images?: ImageAttachment[], options?: SendMessageOptions) => void
-  onStop?: () => void
-  onSelectFolder?: () => void
-  isStreaming?: boolean
-  workingFolder?: string
-  hideWorkingFolderIndicator?: boolean
-  hideWorkingFolderPicker?: boolean
-  onCompressContext?: () => ManualCompressionResult | void | Promise<ManualCompressionResult | void>
-  disabled?: boolean
-  draftKeyOverride?: string | null
-  suppressPendingQueue?: boolean
-  hideGoalSessionBar?: boolean
-  hideModeSwitch?: boolean
-  modelRoute?: 'main' | 'fast'
-  readOnlyModel?: MessageRequestModelMeta | null
-  attachedFooter?: boolean
-  fullWidth?: boolean
 }
 

@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import type { TFunction } from 'i18next'
 import {
   ACCEPTED_IMAGE_TYPES,
-  cloneImageAttachments,
   fileToImageAttachment,
   type ImageAttachment
 } from '@renderer/lib/image-attachments'

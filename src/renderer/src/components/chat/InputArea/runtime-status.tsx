@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Sparkles, ImageIcon, CheckCircle2, RefreshCcw, ShieldAlert,
-  Wrench, Users, Brain, Activity, Clock, type LucideIcon
+  Wrench, Users, Brain, Activity, Clock
 } from 'lucide-react'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { useShallow } from 'zustand/react/shallow'
@@ -14,23 +14,18 @@ import { useAgentStore } from '@renderer/stores/agent-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import {
   calculateCost, calculateCostBreakdown, estimateTokens,
-  formatCacheHitRate, formatCost, formatTokens,
+  formatCacheHitRate, formatCost,
   getCacheHitRate
 } from '@renderer/lib/format-tokens'
-import type { AIModelConfig, MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
+import type { MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
 import type {
   ComposerRuntimeStatusProps,
-  ContextCompressionStatus,
   RuntimeStatusView,
-  RuntimeUsageTotals
 } from './types'
 import {
   RuntimeMetric,
   RuntimeTextMetric,
-  metricToneClasses,
-  SmoothTokenNumber,
-  MetricHoverTip
 } from './runtime-metrics'
 import {
   normalizeTokenCount,
@@ -39,10 +34,8 @@ import {
   formatRuntimeTtft,
   sumNullableCost,
   createEmptyRuntimeUsageTotals,
-  getBillableInputForUsage,
   addUsageToTotals,
   collectRuntimeOutputSnapshot,
-  getLatestRequestTiming
 } from './utils'
 
 export function ComposerRuntimeStatus({
@@ -212,8 +205,6 @@ export function ComposerRuntimeStatus({
     (isStreaming ? Math.max(0, estimatedOutputTokens - live.currentOutputTokens) : 0)
   const cacheReadTokens = live.cumulativeCacheReadTokens
   const cacheCreationTokens = live.cumulativeCacheCreationTokens
-  const cacheCreation5mTokens = live.cumulativeCacheCreation5mTokens
-  const cacheCreation1hTokens = live.cumulativeCacheCreation1hTokens
   const cacheHitRate = getCacheHitRate(inputTokens, cacheReadTokens, cacheCreationTokens)
   const streamingExtraUsage = React.useMemo<TokenUsage | null>(() => {
     if (!isStreaming || !model) return null
@@ -283,50 +274,6 @@ export function ComposerRuntimeStatus({
   )
   // Cache-write tokens are billed at two different TTL rates (5m vs 1h). Split the hover
   // tooltip so each bucket's tokens and cost are shown separately instead of one lumped total.
-  const cacheCreationTitle = React.useMemo<React.ReactNode>(() => {
-    if (cacheCreationTokens <= 0) return undefined
-    const rows = [
-      {
-        key: '5m',
-        label: t('input.runtimeMetrics.cacheCreate5m', { defaultValue: 'Cache write (5m)' }),
-        tokens: cacheCreation5mTokens,
-        price: metricPricing.cacheCreatePrice
-      },
-      {
-        key: '1h',
-        label: t('input.runtimeMetrics.cacheCreate1h', { defaultValue: 'Cache write (1h)' }),
-        tokens: cacheCreation1hTokens,
-        price: metricPricing.cacheCreate1hPrice
-      }
-    ].filter((row) => row.tokens > 0)
-    if (rows.length === 0) return undefined
-    return (
-      <div className="flex flex-col gap-0.5">
-        {rows.map((row) => {
-          const cost =
-            row.price != null && Number.isFinite(row.price)
-              ? formatCost((row.tokens * row.price) / 1_000_000)
-              : null
-          return (
-            <div key={row.key} className="flex items-center justify-between gap-3 tabular-nums">
-              <span className="text-muted-foreground/70">{row.label}</span>
-              <span>
-                {formatTokens(row.tokens)}
-                {cost ? ` · ${cost}` : ''}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }, [
-    cacheCreationTokens,
-    cacheCreation5mTokens,
-    cacheCreation1hTokens,
-    metricPricing.cacheCreatePrice,
-    metricPricing.cacheCreate1hPrice,
-    t
-  ])
   const latestTps = toFinitePositiveNumber(live.latestRequestTiming?.tps)
   const latestTtftMs = toFinitePositiveNumber(live.latestRequestTiming?.ttftMs)
   const statusView = React.useMemo<RuntimeStatusView>(() => {

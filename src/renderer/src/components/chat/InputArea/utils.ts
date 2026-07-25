@@ -1,6 +1,6 @@
 // Pure utility functions for InputArea
 
-import type { TokenUsage, UnifiedMessage, RequestTiming, AIModelConfig } from '@renderer/lib/api/types'
+import type { TokenUsage, UnifiedMessage, RequestTiming } from '@renderer/lib/api/types'
 import type { RuntimeOutputSnapshot, RuntimeUsageTotals } from './types'
 import type { AppPluginId } from '@renderer/lib/app-plugin/types'
 import { IMAGE_PLUGIN_ID, BROWSER_PLUGIN_ID } from '@renderer/lib/app-plugin/types'

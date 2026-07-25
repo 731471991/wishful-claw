@@ -7,9 +7,6 @@ import { cn } from '@renderer/lib/utils'
 import { TokenCounter } from '../TokenCounter'
 import type { RuntimeMetricTone } from './types'
 import { normalizeTokenCount } from './utils'
-import type { ContextCompressionStatus } from './types'
-import type { AIModelConfig } from '@shared/types/provider'
-import type { UnifiedMessage, TokenUsage } from '@renderer/lib/api/types'
 
 export function SmoothTokenNumber({
   value,
@@ -132,21 +129,5 @@ export function RuntimeTextMetric({
       ) : null}
     </span>
   )
-}
-
-interface ComposerRuntimeStatusProps {
-  sessionId: string
-  isStreaming: boolean
-  draftInputTokens: number
-  isOptimizing?: boolean
-  pendingImageReads?: number
-  contextCompressionStatus: ContextCompressionStatus
-  contextCompressionStatusLabel: string
-  model?: AIModelConfig | null
-  className?: string
-  messagesOverride?: readonly UnifiedMessage[]
-  streamingMessageIdOverride?: string | null
-  usageOverride?: TokenUsage
-  showStatus?: boolean
 }
 

@@ -7,10 +7,8 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
-import { confirm } from '@renderer/components/ui/confirm-dialog'
 
 type PermissionMode = 'default' | 'whitelist' | 'fullAccess'
 
