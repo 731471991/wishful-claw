@@ -1,4 +1,4 @@
-﻿{
+{
   "splash": {
     "enterMain": "Enter Main",
     "enterSettings": "AI Provider Settings",
@@ -289,7 +289,10 @@
     "browser": "Browser",
     "browserLoadFailed": "Failed to load page",
     "browserRetry": "Retry",
-    "browserEmptyState": "Enter a URL to start browsing"
+    "browserEmptyState": "Enter a URL to start browsing",
+    "openFile": "Open file",
+    "preview": "Preview",
+    "previewEmpty": "No preview content"
   },
   "rightPanelAction": {
     "closePanel": "Close panel"
@@ -320,5 +323,19 @@
     "go": "Go",
     "urlPlaceholder": "Enter URL or search...",
     "blockedByRules": "Blocked by browser access rules"
+  },
+  "preview": {
+    "openFile": "Open file",
+    "preview": "Preview",
+    "code": "Code",
+    "modified": "Modified",
+    "copied": "Copied",
+    "noViewer": "No viewer available for this file type",
+    "openInSystem": "Open in system",
+    "unsavedChanges": "Unsaved changes",
+    "unsavedChangesDesc": "{fileName} has unsaved changes. Do you want to save before closing?",
+    "discard": "Discard",
+    "diffSplit": "Split",
+    "diffInline": "Inline"
   }
 }

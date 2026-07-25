@@ -30,6 +30,7 @@ interface RightPanelHeaderProps {
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
   onAddBrowser: () => void
+  onOpenFile: () => void
   onClosePanel: () => void
   t: (key: string, options?: Record<string, unknown>) => string
 }
@@ -140,6 +141,7 @@ export function RightPanelHeader({
   onSelectTab,
   onCloseTab,
   onAddBrowser,
+  onOpenFile,
   onClosePanel,
   t
 }: RightPanelHeaderProps): React.JSX.Element {
@@ -184,6 +186,10 @@ export function RightPanelHeader({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={onOpenFile}>
+            <FolderOpen className="size-4" />
+            {t('rightPanel.openFile', { defaultValue: 'Open file' })}
+          </DropdownMenuItem>
           <DropdownMenuItem disabled={!browserEnabled} onSelect={onAddBrowser}>
             <Globe className="size-4" />
             {t('rightPanel.browser', { defaultValue: 'Browser' })}

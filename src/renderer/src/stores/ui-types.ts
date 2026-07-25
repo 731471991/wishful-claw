@@ -1,4 +1,4 @@
-﻿// ─── Types ───
+// ─── Types ───
 
 export type AppMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
 
@@ -94,6 +94,10 @@ export type SettingsTab =
   | 'extension'
   | 'mcp'
 
+export type PreviewSource = 'file' | 'dev-server' | 'markdown' | 'diff'
+export type DiffSource = 'git' | 'agent'
+export type GitChangeSection = 'staged' | 'unstaged' | 'untracked' | 'conflicted'
+
 export type DetailPanelContent =
   | { type: 'team' }
   | { type: 'subagent'; toolUseId?: string; text?: string }
@@ -102,7 +106,7 @@ export type DetailPanelContent =
   | { type: 'document'; title: string; content: string }
   | { type: 'report'; title: string; data: unknown }
 
-interface MessageListViewState {
+export interface MessageListViewState {
   scrollOffset: number
   messageCount: number
   loadedRangeStart: number

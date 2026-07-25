@@ -12,6 +12,7 @@ import { ActivityPanel } from '@renderer/components/activity/ActivityPanel'
 import { MemoryPanel } from '@renderer/components/memory/MemoryPanel'
 import { SubAgentsPanel } from '@renderer/components/layout/SubAgentsPanel'
 import { BrowserPanel } from '@renderer/components/layout/BrowserPanel'
+import { PreviewPanel } from '@renderer/components/layout/PreviewPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
 export function RightPanel(): React.JSX.Element {
@@ -135,6 +136,7 @@ export function RightPanel(): React.JSX.Element {
       return <SubAgentsPanel sessionId={tab.sessionId ?? panelSessionId} />
     }
     if (tab.kind === 'browser') return null  // BrowserPanel is rendered as persistent layer
+    if (tab.kind === 'preview') return <PreviewPanel embedded />
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         <Loader2 className="mr-2 size-4 animate-spin" />
@@ -166,6 +168,18 @@ export function RightPanel(): React.JSX.Element {
               onSelectTab={setRightPanelActiveTab}
               onCloseTab={closeRightPanelTab}
               onAddBrowser={() => ensureBrowserTab(undefined, panelSessionId)}
+              onOpenFile={() => {
+                import('@renderer/lib/ipc/ipc-client').then(({ ipcClient }) => {
+                  ipcClient.invoke('fs:select-file', { multiSelections: true }).then((result) => {
+                    const r = result as { canceled?: boolean; paths?: string[]; path?: string }
+                    if (r.canceled) return
+                    const selectedPaths = r.paths?.length ? r.paths : r.path ? [r.path] : []
+                    for (const p of selectedPaths) {
+                      useUIStore.getState().openFilePreview(p)
+                    }
+                  })
+                })
+              }}
               onClosePanel={() => setRightPanelOpen(false)}
               t={t}
             />

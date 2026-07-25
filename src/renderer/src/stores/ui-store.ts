@@ -18,6 +18,17 @@ import {
   resolvePanelScope,
   updateBrowserStateForSession
 } from './browser-session-helpers'
+import {
+  type PreviewPanelState,
+  type PreviewPanelTab,
+  buildFilePreviewState,
+  previewTabTitle,
+  withPreviewTab,
+  withPreviewScope,
+  activatePreviewTab,
+  rightPanelPreviewTabId
+} from './preview-panel-helpers'
+import { createPreviewPanelSlice } from './preview-panel-slice'
 import type { UIStore } from './ui-store-interface'
 import {
   CHAT_SURFACE_NAV_RESET,
@@ -46,6 +57,7 @@ export type {
   SettingsTab,
   DetailPanelContent
 } from './ui-types'
+export type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './preview-panel-helpers'
 
 // ─── Store Implementation ───
 
@@ -262,14 +274,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
     })),
   clearSelectedFiles: () => set({ selectedFiles: [] }),
 
-  // File preview (stub — opens file via shell)
-  openFilePreview: (filePath) => {
-    // Stub: will be implemented with proper preview panel later
-    console.log('[UIStore] openFilePreview stub:', filePath)
-  },
-  openMarkdownPreview: (_title, _content, _sessionId) => {
-    // Stub: will be implemented with proper preview panel later
-  },
+  // Preview panel (extracted to preview-panel-slice.ts)
+  ...createPreviewPanelSlice(set, get),
 
   // Hovering state
   isHoveringRightPanel: false,

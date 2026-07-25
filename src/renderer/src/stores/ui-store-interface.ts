@@ -1,4 +1,4 @@
-﻿// Extracted from ui-store.ts — UIStore interface definition
+// Extracted from ui-store.ts — UIStore interface definition
 
 import type React from 'react'
 import type {
@@ -16,6 +16,7 @@ import type {
   SettingsTab
 } from './ui-types'
 import type { BrowserErrorInfo, BrowserPanelSessionState } from './browser-session-helpers'
+import type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './preview-panel-helpers'
 
 // ─── Store Interface ───
 
@@ -196,15 +197,32 @@ interface UIStore {
   toggleFileSelection: (filePath: string) => void
   clearSelectedFiles: () => void
 
-  // File preview
+  // Preview panel
+  previewPanelOpen: boolean
+  previewPanelState: PreviewPanelTab | null
+  previewPanelTabs: PreviewPanelTab[]
+  activePreviewPanelTabId: string | null
   openFilePreview: (
     filePath: string,
-    viewMode?: 'split' | 'inline' | 'preview' | 'code',
+    viewMode?: 'preview' | 'code',
     sshConnectionId?: string | null,
     sessionId?: string | null,
     targetLine?: number,
     targetColumn?: number
   ) => void
+  openPreviewTab: (
+    state: PreviewPanelState,
+    preserveExistingViewMode?: boolean,
+    mirrorToRightPanel?: boolean
+  ) => void
+  openDiff: (params: OpenDiffParams) => void
+  openDevServerPreview: (projectDir: string, port: number, sessionId?: string | null) => void
+  openMarkdownPreview: (title: string, content: string, sessionId?: string | null) => void
+  closePreviewTab: (tabId: string) => void
+  closePreviewPanel: () => void
+  setActivePreviewTab: (tabId: string | null) => void
+  updatePreviewTab: (tabId: string, patch: Partial<PreviewPanelTab>) => void
+  setPreviewViewMode: (mode: 'preview' | 'code', sessionId?: string | null) => void
 
   // Hovering state
   isHoveringRightPanel: boolean

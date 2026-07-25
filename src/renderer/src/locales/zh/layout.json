@@ -1,4 +1,4 @@
-﻿{
+{
   "splash": {
     "enterMain": "进入主页",
     "enterSettings": "AI 服务商设置",
@@ -289,7 +289,10 @@
     "browser": "浏览器",
     "browserLoadFailed": "页面加载失败",
     "browserRetry": "重试",
-    "browserEmptyState": "输入网址开始浏览"
+    "browserEmptyState": "输入网址开始浏览",
+    "openFile": "打开文件",
+    "preview": "预览",
+    "previewEmpty": "无预览内容"
   },
   "rightPanelAction": {
     "closePanel": "关闭面板"
@@ -320,5 +323,19 @@
     "go": "前往",
     "urlPlaceholder": "输入网址或搜索...",
     "blockedByRules": "被浏览器访问规则阻止"
+  },
+  "preview": {
+    "openFile": "打开文件",
+    "preview": "预览",
+    "code": "代码",
+    "modified": "已修改",
+    "copied": "已复制",
+    "noViewer": "此文件类型无可用查看器",
+    "openInSystem": "在系统中打开",
+    "unsavedChanges": "未保存的更改",
+    "unsavedChangesDesc": "{fileName} 有未保存的更改。关闭前要保存吗？",
+    "discard": "丢弃",
+    "diffSplit": "分屏",
+    "diffInline": "内联"
   }
 }
