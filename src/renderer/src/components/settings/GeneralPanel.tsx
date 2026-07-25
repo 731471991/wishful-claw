@@ -394,7 +394,6 @@ function GeneralPanel(): React.JSX.Element {
             />
           </div>
         </div>
-        </div>
 
         {/* Max Concurrent Sub-Agents */}
         <div className="space-y-2">
