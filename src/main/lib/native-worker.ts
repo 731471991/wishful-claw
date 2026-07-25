@@ -6,6 +6,7 @@ import * as net from 'net'
 import * as path from 'path'
 import { decode, encode } from '@msgpack/msgpack'
 import { logError, logWarn } from './logger'
+import { readPersistedSettings, SETTINGS_STORAGE_KEY } from './settings-store'
 
 const DEFAULT_TIMEOUT_MS = 60_000
 const CONNECT_TIMEOUT_MS = 10_000
@@ -118,10 +119,22 @@ class NativeWorkerManager {
     const endpoint = createEndpoint()
     console.log('[Worker] spawning', { workerPath, endpoint })
 
+    // Read defaultShell from persisted settings and inject as env var
+    let workerEnv = { ...process.env }
+    try {
+      const persisted = readPersistedSettings(SETTINGS_STORAGE_KEY) as
+        { state?: { defaultShell?: string } } | null
+      const defaultShell = persisted?.state?.defaultShell
+      if (defaultShell) {
+        workerEnv.WISHFUL_SHELL = defaultShell
+      }
+    } catch { /* ignore — settings file may not exist yet */ }
+
     const child = spawn(workerPath, ['--ipc', endpoint], {
       cwd: path.dirname(workerPath),
       stdio: ['ignore', 'ignore', 'pipe'],
-      windowsHide: true
+      windowsHide: true,
+      env: workerEnv
     })
 
     this.child = child

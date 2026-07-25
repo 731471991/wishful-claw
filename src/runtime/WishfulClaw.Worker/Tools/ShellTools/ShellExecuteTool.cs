@@ -26,6 +26,9 @@ public sealed class ShellExecuteTool : IToolExecutor
 
     public string Description =>
         "Execute a shell command and return stdout, stderr, exit code, and timing. " +
+"Execute a shell command and return stdout, stderr, exit code, and timing. " +
+        "On Windows, PowerShell is the default and recommended shell for reliable Unicode support. " +
+        "Avoid cmd.exe unless specifically needed — its UTF-8 piping is unreliable for non-ASCII text. " +
         "Supports choosing the shell (PowerShell, cmd, bash, zsh), setting a working directory, " +
         "and environment variables. Use for running tests, building, git, file inspection, etc.";
 
@@ -216,9 +219,21 @@ public sealed class ShellExecuteTool : IToolExecutor
 
     private static ShellLaunch ResolveLaunch(string? preferredShell)
     {
-        foreach (var launch in GetShellLaunchCandidates(preferredShell))
+        // Priority: per-call 'shell' param > env WISHFUL_SHELL > platform default
+        var envShell = Environment.GetEnvironmentVariable("WISHFUL_SHELL")?.Trim();
+        var effective = !string.IsNullOrEmpty(preferredShell) ? preferredShell : envShell;
+
+        foreach (var launch in GetShellLaunchCandidates(effective))
         {
-            if (OperatingSystem.IsWindows() || File.Exists(launch.Shell))
+            if (OperatingSystem.IsWindows())
+            {
+                // On Windows, trust well-known shells; for custom paths, verify existence
+                if (IsPowerShell(launch.Shell) || launch.Shell.EndsWith("cmd.exe", StringComparison.OrdinalIgnoreCase))
+                    return launch;
+                if (File.Exists(launch.Shell))
+                    return launch;
+            }
+            else if (File.Exists(launch.Shell))
             {
                 return launch;
             }
@@ -283,8 +298,9 @@ public sealed class ShellExecuteTool : IToolExecutor
                     command;
                 return ["-NoLogo", "-NoProfile", "-Command", wrappedCommand];
             }
-            // cmd.exe — use chcp 65001 to switch console to UTF-8
-            return ["/d", "/s", "/c", "chcp 65001 >nul && " + command];
+            // cmd.exe — chcp 65001 is unreliable for piped UTF-8;
+            // recommend PowerShell instead. Keep cmd as fallback without chcp.
+            return ["/d", "/s", "/c", command];
         }
 
         // Unix: interactive flags from launch + -lc command

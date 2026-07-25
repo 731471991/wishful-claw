@@ -470,6 +470,7 @@ interface SettingsStore {
   projectDefaultDirectory: string
   lastProjectDirectory: string
   recentWorkingTargets: RecentWorkingTarget[]
+  defaultShell: string
 
   updateSettings: (patch: Partial<SettingsStoreData>) => void
   pushRecentWorkingTarget: (target: {
@@ -591,6 +592,7 @@ export const useSettingsStore = create<SettingsStore>()(
       claudeCodeConfigs: [createDefaultClaudeCodeConfig()],
       codexConfigs: [createDefaultCodexConfig()],
       projectDefaultDirectoryMode: 'last-used',
+      defaultShell: '',
       projectDefaultDirectory: '',
       lastProjectDirectory: '',
       recentWorkingTargets: [],
@@ -1024,6 +1026,7 @@ export const useSettingsStore = create<SettingsStore>()(
         projectDefaultDirectory: state.projectDefaultDirectory,
         lastProjectDirectory: state.lastProjectDirectory,
         recentWorkingTargets: state.recentWorkingTargets,
+        defaultShell: state.defaultShell,
         builtinBrowserEnabled: state.builtinBrowserEnabled,
         hooksEnabled: state.hooksEnabled,
         browserUserDataReuseEnabled: state.browserUserDataReuseEnabled,
