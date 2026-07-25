@@ -170,6 +170,12 @@ public sealed class ShellExecuteTool : IToolExecutor
     private static ProcessStartInfo CreateProcessStartInfo(
         ShellLaunch launch, string command, string cwd, JsonElement input)
     {
+        // For cmd.exe, use the system default code page (usually GBK/936 on
+        // Chinese Windows) because chcp 65001 doesn't reliably affect piped
+        // output from all legacy programs. For PowerShell/bash, UTF-8 is safe.
+        var isCmd = OperatingSystem.IsWindows() && !IsPowerShell(launch.Shell);
+        var outputEncoding = isCmd ? GetSystemEncoding() : Encoding.UTF8;
+
         var startInfo = new ProcessStartInfo
         {
             FileName = launch.Shell,
@@ -177,8 +183,8 @@ public sealed class ShellExecuteTool : IToolExecutor
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
+            StandardOutputEncoding = outputEncoding,
+            StandardErrorEncoding = outputEncoding,
             CreateNoWindow = true
         };
 
@@ -298,13 +304,50 @@ public sealed class ShellExecuteTool : IToolExecutor
                     command;
                 return ["-NoLogo", "-NoProfile", "-Command", wrappedCommand];
             }
-            // cmd.exe — chcp 65001 is unreliable for piped UTF-8;
-            // recommend PowerShell instead. Keep cmd as fallback without chcp.
+            // cmd.exe — read output with system ANSI code page (GBK/936)
+            // instead of trying to force UTF-8, which is unreliable for piped
+            // output from legacy programs. No chcp needed.
             return ["/d", "/s", "/c", command];
         }
 
         // Unix: interactive flags from launch + -lc command
         return launch.Args.Concat(["-lc", command]);
+    }
+
+    private static Encoding? _systemEncoding;
+
+    /// <summary>
+    /// Get the system ANSI code page encoding (e.g. GBK/936 on Chinese Windows).
+    /// Falls back to UTF-8 if the code page is not available.
+    /// </summary>
+    private static Encoding GetSystemEncoding()
+    {
+        if (_systemEncoding is not null) return _systemEncoding;
+
+        // Ensure code page providers are registered (needed on .NET Core/.NET 5+)
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+        try
+        {
+            // GetACP() returns the system ANSI code page (936 for Chinese)
+            var codePage = GetSystemCodePage();
+            _systemEncoding = Encoding.GetEncoding(codePage);
+        }
+        catch
+        {
+            _systemEncoding = Encoding.UTF8;
+        }
+
+        return _systemEncoding;
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern uint GetACP();
+
+    private static int GetSystemCodePage()
+    {
+        try { return (int)GetACP(); }
+        catch { return 0; }
     }
 
     private static bool IsPowerShell(string shell)
