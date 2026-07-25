@@ -20,7 +20,7 @@ interface PersonaSwitcherProps {
  * Switching updates session.personaId and persists to DB.
  */
 export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('chat')
   const { personas, listPersonas } = usePersonaStore()
   const [open, setOpen] = useState(false)
   const session = useChatStore((s) => s.sessions.find((sess) => sess.id === sessionId))
@@ -58,14 +58,14 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
         <button
           type="button"
           className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-          title={t('chat.personaSwitcher.title')}
+          title={t('personaSwitcher.title')}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
           <span className="max-w-[80px] truncate">
-            {currentPersona?.name ?? t('chat.personaSwitcher.none')}
+            {currentPersona?.name ?? t('personaSwitcher.none')}
           </span>
         </button>
       </PopoverTrigger>
@@ -77,7 +77,7 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
       >
         {personas.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            {t('chat.personaSwitcher.empty', { defaultValue: 'No personas available' })}
+            {t('personaSwitcher.empty', { defaultValue: 'No personas available' })}
           </div>
         ) : (
           personas.map((p) => (

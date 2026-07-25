@@ -1294,7 +1294,8 @@
   "chat": {
     "personaSwitcher": {
       "title": "Switch Persona",
-      "none": "Default"
+      "none": "Default",
+      "empty": "No personas available"
     }
   }
 }

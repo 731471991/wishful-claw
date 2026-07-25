@@ -1293,7 +1293,8 @@
   "chat": {
     "personaSwitcher": {
       "title": "切换人格",
-      "none": "默认"
+      "none": "默认",
+      "empty": "暂无人格可用"
     }
   }
 }
