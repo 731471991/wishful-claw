@@ -252,11 +252,9 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
               <ModelSwitcher modelRoute={modelRoute} sessionId={draftSessionId} />
             )}
           </div>
-          {draftSessionId && (
-            <div className="shrink-0">
-              <PersonaSwitcher sessionId={draftSessionId} />
-            </div>
-          )}
+          <div className="shrink-0">
+            <PersonaSwitcher sessionId={draftSessionId} />
+          </div>
           {webSearchToggleControl}
           {skillsMenuControl}
           {activeMcpBadge}

@@ -10,20 +10,23 @@ import {
 import { cn } from '@renderer/lib/utils'
 
 interface PersonaSwitcherProps {
-  sessionId: string
+  sessionId?: string | null
   workingFolder?: string
 }
 
 /**
  * Compact persona selector for the chat input area.
  * Shows current persona name, click to open a dropdown list.
- * Switching updates session.personaId and persists to DB.
+ * When sessionId is provided, switches update session.personaId and persist to DB.
+ * When sessionId is null (home page), switches update global defaultPersonaId.
  */
 export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherProps) {
   const { t } = useTranslation('chat')
   const { personas, listPersonas } = usePersonaStore()
   const [open, setOpen] = useState(false)
-  const session = useChatStore((s) => s.sessions.find((sess) => sess.id === sessionId))
+  const session = useChatStore((s) =>
+    sessionId ? s.sessions.find((sess) => sess.id === sessionId) : undefined
+  )
   const settings = useSettingsStore()
   const currentPersonaId = session?.personaId ?? settings.defaultPersonaId
 
@@ -36,19 +39,24 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
   const handleSelect = async (personaId: string) => {
     setOpen(false)
 
-    // Update session in store (immer)
-    useChatStore.setState((state) => {
-      const idx = state.sessions.findIndex((s) => s.id === sessionId)
-      if (idx >= 0) {
-        state.sessions[idx].personaId = personaId
-      }
-    })
+    if (sessionId) {
+      // Update session in store (immer)
+      useChatStore.setState((state) => {
+        const idx = state.sessions.findIndex((s) => s.id === sessionId)
+        if (idx >= 0) {
+          state.sessions[idx].personaId = personaId
+        }
+      })
 
-    // Persist to DB
-    try {
-      await dbUpdateSession(sessionId, { personaId })
-    } catch (err) {
-      console.error('[PersonaSwitcher] Failed to update session persona:', err)
+      // Persist to DB
+      try {
+        await dbUpdateSession(sessionId, { personaId })
+      } catch (err) {
+        console.error('[PersonaSwitcher] Failed to update session persona:', err)
+      }
+    } else {
+      // No session — update global default persona
+      useSettingsStore.getState().updateSettings({ defaultPersonaId: personaId })
     }
   }
 
