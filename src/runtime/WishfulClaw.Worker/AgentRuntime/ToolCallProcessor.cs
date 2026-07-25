@@ -209,6 +209,44 @@ internal static class ToolCallProcessor
                     isToolError = true;
                 }
             }
+            // WebSearch: executed directly in Worker (HTTP request)
+            else if (AgentRuntimeWebSearchExecutor.IsWebSearchTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeWebSearchExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Web search execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // WebFetch: executed directly in Worker (HTTP request)
+            else if (AgentRuntimeWebFetchExecutor.IsWebFetchTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeWebFetchExecutor.ExecuteAsync(
+                        toolCall, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Web fetch execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
             // Browser tool calls: route to renderer via reverse-request
             else if (AgentRuntimeBrowserExecutor.IsBrowserTool(toolCall.Name))
             {
@@ -307,6 +345,22 @@ internal static class ToolCallProcessor
         finally
         {
             semaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Checks if a JSON string contains an "error" property (used by WebSearch/WebFetch).
+    /// </summary>
+    private static bool IsJsonError(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("error", out _);
+        }
+        catch
+        {
+            return false;
         }
     }
 }
