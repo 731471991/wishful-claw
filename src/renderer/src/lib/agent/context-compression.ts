@@ -19,9 +19,12 @@ async function runSidecarContextCompression(_opts: {
 }
 
 // Config, constants, and simple helpers extracted to context-compression-config.ts
-export {
+export type {
   CompressionConfig,
   CompressionResult,
+} from './context-compression-config'
+
+export {
   DEFAULT_CONTEXT_COMPRESSION_LIMIT,
   DEFAULT_CONTEXT_COMPRESSION_THRESHOLD,
   MIN_CONTEXT_COMPRESSION_THRESHOLD,

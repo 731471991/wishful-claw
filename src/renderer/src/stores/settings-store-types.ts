@@ -116,12 +116,12 @@ export interface RecentWorkingTarget {
 const MAX_RECENT_WORKING_TARGETS = 8
 const DEFAULT_AI_CODING_CONFIG_ID = 'default'
 
-function readStringField(item: Record<string, unknown>, key: string): string {
+export function readStringField(item: Record<string, unknown>, key: string): string {
   const value = item[key]
   return typeof value === 'string' ? value : ''
 }
 
-function sanitizeClaudeCodePermissionOptions(value: unknown): ClaudeCodePermissionOption[] {
+export function sanitizeClaudeCodePermissionOptions(value: unknown): ClaudeCodePermissionOption[] {
   if (!Array.isArray(value)) return []
   return value.includes('dangerouslySkipPermissions') ? ['dangerouslySkipPermissions'] : []
 }
@@ -149,7 +149,7 @@ export function createDefaultCodexConfig(): CodexConfig {
   }
 }
 
-function sanitizeClaudeCodeConfigs(configs: unknown): ClaudeCodeConfig[] {
+export function sanitizeClaudeCodeConfigs(configs: unknown): ClaudeCodeConfig[] {
   if (!Array.isArray(configs)) return [createDefaultClaudeCodeConfig()]
 
   const usedIds = new Set<string>()
@@ -177,7 +177,7 @@ function sanitizeClaudeCodeConfigs(configs: unknown): ClaudeCodeConfig[] {
   return sanitized.length > 0 ? sanitized : [createDefaultClaudeCodeConfig()]
 }
 
-function sanitizeCodexConfigs(configs: unknown): CodexConfig[] {
+export function sanitizeCodexConfigs(configs: unknown): CodexConfig[] {
   if (!Array.isArray(configs)) return [createDefaultCodexConfig()]
 
   const usedIds = new Set<string>()
@@ -200,7 +200,7 @@ function sanitizeCodexConfigs(configs: unknown): CodexConfig[] {
   return sanitized.length > 0 ? sanitized : [createDefaultCodexConfig()]
 }
 
-function normalizeWorkingFolderPath(folderPath: string): string {
+export function normalizeWorkingFolderPath(folderPath: string): string {
   const trimmed = folderPath.trim()
   if (!trimmed) return ''
   if (trimmed === '/') return '/'
@@ -217,7 +217,7 @@ export function getRecentWorkingTargetKey(target: {
   return `${target.sshConnectionId ?? 'local'}::${normalizeWorkingFolderPath(target.workingFolder ?? '').toLowerCase()}`
 }
 
-function sanitizeRecentWorkingTargets(targets: unknown): RecentWorkingTarget[] {
+export function sanitizeRecentWorkingTargets(targets: unknown): RecentWorkingTarget[] {
   if (!Array.isArray(targets)) return []
 
   const deduped = new Map<string, RecentWorkingTarget>()
@@ -249,7 +249,7 @@ function sanitizeRecentWorkingTargets(targets: unknown): RecentWorkingTarget[] {
     .slice(0, MAX_RECENT_WORKING_TARGETS)
 }
 
-function isThemeSetting(value: unknown): value is 'light' | 'dark' | 'system' {
+export function isThemeSetting(value: unknown): value is 'light' | 'dark' | 'system' {
   return value === 'light' || value === 'dark' || value === 'system'
 }
 

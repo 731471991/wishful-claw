@@ -24,13 +24,13 @@ import { agentStream } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { toAgentEvent } from '@renderer/lib/agent/stream-event-adapter'
 
-function normalizeProviderToolInput(value: unknown): Record<string, unknown> {
+export function normalizeProviderToolInput(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {}
 }
 
-function toProviderErrorEvent(error: unknown): StreamEvent {
+export function toProviderErrorEvent(error: unknown): StreamEvent {
   return {
     type: 'error',
     error: {
@@ -40,7 +40,7 @@ function toProviderErrorEvent(error: unknown): StreamEvent {
   }
 }
 
-function mapAgentEventToProviderEvents(
+export function mapAgentEventToProviderEvents(
   event: AgentEvent,
   startedToolIds: Set<string>
 ): StreamEvent[] {

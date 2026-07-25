@@ -697,7 +697,10 @@ async function runRollupForDescriptor(args: {
 // Daily rollup and manual automation extracted to memory-automation-rollup.ts
 export {
   runDailyMemoryRollup,
-  installMemoryAutomationDailyRollup,
   undoMemoryAutomationEntry,
   runManualMemoryAutomationForActiveSession,
+} from './memory-automation-rollup'
+
+export {
+  installMemoryAutomationDailyRollup,
 } from './memory-automation-rollup'

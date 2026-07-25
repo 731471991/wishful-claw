@@ -598,14 +598,20 @@ export async function applyManualProviderOAuth(
 
 
 // Import/export account functions extracted to provider-auth-accounts.ts
-export {
+export type {
   ImportOAuthAccountsResult,
+} from './provider-auth-accounts'
+
+export {
   importOauthAccountsFromJson,
-  exportProviderAccounts,
   refreshProviderOAuth,
   ensureProviderAuthReady,
   sendProviderChannelCode,
   verifyProviderChannelCode,
   refreshProviderChannelUserInfo,
+} from './provider-auth-accounts'
+
+export {
+  exportProviderAccounts,
   clearProviderChannelAuth,
 } from './provider-auth-accounts'

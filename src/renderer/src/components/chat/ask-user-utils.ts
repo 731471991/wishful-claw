@@ -26,19 +26,19 @@ export type { AnsweredPair }
 
 const RECOMMENDED_OPTION_RE = /(?:\(|（)\s*(recommended)\s*(?:\)|）)/i
 
-function getOptionLabel(label: string | undefined | null): string {
+export function getOptionLabel(label: string | undefined | null): string {
   return typeof label === 'string' ? label : ''
 }
 
-function isRecommendedOptionLabel(label: string | undefined | null): boolean {
+export function isRecommendedOptionLabel(label: string | undefined | null): boolean {
   return RECOMMENDED_OPTION_RE.test(getOptionLabel(label))
 }
 
-function stripRecommendedMarker(label: string | undefined | null): string {
+export function stripRecommendedMarker(label: string | undefined | null): string {
   return getOptionLabel(label).replace(RECOMMENDED_OPTION_RE, '').trim()
 }
 
-function outputAsText(output: ToolResultContent | undefined): string | null {
+export function outputAsText(output: ToolResultContent | undefined): string | null {
   if (!output) return null
   const text =
     typeof output === 'string'
@@ -50,7 +50,7 @@ function outputAsText(output: ToolResultContent | undefined): string | null {
   return text || null
 }
 
-function parseStructuredAnsweredResult(
+export function parseStructuredAnsweredResult(
   output: ToolResultContent | undefined
 ): AskUserStructuredResult | null {
   const text = outputAsText(output)
@@ -99,7 +99,7 @@ function parseStructuredAnsweredResult(
   }
 }
 
-function parseLegacyAnsweredPairs(output: ToolResultContent | undefined): AnsweredPair[] {
+export function parseLegacyAnsweredPairs(output: ToolResultContent | undefined): AnsweredPair[] {
   const text = outputAsText(output)
   if (!text || !/^User answered:\s*/i.test(text)) return []
 
@@ -155,7 +155,7 @@ function parseLegacyAnsweredPairs(output: ToolResultContent | undefined): Answer
   return pairs
 }
 
-function parseAnsweredPairs(output: ToolResultContent | undefined): {
+export function parseAnsweredPairs(output: ToolResultContent | undefined): {
   pairs: AnsweredPair[]
   structured: AskUserStructuredResult | null
 } {
@@ -175,7 +175,7 @@ function parseAnsweredPairs(output: ToolResultContent | undefined): {
   }
 }
 
-function isRedundantSummary(summary: string | undefined, pairs: AnsweredPair[]): boolean {
+export function isRedundantSummary(summary: string | undefined, pairs: AnsweredPair[]): boolean {
   const normalized = summary?.trim()
   if (!normalized) return true
   if (pairs.length === 0) return false
@@ -183,7 +183,7 @@ function isRedundantSummary(summary: string | undefined, pairs: AnsweredPair[]):
   return /^User has answered your questions(?::|\.)/i.test(normalized)
 }
 
-function buildRecommendedPayload(
+export function buildRecommendedPayload(
   questions: AskUserQuestionItem[]
 ): { payload: AskUserResolvedPayload; selections: Map<number, Set<string>> } | null {
   const answers: AskUserAnswers = {}
@@ -222,7 +222,7 @@ function buildRecommendedPayload(
 
 
 
-function buildSubmissionPayload(
+export function buildSubmissionPayload(
   questions: AskUserQuestionItem[],
   selections: Map<number, Set<string>>,
   customTexts: Map<number, string>,
@@ -267,7 +267,7 @@ function buildSubmissionPayload(
   }
 }
 
-function questionHasAnswer(
+export function questionHasAnswer(
   question: AskUserQuestionItem | undefined,
   selected: Set<string>,
   customText: string

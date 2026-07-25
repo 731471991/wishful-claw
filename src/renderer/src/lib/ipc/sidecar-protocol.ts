@@ -19,9 +19,9 @@ import {
   type PermissionPolicySnapshot
 } from '../../../../shared/permission-policy'
 
-export interface SidecarTextBlock {
 // Type definitions extracted to sidecar-protocol-types.ts
 export type {
+  SidecarTextBlock,
   SidecarImageBlock,
   SidecarToolCallExtraContent,
   SidecarToolUseBlock,

@@ -34,8 +34,6 @@ import { MessageRow } from './MessageList/MessageRow'
 import { StaticMessageTranscript } from './MessageList/StaticMessageTranscript'
 import { modeHints } from './MessageList/mode-hints'
 
-}
-
 import {
   type MessageListProps, type RenderableMessage, type ToolResultsLookup,
   type MessageListRow, type AutoScrollMode, type AskUserQuestionPresence,

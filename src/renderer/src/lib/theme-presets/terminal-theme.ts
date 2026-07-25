@@ -1,6 +1,6 @@
 import type { ITheme } from './types'
 
-function createTerminalTheme(colors: {
+export function createTerminalTheme(colors: {
   background: string
   foreground: string
   selectionBackground: string

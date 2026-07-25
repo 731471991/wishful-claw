@@ -48,7 +48,7 @@ export function AskUserView(props: AskUserViewProps): React.JSX.Element | null {
   return null
 }
 
-function ErrorView({
+export function ErrorView({
   isCanceled,
   outputErrorMessage,
   answeredText
@@ -101,7 +101,7 @@ function ErrorView({
   )
 }
 
-function AnsweredView({
+export function AnsweredView({
   answeredPairs,
   answeredStructured
 }: AskUserViewProps): React.JSX.Element {
@@ -183,7 +183,7 @@ function AnsweredView({
   )
 }
 
-function CompletedView({
+export function CompletedView({
   answeredText
 }: AskUserViewProps): React.JSX.Element {
   const { t } = useTranslation('chat')

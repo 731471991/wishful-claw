@@ -26,11 +26,11 @@ import {
   stripRecommendedMarker
 } from './ask-user-utils'
 
-function looksLikeHtmlPreview(preview: string): boolean {
+export function looksLikeHtmlPreview(preview: string): boolean {
   return /<\s*[a-z!][^>]*>/i.test(preview)
 }
 
-function buildPreviewDocument(preview: string): string {
+export function buildPreviewDocument(preview: string): string {
   return `<!doctype html>
 <html>
   <head>
@@ -53,7 +53,7 @@ function buildPreviewDocument(preview: string): string {
 </html>`
 }
 
-function PreviewPane({ preview }: { preview: string }): React.JSX.Element {
+export function PreviewPane({ preview }: { preview: string }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const isHtml = looksLikeHtmlPreview(preview)
 
@@ -89,7 +89,7 @@ function PreviewPane({ preview }: { preview: string }): React.JSX.Element {
   )
 }
 
-function QuestionBlock({
+export function QuestionBlock({
   index,
   item,
   selected,
