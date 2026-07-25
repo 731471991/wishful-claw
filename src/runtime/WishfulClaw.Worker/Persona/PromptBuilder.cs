@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Workspace.Memory;
@@ -28,6 +28,7 @@ internal static class PromptBuilder
     public static string Build(
         PromptProfile profile,
         JsonElement? provider,
+        JsonElement parameters,
         string? personaId,
         string? workingFolder,
         string? language,
@@ -58,7 +59,7 @@ internal static class PromptBuilder
         }
 
         // ── Tool Capability ──
-        parts.Add(BuildToolCapability());
+        parts.Add(BuildToolCapability(parameters));
 
         // ── Project Context ──
         if (!string.IsNullOrWhiteSpace(workingFolder))
@@ -242,9 +243,14 @@ You have two memory tiers. Use them strategically:
         return string.Join('\n', parts.Where(p => !string.IsNullOrWhiteSpace(p)));
     }
 
-    private static string BuildToolCapability()
+    private static string BuildToolCapability(JsonElement parameters)
     {
-        return """
+        // Read concurrency limits from runtime parameters
+        var maxParallelTools = JsonHelpers.GetInt(parameters, "maxParallelTools", 8);
+        var maxConcurrentSubAgents = JsonHelpers.GetInt(parameters, "maxConcurrentSubAgents", 2);
+        var maxToolCallsPerTurn = JsonHelpers.GetInt(parameters, "maxToolCallsPerTurn", 15);
+
+        return $"""
 <tool_calling>
 Use tools when needed. Follow these rules:
 - If you say you will use a tool, call it immediately next.
@@ -252,6 +258,13 @@ Use tools when needed. Follow these rules:
 - Before calling tools, plan how to batch independent operations and maximize parallel calls.
 - Batch independent tool calls in the same assistant turn; keep sequential only when dependent.
 - Use Glob/Grep/Read before assuming structure.
+
+**Concurrency limits (HARD constraints — do NOT exceed):**
+- Maximum {maxParallelTools} tool calls running in parallel.
+- Maximum {maxConcurrentSubAgents} sub-agent (Task) calls running in parallel.
+- Maximum {maxToolCallsPerTurn} tool calls per turn.
+- If you need more parallelism than these limits allow, split across multiple turns.
+- Do NOT fire a large burst of tool calls expecting all to run — excess calls beyond the parallel limit will queue but may appear to fail if the turn limit is exceeded.
 
 **Pre-tool output discipline:**
 - When you plan to call tools in the current turn, text output BEFORE the tool calls must be **planning/intent only** (e.g. "Let me check the project structure").

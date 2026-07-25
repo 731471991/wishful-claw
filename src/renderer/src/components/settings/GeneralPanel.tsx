@@ -394,6 +394,40 @@ function GeneralPanel(): React.JSX.Element {
             />
           </div>
         </div>
+        </div>
+
+        {/* Max Concurrent Sub-Agents */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between max-w-lg">
+            <div>
+              <label className="text-xs font-medium">{t('general.toolExecution.maxSubAgents.label')}</label>
+              <p className="text-xs text-muted-foreground">{t('general.toolExecution.maxSubAgents.desc')}</p>
+            </div>
+            <span className="text-xs text-muted-foreground">{settings.maxConcurrentSubAgents}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              type="range"
+              min={1}
+              max={8}
+              step={1}
+              value={settings.maxConcurrentSubAgents}
+              onChange={(e) => settings.updateSettings({ maxConcurrentSubAgents: parseInt(e.target.value) })}
+              className="flex-1 max-w-lg accent-primary"
+            />
+            <Input
+              type="number"
+              min={1}
+              max={8}
+              value={settings.maxConcurrentSubAgents}
+              onChange={(e) => {
+                const next = Math.min(8, Math.max(1, parseInt(e.target.value, 10) || 2))
+                settings.updateSettings({ maxConcurrentSubAgents: next })
+              }}
+              className="max-w-24 text-xs"
+            />
+          </div>
+        </div>
       </section>
 
       {/* Developer Mode */}

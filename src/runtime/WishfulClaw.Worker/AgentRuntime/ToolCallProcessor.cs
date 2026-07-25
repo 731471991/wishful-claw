@@ -9,6 +9,7 @@ namespace WishfulClaw.Worker.AgentRuntime;
 /// <summary>
 /// Handles tool call execution within an agent loop iteration.
 /// Supports concurrency control via SemaphoreSlim and per-turn call capping.
+/// Sub-agent (Task) tool calls have a separate concurrency limit.
 /// </summary>
 internal static class ToolCallProcessor
 {
@@ -25,6 +26,7 @@ internal static class ToolCallProcessor
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
         var maxParallelTools = Math.Max(1, JsonHelpers.GetInt(parameters, "maxParallelTools", 1));
         var maxToolCallsPerTurn = JsonHelpers.GetInt(parameters, "maxToolCallsPerTurn", 0); // 0 = unlimited
+        var maxConcurrentSubAgents = Math.Max(1, JsonHelpers.GetInt(parameters, "maxConcurrentSubAgents", 2));
         var registry = ToolModuleState.Registry;
 
         // Cap total tool calls per turn to prevent runaway LLM behavior
@@ -37,8 +39,11 @@ internal static class ToolCallProcessor
             toolCallsToExecute = toolCallsToExecute.Take(maxToolCallsPerTurn).ToList();
         }
 
-        // Execute tools with concurrency control via SemaphoreSlim
-        var semaphore = new SemaphoreSlim(maxParallelTools, maxParallelTools);
+        // Two semaphores: one for regular tools, one for sub-agent (Task) calls.
+        // This prevents a burst of Task calls from consuming all parallel slots
+        // and blocking regular tools (or vice versa).
+        var toolSemaphore = new SemaphoreSlim(maxParallelTools, maxParallelTools);
+        var subAgentSemaphore = new SemaphoreSlim(maxConcurrentSubAgents, maxConcurrentSubAgents);
         var toolTasks = new List<Task<AgentRuntimeToolResult>>();
 
         foreach (var toolCall in toolCallsToExecute)
@@ -47,6 +52,10 @@ internal static class ToolCallProcessor
             {
                 break;
             }
+
+            // Pick the right semaphore based on whether this is a Task (sub-agent) call
+            var isTaskTool = SubAgentExecutor.IsTaskTool(toolCall.Name);
+            var semaphore = isTaskTool ? subAgentSemaphore : toolSemaphore;
 
             await semaphore.WaitAsync(state.CancellationToken);
             toolTasks.Add(ExecuteSingleAsync(

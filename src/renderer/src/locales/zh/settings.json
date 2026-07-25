@@ -98,6 +98,10 @@
       "maxPerTurn": {
         "label": "每轮最大工具调用数",
         "desc": "单次 AI 回复中工具调用的上限"
+      },
+      "maxSubAgents": {
+        "label": "子 Agent 并发上限",
+        "desc": "同时运行的子 Agent 数量上限"
       }
     },
     "developerMode": {

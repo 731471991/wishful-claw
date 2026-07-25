@@ -52,7 +52,7 @@ internal static partial class AgentLoop
             var language = JsonHelpers.GetString(parameters, "language");
             var userRules = JsonHelpers.GetString(parameters, "userRules");
             var builtPrompt = PromptBuilder.Build(
-                PromptProfile.Main, provider, personaId, workingFolder, language, userRules);
+                PromptProfile.Main, provider, parameters, personaId, workingFolder, language, userRules);
             provider = InjectSystemPrompt(provider, builtPrompt);
             WorkerLog.Info($"persona system prompt built id={personaId} length={builtPrompt.Length}");
         }

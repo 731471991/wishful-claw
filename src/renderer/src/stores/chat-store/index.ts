@@ -30,6 +30,7 @@ export interface AgentActions {
     maxIterations?: number
     maxParallelTools?: number
     maxToolCallsPerTurn?: number
+    maxConcurrentSubAgents?: number
     personaId?: string
     language?: string
     userRules?: string
