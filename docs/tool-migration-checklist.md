@@ -47,8 +47,8 @@
 | CodeCompatibleExecutor | PowerShell / Monitor | PowerShell + 输出监控 | AgentRuntimeCodeCompatibleExecutor.cs | Process 直接 |
 | WidgetExecutor | visualize_show_widget | UI 组件展示 | AgentRuntimeWidgetExecutor.cs | Worker 直接 |
 | CodeGraphExecutor | codegraph_* | 代码图谱查询 | AgentRuntimeCodeGraphExecutor.cs + stub-reverse-handler.ts | 待接图谱引擎 |
-| PluginExecutor | PluginSendMessage 等 6 个 | 插件消息 | AgentRuntimePluginExecutor.cs + stub-reverse-handler.ts | 待接插件系统 |
-| ChannelPluginExecutor | FeishuSendImage 等 14 个 | 飞书/微信集成 | AgentRuntimeChannelPluginExecutor.cs + stub-reverse-handler.ts | 待接渠道 API |
+| PluginExecutor | PluginSendMessage 等 6 个 | 插件消息 | AgentRuntimePluginExecutor.cs + channel-plugin-handlers.ts | ✅ 已接入渠道系统 |
+| ChannelPluginExecutor | FeishuSendImage 等 14 个 | 飞书/微信集成 | AgentRuntimeChannelPluginExecutor.cs + channel-feishu/weixin-handlers.ts | ✅ 已接入渠道系统 |
 
 ---
 
@@ -140,8 +140,8 @@
 | MCP (Main 已接客户端) | 2 | ✅ 已实现 | mcp-client.ts + mcp-manager.ts |
 | CodeGraph (Main stub) | 1 | ⏳ 待接引擎 | stub-reverse-handler.ts |
 | Extension (Main stub) | 1 | ⏳ 待接运行时 | stub-reverse-handler.ts |
-| Plugin (Main stub) | 2 | ⏳ 待接系统 | stub-reverse-handler.ts |
-| Feishu (Main stub) | 10 | ⏳ 待接 API | stub-reverse-handler.ts |
+| Plugin (Main) | 2 | ✅ 已接入 | channel-plugin-handlers.ts |
+| Feishu (Main) | 10 | ✅ 已接入 | channel-feishu-handlers.ts |
 | WeChat (Main stub) | 2 | ⏳ 待接 API | stub-reverse-handler.ts |
 
 ---
@@ -201,6 +201,10 @@
 
 - ⏳ Video 模块（Seedance / XaiVideo）移植
 - ⏳ Extension 运行时接入
-- ⏳ Plugin / Channel API 接入（飞书 / 微信）
+- ✅ 渠道系统全量移植（8 个 provider: feishu/weixin/dingtalk/wecom/qq/telegram/discord/whatsapp）
+- ✅ 渠道配置 UI（PluginPanel 选项卡式配置 + 扫码绑定 + i18n）
+- ✅ 渠道代码拆分（feishu-api/weixin-api/plugin-commands/channel-handlers）
+- ✅ C# Worker 渠道模块（ChannelConfigModule + DbPluginSessionTools）
+- ✅ 双编译验证（npm run build + dotnet build）
 - ⏳ CodeGraph 引擎接入
 - ⏳ 第三轮代码拆分（前端仍有大文件）
