@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using SqlSugar;
 using WishfulClaw.Core.Protocol;
 
@@ -71,8 +71,9 @@ internal static class DbClient
             _db.CodeFirst.InitTables(
                 typeof(ProjectEntity),
                 typeof(SessionEntity),
-                typeof(MessageEntity));
-            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (3 entities, MemoryArchiveEntity excluded)");
+                typeof(MessageEntity),
+                typeof(SubAgentRunEntity));
+            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (4 entities, MemoryArchiveEntity excluded)");
 
             // memory_entries 表（手动创建，不通过 CodeFirst）
             WorkerLog.Info("DbClient: creating memory_entries table");

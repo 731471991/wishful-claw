@@ -41,6 +41,12 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/messages-count", DbMessageTools.Count);
         context.Register("db/messages-delete-last", DbMessageTools.DeleteLast);
         context.Register("db/messages-truncate-from", DbMessageTools.TruncateFrom);
+
+        // ── Sub-Agent Runs ──
+        context.Register("db/sub-agent-read-session", DbSubAgentTools.ReadSession);
+        context.Register("db/sub-agent-index", DbSubAgentTools.Index);
+        context.Register("db/sub-agent-apply", DbSubAgentTools.Apply);
+        context.Register("db/sub-agent-replace", DbSubAgentTools.Replace);
     }
 
     private static WorkerResponse DbInitialize(JsonElement parameters)

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog } from 'electron'
+﻿import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -180,22 +180,26 @@ app.whenReady().then(() => {
   // ── File system handlers (extracted to ipc/fs-handlers.ts) ──
   registerFsHandlers()
 
-  // ── Agent history stub handlers (no persistence layer yet) ──
+  // ── Agent history handlers (forwarded to C# Worker SQLite) ──
   registerMessagePackHandler<void, { total: number; sessions: unknown[] }>(
     'agent-history:index',
-    async () => ({ total: 0, sessions: [] })
+    async () => getNativeWorker().request('db/sub-agent-index', {})
   )
   registerMessagePackHandler<{ sessionId: string }, unknown[]>(
     'agent-history:read',
-    async () => []
+    async (args) => getNativeWorker().request('db/sub-agent-read-session', args)
   )
-  registerMessagePackHandler<unknown, void>(
+  registerMessagePackHandler<{
+    upserts?: unknown[]
+    removeIds?: string[]
+    removeSessionIds?: string[]
+  }, void>(
     'agent-history:apply',
-    async () => undefined
+    async (args) => { await getNativeWorker().request('db/sub-agent-apply', args) }
   )
-  registerMessagePackHandler<unknown, void>(
+  registerMessagePackHandler<{ snapshot: unknown }, void>(
     'agent-history:replace',
-    async () => undefined
+    async (args) => { await getNativeWorker().request('db/sub-agent-replace', args) }
   )
   // ── SSH stub handlers ──
   registerMessagePackHandler<unknown, unknown[]>(
