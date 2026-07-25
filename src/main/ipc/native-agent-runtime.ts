@@ -96,6 +96,38 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     DESKTOP_INPUT_TYPE,
     DESKTOP_INPUT_SCROLL
   ])
+
+  // Main process methods: handled directly (not forwarded to Renderer)
+  const mainProcessMethods = new Set([
+    'notify:desktop',
+    'codegraph:tool',
+    'mcp:call-tool',
+    'mcp:read-resource',
+    'extension:execute-js-tool',
+    'cron:add',
+    'cron:update',
+    'cron:delete',
+    'cron:list',
+    'plugin:exec',
+    'plugin:tool-enabled',
+    'plugin:feishu:send-image',
+    'plugin:feishu:send-file',
+    'plugin:feishu:list-members',
+    'plugin:feishu:send-mention',
+    'plugin:feishu:send-urgent',
+    'plugin:feishu:bitable:list-apps',
+    'plugin:feishu:bitable:list-tables',
+    'plugin:feishu:bitable:list-fields',
+    'plugin:feishu:bitable:get-records',
+    'plugin:feishu:bitable:create-records',
+    'plugin:feishu:bitable:update-records',
+    'plugin:feishu:bitable:delete-records',
+    'plugin:weixin:send-image',
+    'plugin:weixin:send-file',
+    'team:send-message',
+    'image:generate'
+  ])
+
   if (desktopMethods.has(method)) {
     try {
       let result: unknown
@@ -123,8 +155,43 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     return
   }
 
+  // Main process methods: forward to registered IPC handlers or return not-yet-implemented
+  if (mainProcessMethods.has(method)) {
+    try {
+      // For notify:desktop, use Electron's Notification API directly
+      if (method === 'notify:desktop') {
+        const { Notification } = require('electron')
+        const params = request.params as Record<string, unknown> | undefined
+        const title = (params?.title as string) ?? ''
+        const body = (params?.body as string) ?? ''
+        if (Notification.isSupported()) {
+          const notification = new Notification({ title, body })
+          notification.show()
+          await sendReverseResponse(id, { success: true, title, body }, undefined)
+        } else {
+          await sendReverseResponse(id, { success: false, error: 'Notifications not supported' }, undefined)
+        }
+        return
+      }
+
+      // Other main process methods: not yet implemented, return guidance
+      await sendReverseResponse(
+        id,
+        { success: false, error: `Main process method "${method}" not yet implemented` },
+        undefined
+      )
+    } catch (error) {
+      await sendReverseResponse(id, undefined, error instanceof Error ? error.message : String(error))
+    }
+    return
+  }
+
   // Methods that route to the renderer via the tool bridge
-  const rendererMethods = new Set(['browser/tool-request', 'ask-user/request'])
+  const rendererMethods = new Set([
+    'browser/tool-request',
+    'ask-user/request',
+    'plan/ui-update'
+  ])
   if (rendererMethods.has(method)) {
     const requestId = `sidecar-renderer-tool-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
