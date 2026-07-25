@@ -2,6 +2,7 @@ using WishfulClaw.Contracts;
 using WishfulClaw.Worker.AgentRuntime;
 using WishfulClaw.Worker.Modules;
 using WishfulClaw.Worker.Modules.Db;
+using WishfulClaw.Worker.Modules.Git;
 using WishfulClaw.Worker.Persona;
 using WishfulClaw.Worker.Tools;
 
@@ -19,6 +20,7 @@ public static class WorkerModuleCatalog
         new ToolModule(),
         new DbModule(),
         new PersonaModule(),
-        new MemoryModule()
+        new MemoryModule(),
+        new GitModule()
     ];
 }
