@@ -292,7 +292,7 @@ function CredentialsPanel({
         {descriptor.configSchema.map((field) => (
           <div key={field.key} className="space-y-1.5">
             <label htmlFor={`field-${field.key}`} className="text-xs font-medium text-foreground">
-              {field.label}
+              {field.label.startsWith('channel.') ? t(field.label, { defaultValue: field.key }) : field.label}
               {field.required && <span className="ml-1 text-red-500">*</span>}
             </label>
             <Input

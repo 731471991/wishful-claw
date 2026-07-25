@@ -111,7 +111,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
 
   startChannel: async (id) => {
     try {
-      await ipcClient.invoke(IPC.PLUGIN_START, { id })
+      await ipcClient.invoke(IPC.PLUGIN_START, id)
       set((s) => ({
         channelStatuses: { ...s.channelStatuses, [id]: 'running' }
       }))
@@ -125,7 +125,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
 
   stopChannel: async (id) => {
     try {
-      await ipcClient.invoke(IPC.PLUGIN_STOP, { id })
+      await ipcClient.invoke(IPC.PLUGIN_STOP, id)
       set((s) => ({
         channelStatuses: { ...s.channelStatuses, [id]: 'stopped' }
       }))
