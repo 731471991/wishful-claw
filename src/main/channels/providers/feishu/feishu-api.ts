@@ -1,63 +1,15 @@
 import * as https from 'https'
-import * as http from 'http'
-
-const BASE_URL = 'https://open.feishu.cn'
-
-interface HttpResponse {
-  statusCode: number
-  body: string
-}
-
-function request(
-  method: string,
-  path: string,
-  headers: Record<string, string>,
-  body?: string
-): Promise<HttpResponse> {
-  return new Promise((resolve, reject) => {
-    const url = new URL(path, BASE_URL)
-    const bodyBuffer = body ? Buffer.from(body, 'utf-8') : null
-    const reqHeaders: Record<string, string> = { ...headers }
-    if (bodyBuffer) {
-      reqHeaders['Content-Length'] = String(bodyBuffer.byteLength)
-      reqHeaders['Content-Type'] = 'application/json; charset=utf-8'
-    }
-
-    const req = https.request(
-      {
-        hostname: url.hostname,
-        port: 443,
-        path: url.pathname + url.search,
-        method,
-        headers: reqHeaders
-      },
-      (res) => {
-        let responseBody = ''
-        res.on('data', (chunk: Buffer) => {
-          responseBody += chunk.toString()
-        })
-        res.on('end', () => {
-          resolve({ statusCode: res.statusCode ?? 0, body: responseBody })
-        })
-      }
-    )
-
-    req.on('error', reject)
-    req.setTimeout(15000, () => {
-      req.destroy()
-      reject(new Error('Request timed out (15s)'))
-    })
-
-    if (bodyBuffer) req.write(bodyBuffer)
-    req.end()
-  })
-}
+import { request, BASE_URL } from './feishu-http'
+import { FeishuBitableApi } from './feishu-bitable-api'
+import { FeishuMediaApi } from './feishu-media-api'
 
 // ── Feishu Open API Client ──
 
 export class FeishuApi {
   private accessToken = ''
   private tokenExpiresAt = 0
+  private _bitable: FeishuBitableApi | null = null
+  private _media: FeishuMediaApi | null = null
 
   constructor(
     private appId: string,
@@ -91,6 +43,25 @@ export class FeishuApi {
   private async authHeaders(): Promise<Record<string, string>> {
     const token = await this.ensureToken()
     return { Authorization: `Bearer ${token}` }
+  }
+
+  /** Bitable (多维表格) API — lazily initialized */
+  get bitable(): FeishuBitableApi {
+    if (!this._bitable) {
+      this._bitable = new FeishuBitableApi(() => this.authHeaders())
+    }
+    return this._bitable
+  }
+
+  /** Media (image/file) API — lazily initialized */
+  get media(): FeishuMediaApi {
+    if (!this._media) {
+      this._media = new FeishuMediaApi(
+        () => this.authHeaders(),
+        () => this.ensureToken()
+      )
+    }
+    return this._media
   }
 
   /** Get the bot's own identity (open_id, app_name) */
@@ -244,31 +215,21 @@ export class FeishuApi {
 
   // ── CardKit API — Streaming Card Support ──
 
-  /**
-   * Create a card entity for streaming updates.
-   * Returns the card_id used for subsequent updates.
-   */
+  /** Create a card entity for streaming updates */
   async createCard(initialContent: string, title = 'AI Assistant'): Promise<{ cardId: string }> {
     const headers = await this.authHeaders()
     const cardData = {
       schema: '2.0',
       config: { update_multi: true, streaming_mode: true },
-      header: {
-        title: { tag: 'plain_text', content: title }
-      },
-      body: {
-        elements: [{ tag: 'markdown', content: initialContent }]
-      }
+      header: { title: { tag: 'plain_text', content: title } },
+      body: { elements: [{ tag: 'markdown', content: initialContent }] }
     }
 
     const res = await request(
       'POST',
       '/open-apis/cardkit/v1/cards',
       headers,
-      JSON.stringify({
-        type: 'card_json',
-        data: JSON.stringify(cardData)
-      })
+      JSON.stringify({ type: 'card_json', data: JSON.stringify(cardData) })
     )
 
     const data = JSON.parse(res.body)
@@ -278,10 +239,7 @@ export class FeishuApi {
     return { cardId: data.data?.card_id ?? '' }
   }
 
-  /**
-   * Update a card entity content.
-   * `sequence` must be strictly incrementing per card_id.
-   */
+  /** Update a card entity content (sequence must be strictly incrementing) */
   async updateCard(
     cardId: string,
     content: string,
@@ -292,25 +250,15 @@ export class FeishuApi {
     const cardData = {
       schema: '2.0',
       config: { update_multi: true, streaming_mode: true },
-      header: {
-        title: { tag: 'plain_text', content: title }
-      },
-      body: {
-        elements: [{ tag: 'markdown', content }]
-      }
+      header: { title: { tag: 'plain_text', content: title } },
+      body: { elements: [{ tag: 'markdown', content }] }
     }
 
     const res = await request(
       'PUT',
       `/open-apis/cardkit/v1/cards/${cardId}`,
       headers,
-      JSON.stringify({
-        card: {
-          type: 'card_json',
-          data: JSON.stringify(cardData)
-        },
-        sequence
-      })
+      JSON.stringify({ card: { type: 'card_json', data: JSON.stringify(cardData) }, sequence })
     )
 
     const data = JSON.parse(res.body)
@@ -321,10 +269,7 @@ export class FeishuApi {
     return true
   }
 
-  /**
-   * Send a card message to a chat using an existing card_id.
-   * Returns the message_id of the sent card message.
-   */
+  /** Send a card message to a chat using an existing card_id */
   async sendCardMessage(chatId: string, cardId: string): Promise<{ messageId: string }> {
     const headers = await this.authHeaders()
     const body = JSON.stringify({
@@ -347,10 +292,7 @@ export class FeishuApi {
     return { messageId: data.data?.message_id ?? '' }
   }
 
-  /**
-   * Reply to a specific message with a card using an existing card_id.
-   * Returns the message_id of the reply card message.
-   */
+  /** Reply to a specific message with a card using an existing card_id */
   async replyCardMessage(replyMessageId: string, cardId: string): Promise<{ messageId: string }> {
     const headers = await this.authHeaders()
     const body = JSON.stringify({
@@ -370,445 +312,6 @@ export class FeishuApi {
       throw new Error(`Feishu replyCardMessage failed: ${data.msg}`)
     }
     return { messageId: data.data?.message_id ?? '' }
-  }
-
-  // ── Image / File Operations ──
-
-  /**
-   * Download a message resource (image/file) by message_id and file_key.
-   * Returns the raw binary buffer.
-   */
-  async downloadMessageResource(
-    messageId: string,
-    fileKey: string,
-    type: 'image' | 'file' = 'image'
-  ): Promise<Buffer> {
-    const token = await this.ensureToken()
-    return new Promise((resolve, reject) => {
-      const url = new URL(
-        `/open-apis/im/v1/messages/${messageId}/resources/${fileKey}?type=${type}`,
-        BASE_URL
-      )
-      const req = https.request(
-        {
-          hostname: url.hostname,
-          port: 443,
-          path: url.pathname + url.search,
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` }
-        },
-        (res) => {
-          const chunks: Buffer[] = []
-          res.on('data', (chunk: Buffer) => chunks.push(chunk))
-          res.on('end', () => {
-            const buf = Buffer.concat(chunks)
-            if (res.statusCode !== 200) {
-              reject(new Error(`Download resource failed: HTTP ${res.statusCode}`))
-              return
-            }
-            resolve(buf)
-          })
-        }
-      )
-      req.on('error', reject)
-      req.setTimeout(30000, () => {
-        req.destroy()
-        reject(new Error('Download resource timed out (30s)'))
-      })
-      req.end()
-    })
-  }
-
-  /**
-   * Upload an image to Feishu and get an image_key.
-   * Accepts a Buffer of image data.
-   */
-  async uploadImage(imageBuffer: Buffer, fileName = 'image.png'): Promise<string> {
-    const token = await this.ensureToken()
-    const boundary = `----FormBoundary${Date.now()}`
-
-    const parts: Buffer[] = []
-    // image_type field
-    parts.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="image_type"\r\n\r\nmessage\r\n`
-      )
-    )
-    // image file field
-    parts.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="image"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`
-      )
-    )
-    parts.push(imageBuffer)
-    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`))
-
-    const body = Buffer.concat(parts)
-
-    return new Promise((resolve, reject) => {
-      const url = new URL('/open-apis/im/v1/images', BASE_URL)
-      const req = https.request(
-        {
-          hostname: url.hostname,
-          port: 443,
-          path: url.pathname,
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': `multipart/form-data; boundary=${boundary}`,
-            'Content-Length': String(body.byteLength)
-          }
-        },
-        (res) => {
-          let responseBody = ''
-          res.on('data', (chunk: Buffer) => {
-            responseBody += chunk.toString()
-          })
-          res.on('end', () => {
-            try {
-              const data = JSON.parse(responseBody)
-              if (data.code !== 0) {
-                reject(new Error(`Upload image failed: ${data.msg}`))
-                return
-              }
-              resolve(data.data?.image_key ?? '')
-            } catch {
-              reject(new Error(`Upload image parse error: ${responseBody.slice(0, 200)}`))
-            }
-          })
-        }
-      )
-      req.on('error', reject)
-      req.setTimeout(30000, () => {
-        req.destroy()
-        reject(new Error('Upload image timed out (30s)'))
-      })
-      req.write(body)
-      req.end()
-    })
-  }
-
-  /**
-   * Upload a file to Feishu and get a file_key.
-   */
-  async uploadFile(
-    fileBuffer: Buffer,
-    fileName: string,
-    fileType: 'opus' | 'mp4' | 'pdf' | 'doc' | 'xls' | 'ppt' | 'stream' = 'stream'
-  ): Promise<string> {
-    const token = await this.ensureToken()
-    const boundary = `----FormBoundary${Date.now()}`
-
-    const parts: Buffer[] = []
-    parts.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="file_type"\r\n\r\n${fileType}\r\n`
-      )
-    )
-    parts.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="file_name"\r\n\r\n${fileName}\r\n`
-      )
-    )
-    parts.push(
-      Buffer.from(
-        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`
-      )
-    )
-    parts.push(fileBuffer)
-    parts.push(Buffer.from(`\r\n--${boundary}--\r\n`))
-
-    const body = Buffer.concat(parts)
-
-    return new Promise((resolve, reject) => {
-      const url = new URL('/open-apis/im/v1/files', BASE_URL)
-      const req = https.request(
-        {
-          hostname: url.hostname,
-          port: 443,
-          path: url.pathname,
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': `multipart/form-data; boundary=${boundary}`,
-            'Content-Length': String(body.byteLength)
-          }
-        },
-        (res) => {
-          let responseBody = ''
-          res.on('data', (chunk: Buffer) => {
-            responseBody += chunk.toString()
-          })
-          res.on('end', () => {
-            try {
-              const data = JSON.parse(responseBody)
-              if (data.code !== 0) {
-                reject(new Error(`Upload file failed: ${data.msg}`))
-                return
-              }
-              resolve(data.data?.file_key ?? '')
-            } catch {
-              reject(new Error(`Upload file parse error: ${responseBody.slice(0, 200)}`))
-            }
-          })
-        }
-      )
-      req.on('error', reject)
-      req.setTimeout(60000, () => {
-        req.destroy()
-        reject(new Error('Upload file timed out (60s)'))
-      })
-      req.write(body)
-      req.end()
-    })
-  }
-
-  /**
-   * Download a file from an HTTP/HTTPS URL and return the raw buffer.
-   */
-  static downloadUrl(url: string): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const mod = url.startsWith('https') ? https : http
-      mod
-        .get(url, (res) => {
-          if (
-            res.statusCode &&
-            res.statusCode >= 300 &&
-            res.statusCode < 400 &&
-            res.headers.location
-          ) {
-            // Follow one redirect
-            FeishuApi.downloadUrl(res.headers.location).then(resolve).catch(reject)
-            return
-          }
-          if (res.statusCode !== 200) {
-            reject(new Error(`Download URL failed: HTTP ${res.statusCode}`))
-            return
-          }
-          const chunks: Buffer[] = []
-          res.on('data', (chunk: Buffer) => chunks.push(chunk))
-          res.on('end', () => resolve(Buffer.concat(chunks)))
-          res.on('error', reject)
-        })
-        .on('error', reject)
-    })
-  }
-
-  /** Send an image message to a chat using an image_key */
-  async sendImageMessage(chatId: string, imageKey: string): Promise<{ messageId: string }> {
-    const headers = await this.authHeaders()
-    const body = JSON.stringify({
-      receive_id: chatId,
-      msg_type: 'image',
-      content: JSON.stringify({ image_key: imageKey })
-    })
-
-    const res = await request(
-      'POST',
-      '/open-apis/im/v1/messages?receive_id_type=chat_id',
-      headers,
-      body
-    )
-
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu sendImageMessage failed: ${data.msg}`)
-    }
-    return { messageId: data.data?.message_id ?? '' }
-  }
-
-  /** Send a file message to a chat using a file_key */
-  async sendFileMessage(chatId: string, fileKey: string): Promise<{ messageId: string }> {
-    const headers = await this.authHeaders()
-    const body = JSON.stringify({
-      receive_id: chatId,
-      msg_type: 'file',
-      content: JSON.stringify({ file_key: fileKey })
-    })
-
-    const res = await request(
-      'POST',
-      '/open-apis/im/v1/messages?receive_id_type=chat_id',
-      headers,
-      body
-    )
-
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu sendFileMessage failed: ${data.msg}`)
-    }
-    return { messageId: data.data?.message_id ?? '' }
-  }
-
-  /** Send an urgent push for a message */
-  async sendUrgent(
-    messageId: string,
-    userIds: string[],
-    urgentType: 'app' | 'sms',
-    userIdType: 'user_id' | 'open_id' | 'union_id' = 'user_id'
-  ): Promise<boolean> {
-    const headers = await this.authHeaders()
-    const body = JSON.stringify({
-      user_id_list: userIds,
-      urgent_type: urgentType
-    })
-    const res = await request(
-      'POST',
-      `/open-apis/im/v1/messages/${messageId}/urgent?user_id_type=${userIdType}`,
-      headers,
-      body
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu sendUrgent failed: ${data.msg}`)
-    }
-    return true
-  }
-
-  // ── Bitable APIs ──
-
-  async listBitableApps(pageSize = 50, pageToken?: string): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const tokenParam = pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ''
-    const res = await request(
-      'GET',
-      `/open-apis/bitable/v1/apps?page_size=${pageSize}${tokenParam}`,
-      headers
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu listBitableApps failed: ${data.msg}`)
-    }
-    return data.data
-  }
-
-  async listBitableTables(appToken: string, pageSize = 100, pageToken?: string): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const tokenParam = pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ''
-    const encoded = encodeURIComponent(appToken)
-    const res = await request(
-      'GET',
-      `/open-apis/bitable/v1/apps/${encoded}/tables?page_size=${pageSize}${tokenParam}`,
-      headers
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu listBitableTables failed: ${data.msg}`)
-    }
-    return data.data
-  }
-
-  async listBitableFields(
-    appToken: string,
-    tableId: string,
-    pageSize = 200,
-    pageToken?: string
-  ): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const tokenParam = pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ''
-    const app = encodeURIComponent(appToken)
-    const table = encodeURIComponent(tableId)
-    const res = await request(
-      'GET',
-      `/open-apis/bitable/v1/apps/${app}/tables/${table}/fields?page_size=${pageSize}${tokenParam}`,
-      headers
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu listBitableFields failed: ${data.msg}`)
-    }
-    return data.data
-  }
-
-  async getBitableRecords(
-    appToken: string,
-    tableId: string,
-    options?: { pageSize?: number; pageToken?: string; filter?: string }
-  ): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const app = encodeURIComponent(appToken)
-    const table = encodeURIComponent(tableId)
-    const pageSize = options?.pageSize ?? 50
-    const pageToken = options?.pageToken
-      ? `&page_token=${encodeURIComponent(options.pageToken)}`
-      : ''
-    const filter = options?.filter ? `&filter=${encodeURIComponent(options.filter)}` : ''
-    const res = await request(
-      'GET',
-      `/open-apis/bitable/v1/apps/${app}/tables/${table}/records?page_size=${pageSize}${pageToken}${filter}`,
-      headers
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu getBitableRecords failed: ${data.msg}`)
-    }
-    return data.data
-  }
-
-  async createBitableRecords(
-    appToken: string,
-    tableId: string,
-    records: unknown[]
-  ): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const app = encodeURIComponent(appToken)
-    const table = encodeURIComponent(tableId)
-    const body = JSON.stringify({ records })
-    const res = await request(
-      'POST',
-      `/open-apis/bitable/v1/apps/${app}/tables/${table}/records`,
-      headers,
-      body
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu createBitableRecords failed: ${data.msg}`)
-    }
-    return data.data
-  }
-
-  async updateBitableRecords(
-    appToken: string,
-    tableId: string,
-    records: unknown[]
-  ): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const app = encodeURIComponent(appToken)
-    const table = encodeURIComponent(tableId)
-    const body = JSON.stringify({ records })
-    const res = await request(
-      'PUT',
-      `/open-apis/bitable/v1/apps/${app}/tables/${table}/records`,
-      headers,
-      body
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu updateBitableRecords failed: ${data.msg}`)
-    }
-    return data.data
-  }
-
-  async deleteBitableRecords(
-    appToken: string,
-    tableId: string,
-    recordIds: string[]
-  ): Promise<unknown> {
-    const headers = await this.authHeaders()
-    const app = encodeURIComponent(appToken)
-    const table = encodeURIComponent(tableId)
-    const body = JSON.stringify({ record_ids: recordIds })
-    const res = await request(
-      'POST',
-      `/open-apis/bitable/v1/apps/${app}/tables/${table}/records/batch_delete`,
-      headers,
-      body
-    )
-    const data = JSON.parse(res.body)
-    if (data.code !== 0) {
-      throw new Error(`Feishu deleteBitableRecords failed: ${data.msg}`)
-    }
-    return data.data
   }
 
   /** Get messages from a chat */
@@ -863,3 +366,8 @@ export class FeishuApi {
     )
   }
 }
+
+// Re-export for backward compatibility
+export { FeishuBitableApi } from './feishu-bitable-api'
+export { FeishuMediaApi } from './feishu-media-api'
+export { request, BASE_URL } from './feishu-http'

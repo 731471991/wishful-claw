@@ -179,7 +179,7 @@ export class FeishuService implements MessagingChannelService {
                 // Image message: download and convert to base64
                 content = '[User sent an image]'
                 try {
-                  const buf = await this.api.downloadMessageResource(
+                  const buf = await this.api.media.downloadMessageResource(
                     messageId,
                     parsed.image_key,
                     'image'
