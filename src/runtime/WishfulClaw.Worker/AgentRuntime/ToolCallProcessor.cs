@@ -165,8 +165,29 @@ internal static class ToolCallProcessor
             string toolOutput;
             bool isToolError = false;
 
-            // Intercept Task tool calls for sub-agent execution
-            if (SubAgentExecutor.IsTaskTool(toolCall.Name))
+            // Browser tool calls: route to renderer via reverse-request
+            if (AgentRuntimeBrowserExecutor.IsBrowserTool(toolCall.Name))
+            {
+                try
+                {
+                    var result = await AgentRuntimeBrowserExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, state.RunId, context, state.CancellationToken);
+                    toolOutput = result.Content.ValueKind == JsonValueKind.String
+                        ? result.Content.GetString() ?? string.Empty
+                        : result.Content.ToString();
+                    isToolError = result.IsError;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Browser tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            else if (SubAgentExecutor.IsTaskTool(toolCall.Name))
             {
                 try
                 {

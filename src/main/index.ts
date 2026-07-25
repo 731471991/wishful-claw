@@ -8,6 +8,7 @@ import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
 import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
+import { registerNativeAgentRuntimeHandlers } from './ipc/native-agent-runtime'
 import { registerFsHandlers } from './ipc/fs-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
@@ -123,6 +124,9 @@ app.whenReady().then(() => {
 
   // Agent stream event forwarder (worker → renderer)
   registerAgentStreamForwarder()
+
+  // Native agent runtime: handles reverse-request from worker (e.g. browser tool calls)
+  registerNativeAgentRuntimeHandlers()
 
 
   // Dialog: open folder selector

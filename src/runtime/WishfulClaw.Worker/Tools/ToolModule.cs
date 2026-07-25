@@ -1,4 +1,3 @@
-using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Worker.Tools.FileTools;
@@ -44,6 +43,9 @@ public sealed class ToolModule : IWorkerModule
         registry.Register(new MemoryAppendTool());
         registry.Register(new MemoryUpdateTool());
         registry.Register(new MemorySearchTool(memorySearch));
+
+        // Browser tools — definitions only, execution via reverse-request to renderer
+        BrowserToolRegistration.RegisterAll(registry);
 
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;

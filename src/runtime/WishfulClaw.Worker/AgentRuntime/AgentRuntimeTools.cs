@@ -215,6 +215,13 @@ internal static class AgentRuntimeTools
         }
     }
 
+    // ── Reverse response (from renderer tool execution) ──
+
+    public static WorkerResponse ReverseResponse(JsonElement parameters)
+    {
+        return AgentRuntimeReverseRequests.Complete(parameters);
+    }
+
     // ── Helpers ──
 
     private static string NormalizeRunId(string? runId)

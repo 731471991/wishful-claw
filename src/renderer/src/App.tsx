@@ -11,6 +11,9 @@ import { initializeI18n, changeI18nLanguage } from '@renderer/locales'
 import { SplashPage } from '@renderer/components/SplashPage'
 import { MainLayout } from '@renderer/components/layout/MainLayout'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
+import { attachRendererToolBridge } from '@renderer/lib/ipc/renderer-tool-bridge'
+import { registerAllTools } from '@renderer/lib/tools'
+import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
 
 // Initialize provider store — ensures builtin presets exist
 initProviderStore()
@@ -29,6 +32,15 @@ function App(): React.JSX.Element | null {
         console.error('i18n init failed:', err)
         setI18nError(err)
       })
+
+    // Register frontend tool handlers (browser tools, etc.)
+    attachRendererToolBridge()
+    registerBrowserTool()
+
+    // Register all tools (fs, search, bash, memory, etc.) for the frontend tool registry
+    registerAllTools().catch((err) => {
+      console.warn('registerAllTools failed (some tools may not be available):', err)
+    })
   }, [])
 
   // Sync language changes
