@@ -1,15 +1,11 @@
 // InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
-import {
-  Sparkles, X, FileUp
-} from 'lucide-react'
+
 import type { AIModelConfig } from '@renderer/lib/api/types'
 import { toast } from 'sonner'
 import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
 import type { SendMessageOptions } from '@renderer/hooks/use-chat-actions'
-import { Spinner } from '@renderer/components/ui/spinner'
-import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { updateWebSearchToolRegistration } from '@renderer/lib/tools'
@@ -26,10 +22,10 @@ import { useInputDraftPersistence } from '@renderer/hooks/use-input-draft-persis
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import {
-  ACCEPTED_IMAGE_TYPES, cloneImageAttachments,
+  cloneImageAttachments,
   type ImageAttachment
 } from '@renderer/lib/image-attachments'
-import { FileAwareEditor, type FileAwareEditorHandle } from '../FileAwareEditor'
+import { type FileAwareEditorHandle } from '../FileAwareEditor'
 import { usePlanStore } from '@renderer/stores/plan-store'
 import { useGoalStore } from '@renderer/stores/goal-store'
 import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
@@ -44,7 +40,7 @@ import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
 
 // Extracted modules
 import {
-  InputAreaProps, ContextCompressionStatus
+  InputAreaProps
 } from './types'
 import {
   MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, placeholderKeys, defaultRecommendationKeys
@@ -57,9 +53,7 @@ import { useComposerHeight } from './use-composer-height'
 import { useImageAttachments } from './use-image-attachments'
 import { useQueuedMessages } from './use-queued-messages'
 import { usePromptOptimizer } from './use-prompt-optimizer'
-import { OptimizationDialog } from './optimization-dialog'
 import { QueuedMessagesPanel } from './queued-messages-panel'
-import { ComposerFlyovers } from './composer-flyovers'
 import { ImagePreviewStrip } from './image-preview-strip'
 import { ComposerBanners } from './composer-banners'
 import { ComposerToolbar } from './composer-toolbar'
@@ -68,6 +62,10 @@ import { useDragDrop } from './use-drag-drop'
 import { useComposerEditor } from './use-composer-editor'
 import { useSlashCommands } from './use-slash-commands'
 import { useFileSearch } from './use-file-search'
+import { useContextCompression } from './use-context-compression'
+import { usePermissionMode } from './use-permission-mode'
+import { useModeControls } from './use-mode-controls'
+import { ComposerEditorArea } from './composer-editor-area'
 
 export function InputArea({
   sessionId,
@@ -102,7 +100,6 @@ export function InputArea({
   const [isWorkspaceAgentsMissing, setIsWorkspaceAgentsMissing] = React.useState(false)
   const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
   const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
-  const [contextCompressionStatus, setContextCompressionStatus] = React.useState<ContextCompressionStatus>('idle')
   const removePersistedDraftRef = React.useRef<(() => void) | null>(null)
 
 
@@ -369,8 +366,6 @@ export function InputArea({
     draftSessionId ? (s.getPendingReviewPlan(draftSessionId)?.id ?? null) : null
   )
 
-  const isContextCompressing = contextCompressionStatus === 'compressing'
-  const contextCompressionStatusTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 
   React.useEffect(() => {
@@ -675,68 +670,11 @@ export function InputArea({
     t
   ])
 
-  const handlePlanModeChange = React.useCallback(
-    (enabled: boolean): void => {
-      if (enabled && !projectScoped) {
-        toast.error(
-          t('input.planModeUnavailable', {
-            defaultValue: 'Plan Mode needs a project working folder.'
-          })
-        )
-        return
-      }
-
-      if (draftSessionId) {
-        if (enabled) {
-          useUIStore.getState().enterPlanMode(draftSessionId)
-        } else {
-          useUIStore.getState().exitPlanMode(draftSessionId)
-        }
-        return
-      }
-
-      setPendingPlanMode(enabled)
-    },
-    [draftSessionId, projectScoped, t]
-  )
-
-  const handleGoalModeChange = React.useCallback(
-    (enabled: boolean): void => {
-      if (disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0) return
-
-      if (!enabled) {
-        setPendingGoalMode(false)
-        if (draftSessionId && hasActiveGoal) {
-          void useGoalStore
-            .getState()
-            .loadGoalForSession(draftSessionId, true)
-            .then(() => useGoalStore.getState().updateGoal(draftSessionId, { status: 'paused' }))
-            .then((result) => {
-              if (!result.success) {
-                toast.error(t('goal.toasts.updateFailed'), { description: result.error })
-              }
-            })
-        }
-        return
-      }
-
-      if (hasActiveGoal) return
-      setPendingGoalMode(true)
-      requestAnimationFrame(() => {
-        focusInputAtEnd()
-      })
-    },
-    [
-      disabled,
-      draftSessionId,
-      focusInputAtEnd,
-      hasActiveGoal,
-      isOptimizing,
-      isStreaming,
-      pendingImageReads,
-      t
-    ]
-  )
+  const { handlePlanModeChange, handleGoalModeChange } = useModeControls({
+    projectScoped, draftSessionId, disabled, isStreaming, isOptimizingLocked,
+    pendingImageReads, hasActiveGoal, focusInputAtEnd,
+    setPendingPlanMode, setPendingGoalMode, t
+  })
 
 
 
@@ -775,73 +713,25 @@ export function InputArea({
     addFilesToEditor
   })
 
-  const handleCompressContext = React.useCallback(() => {
-    if (!onCompressContext || isContextCompressing) return
+  const {
+    contextCompressionStatus, isContextCompressing,
+    handleCompressContext, contextCompressionStatusLabel
+  } = useContextCompression({ onCompressContext, t })
 
-    clearTimeout(contextCompressionStatusTimerRef.current)
-    setContextCompressionStatus('compressing')
-    void Promise.resolve()
-      .then(() => onCompressContext())
-      .then((result) => {
-        setContextCompressionStatus(result ?? 'compressed')
-      })
-      .catch((error) => {
-        console.error('[InputArea] Context compression failed', error)
-        setContextCompressionStatus('failed')
-      })
-      .finally(() => {
-        contextCompressionStatusTimerRef.current = setTimeout(() => {
-          setContextCompressionStatus('idle')
-        }, 3200)
-      })
-  }, [isContextCompressing, onCompressContext])
+  const { permissionMode, handleSelectPermissionMode } = usePermissionMode({
+    autoApprove, permissionWhitelistEnabled, t
+  })
 
-  const contextCompressionStatusLabel = React.useMemo(() => {
-    switch (contextCompressionStatus) {
-      case 'compressing':
-        return t('input.compressingContext', { defaultValue: 'Compressing context...' })
-      case 'compressed':
-        return t('input.contextCompressed', { defaultValue: 'Context compressed' })
-      case 'skipped':
-        return t('input.contextCompressionSkipped', { defaultValue: 'No compression needed' })
-      case 'blocked':
-        return t('input.contextCompressionBlocked', {
-          defaultValue: 'Compression temporarily unavailable'
-        })
-      case 'failed':
-        return t('input.contextCompressionFailed', { defaultValue: 'Compression failed' })
-      default:
-        return ''
-    }
-  }, [contextCompressionStatus, t])
-
-  const permissionMode: 'default' | 'whitelist' | 'fullAccess' = autoApprove
-    ? 'fullAccess'
-    : permissionWhitelistEnabled
-      ? 'whitelist'
-      : 'default'
-
-  const handleSelectPermissionMode = async (
-    mode: 'default' | 'whitelist' | 'fullAccess'
-  ): Promise<void> => {
-    if (mode === permissionMode) return
-    if (mode === 'fullAccess') {
-      const ok = await confirm({
-        title: t('permission.fullAccessConfirmTitle'),
-        description: t('permission.fullAccessConfirmDesc'),
-        confirmLabel: t('permission.fullAccess'),
-        variant: 'destructive'
+  const editorPlaceholder = pendingReviewPlanId
+    ? t('input.placeholderPlanReview', {
+        defaultValue: 'Enter suggestions for this plan, or click the card above to implement it...'
       })
-      if (!ok) return
-      useSettingsStore.getState().updateSettings({ autoApprove: true })
-      return
-    }
-    const { permissionPolicy } = useSettingsStore.getState()
-    useSettingsStore.getState().updateSettings({
-      autoApprove: false,
-      permissionPolicy: { ...permissionPolicy, enabled: mode === 'whitelist' }
-    })
-  }
+    : hasPendingGoalMode
+      ? t('input.placeholderPendingGoal', { defaultValue: 'Describe the goal to pursue...' })
+      : (effectivePlaceholder ??
+        (shouldRecommendInit
+          ? t('input.placeholderInitWorkspace')
+          : t(placeholderKeys[mode] ?? 'input.placeholder')))
 
   const composerIconControlClass = 'composer-control rounded-xl'
 
@@ -927,23 +817,6 @@ export function InputArea({
               <div className="composer-drag-grip h-1 w-11 rounded-full" />
             </div>
           )}
-          {/* Skill tag */}
-          {selectedSkill && (
-            <div className="shrink-0 px-3 pt-3 pb-0">
-              <span className="composer-skill-tag inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium">
-                <Sparkles className="size-3" />
-                {selectedSkill}
-                <button
-                  type="button"
-                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                  onClick={() => setSelectedSkill(null)}
-                >
-                  <X className="size-3" />
-                </button>
-              </span>
-            </div>
-          )}
-
           <ImagePreviewStrip
             attachedImages={attachedImages}
             animationsEnabled={animationsEnabled}
@@ -953,138 +826,71 @@ export function InputArea({
             previewImage={previewImage}
           />
 
-          {/* Optimizing indicator - only show spinner, hide text */}
-          {isOptimizing && (
-            <div className="shrink-0 px-3 pt-3 pb-1">
-              <div className="composer-panel rounded-[14px] px-3 py-2">
-                <div className="flex items-center gap-2 text-[var(--composer-chip-text)]">
-                  <Spinner className="size-3.5" />
-                  <span className="text-xs font-semibold">
-                    {t('input.optimizing', { defaultValue: 'Optimizing your prompt...' })}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Optimization Dialog */}
-          <OptimizationDialog
-            open={showOptimizationDialog}
-            onOpenChange={setShowOptimizationDialog}
-            options={optimizationOptions}
-            selectedOptionIndex={selectedOptionIndex}
-            onSelectOption={setSelectedOptionIndex}
-            onUseOption={handleSelectOption}
-            onCancel={handleCancelOptimization}
+          <ComposerEditorArea
+            dragging={dragging}
+            handleDragOver={handleDragOver}
+            handleDragLeave={handleDragLeave}
+            handleDropWrapped={handleDropWrapped}
+            editorRef={editorRef}
+            documentNodes={documentNodes}
+            selectedFiles={selectedFiles}
+            disabled={disabled}
+            isOptimizingLocked={isOptimizingLocked}
             isOptimizing={isOptimizing}
-          />
-
-          {/* Text input area */}
-          <div
-            className={cn(
-              'composer-editor-region relative flex min-h-0 flex-1 flex-col px-3',
-              selectedSkill || attachedImages.length > 0 ? 'pt-1.5' : 'pt-3'
+            selectedSkill={selectedSkill}
+            onClearSelectedSkill={() => setSelectedSkill(null)}
+            attachedImages={attachedImages}
+            supportsVision={supportsVision}
+            placeholder={editorPlaceholder}
+            suggestionText={suggestionText}
+            showSuggestion={Boolean(
+              suggestionText &&
+              text.length > 0 &&
+              !hasFileReferences &&
+              !activeFileMention &&
+              !slashMenuOpen
             )}
-            onDrop={handleDropWrapped}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-          >
-            {dragging && (
-              <div className="composer-drop-overlay absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                <span className="flex items-center gap-1.5 text-xs text-primary/70 font-medium">
-                  <FileUp className="size-3.5" />
-                  {supportsVision ? t('input.dropImages') : t('input.dropFiles')}
-                </span>
-              </div>
-            )}
-            <div className="relative flex-1 min-h-0 overflow-visible">
-              {shouldAutoAcceptRecommendation &&
-                autoAcceptCountdown !== null &&
-                suggestionText &&
-                !hasFileReferences && (
-                  <div className="pointer-events-none absolute right-2 top-2 z-20 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-                    {autoAcceptCountdown}s
-                  </div>
-                )}
-              <FileAwareEditor
-                ref={editorRef}
-                document={documentNodes}
-                files={selectedFiles}
-                disabled={disabled || isOptimizingLocked}
-                placeholder={
-                  pendingReviewPlanId
-                    ? t('input.placeholderPlanReview', {
-                        defaultValue:
-                          'Enter suggestions for this plan, or click the card above to implement it...'
-                      })
-                    : hasPendingGoalMode
-                      ? t('input.placeholderPendingGoal', {
-                          defaultValue: 'Describe the goal to pursue...'
-                        })
-                      : (effectivePlaceholder ??
-                        (shouldRecommendInit
-                          ? t('input.placeholderInitWorkspace')
-                          : t(placeholderKeys[mode] ?? 'input.placeholder')))
-                }
-                suggestionText={suggestionText}
-                showSuggestion={Boolean(
-                  suggestionText &&
-                  text.length > 0 &&
-                  !hasFileReferences &&
-                  !activeFileMention &&
-                  !slashMenuOpen
-                )}
-                highlightedFileId={highlightedFileId}
-                onDocumentChange={handleEditorDocumentChange}
-                onSelectionChange={handleEditorSelectionChange}
-                onFocus={handleRecommendationFocus}
-                onBlur={handleRecommendationBlur}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                onCompositionStart={handleRecommendationCompositionStart}
-                onCompositionEnd={() => {
-                  handleRecommendationCompositionEnd()
-                }}
-                onReferencePreview={handlePreviewFile}
-                onReferenceLocate={handleLocateFileReference}
-                onReferenceDelete={handleRemoveFileReference}
-                className="h-full w-full"
-              />
-              <ComposerFlyovers
-                fileMenuOpen={fileMenuOpen}
-                fileSearchLoading={fileSearchLoading}
-                fileSearchResults={fileSearchResults}
-                selectedFileSearchIndex={selectedFileSearchIndex}
-                setSelectedFileSearchIndex={setSelectedFileSearchIndex}
-                flyoutPointerRef={flyoutPointerRef}
-                insertSelectedFile={insertSelectedFile}
-                needsWorkingFolder={needsWorkingFolder}
-                onSelectFolder={onSelectFolder}
-                slashMenuOpen={slashMenuOpen}
-                slashQuery={slashQuery}
-                slashSuggestionsLoading={slashSuggestionsLoading}
-                slashSuggestions={filteredSlashSuggestions}
-                selectedSlashIndex={selectedSlashIndex}
-                setSelectedSlashIndex={setSelectedSlashIndex}
-                slashListRef={slashListRef}
-                applySlashSuggestion={applySlashSuggestion}
-              />
-            </div>
-          </div>
-
-          {/* Hidden file input for queue image upload */}
-          <input
-            ref={queueFileInputRef}
-            type="file"
-            accept={ACCEPTED_IMAGE_TYPES.join(',')}
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) {
-                void addQueuedImages(Array.from(e.target.files))
-              }
-              e.target.value = ''
-            }}
+            shouldAutoAcceptRecommendation={shouldAutoAcceptRecommendation}
+            autoAcceptCountdown={autoAcceptCountdown}
+            hasFileReferences={hasFileReferences}
+            highlightedFileId={highlightedFileId}
+            onDocumentChange={handleEditorDocumentChange}
+            onSelectionChange={handleEditorSelectionChange}
+            onFocus={handleRecommendationFocus}
+            onBlur={handleRecommendationBlur}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onCompositionStart={handleRecommendationCompositionStart}
+            onCompositionEnd={() => handleRecommendationCompositionEnd()}
+            onReferencePreview={handlePreviewFile}
+            onReferenceLocate={handleLocateFileReference}
+            onReferenceDelete={handleRemoveFileReference}
+            showOptimizationDialog={showOptimizationDialog}
+            setShowOptimizationDialog={setShowOptimizationDialog}
+            optimizationOptions={optimizationOptions}
+            selectedOptionIndex={selectedOptionIndex}
+            setSelectedOptionIndex={setSelectedOptionIndex}
+            onUseOption={handleSelectOption}
+            onCancelOptimization={handleCancelOptimization}
+            fileMenuOpen={fileMenuOpen}
+            fileSearchLoading={fileSearchLoading}
+            fileSearchResults={fileSearchResults}
+            selectedFileSearchIndex={selectedFileSearchIndex}
+            setSelectedFileSearchIndex={setSelectedFileSearchIndex}
+            flyoutPointerRef={flyoutPointerRef}
+            insertSelectedFile={insertSelectedFile}
+            needsWorkingFolder={needsWorkingFolder}
+            onSelectFolder={onSelectFolder}
+            slashMenuOpen={slashMenuOpen}
+            slashQuery={slashQuery}
+            slashSuggestionsLoading={slashSuggestionsLoading}
+            filteredSlashSuggestions={filteredSlashSuggestions}
+            selectedSlashIndex={selectedSlashIndex}
+            setSelectedSlashIndex={setSelectedSlashIndex}
+            slashListRef={slashListRef}
+            applySlashSuggestion={applySlashSuggestion}
+            queueFileInputRef={queueFileInputRef}
+            addQueuedImages={addQueuedImages}
           />
 
           {/* Bottom toolbar */}
