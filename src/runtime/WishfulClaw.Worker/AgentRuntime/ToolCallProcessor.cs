@@ -269,6 +269,230 @@ internal static class ToolCallProcessor
                     isToolError = true;
                 }
             }
+            // Widget: pure Worker, no I/O
+            else if (AgentRuntimeWidgetExecutor.IsWidgetTool(toolCall.Name))
+            {
+                toolOutput = AgentRuntimeWidgetExecutor.Execute(toolCall);
+                isToolError = IsJsonError(toolOutput);
+            }
+            // Skill: reads SKILL.md from disk
+            else if (AgentRuntimeSkillExecutor.IsSkillTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeSkillExecutor.ExecuteAsync(toolCall, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Skill tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // NotebookEdit: Jupyter notebook cell editing
+            else if (AgentRuntimeNotebookEditExecutor.IsNotebookEditTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeNotebookEditExecutor.ExecuteAsync(toolCall, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"NotebookEdit tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // Goal: in-memory goal tracking
+            else if (AgentRuntimeGoalExecutor.IsGoalTool(toolCall.Name))
+            {
+                toolOutput = AgentRuntimeGoalExecutor.Execute(toolCall, state.Parameters);
+                isToolError = IsJsonError(toolOutput);
+            }
+            // Task: in-memory task management
+            else if (AgentRuntimeTaskExecutor.IsTaskTool(toolCall.Name))
+            {
+                toolOutput = AgentRuntimeTaskExecutor.Execute(toolCall, state.Parameters);
+                isToolError = IsJsonError(toolOutput);
+            }
+            // PlanMode: file-based plan management
+            else if (AgentRuntimePlanExecutor.IsPlanTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimePlanExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, state.RunId, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Plan tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // CodeCompatible: PowerShell / Monitor
+            else if (AgentRuntimeCodeCompatibleExecutor.IsCodeCompatibleTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeCodeCompatibleExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Code compatible tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // CodeGraph: reverse-request to Main process
+            else if (AgentRuntimeCodeGraphExecutor.IsCodeGraphTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeCodeGraphExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"CodeGraph tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // MCP: reverse-request to Main/renderer
+            else if (AgentRuntimeMcpExecutor.IsMcpTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeMcpExecutor.ExecuteAsync(
+                        toolCall, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"MCP tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // Extension: reverse-request to Main/renderer
+            else if (AgentRuntimeExtensionExecutor.IsExtensionTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeExtensionExecutor.ExecuteAsync(
+                        toolCall, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Extension tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // Notify: reverse-request to Main process
+            else if (AgentRuntimeNotifyExecutor.IsNotifyTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeNotifyExecutor.ExecuteAsync(
+                        toolCall, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Notify tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // ImageGenerate: reverse-request to Main process
+            else if (AgentRuntimeImageGenerateExecutor.IsImageGenerateTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeImageGenerateExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"ImageGenerate tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // Team: in-memory + reverse-request
+            else if (AgentRuntimeTeamExecutor.IsTeamTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeTeamExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Team tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // Cron: reverse-request to Main process
+            else if (AgentRuntimeCronExecutor.IsCronTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeCronExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Cron tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // Plugin: reverse-request to Main process
+            else if (AgentRuntimePluginExecutor.IsPluginTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimePluginExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Plugin tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
+            // ChannelPlugin: reverse-request to Main process
+            else if (AgentRuntimeChannelPluginExecutor.IsChannelPluginTool(toolCall.Name))
+            {
+                try
+                {
+                    toolOutput = await AgentRuntimeChannelPluginExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    isToolError = IsJsonError(toolOutput);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Channel plugin tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
             else if (SubAgentExecutor.IsTaskTool(toolCall.Name))
             {
                 try
