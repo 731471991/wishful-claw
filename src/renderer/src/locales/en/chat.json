@@ -460,7 +460,7 @@
     "tooltip": "Tool call permission",
     "default": "Default",
     "defaultDesc": "Ask for confirmation before running dangerous tools",
-    "fullAccess": "Full access",
+    "fullAccess": "YOLO",
     "fullAccessDesc": "Run all tools automatically without confirmation",
     "whitelist": "Whitelist",
     "whitelistDesc": "Whitelisted tools and commands skip confirmation; blacklisted commands are always rejected",
