@@ -244,7 +244,7 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
       className="composer-toolbar relative z-20 mt-1 shrink-0 flex items-center justify-between gap-2 px-2 pb-2"
     >
       <div className="flex w-full items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto pr-1 [scrollbar-width:none]">
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pr-1 [scrollbar-width:none]">
           <div className="shrink-0">
             {readOnlyModel !== undefined ? (
               <ReadOnlyModelBadge model={readOnlyModel} />
