@@ -179,6 +179,34 @@ internal static partial class AgentLoop
             // ── Check for tool calls ──
             if (turn.ToolCalls.Count == 0)
             {
+                // ── Hallucination detection ──
+                // If the assistant produced result-like text (checkmarks, numbered
+                // rounds, success indicators) but made NO tool calls, this is likely
+                // a hallucinated result summary. Inject a correction message and
+                // continue the loop so the model actually calls the tools.
+                if (HasHallucinatedResults(turn.AssistantMessage.Text))
+                {
+                    WorkerLog.Warn(
+                        $"agent hallucination detected runId={state.RunId} " +
+                        $"textLen={turn.AssistantMessage.Text.Length} - injecting correction");
+
+                    var correctionText = "<system_correction>\n" +
+                        "Your previous message contained result-like text (e.g. checkmarks, success indicators, " +
+                        "or numbered completion markers) but NO tool calls were actually made.\n" +
+                        "These results are hallucinated - you did not perform those actions.\n" +
+                        "Please call the appropriate tools NOW to actually perform the work, " +
+                        "then summarize the REAL results after the tools return.\n" +
+                        "</system_correction>";
+                    var correctionMessage = AgentRuntimeChatMessage.User(correctionText);
+                    conversation.Add(correctionMessage);
+                    wireConversation.Add(CreateUserWireMessage(correctionMessage));
+
+                    await AgentRuntimeTools.EmitAsync(
+                        state, context,
+                        new AgentRuntimeStreamEvent("iteration_end", StopReason: turn.StopReason));
+                    continue;
+                }
+
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
                     new AgentRuntimeStreamEvent("iteration_end", StopReason: turn.StopReason));
@@ -227,6 +255,92 @@ internal static partial class AgentLoop
         await EmitLoopEndAsync(
             state, context,
             state.StopReason ?? (completed ? "completed" : "max_iterations"));
+    }
+
+    // ── Hallucination detection ──
+
+    /// <summary>
+    /// Detects whether text contains result-like patterns (checkmarks, numbered
+    /// completion markers, success indicators) that suggest the model is
+    /// hallucinating tool results without actually calling tools.
+    /// </summary>
+    private static bool HasHallucinatedResults(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.Length < 10)
+            return false;
+
+        // Count checkmark occurrences
+        var checkmarkCount = 0;
+        var idx = 0;
+        while ((idx = text.IndexOf("\u2705", idx, StringComparison.Ordinal)) >= 0)
+        {
+            checkmarkCount++;
+            idx += 1;
+        }
+        // Also count other checkmark variants
+        idx = 0;
+        while ((idx = text.IndexOf("\u2611", idx, StringComparison.Ordinal)) >= 0)
+        {
+            checkmarkCount++;
+            idx += 1;
+        }
+        idx = 0;
+        while ((idx = text.IndexOf("\u2714", idx, StringComparison.Ordinal)) >= 0)
+        {
+            checkmarkCount++;
+            idx += 1;
+        }
+
+        // 2+ checkmarks strongly suggests a hallucinated result summary
+        if (checkmarkCount >= 2)
+            return true;
+
+        // Count success indicators (Chinese)
+        var successCount = 0;
+        foreach (var marker in s_hallucinationMarkers)
+        {
+            var sIdx = 0;
+            while ((sIdx = text.IndexOf(marker, sIdx, StringComparison.OrdinalIgnoreCase)) >= 0)
+            {
+                successCount++;
+                sIdx += marker.Length;
+            }
+        }
+        // 3+ success indicators without tool calls = hallucination
+        if (successCount >= 3)
+            return true;
+
+        return false;
+    }
+
+    private static readonly string[] s_hallucinationMarkers = new[]
+    {
+        "已完成", "成功", "完成", "已处理", "已执行"
+    };
+
+    /// <summary>
+    /// Creates a wire-format user message from an AgentRuntimeChatMessage.
+    /// </summary>
+    private static JsonElement CreateUserWireMessage(AgentRuntimeChatMessage message)
+    {
+        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("id", NewMessageId());
+            writer.WriteString("role", "user");
+            writer.WritePropertyName("content");
+            writer.WriteStartArray();
+            writer.WriteStartObject();
+            writer.WriteString("type", "text");
+            writer.WriteString("text", message.Text);
+            writer.WriteEndObject();
+            writer.WriteEndArray();
+            writer.WriteNumber("createdAt", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            writer.WriteEndObject();
+        }
+        using var doc = System.Text.Json.JsonDocument.Parse(buffer.WrittenMemory);
+        return doc.RootElement.Clone();
     }
 
     /// <summary>

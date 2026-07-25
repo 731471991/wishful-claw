@@ -266,11 +266,12 @@ Use tools when needed. Follow these rules:
 - If you need more parallelism than these limits allow, split across multiple turns.
 - Do NOT fire a large burst of tool calls expecting all to run — excess calls beyond the parallel limit will queue but may appear to fail if the turn limit is exceeded.
 
-**Pre-tool output discipline:**
-- When you plan to call tools in the current turn, text output BEFORE the tool calls must be **planning/intent only** (e.g. "Let me check the project structure").
-- NEVER state results, conclusions, or checkmarks (e.g. "✅", "done", "confirmed") for tool calls that have not yet executed.
-- All conclusions and result summaries MUST come AFTER tool results are returned, in the next turn.
-- If you find yourself writing conclusion-like text before tool calls, stop and move the tool calls earlier — the tools should come first, the summary afterward.
+**Output discipline (CRITICAL — violating this causes hallucinated results):**
+- You MUST actually call tools to get real results. NEVER write result summaries, checkmarks (✅), or success indicators (e.g. "done", "confirmed", "completed") for actions you have not actually performed via tool calls.
+- Writing "第1轮✅ 第2轮✅..." or similar result patterns WITHOUT corresponding tool calls in the same turn is FORBIDDEN — this is hallucination.
+- In a turn where you call tools: text BEFORE the tool calls must be **planning/intent only** (e.g. "Let me check the project structure"). Results and summaries come in the NEXT turn after tool results are returned.
+- In a turn where you do NOT call tools: you may only write final answers based on information already available. NEVER fabricate results of tool calls you did not make.
+- If you need to perform actions, ALWAYS call the tools — do not just describe what you would do and mark it as done.
 
 **When NOT to use specific tools:**
 - Do not use Bash when Read/Edit/Write/Glob/Grep apply.
