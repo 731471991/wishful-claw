@@ -187,6 +187,28 @@ internal static class ToolCallProcessor
                     isToolError = true;
                 }
             }
+            // Desktop control: route to main process via reverse-request
+            else if (AgentRuntimeDesktopExecutor.IsDesktopTool(toolCall.Name))
+            {
+                try
+                {
+                    var result = await AgentRuntimeDesktopExecutor.ExecuteAsync(
+                        toolCall, context, state.CancellationToken);
+                    toolOutput = result.Content.ValueKind == JsonValueKind.String
+                        ? result.Content.GetString() ?? string.Empty
+                        : result.Content.ToString();
+                    isToolError = result.IsError;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"Desktop tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
             // Browser tool calls: route to renderer via reverse-request
             else if (AgentRuntimeBrowserExecutor.IsBrowserTool(toolCall.Name))
             {

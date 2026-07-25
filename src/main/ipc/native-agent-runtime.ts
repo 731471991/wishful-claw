@@ -9,6 +9,16 @@ import {
   toMessagePackChannel
 } from '../../shared/messagepack/binary-ipc'
 import { ipcMain } from 'electron'
+import {
+  captureDesktopScreenshot,
+  desktopInputClick,
+  desktopInputType,
+  desktopInputScroll,
+  DESKTOP_SCREENSHOT_CAPTURE,
+  DESKTOP_INPUT_CLICK,
+  DESKTOP_INPUT_TYPE,
+  DESKTOP_INPUT_SCROLL
+} from './desktop-control'
 
 const SIDECAR_RENDERER_REQUEST_TIMEOUT_MS = 60_000
 
@@ -76,6 +86,40 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
   const targetWindow = BrowserWindow.getAllWindows()[0]
   if (!targetWindow) {
     await sendReverseResponse(id, undefined, 'No renderer window available')
+    return
+  }
+
+  // Desktop control methods: handled directly in the main process
+  const desktopMethods = new Set([
+    DESKTOP_SCREENSHOT_CAPTURE,
+    DESKTOP_INPUT_CLICK,
+    DESKTOP_INPUT_TYPE,
+    DESKTOP_INPUT_SCROLL
+  ])
+  if (desktopMethods.has(method)) {
+    try {
+      let result: unknown
+      const params = request.params as Record<string, unknown> | undefined
+      switch (method) {
+        case DESKTOP_SCREENSHOT_CAPTURE:
+          result = await captureDesktopScreenshot()
+          break
+        case DESKTOP_INPUT_CLICK:
+          result = desktopInputClick(params as unknown as Parameters<typeof desktopInputClick>[0])
+          break
+        case DESKTOP_INPUT_TYPE:
+          result = desktopInputType(params as unknown as Parameters<typeof desktopInputType>[0])
+          break
+        case DESKTOP_INPUT_SCROLL:
+          result = desktopInputScroll(params as unknown as Parameters<typeof desktopInputScroll>[0])
+          break
+        default:
+          result = { success: false, error: `Unknown desktop method: ${method}` }
+      }
+      await sendReverseResponse(id, result, undefined)
+    } catch (error) {
+      await sendReverseResponse(id, undefined, error instanceof Error ? error.message : String(error))
+    }
     return
   }
 
