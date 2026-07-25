@@ -165,8 +165,30 @@ internal static class ToolCallProcessor
             string toolOutput;
             bool isToolError = false;
 
+            // AskUserQuestion: route to renderer via reverse-request
+            if (AgentRuntimeAskUserExecutor.IsAskUserTool(toolCall.Name))
+            {
+                try
+                {
+                    var result = await AgentRuntimeAskUserExecutor.ExecuteAsync(
+                        toolCall, state.Parameters, context, state.CancellationToken);
+                    toolOutput = result.Content.ValueKind == JsonValueKind.String
+                        ? result.Content.GetString() ?? string.Empty
+                        : result.Content.ToString();
+                    isToolError = result.IsError;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    toolOutput = $"AskUser tool execution failed: {ex.Message}";
+                    isToolError = true;
+                }
+            }
             // Browser tool calls: route to renderer via reverse-request
-            if (AgentRuntimeBrowserExecutor.IsBrowserTool(toolCall.Name))
+            else if (AgentRuntimeBrowserExecutor.IsBrowserTool(toolCall.Name))
             {
                 try
                 {

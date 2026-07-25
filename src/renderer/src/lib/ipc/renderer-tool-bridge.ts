@@ -1,4 +1,5 @@
 import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-native-ui'
+import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
   SIDECAR_RENDERER_TOOL_REQUEST_MSGPACK_CHANNEL,
@@ -24,16 +25,21 @@ async function sendRendererToolResponse(response: RendererToolResponsePayload): 
 }
 
 async function handleRendererToolRequest(payload: RendererToolRequestPayload): Promise<void> {
-  if (payload?.method !== 'browser/tool-request') {
-    return
-  }
-  if (!payload.requestId) return
+  if (!payload?.requestId) return
 
   try {
     if (payload.method === 'browser/tool-request') {
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result: await handleNativeBrowserToolRequest(payload.params)
+      })
+      return
+    }
+
+    if (payload.method === 'ask-user/request') {
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result: await handleNativeAskUserRequest(payload.params)
       })
       return
     }

@@ -79,14 +79,16 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     return
   }
 
-  if (method === 'browser/tool-request') {
-    const requestId = `sidecar-browser-tool-request-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  // Methods that route to the renderer via the tool bridge
+  const rendererMethods = new Set(['browser/tool-request', 'ask-user/request'])
+  if (rendererMethods.has(method)) {
+    const requestId = `sidecar-renderer-tool-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 
     try {
       const result = await new Promise<unknown>((resolve, reject) => {
         const timer = setTimeout(() => {
           pendingRendererToolRequests.delete(requestId)
-          reject(new Error('Browser tool request timed out'))
+          reject(new Error(`Renderer tool request timed out: ${method}`))
         }, SIDECAR_RENDERER_REQUEST_TIMEOUT_MS)
 
         pendingRendererToolRequests.set(requestId, { resolve, reject, timer })
@@ -104,7 +106,7 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
         if (!sent) {
           clearTimeout(timer)
           pendingRendererToolRequests.delete(requestId)
-          reject(new Error('Failed to deliver browser tool request to renderer'))
+          reject(new Error(`Failed to deliver renderer tool request: ${method}`))
         }
       })
 
