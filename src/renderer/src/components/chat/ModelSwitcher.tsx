@@ -1267,6 +1267,18 @@ export function ModelSwitcher({
         </PopoverContent>
       </Popover>
 
+      {/* Model name label — opens model list */}
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <button
+            className="inline-flex h-8 max-w-[120px] items-center px-1 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted/50 hover:text-foreground"
+            aria-label={triggerAriaLabel}
+          >
+            <span className="truncate">{triggerLabel}</span>
+          </button>
+        </PopoverTrigger>
+      </Popover>
+
       {/* Quota Indicator */}
       {codexQuota && (
         <Tooltip>
