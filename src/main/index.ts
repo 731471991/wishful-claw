@@ -9,6 +9,7 @@ import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
 import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
 import { registerNativeAgentRuntimeHandlers } from './ipc/native-agent-runtime'
+import { registerGitHandlers } from './ipc/git-handlers'
 import { registerFsHandlers } from './ipc/fs-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
@@ -127,6 +128,9 @@ app.whenReady().then(() => {
 
   // Native agent runtime: handles reverse-request from worker (e.g. browser tool calls)
   registerNativeAgentRuntimeHandlers()
+
+  // Git IPC handlers: forward git:* channels to worker
+  registerGitHandlers()
 
 
   // Dialog: open folder selector
