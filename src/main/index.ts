@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog } from 'electron'
+﻿import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -27,7 +27,8 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   })
 
