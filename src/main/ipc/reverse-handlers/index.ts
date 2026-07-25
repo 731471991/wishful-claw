@@ -10,6 +10,11 @@ import { handleCronReverseRequest } from './cron-reverse-handler'
 import { handleImageGenerate } from './image-reverse-handler'
 import { handleStubReverseRequest } from './stub-reverse-handler'
 import { executeMcpToolFromMain, readMcpResourceFromMain } from '../mcp-handlers'
+import {
+  executePluginAction,
+  executeChannelSpecificPluginTool,
+  isPluginToolEnabled
+} from '../channel-handlers'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
 
@@ -20,12 +25,8 @@ const directHandlers = new Map<string, ReverseHandler>([
   ['mcp:read-resource', (p) => readMcpResourceFromMain(p as { serverId: string; uri?: string; resourceName?: string })],
 ])
 
-// Methods dispatched to the stub handler
-const stubMethods = new Set([
-  'codegraph:tool',
-  'extension:execute-js-tool',
-  'plugin:exec',
-  'plugin:tool-enabled',
+// Channel-specific plugin methods — routed to real channel handlers
+const channelPluginMethods = new Set([
   'plugin:feishu:send-image',
   'plugin:feishu:send-file',
   'plugin:feishu:list-members',
@@ -38,8 +39,21 @@ const stubMethods = new Set([
   'plugin:feishu:bitable:create-records',
   'plugin:feishu:bitable:update-records',
   'plugin:feishu:bitable:delete-records',
+  'plugin:feishu:download-resource',
   'plugin:weixin:send-image',
   'plugin:weixin:send-file',
+])
+
+// Plugin action methods — routed to executePluginAction
+const pluginActionMethods = new Set([
+  'plugin:exec',
+  'plugin:tool-enabled',
+])
+
+// Methods still dispatched to the stub handler (not yet implemented)
+const stubMethods = new Set([
+  'codegraph:tool',
+  'extension:execute-js-tool',
   'team:send-message',
 ])
 
@@ -54,6 +68,8 @@ const CRON_PREFIX = 'cron:'
 export function isMainProcessMethod(method: string): boolean {
   return (
     directHandlers.has(method) ||
+    channelPluginMethods.has(method) ||
+    pluginActionMethods.has(method) ||
     stubMethods.has(method) ||
     method.startsWith(CRON_PREFIX) ||
     method === 'notify:desktop'
@@ -81,7 +97,29 @@ export async function dispatchReverseRequest(
     return await handleCronReverseRequest(method, args)
   }
 
-  // Stub handlers (MCP, CodeGraph, Extension, Plugin, Channel, Team)
+  // Channel-specific plugin tools (feishu/weixin media, bitable, etc.)
+  if (channelPluginMethods.has(method)) {
+    return await executeChannelSpecificPluginTool(method, args)
+  }
+
+  // Plugin action dispatch (sendMessage, replyMessage, listGroups, etc.)
+  if (method === 'plugin:exec') {
+    return await executePluginAction({
+      pluginId: args.pluginId as string,
+      action: args.action as string,
+      params: (args.params as Record<string, unknown>) ?? {}
+    })
+  }
+
+  // Plugin tool enabled check
+  if (method === 'plugin:tool-enabled') {
+    const pluginId = args.pluginId as string
+    const toolName = args.toolName as string
+    const enabled = await isPluginToolEnabled(pluginId, toolName)
+    return { enabled }
+  }
+
+  // Stub handlers (CodeGraph, Extension, Team)
   if (stubMethods.has(method)) {
     return await handleStubReverseRequest(method, args)
   }

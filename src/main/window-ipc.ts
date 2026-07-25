@@ -33,3 +33,16 @@ export function safeSendMessagePackToWindow(
     return false
   }
 }
+
+/**
+ * Send a MessagePack-encoded event to ALL BrowserWindow instances.
+ * Used for broadcast events like plugin:incoming-message, plugin:session-task.
+ */
+export function safeSendMessagePackToAllWindows(
+  channel: string,
+  payload: unknown
+): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    safeSendMessagePackToWindow(win, channel, payload)
+  }
+}

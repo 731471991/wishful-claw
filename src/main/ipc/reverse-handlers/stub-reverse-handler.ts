@@ -2,8 +2,8 @@
  * Stub reverse-request handlers for features that require external
  * infrastructure not yet available in wishful-claw.
  *
- * Each handler returns a meaningful error message explaining what is
- * needed to enable the feature, rather than a generic "not implemented".
+ * Channel (feishu/weixin) handlers have been moved to channel-handlers.ts
+ * and are dispatched directly from reverse-handlers/index.ts.
  */
 
 // ── CodeGraph ──
@@ -24,90 +24,6 @@ export async function handleExtensionExecuteJsTool(params: Record<string, unknow
     success: false,
     error: `Extension tool "${toolName}" failed: no extension runtime configured. Install extensions first.`
   }
-}
-
-// ── Plugin ──
-
-export async function handlePluginExec(params: Record<string, unknown>): Promise<unknown> {
-  return {
-    success: false,
-    error: 'Plugin execution failed: no plugin system configured. Install plugins first.'
-  }
-}
-
-export async function handlePluginToolEnabled(params: Record<string, unknown>): Promise<unknown> {
-  return {
-    success: false,
-    error: 'Plugin tool management failed: no plugin system configured.'
-  }
-}
-
-// ── Channel: Feishu ──
-
-const FEISHU_NOT_CONFIGURED =
-  'Feishu integration is not configured. Set up Feishu app credentials in Settings first.'
-
-export async function handleFeishuSendImage(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuSendFile(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuListMembers(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuSendMention(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuSendUrgent(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-// ── Channel: Feishu Bitable ──
-
-export async function handleFeishuBitableListApps(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuBitableListTables(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuBitableListFields(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuBitableGetRecords(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuBitableCreateRecords(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuBitableUpdateRecords(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-export async function handleFeishuBitableDeleteRecords(): Promise<unknown> {
-  return { success: false, error: FEISHU_NOT_CONFIGURED }
-}
-
-// ── Channel: WeChat ──
-
-const WEIXIN_NOT_CONFIGURED =
-  'WeChat integration is not configured. Set up WeChat credentials in Settings first.'
-
-export async function handleWeixinSendImage(): Promise<unknown> {
-  return { success: false, error: WEIXIN_NOT_CONFIGURED }
-}
-
-export async function handleWeixinSendFile(): Promise<unknown> {
-  return { success: false, error: WEIXIN_NOT_CONFIGURED }
 }
 
 // ── Team ──
@@ -160,28 +76,6 @@ export async function handleStubReverseRequest(
 
   // Extension
   if (method === 'extension:execute-js-tool') return handleExtensionExecuteJsTool(args)
-
-  // Plugin
-  if (method === 'plugin:exec') return handlePluginExec(args)
-  if (method === 'plugin:tool-enabled') return handlePluginToolEnabled(args)
-
-  // Feishu
-  if (method === 'plugin:feishu:send-image') return handleFeishuSendImage()
-  if (method === 'plugin:feishu:send-file') return handleFeishuSendFile()
-  if (method === 'plugin:feishu:list-members') return handleFeishuListMembers()
-  if (method === 'plugin:feishu:send-mention') return handleFeishuSendMention()
-  if (method === 'plugin:feishu:send-urgent') return handleFeishuSendUrgent()
-  if (method === 'plugin:feishu:bitable:list-apps') return handleFeishuBitableListApps()
-  if (method === 'plugin:feishu:bitable:list-tables') return handleFeishuBitableListTables()
-  if (method === 'plugin:feishu:bitable:list-fields') return handleFeishuBitableListFields()
-  if (method === 'plugin:feishu:bitable:get-records') return handleFeishuBitableGetRecords()
-  if (method === 'plugin:feishu:bitable:create-records') return handleFeishuBitableCreateRecords()
-  if (method === 'plugin:feishu:bitable:update-records') return handleFeishuBitableUpdateRecords()
-  if (method === 'plugin:feishu:bitable:delete-records') return handleFeishuBitableDeleteRecords()
-
-  // WeChat
-  if (method === 'plugin:weixin:send-image') return handleWeixinSendImage()
-  if (method === 'plugin:weixin:send-file') return handleWeixinSendFile()
 
   // Team
   if (method === 'team:send-message') return handleTeamSendMessage(args)

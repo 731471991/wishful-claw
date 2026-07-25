@@ -1,7 +1,7 @@
 # 工具移植清单 — OpenCowork → wishful-claw
 
 > 参考源码路径：`D:\claw\OpenCowork`
-> 更新日期：2026-07-25
+> 更新日期：2026-07-25（第二轮校准）
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## 第二层：Agent 执行器工具（ToolCallProcessor 拦截路由）
 
-### 已移植（全部完成）
+### 已移植（全部完成，22 个执行器）
 
 | 执行器 | 工具名 | 功能 | 对应文件 | 备注 |
 |--------|--------|------|----------|------|
@@ -42,7 +42,7 @@
 | TaskExecutor | TaskCreate / TaskGet / TaskUpdate / TaskList | 任务列表管理 | AgentRuntimeTaskExecutor.cs | 内存存储 |
 | TeamExecutor | TeamCreate / TeamStatus / TeamDelete / SendMessage | 多 Agent 团队 | AgentRuntimeTeamExecutor.cs | 内存存储 + reverse-request |
 | CronExecutor | CronAdd/Create/Update/Remove/Delete/List | 定时任务 | AgentRuntimeCronExecutor.cs + cron-reverse-handler.ts | reverse-request → Main, node-cron |
-| McpExecutor | mcp__* | MCP 工具桥接 | AgentRuntimeMcpExecutor.cs + stub-reverse-handler.ts | 待接 MCP 客户端 |
+| McpExecutor | mcp__* | MCP 工具桥接 | AgentRuntimeMcpExecutor.cs + mcp-client.ts + mcp-manager.ts | ✅ 已接 MCP 客户端（@modelcontextprotocol/sdk） |
 | ExtensionExecutor | extension__* | 插件扩展 | AgentRuntimeExtensionExecutor.cs + stub-reverse-handler.ts | 待接扩展运行时 |
 | CodeCompatibleExecutor | PowerShell / Monitor | PowerShell + 输出监控 | AgentRuntimeCodeCompatibleExecutor.cs | Process 直接 |
 | WidgetExecutor | visualize_show_widget | UI 组件展示 | AgentRuntimeWidgetExecutor.cs | Worker 直接 |
@@ -96,20 +96,34 @@
 | terminal/get | 获取输出 | ✅ | |
 | terminal/list | 列出终端 | ✅ | |
 
+### Media 模块（已完成）
+
+| IPC 通道 | 功能 | wishful-claw | 对应文件 | 备注 |
+|----------|------|:-----------:|----------|------|
+| media/read-file-chunk | 媒体分块读取 | ✅ | MediaFileModule.cs + MediaFileTools.cs | 二进制分块读取 |
+
+### OpenAIAudio 模块（已完成）
+
+| IPC 通道 | 功能 | wishful-claw | 对应文件 | 备注 |
+|----------|------|:-----------:|----------|------|
+| openai-audio/transcribe | 语音转文字 | ✅ | OpenAIAudioModule.cs + OpenAIAudioTools.cs | Whisper API |
+| openai-audio/speech | 文字转语音 | ✅ | OpenAIAudioModule.cs + OpenAIAudioTools.cs | TTS API |
+
+### AgentChanges 模块（已完成）
+
+| IPC 通道 | 功能 | wishful-claw | 对应文件 | 备注 |
+|----------|------|:-----------:|----------|------|
+| agent-changes/list-session-hydrated | 变更列表 | ✅ | AgentChangeModule.cs + AgentChangeTools.cs | 内存存储（ConcurrentDictionary） |
+| agent-changes/get-hydrated | 获取变更 | ✅ | | |
+| agent-changes/diff-local | 本地 diff | ✅ | | |
+| agent-changes/rollback-local-change | 回滚变更 | ✅ | | |
+
 ### 待移植 IPC 模块
 
 | 模块 | IPC 通道 | 功能 | 优先级 | 备注 |
 |------|----------|------|:------:|------|
-| Media | media/read-file-chunk | 媒体分块读取 | P2 | |
-| OpenAIImages | openai-images/generate | 图片生成 | P2 | 已有 reverse-request handler |
-| OpenAIAudio | openai-audio/transcribe | 语音转文字 | P2 | |
-| OpenAIAudio | openai-audio/speech | 文字转语音 | P2 | |
-| AgentChanges | agent-changes/list-session-hydrated | 变更列表 | P2 | 依赖 SQLite DAO |
-| AgentChanges | agent-changes/get-hydrated | 获取变更 | P2 | |
-| AgentChanges | agent-changes/diff-local | 本地 diff | P2 | |
-| AgentChanges | agent-changes/rollback-local-change | 回滚变更 | P2 | |
-| Video | Seedance | 视频生成 | P2 | |
-| Video | XaiVideo | 视频生成 | P2 | |
+| Video | Seedance | 视频生成 | P2 | OpenCowork 有，wishful-claw 未创建 |
+| Video | XaiVideo | 视频生成 | P2 | OpenCowork 有，wishful-claw 未创建 |
 
 ---
 
@@ -123,7 +137,7 @@
 | Cron (Main 直接) | 4 | ✅ 已实现 | cron-reverse-handler.ts |
 | Image (Main 直接) | 1 | ✅ 已实现 | image-reverse-handler.ts |
 | Team (Main 直接) | 1 | ✅ 已实现 | stub-reverse-handler.ts |
-| MCP (Main stub) | 2 | ⏳ 待接客户端 | stub-reverse-handler.ts |
+| MCP (Main 已接客户端) | 2 | ✅ 已实现 | mcp-client.ts + mcp-manager.ts |
 | CodeGraph (Main stub) | 1 | ⏳ 待接引擎 | stub-reverse-handler.ts |
 | Extension (Main stub) | 1 | ⏳ 待接运行时 | stub-reverse-handler.ts |
 | Plugin (Main stub) | 2 | ⏳ 待接系统 | stub-reverse-handler.ts |
@@ -138,12 +152,14 @@
 |------|----------------|:-----------:|------|
 | Browser | browser-native-ui.ts + browser-tool.ts | ✅ | |
 | Desktop | desktop-screenshot/click/type/scroll/wait-tool.ts（5 个） | ✅ | |
-| Desktop UI | DesktopActionToolCard.tsx（299 行） | ❌ | 需创建 Renderer 组件 |
-| AskUser | AskUserQuestionCard.tsx（1058 行） | ✅ | 需拆分（>500行） |
+| Desktop UI | DesktopActionToolCard.tsx（299 行） | ✅ | 已创建 |
+| AskUser | AskUserQuestionCard.tsx | ✅ | 已拆分：388 行 + ask-user-question-block.tsx + ask-user-utils.ts + ask-user-views.tsx |
 
 ---
 
 ## 代码拆分状态（AGENTS.md 合规）
+
+### 第一轮拆分（已完成）
 
 | 文件 | 原行数 | 拆分后 | 状态 |
 |------|--------|--------|------|
@@ -152,6 +168,17 @@
 | AgentRuntimeWebSearchExecutor.cs | 511 | 363 + WebSearchProviders.cs (164) | ✅ |
 | git-handlers.ts | 608 | 322 + git-cache.ts (307) | ✅ |
 | native-agent-runtime.ts | 276 | 277 (重构为 handler dispatch) | ✅ |
+
+### 第二轮拆分（已完成）
+
+| 文件 | 原行数 | 拆分后 | 状态 |
+|------|--------|--------|------|
+| MessageList.tsx | >500 | 拆分 | ✅ |
+| theme-presets.ts | >500 | 拆分为 6 个 preset 文件 | ✅ |
+| AskUserQuestionCard.tsx | 1058 | 388 + 3 个子文件 | ✅ |
+| git-store.ts | >500 | git-store-types.ts | ✅ |
+| settings-store.ts | >500 | settings-store-types.ts | ✅ |
+| sidecar-protocol.ts | >500 | sidecar-protocol-types.ts | ✅ |
 
 ---
 
@@ -162,15 +189,18 @@
 - ✅ P0 — 编程助手核心能力（Git + AskUser + 文件操作）
 - ✅ P1 — 桌面与信息获取（Desktop + WebSearch + WebFetch + Terminal）
 - ✅ P2 — 全部 22 个执行器已移植
-- ✅ AGENTS.md 第一轮代码拆分（4 个文件）
+- ✅ Media 模块（二进制分块读取）
+- ✅ OpenAIAudio 模块（Whisper + TTS）
+- ✅ AgentChanges 模块（内存存储 + 端到端集成）
+- ✅ MCP 客户端接入（@modelcontextprotocol/sdk）
 - ✅ Reverse-request handler dispatch 架构
+- ✅ AGENTS.md 第一轮 + 第二轮代码拆分
+- ✅ 前端组件（DesktopActionToolCard + AskUserQuestionCard 拆分）
 
 ### 下一步
 
-- ⏳ 前端 Desktop UI 组件（DesktopActionToolCard）
-- ⏳ AskUserQuestionCard.tsx 拆分（1058 行 > 500）
-- ⏳ 待移植 IPC 模块（Media / OpenAIAudio / AgentChanges / Video）
-- ⏳ MCP 客户端接入
+- ⏳ Video 模块（Seedance / XaiVideo）移植
 - ⏳ Extension 运行时接入
-- ⏳ Plugin / Channel API 接入
-- ⏳ 第二轮代码拆分（前端多个文件 > 500 行）
+- ⏳ Plugin / Channel API 接入（飞书 / 微信）
+- ⏳ CodeGraph 引擎接入
+- ⏳ 第三轮代码拆分（前端仍有大文件）
