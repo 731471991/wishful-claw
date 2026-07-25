@@ -1,11 +1,13 @@
 // InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
-import { toast } from 'sonner'
 import {
   Sparkles, X, FileUp
 } from 'lucide-react'
 import type { AIModelConfig } from '@renderer/lib/api/types'
+import { toast } from 'sonner'
+import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
+import type { SendMessageOptions } from '@renderer/hooks/use-chat-actions'
 import { Spinner } from '@renderer/components/ui/spinner'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
@@ -27,46 +29,28 @@ import {
   ACCEPTED_IMAGE_TYPES, cloneImageAttachments,
   type ImageAttachment
 } from '@renderer/lib/image-attachments'
-import {
-  createSelectFileToken, getSelectFileMentionQuery, selectFileTextToPlainText
-} from '@renderer/lib/select-file-tags'
-import {
-  deserializeEditorState, documentHasFileReferences,
-  editorDocumentToPlainText, ensureSelectedFile, mergeSelectedFiles,
-  createPluginReferenceNode, createTextReplacementNode,
-  removeReferenceNode, replaceEditorRange, serializeEditorDocument,
-  type EditorDocumentNode, type SelectedFileItem
-} from '@renderer/lib/select-file-editor'
 import { FileAwareEditor, type FileAwareEditorHandle } from '../FileAwareEditor'
-import { listCommands, type CommandCatalogItem } from '@renderer/lib/commands/command-loader'
 import { usePlanStore } from '@renderer/stores/plan-store'
 import { useGoalStore } from '@renderer/stores/goal-store'
-import { useSkillsStore } from '@renderer/stores/skills-store'
 import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
-import { resolvePluginsForProject, useAppPluginStore } from '@renderer/stores/app-plugin-store'
-import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
-import {
-  APP_PLUGIN_DESCRIPTORS,
-  type AppPluginId
-} from '@renderer/lib/app-plugin/types'
-import {
-  type SendMessageOptions
-} from '@renderer/hooks/use-chat-actions'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { cn } from '@renderer/lib/utils'
+import { deserializeEditorState } from '@renderer/lib/select-file-editor'
+import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
+import type { AppPluginId } from '@renderer/lib/app-plugin/types'
 import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
 import { isProjectSession, workspaceContextAvailable } from '@renderer/lib/session-scope'
 import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
 
 // Extracted modules
 import {
-  InputAreaProps, FileSearchItem, SlashSuggestionItem, AppPluginPromptItem, ContextCompressionStatus
+  InputAreaProps, ContextCompressionStatus
 } from './types'
 import {
-  MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, MAX_SLASH_COMMAND_RESULTS, BUILTIN_SLASH_COMMANDS, placeholderKeys, defaultRecommendationKeys
+  MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, placeholderKeys, defaultRecommendationKeys
 } from './types'
 import {
-  getAppPluginPromptContent, getSlashCommandQuery, scoreSlashCommand, summarizeQueuedMessage, isReferenceOnlyDocument, selectedFileItemToReference
+  summarizeQueuedMessage, isReferenceOnlyDocument, selectedFileItemToReference
 } from './utils'
 import { ComposerRuntimeStatus } from './runtime-status'
 import { useComposerHeight } from './use-composer-height'
@@ -81,6 +65,9 @@ import { ComposerBanners } from './composer-banners'
 import { ComposerToolbar } from './composer-toolbar'
 import { useComposerKeydown } from './use-composer-keydown'
 import { useDragDrop } from './use-drag-drop'
+import { useComposerEditor } from './use-composer-editor'
+import { useSlashCommands } from './use-slash-commands'
+import { useFileSearch } from './use-file-search'
 
 export function InputArea({
   sessionId,
@@ -108,69 +95,52 @@ export function InputArea({
   const isHomeComposer = chatView === 'home' || chatView === 'project'
   const minComposerHeight = MIN_INPUT_HEIGHT
   const defaultSessionInputHeight = Math.max(DEFAULT_SESSION_INPUT_HEIGHT, minComposerHeight)
-  const [documentNodes, setDocumentNodes] = React.useState<EditorDocumentNode[]>([])
-  const [selectedFiles, setSelectedFiles] = React.useState<SelectedFileItem[]>([])
-  const [highlightedFileId, setHighlightedFileId] = React.useState<string | null>(null)
-  const [editorSelection, setEditorSelection] = React.useState({ start: 0, end: 0 })
-  const text = React.useMemo(
-    () => editorDocumentToPlainText(documentNodes, selectedFiles),
-    [documentNodes, selectedFiles]
-  )
-  const finalSerializedText = React.useMemo(
-    () => serializeEditorDocument(documentNodes, selectedFiles),
-    [documentNodes, selectedFiles]
-  )
-  const debouncedTokens = useDebouncedTokens(finalSerializedText)
+
+
   const [selectedSkill, setSelectedSkill] = React.useState<string | null>(null)
-  const [slashCommands, setSlashCommands] = React.useState<CommandCatalogItem[]>([])
-  const [slashCommandsLoading, setSlashCommandsLoading] = React.useState(false)
-  const [selectedSlashIndex, setSelectedSlashIndex] = React.useState(0)
-  const [fileSearchResults, setFileSearchResults] = React.useState<FileSearchItem[]>([])
-  const [fileSearchLoading, setFileSearchLoading] = React.useState(false)
-  const [selectedFileSearchIndex, setSelectedFileSearchIndex] = React.useState(0)
-  // Chromium re-dispatches a synthetic mousemove at the resting pointer position
-  // after DOM changes under it (e.g. arrow-key selection re-renders the list),
-  // which would steal the selection back to the hovered item. Only treat
-  // mousemove as hover intent when the pointer actually moved.
+  const [autoAcceptCountdown, setAutoAcceptCountdown] = React.useState<number | null>(null)
+  const [isWorkspaceAgentsMissing, setIsWorkspaceAgentsMissing] = React.useState(false)
+  const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
+  const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
+  const [contextCompressionStatus, setContextCompressionStatus] = React.useState<ContextCompressionStatus>('idle')
+  const removePersistedDraftRef = React.useRef<(() => void) | null>(null)
+
+
   const flyoutPointerRef = React.useRef<{ x: number; y: number } | null>(null)
   const slashListRef = React.useRef<HTMLDivElement | null>(null)
   const fileListRef = React.useRef<HTMLDivElement | null>(null)
+  const draftReadyKeyRef = React.useRef<string | null>(null)
+
+  const editorRef = React.useRef<FileAwareEditorHandle | null>(null)
+  const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const [attachedImages, setAttachedImages] = React.useState<ImageAttachment[]>([])
   const [previewImage, setPreviewImage] = React.useState<ImageAttachment | null>(null)
   const [pendingImageReads, setPendingImageReads] = React.useState(0)
-  const [contextCompressionStatus, setContextCompressionStatus] =
-    React.useState<ContextCompressionStatus>('idle')
+
+  const {
+    documentNodes, setDocumentNodes,
+    selectedFiles, setSelectedFiles,
+    highlightedFileId, setHighlightedFileId,
+    editorSelection, setEditorSelection,
+    text, finalSerializedText,
+    documentRef, selectedFilesRef,
+    applyEditorStateFromSerializedText, setText, focusInputAtEnd,
+    replaceSelectionWithText, addFilesToEditor,
+    getLiveEditorState, resetComposer,
+    handleEditorDocumentChange, handleRemoveFileReference
+  } = useComposerEditor({
+    workingFolder, editorRef, attachedImages,
+    draftSaveTimerRef,
+    removePersistedDraft: () => removePersistedDraftRef.current?.(),
+    setSelectedSkill, setAttachedImages, setPreviewImage
+  })
+
   const currentLanguage = useSettingsStore((state) => state.language)
   const mainModelSelectionMode = useSettingsStore((state) => state.mainModelSelectionMode)
   const autoApprove = useSettingsStore((state) => state.autoApprove)
   const permissionWhitelistEnabled = useSettingsStore((state) => state.permissionPolicy.enabled)
-  const clarifyAutoAcceptRecommended = useSettingsStore(
-    (state) => state.clarifyAutoAcceptRecommended
-  )
+  const clarifyAutoAcceptRecommended = useSettingsStore((state) => state.clarifyAutoAcceptRecommended)
   const animationsEnabled = useSettingsStore((state) => state.animationsEnabled)
-  const editorRef = React.useRef<FileAwareEditorHandle | null>(null)
-  const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
-  const contextCompressionStatusTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
-  const {
-    rootRef, containerRef, imagePreviewRef, bottomToolbarRef,
-    inputHeight, autoInputHeight, autoMaxInputHeight, handleDragStart
-  } = useComposerHeight({
-    isSessionComposer, defaultSessionInputHeight, editorRef,
-    attachedImagesCount: attachedImages.length, selectedSkill,
-    documentNodes, selectedFiles
-  })
-  const textRef = React.useRef(text)
-  const documentRef = React.useRef(documentNodes)
-  const selectedFilesRef = React.useRef(selectedFiles)
-  const isContextCompressing = contextCompressionStatus === 'compressing'
-
-  const composerWidthClass = fullWidth
-    ? 'mx-auto w-full max-w-none'
-    : 'mx-auto w-full max-w-[820px]'
-
-  React.useEffect(() => {
-    return () => clearTimeout(contextCompressionStatusTimerRef.current)
-  }, [])
 
   const targetSession = useChatStore(
     useShallow((s) => {
@@ -179,16 +149,10 @@ export function InputArea({
       const session = idx !== undefined ? s.sessions[idx] : undefined
       if (!session) return undefined
       return {
-        id: session.id,
-        projectId: session.projectId,
-        pluginId: session.pluginId,
-        providerId: session.providerId,
-        modelId: session.modelId,
+        id: session.id, projectId: session.projectId, pluginId: session.pluginId,
+        providerId: session.providerId, modelId: session.modelId,
         modelSelectionMode: session.modelSelectionMode
-      } as Pick<
-        import('@renderer/stores/chat-store').Session,
-        'id' | 'projectId' | 'pluginId' | 'providerId' | 'modelId' | 'modelSelectionMode'
-      >
+      }
     })
   )
   const channels = useChannelStore((s) => s.channels)
@@ -205,41 +169,21 @@ export function InputArea({
         : null
       const selection = session
         ? resolveSessionModelSelection({
-            session,
-            providers,
-            activeProviderId,
-            activeModelId,
+            session, providers, activeProviderId, activeModelId,
             globalMode: mainModelSelectionMode,
-            channelProviderId: channel?.providerId,
-            channelModelId: channel?.model
+            channelProviderId: channel?.providerId, channelModelId: channel?.model
           })
         : null
-      const providerId =
-        fastConfig?.providerId ??
-        (selection
-          ? selection.isAutoModeActive && autoSelection?.providerId
-            ? autoSelection.providerId
-            : selection.providerId
-          : activeProviderId)
-      const modelId =
-        fastConfig?.model ??
-        (selection
-          ? selection.isAutoModeActive && autoSelection?.modelId
-            ? autoSelection.modelId
-            : selection.modelId
-          : activeModelId)
+      const providerId = fastConfig?.providerId ??
+        (selection ? (selection.isAutoModeActive && autoSelection?.providerId ? autoSelection.providerId : selection.providerId) : activeProviderId)
+      const modelId = fastConfig?.model ??
+        (selection ? (selection.isAutoModeActive && autoSelection?.modelId ? autoSelection.modelId : selection.modelId) : activeModelId)
       if (!providerId || !modelId) return null
       const provider = providers.find((item) => item.id === providerId)
       if (!provider) return null
       const model = provider.models.find((item) => item.id === modelId)
       if (!model) return null
-      return {
-        apiKey: provider.apiKey,
-        requiresApiKey: provider.requiresApiKey,
-        type: provider.type,
-        models: provider.models,
-        modelId
-      }
+      return { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey, type: provider.type, models: provider.models, modelId }
     })
   )
   const supportsVision = React.useMemo(() => {
@@ -254,14 +198,7 @@ export function InputArea({
   const webSearchEnabled = useSettingsStore((s) => s.webSearchEnabled)
   const webSearchProvider = useSettingsStore((s) => s.webSearchProvider)
   const webSearchApiKey = useSettingsStore((s) => s.webSearchApiKey)
-  const webSearchRequiresApiKey = [
-    'tavily',
-    'searxng',
-    'exa',
-    'exa-mcp',
-    'bocha',
-    'zhipu'
-  ].includes(webSearchProvider)
+  const webSearchRequiresApiKey = ['tavily','searxng','exa','exa-mcp','bocha','zhipu'].includes(webSearchProvider)
   const canToggleWebSearch = !webSearchRequiresApiKey || Boolean(webSearchApiKey)
   const toggleWebSearch = React.useCallback(() => {
     const store = useSettingsStore.getState()
@@ -272,7 +209,6 @@ export function InputArea({
   const openSettings = useUIStore((s) => s.openSettings)
   const openFilePreview = useUIStore((s) => s.openFilePreview)
   const mode = useUIStore((s) => s.mode)
-  // Only select fields actually used — avoids re-renders on every streaming message delta
   const activeProjectId = useChatStore((s) => {
     const targetSessionId = sessionId ?? s.activeSessionId
     const idx = targetSessionId ? s.sessionsById[targetSessionId] : undefined
@@ -284,20 +220,10 @@ export function InputArea({
     const idx = targetSessionId ? s.sessionsById[targetSessionId] : undefined
     const targetSession = idx !== undefined ? s.sessions[idx] : undefined
     const projectId = targetSession?.projectId ?? s.activeProjectId
-    const activeProject = projectId
-      ? s.projects.find((project) => project.id === projectId)
-      : undefined
+    const activeProject = projectId ? s.projects.find((project) => project.id === projectId) : undefined
     return targetSession?.sshConnectionId ?? activeProject?.sshConnectionId ?? null
   })
   const showInlineClearConversation = false
-  const { installedSkills, skillsLoading, loadSkills } = useSkillsStore(
-    useShallow((s) => ({
-      installedSkills: s.skills,
-      skillsLoading: s.loading,
-      loadSkills: s.loadSkills
-    }))
-  )
-  const pluginsByProject = useAppPluginStore((s) => s.pluginsByProject)
   const { activeSessionId, hasMessages, clearSessionMessages } = useChatStore(
     useShallow((s) => {
       const targetSessionId = sessionId ?? s.activeSessionId
@@ -310,103 +236,23 @@ export function InputArea({
       }
     })
   )
-  // Stable getter — reads messages lazily so streaming deltas don't re-render InputArea
   const getSessionMessages = React.useCallback(
     () => useChatStore.getState().getSessionMessages(activeSessionId ?? ''),
     [activeSessionId]
   )
   const draftSessionId = sessionId ?? (chatView === 'session' ? activeSessionId : null)
-  const projectScoped = isProjectSession({
-    chatView,
-    session: targetSession,
-    activeProjectId,
-    workingFolder
-  })
-  const workspaceReady = workspaceContextAvailable({
-    chatView,
-    session: targetSession,
-    activeProjectId,
-    workingFolder
-  })
-  const activeDraftKey = React.useMemo(() => {
-    if (draftKeyOverride) return draftKeyOverride
-    if (draftSessionId) return getSessionInputDraftKey(draftSessionId)
-    if (activeProjectId) return getProjectInputDraftKey(activeProjectId)
-    return getHomeInputDraftKey()
-  }, [activeProjectId, draftKeyOverride, draftSessionId])
-  const draftContext = React.useMemo<InputDraftContext>(() => {
-    if (draftKeyOverride) {
-      return {
-        scope: draftKeyOverride.startsWith('subagent:') ? 'subagent' : 'custom',
-        sessionId: draftSessionId,
-        projectId: activeProjectId,
-        mode,
-        workingFolder: workingFolder ?? null
-      }
-    }
+  const projectScoped = isProjectSession({ chatView, session: targetSession, activeProjectId, workingFolder })
+  const workspaceReady = workspaceContextAvailable({ chatView, session: targetSession, activeProjectId, workingFolder })
 
-    if (draftSessionId) {
-      return {
-        scope: 'session',
-        sessionId: draftSessionId,
-        projectId: activeProjectId,
-        mode,
-        workingFolder: workingFolder ?? null
-      }
-    }
-
-    if (activeProjectId) {
-      return {
-        scope: 'project',
-        projectId: activeProjectId,
-        mode,
-        workingFolder: workingFolder ?? null
-      }
-    }
-
-    return {
-      scope: 'home',
-      mode,
-      workingFolder: workingFolder ?? null
-    }
-  }, [activeProjectId, draftKeyOverride, draftSessionId, mode, workingFolder])
+  const debouncedTokens = useDebouncedTokens(finalSerializedText)
   const {
-    hydrated: inputDraftHydrated,
-    loadedDraft: persistedDraft,
-    saveDraft: savePersistedDraft,
-    removeDraft: removePersistedDraft
-  } = useInputDraftPersistence({
-    draftKey: activeDraftKey,
-    context: draftContext
+    rootRef, containerRef, imagePreviewRef, bottomToolbarRef,
+    inputHeight, autoInputHeight, autoMaxInputHeight, handleDragStart
+  } = useComposerHeight({
+    isSessionComposer, defaultSessionInputHeight, editorRef,
+    attachedImagesCount: attachedImages.length, selectedSkill,
+    documentNodes, selectedFiles
   })
-  const draftReadyKeyRef = React.useRef<string | null>(null)
-  const [autoAcceptCountdown, setAutoAcceptCountdown] = React.useState<number | null>(null)
-  const [isWorkspaceAgentsMissing, setIsWorkspaceAgentsMissing] = React.useState(false)
-  const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
-  const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
-
-
-  const applyEditorStateFromSerializedText = React.useCallback(
-    (nextText: string, baseFiles: SelectedFileItem[] = selectedFilesRef.current) => {
-      const nextState = deserializeEditorState(nextText, workingFolder, baseFiles)
-      setDocumentNodes(nextState.document)
-      setSelectedFiles(nextState.selectedFiles)
-    },
-    [workingFolder]
-  )
-
-  const setText = React.useCallback(
-    (value: string | ((prev: string) => string)) => {
-      const previousText = textRef.current
-      const nextText = typeof value === 'function' ? value(previousText) : value
-      applyEditorStateFromSerializedText(nextText, selectedFilesRef.current)
-    },
-    [applyEditorStateFromSerializedText]
-  )
-
-  const focusInputAtEnd = React.useCallback(() => {
-    editorRef.current?.focusAtEnd()
-  }, [])
 
   const {
     isOptimizing, optimizationOptions, showOptimizationDialog,
@@ -415,59 +261,20 @@ export function InputArea({
   } = usePromptOptimizer({
     text, currentLanguage, setText, focusInputAtEnd
   })
-
-  // Lock input while optimizing OR while the optimization dialog is open
   const isOptimizingLocked = isOptimizing || showOptimizationDialog
 
+  const {
+    fileSearchResults, fileSearchLoading,
+    selectedFileSearchIndex, setSelectedFileSearchIndex,
+    activeFileMention, fileMenuOpen,
+    insertSelectedFile
+  } = useFileSearch({
+    text, editorSelection, projectScoped, workingFolder,
+    selectedFilesRef, replaceSelectionWithText,
+    setSelectedSkill, fileListRef
+  })
+
   const hasFileReferences = React.useMemo(() => selectedFiles.length > 0, [selectedFiles])
-
-  const replaceSelectionWithText = React.useCallback(
-    (
-      replacement: string,
-      selection: { start: number; end: number } = editorSelection,
-      cursorOffset = 0,
-      nextSelectedFiles?: SelectedFileItem[]
-    ) => {
-      const replacementState = deserializeEditorState(
-        replacement,
-        workingFolder,
-        nextSelectedFiles ?? selectedFilesRef.current
-      )
-      const candidateFiles = mergeSelectedFiles(
-        nextSelectedFiles ?? selectedFilesRef.current,
-        replacementState.selectedFiles
-      )
-      const nextDocument = replaceEditorRange(
-        documentRef.current,
-        selectedFilesRef.current,
-        selection.start,
-        selection.end,
-        replacementState.document
-      )
-      const referencedFileIds = new Set(
-        nextDocument
-          .filter(
-            (node): node is Extract<EditorDocumentNode, { type: 'file' }> => node.type === 'file'
-          )
-          .map((node) => node.fileId)
-      )
-      const nextFiles = candidateFiles.filter((file) => referencedFileIds.has(file.id))
-      const nextCursor =
-        selection.start +
-        editorDocumentToPlainText(replacementState.document, candidateFiles).length +
-        cursorOffset
-
-      setDocumentNodes(nextDocument)
-      setSelectedFiles(nextFiles)
-      requestAnimationFrame(() => {
-        editorRef.current?.focus()
-        editorRef.current?.setSelectionOffsets(nextCursor, nextCursor)
-        setEditorSelection({ start: nextCursor, end: nextCursor })
-      })
-    },
-    [editorSelection, workingFolder]
-  )
-
   const shouldRecommendInit = workspaceReady && !activeSshConnectionId && isWorkspaceAgentsMissing
   const recommendationFallback = shouldRecommendInit
     ? t('input.recommendationInitWorkspace')
@@ -478,337 +285,68 @@ export function InputArea({
     return editorSelection.start === editorSelection.end && editorSelection.end === text.length
   }, [editorSelection.end, editorSelection.start, text.length])
   const {
-    suggestionText,
-    effectivePlaceholder,
-    acceptSuggestion,
+    suggestionText, effectivePlaceholder, acceptSuggestion,
     cancelPendingRequest: cancelPromptRecommendation,
-    handleFocus: handleRecommendationFocus,
-    handleBlur: handleRecommendationBlur,
+    handleFocus: handleRecommendationFocus, handleBlur: handleRecommendationBlur,
     handleSelectionChange: handleRecommendationSelectionChange,
     handleCompositionStart: handleRecommendationCompositionStart,
     handleCompositionEnd: handleRecommendationCompositionEnd
   } = usePromptRecommendation({
-    mode,
-    sessionId: activeSessionId,
-    text,
-    getRecentMessages: getSessionMessages,
-    selectedSkill,
-    images: attachedImages,
-    disabled: disabled || isOptimizingLocked,
-    isStreaming,
-    fallbackSuggestion: recommendationFallback,
-    getCaretAtEnd
+    mode, sessionId: activeSessionId, text, getRecentMessages: getSessionMessages,
+    selectedSkill, images: attachedImages, disabled: disabled || isOptimizingLocked,
+    isStreaming, fallbackSuggestion: recommendationFallback, getCaretAtEnd
   })
-  const activeFileMention = React.useMemo(() => {
-    if (editorSelection.start === editorSelection.end) {
-      const selectionMention = getSelectFileMentionQuery(text, editorSelection.end)
-      if (selectionMention) return selectionMention
-    }
 
-    return getSelectFileMentionQuery(text, text.length)
-  }, [editorSelection.end, editorSelection.start, text])
-  const fileQuery = activeFileMention?.query.trim() ?? ''
-  const fileMenuOpen = projectScoped && Boolean(activeFileMention)
-  const slashQuery = React.useMemo(() => getSlashCommandQuery(text), [text])
-  const availableAppPlugins = React.useMemo<AppPluginPromptItem[]>(() => {
-    const projectPlugins = resolvePluginsForProject(pluginsByProject, activeProjectId)
 
-    return APP_PLUGIN_DESCRIPTORS.filter((descriptor) => !descriptor.hidden)
-      .map((descriptor) => {
-        const plugin = projectPlugins.find((item) => item.id === descriptor.id)
-        if (!plugin?.enabled) return null
 
-        return {
-          id: descriptor.id,
-          title: t(`plugin.items.${descriptor.id}.title`, {
-            ns: 'settings',
-            defaultValue: descriptor.id
-          }),
-          description: t(`plugin.items.${descriptor.id}.description`, {
-            ns: 'settings',
-            defaultValue: ''
-          })
-        }
-      })
-      .filter((item): item is AppPluginPromptItem => item !== null)
-  }, [activeProjectId, pluginsByProject, t])
-  const filteredSlashSuggestions = React.useMemo(() => {
-    const query = slashQuery ?? ''
-    const suggestionsByIdentity = new Map<string, SlashSuggestionItem>()
 
-    for (const command of [...BUILTIN_SLASH_COMMANDS, ...slashCommands]) {
-      suggestionsByIdentity.set(`command:${command.name.toLowerCase()}`, {
-        key: `command:${command.name}`,
-        name: command.name,
-        summary: command.summary,
-        kind: 'command'
-      })
-    }
+  const activeDraftKey = React.useMemo(() => {
+    if (draftKeyOverride) return draftKeyOverride
+    if (draftSessionId) return getSessionInputDraftKey(draftSessionId)
+    if (activeProjectId) return getProjectInputDraftKey(activeProjectId)
+    return getHomeInputDraftKey()
+  }, [activeProjectId, draftKeyOverride, draftSessionId])
 
-    for (const plugin of availableAppPlugins) {
-      suggestionsByIdentity.set(`plugin:${plugin.id}`, {
-        key: `plugin:${plugin.id}`,
-        name: plugin.id,
-        label: plugin.title,
-        summary: plugin.description,
-        kind: 'plugin',
-        pluginId: plugin.id
-      })
-    }
-
-    const appPluginIds = new Set(
-      APP_PLUGIN_DESCRIPTORS.filter((descriptor) => !descriptor.hidden).map(
-        (descriptor) => descriptor.id
-      )
-    )
-    for (const skill of installedSkills) {
-      if (appPluginIds.has(skill.name as AppPluginId)) continue
-      suggestionsByIdentity.set(`skill:${skill.name.toLowerCase()}`, {
-        key: `skill:${skill.name}`,
-        name: skill.name,
-        summary: skill.description,
-        kind: 'skill'
-      })
-    }
-
-    return [...suggestionsByIdentity.values()]
-      .map((item) => ({ item, score: scoreSlashCommand(item.name, query) }))
-      .filter((item) => Number.isFinite(item.score))
-      .sort((left, right) => {
-        if (left.score !== right.score) return left.score - right.score
-        if (left.item.kind !== right.item.kind) {
-          const order = { command: 0, plugin: 1, skill: 2 }
-          return order[left.item.kind] - order[right.item.kind]
-        }
-        return left.item.name.localeCompare(right.item.name, undefined, {
-          sensitivity: 'base'
-        })
-      })
-      .slice(0, MAX_SLASH_COMMAND_RESULTS)
-      .map((item) => item.item)
-  }, [availableAppPlugins, installedSkills, slashCommands, slashQuery])
-  const slashMenuOpen = slashQuery !== null
-  const slashSuggestionsLoading = slashCommandsLoading || skillsLoading
-
-  React.useEffect(() => {
-    if (!slashMenuOpen) {
-      setSelectedSlashIndex(0)
-      setSlashCommandsLoading(false)
-      return
-    }
-
-    let cancelled = false
-    setSlashCommandsLoading(true)
-
-    void Promise.all([listCommands(), loadSkills()])
-      .then(([commands]) => {
-        if (cancelled) return
-        setSlashCommands(commands)
-      })
-      .finally(() => {
-        if (cancelled) return
-        setSlashCommandsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [loadSkills, slashMenuOpen])
-
-  React.useEffect(() => {
-    setSelectedSlashIndex(0)
-  }, [slashQuery])
-
-  React.useEffect(() => {
-    setSelectedFileSearchIndex(0)
-  }, [fileQuery])
-
-  // Keep the keyboard-selected item visible; a no-op for hover-driven changes
-  // since hovered items are visible by definition.
-  React.useEffect(() => {
-    if (!slashMenuOpen) return
-    const items = slashListRef.current?.querySelectorAll('button')
-    items?.[selectedSlashIndex]?.scrollIntoView({ block: 'nearest' })
-  }, [selectedSlashIndex, slashMenuOpen])
-
-  React.useEffect(() => {
-    if (!fileMenuOpen) return
-    const items = fileListRef.current?.querySelectorAll('button')
-    items?.[selectedFileSearchIndex]?.scrollIntoView({ block: 'nearest' })
-  }, [selectedFileSearchIndex, fileMenuOpen])
-
-  React.useEffect(() => {
-    if (!fileMenuOpen) {
-      setFileSearchResults([])
-      setFileSearchLoading(false)
-      return
-    }
-
-    if (!workingFolder) {
-      setFileSearchResults([])
-      setFileSearchLoading(false)
-      return
-    }
-
-    let cancelled = false
-    setFileSearchLoading(true)
-
-    const timer = window.setTimeout(() => {
-      void ipcClient
-        .invoke('fs:search-files', {
-          path: workingFolder,
-          query: fileQuery,
-          limit: 20
-        })
-        .then((result) => {
-          if (cancelled) return
-          if (Array.isArray(result)) {
-            setFileSearchResults(result as FileSearchItem[])
-            return
-          }
-          setFileSearchResults([])
-        })
-        .finally(() => {
-          if (cancelled) return
-          setFileSearchLoading(false)
-        })
-    }, 120)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-    }
-  }, [fileMenuOpen, fileQuery, workingFolder])
-
-  const insertSelectedFile = React.useCallback(
-    (filePath: string) => {
-      setSelectedSkill(null)
-
-      const { files: nextFiles, file } = ensureSelectedFile(
-        selectedFilesRef.current,
-        filePath,
-        workingFolder
-      )
-      if (!file) return
-
-      const mention = activeFileMention ?? {
-        start: editorSelection.start,
-        end: editorSelection.end
+  const draftContext = React.useMemo<InputDraftContext>(() => {
+    if (draftKeyOverride) {
+      return {
+        scope: draftKeyOverride.startsWith('subagent:') ? 'subagent' : 'custom',
+        sessionId: draftSessionId, projectId: activeProjectId, mode,
+        workingFolder: workingFolder ?? null
       }
-      const suffix =
-        text.slice(mention.end).startsWith(' ') ||
-        text.slice(mention.end).startsWith('\n') ||
-        mention.end >= text.length
-          ? ''
-          : ' '
+    }
+    if (draftSessionId) {
+      return { scope: 'session', sessionId: draftSessionId, projectId: activeProjectId, mode, workingFolder: workingFolder ?? null }
+    }
+    if (activeProjectId) {
+      return { scope: 'project', projectId: activeProjectId, mode, workingFolder: workingFolder ?? null }
+    }
+    return { scope: 'home', mode, workingFolder: workingFolder ?? null }
+  }, [activeProjectId, draftKeyOverride, draftSessionId, mode, workingFolder])
 
-      replaceSelectionWithText(
-        `${createSelectFileToken(file.sendPath)}${suffix}`,
-        mention,
-        0,
-        nextFiles
-      )
-    },
-    [
-      activeFileMention,
-      editorSelection.end,
-      editorSelection.start,
-      replaceSelectionWithText,
-      text,
-      workingFolder
-    ]
-  )
+  const {
+    hydrated: inputDraftHydrated,
+    loadedDraft: persistedDraft,
+    saveDraft: savePersistedDraft,
+    removeDraft: removePersistedDraft
+  } = useInputDraftPersistence({
+    draftKey: activeDraftKey,
+    context: draftContext
+  })
+  removePersistedDraftRef.current = removePersistedDraft
 
-  const insertSlashCommand = React.useCallback(
-    (commandName: string) => {
-      setSelectedSkill(null)
-      applyEditorStateFromSerializedText(`/${commandName} `, selectedFiles)
-      requestAnimationFrame(() => {
-        focusInputAtEnd()
-      })
-    },
-    [applyEditorStateFromSerializedText, focusInputAtEnd, selectedFiles]
-  )
-  const selectSlashSkill = React.useCallback(
-    (skillName: string) => {
-      setSelectedSkill(skillName)
-      applyEditorStateFromSerializedText('')
-      requestAnimationFrame(() => {
-        focusInputAtEnd()
-      })
-    },
-    [applyEditorStateFromSerializedText, focusInputAtEnd]
-  )
-  const insertPluginPrompt = React.useCallback(
-    (pluginId: AppPluginId, replaceAll = false) => {
-      setSelectedSkill(null)
-      const plugin = availableAppPlugins.find((item) => item.id === pluginId)
-      const label = plugin?.title ?? pluginId
-      const pluginNode = createPluginReferenceNode(
-        pluginId,
-        label,
-        getAppPluginPromptContent(pluginId)
-      )
-      const pluginDocument: EditorDocumentNode[] = [pluginNode, createTextReplacementNode('\n')]
+  const {
+    slashQuery, slashMenuOpen, slashSuggestionsLoading,
+    filteredSlashSuggestions, selectedSlashIndex, setSelectedSlashIndex,
+    insertSlashCommand,
+    insertPluginPrompt, applySlashSuggestion
+  } = useSlashCommands({
+    text, workingFolder, activeProjectId,
+    editorRef, editorSelection, selectedFiles, selectedFilesRef, documentRef,
+    applyEditorStateFromSerializedText, focusInputAtEnd,
+    setSelectedSkill, setSelectedFiles, setDocumentNodes, slashListRef
+  })
 
-      if (replaceAll) {
-        setDocumentNodes(pluginDocument)
-        setSelectedFiles([])
-        requestAnimationFrame(() => {
-          focusInputAtEnd()
-        })
-        return
-      }
-
-      if (
-        documentRef.current.some((node) => node.type === 'plugin' && node.pluginId === pluginId)
-      ) {
-        requestAnimationFrame(() => {
-          focusInputAtEnd()
-        })
-        return
-      }
-
-      const selection = editorRef.current?.getSelectionOffsets() ?? editorSelection
-      const nextDocument = replaceEditorRange(
-        documentRef.current,
-        selectedFilesRef.current,
-        selection.start,
-        selection.end,
-        pluginDocument
-      )
-      const referencedFileIds = new Set(
-        nextDocument
-          .filter(
-            (node): node is Extract<EditorDocumentNode, { type: 'file' }> => node.type === 'file'
-          )
-          .map((node) => node.fileId)
-      )
-
-      setDocumentNodes(nextDocument)
-      setSelectedFiles((currentFiles) =>
-        currentFiles.filter((file) => referencedFileIds.has(file.id))
-      )
-      requestAnimationFrame(() => {
-        focusInputAtEnd()
-      })
-    },
-    [availableAppPlugins, editorSelection, focusInputAtEnd]
-  )
-  const applySlashSuggestion = React.useCallback(
-    (item: SlashSuggestionItem) => {
-      if (item.kind === 'skill') {
-        selectSlashSkill(item.name)
-        return
-      }
-      if (item.kind === 'plugin' && item.pluginId) {
-        insertPluginPrompt(item.pluginId, true)
-        return
-      }
-      insertSlashCommand(item.name)
-    },
-    [insertPluginPrompt, insertSlashCommand, selectSlashSkill]
-  )
   const activeProviderForAuth = useProviderStore(
     useShallow((s) => {
       const provider = s.providers.find((p) => p.id === s.activeProviderId)
@@ -830,6 +368,10 @@ export function InputArea({
   const pendingReviewPlanId = usePlanStore((s) =>
     draftSessionId ? (s.getPendingReviewPlan(draftSessionId)?.id ?? null) : null
   )
+
+  const isContextCompressing = contextCompressionStatus === 'compressing'
+  const contextCompressionStatusTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+  const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 
   React.useEffect(() => {
     if (draftSessionId) {
@@ -1019,35 +561,7 @@ export function InputArea({
     useUIStore.getState().setPendingInsertText(null)
   }, [pendingInsert, replaceSelectionWithText, text])
 
-  const addFilesToEditor = React.useCallback(
-    (filePaths: string[], selection?: { start: number; end: number }) => {
-      const nextSelection = selection ??
-        editorRef.current?.getSelectionOffsets() ?? {
-          start: editorSelection.start,
-          end: editorSelection.end
-        }
-      const filesToInsert: SelectedFileItem[] = []
-      let mergedFiles = selectedFilesRef.current
 
-      for (const filePath of filePaths) {
-        const ensured = ensureSelectedFile(mergedFiles, filePath, workingFolder)
-        mergedFiles = ensured.files
-        if (ensured.file) {
-          filesToInsert.push(ensured.file)
-        }
-      }
-
-      if (filesToInsert.length === 0) return
-
-      const replacement = filesToInsert
-        .map((file) => createSelectFileToken(file.sendPath))
-        .filter(Boolean)
-        .join('\n')
-
-      replaceSelectionWithText(replacement, nextSelection, 0, mergedFiles)
-    },
-    [editorSelection.end, editorSelection.start, replaceSelectionWithText, workingFolder]
-  )
 
   const {
     addImages, removeImage, getPastedImageFiles, handleAttachMedia
@@ -1097,73 +611,13 @@ export function InputArea({
     [handleRecommendationSelectionChange]
   )
 
-  const handleRemoveFileReference = React.useCallback((nodeId: string) => {
-    const currentDocument = documentRef.current
-    const targetNode = currentDocument.find((node) => node.type !== 'text' && node.id === nodeId)
-    if (!targetNode) return
 
-    const nextDocument = removeReferenceNode(currentDocument, nodeId, selectedFilesRef.current)
-    const nextFiles =
-      targetNode.type === 'file' && !documentHasFileReferences(nextDocument, targetNode.fileId)
-        ? selectedFilesRef.current.filter((file) => file.id !== targetNode.fileId)
-        : selectedFilesRef.current
 
-    setDocumentNodes(nextDocument)
-    setSelectedFiles(nextFiles)
-  }, [])
 
-  const handleEditorDocumentChange = React.useCallback((nextDocument: EditorDocumentNode[]) => {
-    const referencedFileIds = new Set(
-      nextDocument
-        .filter(
-          (node): node is Extract<EditorDocumentNode, { type: 'file' }> => node.type === 'file'
-        )
-        .map((node) => node.fileId)
-    )
-    setDocumentNodes(nextDocument)
-    setSelectedFiles((currentFiles) =>
-      currentFiles.filter((file) => referencedFileIds.has(file.id))
-    )
-  }, [])
 
-  const getLiveEditorState = React.useCallback(() => {
-    const liveDocument = editorRef.current?.getDocumentSnapshot() ?? documentRef.current
-    const referencedFileIds = new Set(
-      liveDocument
-        .filter(
-          (node): node is Extract<EditorDocumentNode, { type: 'file' }> => node.type === 'file'
-        )
-        .map((node) => node.fileId)
-    )
-    const liveSelectedFiles = selectedFilesRef.current.filter((file) =>
-      referencedFileIds.has(file.id)
-    )
 
-    return {
-      plainText: editorDocumentToPlainText(liveDocument, liveSelectedFiles),
-      serializedText: serializeEditorDocument(liveDocument, liveSelectedFiles),
-      promptText: serializeEditorDocument(liveDocument, liveSelectedFiles, {
-        expandPluginPrompts: true
-      }),
-      selectedFiles: liveSelectedFiles
-    }
-  }, [])
 
-  const resetComposer = React.useCallback((): void => {
-    clearTimeout(draftSaveTimerRef.current)
-    void removePersistedDraft()
 
-    setDocumentNodes([])
-    setSelectedFiles([])
-    setHighlightedFileId(null)
-    setEditorSelection({ start: 0, end: 0 })
-    setAttachedImages([])
-    setPreviewImage(null)
-    setSelectedSkill(null)
-    requestAnimationFrame(() => {
-      editorRef.current?.setSelectionOffsets(0, 0)
-    })
-  }, [removePersistedDraft])
 
   const handleSend = React.useCallback((): void => {
     const liveEditorState = getLiveEditorState()
@@ -1284,9 +738,10 @@ export function InputArea({
     ]
   )
 
+
+
   const handleKeyDown = useComposerKeydown({
-    isOptimizingLocked,
-    fileMenuOpen, slashMenuOpen,
+    isOptimizingLocked, fileMenuOpen, slashMenuOpen,
     fileSearchResults, selectedFileSearchIndex, setSelectedFileSearchIndex,
     filteredSlashSuggestions, selectedSlashIndex, setSelectedSlashIndex,
     activeFileMention, editorRef, setEditorSelection,
