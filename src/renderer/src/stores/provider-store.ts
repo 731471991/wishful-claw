@@ -447,6 +447,9 @@ export const useProviderStore = create<ProviderState>()(
       partialize: (state) => ({
         providers: state.providers,
         activeProviderId: state.activeProviderId,
+        activeModelId: state.activeModelId,
+        activeFastProviderId: state.activeFastProviderId,
+        activeFastModelId: state.activeFastModelId,
         defaultModel: state.defaultModel
       }),
       onRehydrateStorage: () => (state) => {
