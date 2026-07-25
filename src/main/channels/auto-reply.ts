@@ -54,7 +54,7 @@ async function handleChannelAutoReplyAsync(event: ChannelEvent): Promise<void> {
         chatId: data.chatId,
         chatName: data.chatName ?? null,
         senderName: data.senderName ?? null,
-        projectId: pluginInstance?.projectId ?? null,
+        projectId: null,
         providerId: pluginInstance?.providerId ?? null,
         modelId: pluginInstance?.model ?? null
       },

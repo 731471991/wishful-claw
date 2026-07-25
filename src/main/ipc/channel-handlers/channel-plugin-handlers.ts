@@ -20,7 +20,6 @@ import {
   isPluginToolEnabledHandler,
   nanoid,
   CHANNEL_PROVIDERS,
-  type NativeProjectRow,
   type NativePluginSessionRow,
   type NativePluginSessionMessageRow,
   type NativePluginSessionMutationResult,
@@ -150,71 +149,60 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
     }
   })
 
-  // List persisted plugin instances
+  // List persisted plugin instances (global, not per-project)
   registerChannelMessagePackHandler<undefined>('plugin:list', async () => {
     const plugins = await readPlugins()
-    const projects = await requestNativeDb<NativeProjectRow[]>('db/plugin-normal-projects')
     let changed = false
 
-    if (projects.length === 1) {
-      for (const descriptor of CHANNEL_PROVIDERS) {
-        const legacyUnbound = plugins.find((p) => p.type === descriptor.type && !p.projectId)
-        const hasBoundInstance = plugins.some(
-          (p) => p.type === descriptor.type && p.projectId === projects[0].id
-        )
-        if (legacyUnbound && !hasBoundInstance) {
-          legacyUnbound.projectId = projects[0].id
+    // Auto-seed: ensure each provider type has exactly one global instance
+    for (const descriptor of CHANNEL_PROVIDERS) {
+      const existing = plugins.find((p) => p.type === descriptor.type)
+      if (!existing) {
+        const config: Record<string, string> = {}
+        for (const field of descriptor.configSchema) {
+          config[field.key] =
+            descriptor.type === 'weixin-official' && field.key === 'baseUrl'
+              ? DEFAULT_WEIXIN_BASE_URL
+              : ''
+        }
+        plugins.push({
+          id: nanoid(),
+          type: descriptor.type,
+          name: descriptor.displayName,
+          enabled: false,
+          builtin: true,
+          config,
+          createdAt: Date.now(),
+          projectId: null,
+          tools: buildToolsMap(descriptor),
+          features: { autoReply: true, streamingReply: true, autoStart: false },
+          permissions: {
+            allowReadHome: false,
+            readablePathPrefixes: [],
+            allowWriteOutside: false,
+            allowShell: false,
+            allowSubAgents: false
+          }
+        })
+        changed = true
+      } else {
+        // Migrate: clear projectId from existing instances (global mode)
+        if (existing.projectId) {
+          existing.projectId = null
+          changed = true
+        }
+        if (!existing.builtin) {
+          existing.builtin = true
+          changed = true
+        }
+        if (existing.name !== descriptor.displayName) {
+          existing.name = descriptor.displayName
           changed = true
         }
       }
     }
 
-    for (const project of projects) {
-      for (const descriptor of CHANNEL_PROVIDERS) {
-        const existing = plugins.find(
-          (p) => p.type === descriptor.type && p.projectId === project.id
-        )
-        if (!existing) {
-          const config: Record<string, string> = {}
-          for (const field of descriptor.configSchema) {
-            config[field.key] =
-              descriptor.type === 'weixin-official' && field.key === 'baseUrl'
-                ? DEFAULT_WEIXIN_BASE_URL
-                : ''
-          }
-          plugins.push({
-            id: nanoid(),
-            type: descriptor.type,
-            name: descriptor.displayName,
-            enabled: false,
-            builtin: true,
-            config,
-            createdAt: Date.now(),
-            projectId: project.id,
-            tools: buildToolsMap(descriptor),
-            features: { autoReply: true, streamingReply: true, autoStart: false },
-            permissions: {
-              allowReadHome: false,
-              readablePathPrefixes: [],
-              allowWriteOutside: false,
-              allowShell: false,
-              allowSubAgents: false
-            }
-          })
-          changed = true
-        } else {
-          if (!existing.builtin) {
-            existing.builtin = true
-            changed = true
-          }
-          if (existing.name !== descriptor.displayName) {
-            existing.name = descriptor.displayName
-            changed = true
-          }
-        }
-      }
-    }
-
+    // Sync config schema and clean up stale keys
     for (const p of plugins) {
       const desc = CHANNEL_PROVIDERS.find((d) => d.type === p.type)
       if (!desc) continue
@@ -300,19 +288,6 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
         }
       }
 
-      if ('projectId' in patch) {
-        try {
-          assertNativeMutation(
-            await requestNativeDb<NativePluginSessionMutationResult>(
-              'db/plugin-sync-session-project',
-              { pluginId: id, projectId: next.projectId ?? null }
-            ),
-            'Sync channel project binding'
-          )
-        } catch (err) {
-          console.error('[Channels] Failed to sync channel project binding:', err)
-        }
-      }
       return { success: true }
     }
   )
@@ -391,7 +366,7 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
       'db/plugin-sessions-create',
       {
         ...args,
-        projectId: plugin?.projectId ?? null,
+        projectId: null,
         providerId: plugin?.providerId ?? null,
         modelId: plugin?.model ?? null
       }
