@@ -78,9 +78,10 @@ function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JSX.Eleme
               const patch: Partial<PluginInstance> = {
                 config: {
                   ...channel.config,
-                  token: waitResult.botToken || channel.config.token,
+                  token: waitResult.token || channel.config.token,
                   userId: waitResult.userId || channel.config.userId,
-                  baseUrl: waitResult.baseUrl || channel.config.baseUrl
+                  baseUrl: waitResult.baseUrl || channel.config.baseUrl,
+                  accountId: waitResult.accountId || channel.config.accountId
                 },
                 enabled: true
               }
