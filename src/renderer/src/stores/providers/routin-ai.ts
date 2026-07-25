@@ -1766,22 +1766,6 @@ const ROUTIN_AI_PLAN_MODEL_ORDER = [
 
 const routinAiModelById = new Map(routinAiPreset.defaultModels.map((m) => [m.id, m]))
 
-export const routinAiPlanPreset: BuiltinProviderPreset = {
-  builtinId: 'routin-ai-plan',
-  // v2: gpt-5.4+ models support the Responses WebSocket transport (supportsWebsocket)
-  version: 2,
-  name: 'Routin AI（套餐）',
-  type: 'openai-chat',
-  defaultBaseUrl: 'https://api.routin.ai/plan/v1',
-  homepage: 'https://routin.ai',
-  apiKeyUrl: 'https://routin.ai/dashboard/api-keys',
-  defaultEnabled: false,
-  defaultModel: 'gpt-5.4',
-  defaultModels: ROUTIN_AI_PLAN_MODEL_ORDER.map((id) => {
-    const config = routinAiModelById.get(id)
-    if (!config) {
-      throw new Error(`routin-ai plan preset: missing model ${id}`)
-    }
-    return config
-  })
-}
+
+// Plan preset extracted to routin-ai-plan-preset.ts
+export { routinAiPlanPreset } from './routin-ai-plan-preset'
