@@ -17,6 +17,7 @@ internal sealed class SubAgentRunCollector
         switch (evt.Type)
         {
             case "text":
+            case "text_delta":
                 if (!string.IsNullOrEmpty(evt.Text))
                 {
                     _textParts.Add(evt.Text);
