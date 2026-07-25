@@ -64,7 +64,7 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
         title={t('chat.personaSwitcher.title')}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -77,18 +77,18 @@ export function PersonaSwitcher({ sessionId, workingFolder }: PersonaSwitcherPro
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1 max-h-60 w-48 overflow-y-auto rounded-md border border-white/10 bg-[var(--bg-color,#1e1e1e)] py-1 shadow-xl">
+        <div className="absolute bottom-full left-0 mb-1 max-h-60 w-48 overflow-y-auto rounded-md border border-border bg-popover py-1 shadow-xl">
           {personas.map((p) => (
             <button
               key={p.id}
               onClick={() => handleSelect(p.id)}
-              className={`flex w-full flex-col items-start px-3 py-1.5 text-left text-xs transition-colors hover:bg-white/5 ${
-                p.id === currentPersonaId ? 'text-blue-400' : 'text-white/70'
+              className={`flex w-full flex-col items-start px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted/50 ${
+                p.id === currentPersonaId ? 'text-primary font-medium' : 'text-muted-foreground'
               }`}
             >
               <span className="font-medium">{p.name}</span>
               {p.tagline && (
-                <span className="text-[10px] text-white/40">{p.tagline}</span>
+                <span className="text-[10px] text-muted-foreground/60">{p.tagline}</span>
               )}
             </button>
           ))}
