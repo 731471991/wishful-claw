@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -107,14 +107,12 @@ export function AssistantMessage({
   renderMode = 'default',
   orchestrationRun,
   hiddenToolUseIds,
-  requestRetryState,
   requestDebugInfo,
   meta,
   createdAt
 }: AssistantMessageProps): React.JSX.Element {
   const { t } = useTranslation('chat')
   const devMode = useSettingsStore((s) => s.devMode)
-  const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
   const liveOutputAnimationStyle = useSettingsStore((s) => s.liveOutputAnimationStyle)
   const liveComponentClassName = isStreaming
     ? getLiveOutputComponentClass(liveOutputAnimationStyle)
@@ -642,8 +640,6 @@ export function AssistantMessage({
       onDelete={onDelete}
       devMode={devMode}
       debugInfo={debugInfo}
-      animationsEnabled={animationsEnabled}
-      requestRetryState={requestRetryState}
       collapsed={collapsed}
       setCollapsed={setCollapsed}
       renderMode={renderMode}

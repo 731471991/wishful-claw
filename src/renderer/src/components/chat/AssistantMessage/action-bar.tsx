@@ -1,4 +1,4 @@
-﻿// Bottom action bar for AssistantMessage: copy, fork, translate, speak, share, retry, delete, etc.
+// Bottom action bar for AssistantMessage: copy, fork, translate, speak, share, retry, delete, etc.
 
 import * as React from 'react'
 import { useState, useCallback } from 'react'
@@ -7,14 +7,11 @@ import {
   Copy, ChevronsDownUp, ChevronsUpDown, RotateCcw, Play, Ellipsis,
   Languages, Volume2, Share2, GitFork, Trash2
 } from 'lucide-react'
-import { AnimatePresence, motion } from 'motion/react'
 import type { RequestDebugInfo } from '@renderer/lib/api/types'
-import type { RequestRetryState } from '@renderer/lib/agent/types'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useTranslateStore } from '@renderer/stores/translate-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 import type { CompletionSummaryData } from './types'
-import { formatRetryDelay } from './utils'
 import { CompletionSummaryBar } from './token-summary'
 import { ActionIconButton, DebugToggleButton } from './ui-buttons'
 import {
@@ -37,8 +34,6 @@ export interface ActionBarProps {
   onDelete?: (messageId: string) => void
   devMode: boolean
   debugInfo?: RequestDebugInfo
-  animationsEnabled: boolean
-  requestRetryState?: RequestRetryState | null
   collapsed: boolean
   setCollapsed: React.Dispatch<React.SetStateAction<boolean>>
   renderMode: string
@@ -60,8 +55,6 @@ export function AssistantActionBar({
   onDelete,
   devMode,
   debugInfo,
-  animationsEnabled,
-  requestRetryState,
   collapsed,
   setCollapsed,
   renderMode,
@@ -147,40 +140,6 @@ export function AssistantActionBar({
   return (
     <div className="group/msg flex flex-col">
       <div className="min-w-0 overflow-hidden pl-1.5 sm:pl-2">
-        <AnimatePresence>
-          {requestRetryState && (
-            <motion.div
-              key="request-retry"
-              initial={animationsEnabled ? { opacity: 0, y: 4 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              exit={animationsEnabled ? { opacity: 0 } : undefined}
-              transition={animationsEnabled ? { duration: 0.15, ease: 'easeOut' } : { duration: 0 }}
-              className="mb-3 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
-            >
-              <RotateCcw className="mt-0.5 size-3.5 shrink-0 animate-spin" />
-              <div className="min-w-0">
-                <div className="font-medium">
-                  {t('assistantMessage.retryingRequest', {
-                    defaultValue: 'Request retrying'
-                  })}
-                </div>
-                <div className="mt-0.5 break-words text-[11px] text-amber-700/80 dark:text-amber-200/80">
-                  {t('assistantMessage.retryingRequestDetail', {
-                    defaultValue:
-                      'Attempt {{attempt}} / {{maxAttempts}} retry, resend after {{delay}}{{statusSuffix}}',
-                    attempt: requestRetryState.attempt,
-                    maxAttempts: requestRetryState.maxAttempts,
-                    delay: formatRetryDelay(requestRetryState.delayMs),
-                    statusSuffix: requestRetryState.statusCode
-                      ? `, status code ${requestRetryState.statusCode}`
-                      : ''
-                  })}
-                  {requestRetryState.reason ? ` · ${requestRetryState.reason}` : ''}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
         {collapsed ? (
           <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
             <div className="max-h-10 overflow-hidden whitespace-pre-wrap break-words">
