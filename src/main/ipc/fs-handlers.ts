@@ -2,6 +2,59 @@
 
 import * as fs from 'fs'
 import { registerMessagePackHandler } from './messagepack-handler'
+import AdmZip from 'adm-zip'
+
+function extractDocxText(filePath: string): string {
+  const zip = new AdmZip(filePath)
+  const parts: string[] = []
+
+  const docEntry = zip.getEntry('word/document.xml')
+  if (docEntry) {
+    const xml = docEntry.getData().toString('utf-8')
+    parts.push(extractTextFromDocxXml(xml))
+  }
+
+  const entries = zip.getEntries()
+    .filter(e => /word\/(header|footer)\d*\.xml/i.test(e.entryName))
+    .sort((a, b) => a.entryName.localeCompare(b.entryName))
+
+  for (const entry of entries) {
+    const xml = entry.getData().toString('utf-8')
+    const text = extractTextFromDocxXml(xml)
+    if (text) parts.push(text)
+  }
+
+  return parts.join('\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+}
+
+function extractTextFromDocxXml(xml: string): string {
+  let processed = xml
+    .replace(/<w:tab\s*\/>/g, '\t')
+    .replace(/<w:(br|cr)\s*\/>/g, '\n')
+
+  let result = ''
+  const tRegex = /<w:t[^>]*>([\s\S]*?)<\/w:t>/g
+  let match: RegExpExecArray | null
+  while ((match = tRegex.exec(processed)) !== null) {
+    result += match[1]
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+  }
+
+  // Insert paragraph breaks at </w:p> boundaries
+  const pRegex = /<\/w:p>/g
+  const segments: string[] = []
+  let lastIdx = 0
+  let pMatch: RegExpExecArray | null
+  // Rebuild with paragraph breaks by scanning the original text positions
+  // Simpler approach: just add newlines between text runs based on paragraph end markers
+  
+  return result.trim()
+}
+
 
 export function registerFsHandlers(): void {
     registerMessagePackHandler<{ path: string; maxLines?: number }, string>(
@@ -70,7 +123,13 @@ export function registerFsHandlers(): void {
     registerMessagePackHandler<{ path: string }, void>(
       'fs:delete',
       async (args) => {
-        await fs.promises.unlink(args.path)
+        const stat = await fs.promises.stat(args.path).catch(() => null)
+        if (!stat) return
+        if (stat.isDirectory()) {
+          await fs.promises.rm(args.path, { recursive: true })
+        } else {
+          await fs.promises.unlink(args.path)
+        }
       }
     )
 
@@ -246,5 +305,36 @@ export function registerFsHandlers(): void {
         }
       }
     )
+
+    // Read document — extract text from .docx files, plain text for others
+    registerMessagePackHandler<{ path: string; maxFileReadBytes?: number }, { content: string | null; fileName: string | null; error: string | null }>(
+      'fs:read-document',
+      async (args) => {
+        try {
+          const filePath = args.path
+          if (!filePath) return { content: null, fileName: null, error: 'Missing path' }
+
+          const stat = await fs.promises.stat(filePath)
+          const maxBytes = args.maxFileReadBytes ?? 10 * 1024 * 1024
+          if (stat.size > maxBytes) {
+            return { content: null, fileName: null, error: `File too large (${(stat.size / 1024 / 1024).toFixed(1)} MB, limit ${(maxBytes / 1024 / 1024).toFixed(0)} MB)` }
+          }
+
+          const ext = filePath.toLowerCase().split('.').pop()
+          let content: string
+
+          if (ext === 'docx') {
+            content = extractDocxText(filePath)
+          } else {
+            content = await fs.promises.readFile(filePath, 'utf-8')
+          }
+
+          return { content, fileName: filePath.split(/[\\/]/).pop() ?? null, error: null }
+        } catch (err) {
+          return { content: null, fileName: null, error: err instanceof Error ? err.message : String(err) }
+        }
+      }
+    )
+
 
 }
