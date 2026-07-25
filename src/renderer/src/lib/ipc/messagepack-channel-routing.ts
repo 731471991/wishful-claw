@@ -66,6 +66,8 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'agent-changes:get-hydrated',
   'agent-changes:diff-local',
   'agent-changes:rollback-local-change',
+  'openai-audio:transcribe',
+  'openai-audio:speech',
   'agent:changes:list-session',
   'agent:changes:get',
   'agent:changes:diff-content',

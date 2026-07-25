@@ -5,6 +5,7 @@ using WishfulClaw.Worker.Modules.Db;
 using WishfulClaw.Worker.Modules.AgentChanges;
 using WishfulClaw.Worker.Modules.Git;
 using WishfulClaw.Worker.Modules.Media;
+using WishfulClaw.Worker.Modules.OpenAIAudio;
 using WishfulClaw.Worker.Persona;
 using WishfulClaw.Worker.Tools;
 
@@ -25,6 +26,7 @@ public static class WorkerModuleCatalog
         new MemoryModule(),
         new GitModule(),
         new MediaFileModule(),
-        new AgentChangeModule()
+        new AgentChangeModule(),
+        new OpenAIAudioModule()
     ];
 }
