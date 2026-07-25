@@ -13,6 +13,7 @@ import { registerGitHandlers } from './ipc/git-handlers'
 import { registerFsHandlers } from './ipc/fs-handlers'
 import { registerTerminalHandlers } from './ipc/terminal-handlers'
 import { registerAgentChangeHandlers } from './ipc/agent-change-handlers'
+import { registerMcpHandlers } from './ipc/mcp-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -191,6 +192,7 @@ app.whenReady().then(() => {
   registerFsHandlers()
   registerTerminalHandlers()
   registerAgentChangeHandlers()
+  registerMcpHandlers()
 
   // ── Agent history handlers (forwarded to C# Worker SQLite) ──
   registerMessagePackHandler<{ toolUseId: string }, unknown>(

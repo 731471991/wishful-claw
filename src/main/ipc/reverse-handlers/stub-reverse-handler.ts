@@ -6,25 +6,6 @@
  * needed to enable the feature, rather than a generic "not implemented".
  */
 
-// ── MCP (Model Context Protocol) ──
-
-export async function handleMcpCallTool(params: Record<string, unknown>): Promise<unknown> {
-  const serverId = params.serverId as string | undefined
-  const toolName = params.toolName as string | undefined
-  return {
-    success: false,
-    error: `MCP tool call (server=${serverId}, tool=${toolName}) failed: no MCP server manager configured. Install and configure MCP servers in Settings.`
-  }
-}
-
-export async function handleMcpReadResource(params: Record<string, unknown>): Promise<unknown> {
-  const serverId = params.serverId as string | undefined
-  return {
-    success: false,
-    error: `MCP resource read (server=${serverId}) failed: no MCP server manager configured.`
-  }
-}
-
 // ── CodeGraph ──
 
 export async function handleCodeGraphTool(params: Record<string, unknown>): Promise<unknown> {
@@ -173,10 +154,6 @@ export async function handleStubReverseRequest(
   params: unknown
 ): Promise<unknown> {
   const args = (params as Record<string, unknown>) ?? {}
-
-  // MCP
-  if (method === 'mcp:call-tool') return handleMcpCallTool(args)
-  if (method === 'mcp:read-resource') return handleMcpReadResource(args)
 
   // CodeGraph
   if (method === 'codegraph:tool') return handleCodeGraphTool(args)

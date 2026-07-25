@@ -9,19 +9,20 @@
 import { handleCronReverseRequest } from './cron-reverse-handler'
 import { handleImageGenerate } from './image-reverse-handler'
 import { handleStubReverseRequest } from './stub-reverse-handler'
+import { executeMcpToolFromMain, readMcpResourceFromMain } from '../mcp-handlers'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
 
 // Direct method → handler mapping (no prefix matching needed)
 const directHandlers = new Map<string, ReverseHandler>([
   ['image:generate', (p) => handleImageGenerate(p)],
+  ['mcp:call-tool', (p) => executeMcpToolFromMain(p as { serverId: string; toolName: string; args: Record<string, unknown> })],
+  ['mcp:read-resource', (p) => readMcpResourceFromMain(p as { serverId: string; uri?: string; resourceName?: string })],
 ])
 
 // Methods dispatched to the stub handler
 const stubMethods = new Set([
   'codegraph:tool',
-  'mcp:call-tool',
-  'mcp:read-resource',
   'extension:execute-js-tool',
   'plugin:exec',
   'plugin:tool-enabled',
