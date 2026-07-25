@@ -760,6 +760,47 @@
       "allowWriteOutsideDesc": "允许写入工作目录之外的文件",
       "allowSubAgents": "子代理",
       "allowSubAgentsDesc": "允许使用子代理工具"
-    }
+    },
+    "feishu": {
+      "appId": "App ID",
+      "appSecret": "App Secret"
+    },
+    "dingtalk": {
+      "appKey": "App Key",
+      "appSecret": "App Secret",
+      "cardTemplateId": "卡片模板 ID（可选）"
+    },
+    "wecom": {
+      "corpId": "企业 ID",
+      "agentId": "应用 Agent ID",
+      "secret": "应用 Secret",
+      "token": "Token",
+      "encodingAesKey": "EncodingAESKey"
+    },
+    "weixin": {
+      "baseUrl": "API 地址",
+      "token": "Bot Token",
+      "routeTag": "路由标签（可选）",
+      "accountId": "账号 ID（可选）",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "qq": {
+      "appId": "App ID",
+      "appSecret": "App Secret",
+      "botAppId": "Bot App ID"
+    },
+    "telegram": {
+      "botToken": "Bot Token",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "discord": {
+      "botToken": "Bot Token",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "whatsapp": {
+      "botToken": "Bot Token",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "wsUrl": "WebSocket 中继地址（可选）"
   }
 }

@@ -191,7 +191,15 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
             config,
             createdAt: Date.now(),
             projectId: project.id,
-            tools: buildToolsMap(descriptor)
+            tools: buildToolsMap(descriptor),
+            features: { autoReply: true, streamingReply: true, autoStart: false },
+            permissions: {
+              allowReadHome: false,
+              readablePathPrefixes: [],
+              allowWriteOutside: false,
+              allowShell: false,
+              allowSubAgents: false
+            }
           })
           changed = true
         } else {
