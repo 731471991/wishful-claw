@@ -1,40 +1,32 @@
-/**
- * Webview helpers stub.
- * Placeholder for the full webview-helpers module that will be migrated later.
- */
+export type MaybePromise<T> = T | PromiseLike<T>
 
-export type MaybePromise<T> = T | Promise<T>
-
-/**
- * Checks whether a value is a thenable (Promise-like).
- */
-export function isPromiseLike<T>(value: unknown): value is Promise<T> {
+export function isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {
   return (
-    !!value &&
-    typeof value === 'object' &&
-    typeof (value as { then?: unknown }).then === 'function'
+    value !== null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<T>).then === 'function'
   )
 }
 
-/**
- * Checks whether a webview element is connected to the DOM.
- */
-export function isWebviewConnected(webview: unknown): webview is Electron.WebviewTag {
-  return (
-    !!webview &&
-    typeof webview === 'object' &&
-    webview !== null &&
-    'isConnected' in webview &&
-    (webview as { isConnected: boolean }).isConnected
-  )
+export function isWebviewConnected(
+  webview: Electron.WebviewTag | null | undefined
+): webview is Electron.WebviewTag {
+  return Boolean(webview?.isConnected)
 }
 
-/**
- * Describes a webview operation error in a user-friendly way.
- */
+export function isGuestViewManagerReplyError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('GUEST_VIEW_MANAGER_CALL') && message.includes('reply was never sent')
+}
+
 export function describeWebviewOperationError(action: string, error: unknown): string {
-  if (error instanceof Error) {
-    return `Failed to ${action}: ${error.message}`
+  if (isGuestViewManagerReplyError(error)) {
+    return `Browser view was detached while trying to ${action}. Reopen the browser tab and try again.`
   }
-  return `Failed to ${action}: ${String(error)}`
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return String(error)
 }

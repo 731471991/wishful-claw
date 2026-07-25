@@ -11,6 +11,7 @@ import { RightPanelHeader } from './RightPanelHeader'
 import { ActivityPanel } from '@renderer/components/activity/ActivityPanel'
 import { MemoryPanel } from '@renderer/components/memory/MemoryPanel'
 import { SubAgentsPanel } from '@renderer/components/layout/SubAgentsPanel'
+import { BrowserPanel } from '@renderer/components/layout/BrowserPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
 export function RightPanel(): React.JSX.Element {
@@ -78,6 +79,7 @@ export function RightPanel(): React.JSX.Element {
       : 'global'
 
   const activeTab = rightPanelOpen ? selectedTab : undefined
+  const browserVisible = rightPanelOpen && activeTab?.kind === 'browser'
 
   const draggingRef = useRef(false)
   const startXRef = useRef(0)
@@ -132,14 +134,7 @@ export function RightPanel(): React.JSX.Element {
     if (tab.kind === 'subagent') {
       return <SubAgentsPanel sessionId={tab.sessionId ?? panelSessionId} />
     }
-    if (tab.kind === 'browser') {
-      // BrowserPanel will be added in Plan 11-3
-      return (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          {t('rightPanel.browser', { defaultValue: 'Browser' })} — Coming soon
-        </div>
-      )
-    }
+    if (tab.kind === 'browser') return null  // BrowserPanel is rendered as persistent layer
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         <Loader2 className="mr-2 size-4 animate-spin" />
@@ -199,12 +194,22 @@ export function RightPanel(): React.JSX.Element {
           </>
         ) : null}
 
-        {/* Persistent browser layer placeholder — BrowserPanel will be mounted here in Plan 11-3.
-            The webview stays in the DOM (connected) even when the panel is closed or another
-            tab is active, so agent browser tools keep working in the background. */}
+        {/* Persistent browser layer: mounted whenever a browser tab exists so the
+            webview keeps running even when the panel is closed or another tab is
+            active. When hidden it stays in the DOM (webview connected) but
+            non-interactive and transparent. */}
         {browserTabAlive ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 top-10 -z-10 opacity-0">
-            {/* BrowserPanel key={browserPanelKey} sessionId={panelSessionId} projectId={activeProjectId} */}
+          <div
+            className={cn(
+              'absolute inset-x-0 bottom-0 top-10',
+              browserVisible ? 'z-10 opacity-100' : 'pointer-events-none -z-10 opacity-0'
+            )}
+          >
+            <BrowserPanel
+              key={browserPanelKey}
+              sessionId={panelSessionId}
+              projectId={activeProjectId}
+            />
           </div>
         ) : null}
       </aside>

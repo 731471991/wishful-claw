@@ -550,6 +550,22 @@ app.whenReady().then(() => {
     }
   )
 
+  // -- Shell handlers --
+  registerMessagePackHandler<string, void>(
+    'shell:openExternal',
+    async (args) => {
+      await shell.openExternal(args)
+    }
+  )
+
+  // -- Browser emulation status (stub -- returns defaults) --
+  registerMessagePackHandler<void, { success: true; status: { reuseEnabled: boolean; userAgent: string } }>(
+    'browser:emulation-status',
+    async () => {
+      return { success: true, status: { reuseEnabled: false, userAgent: '' } }
+    }
+  )
+
   createWindow()
 
 function formatLocalDateFolderName(date = new Date()): string {
