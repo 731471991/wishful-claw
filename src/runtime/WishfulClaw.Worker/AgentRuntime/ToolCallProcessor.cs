@@ -16,6 +16,8 @@ internal static class ToolCallProcessor
     /// <summary>
     /// Executes a batch of tool calls with concurrency control and per-turn capping.
     /// Returns the collected tool results in completion order.
+    /// When tool calls exceed maxToolCallsPerTurn, excess calls are NOT silently
+    /// dropped — they return an error result so the LLM knows to retry next turn.
     /// </summary>
     public static async Task<List<AgentRuntimeToolResult>> ExecuteAsync(
         List<AgentRuntimeNativeToolCall> toolCalls,
@@ -29,14 +31,19 @@ internal static class ToolCallProcessor
         var maxConcurrentSubAgents = Math.Max(1, JsonHelpers.GetInt(parameters, "maxConcurrentSubAgents", 2));
         var registry = ToolModuleState.Registry;
 
-        // Cap total tool calls per turn to prevent runaway LLM behavior
+        // Split tool calls into executable vs skipped (over per-turn limit)
         var toolCallsToExecute = toolCalls;
-        if (maxToolCallsPerTurn > 0 && toolCallsToExecute.Count > maxToolCallsPerTurn)
+        var skippedToolCalls = new List<AgentRuntimeNativeToolCall>();
+
+        if (maxToolCallsPerTurn > 0 && toolCalls.Count > maxToolCallsPerTurn)
         {
             WorkerLog.Warn(
                 $"agent tool calls capped runId={state.RunId} " +
-                $"requested={toolCallsToExecute.Count} max={maxToolCallsPerTurn}");
-            toolCallsToExecute = toolCallsToExecute.Take(maxToolCallsPerTurn).ToList();
+                $"requested={toolCalls.Count} max={maxToolCallsPerTurn} " +
+                $"skipped={toolCalls.Count - maxToolCallsPerTurn}");
+
+            toolCallsToExecute = toolCalls.Take(maxToolCallsPerTurn).ToList();
+            skippedToolCalls = toolCalls.Skip(maxToolCallsPerTurn).ToList();
         }
 
         // Two semaphores: one for regular tools, one for sub-agent (Task) calls.
@@ -68,6 +75,57 @@ internal static class ToolCallProcessor
         {
             var completedResults = await Task.WhenAll(toolTasks);
             results.AddRange(completedResults);
+        }
+
+        // Generate error results for skipped tool calls so the LLM knows they
+        // were not executed and can retry in the next turn.
+        if (skippedToolCalls.Count > 0)
+        {
+            var skipMessage = maxToolCallsPerTurn > 0
+                ? $"Tool call skipped: per-turn limit ({maxToolCallsPerTurn}) exceeded. " +
+                  $"This call was not executed. Please retry in the next turn."
+                : "Tool call skipped: per-turn limit exceeded. Please retry in the next turn.";
+
+            foreach (var skipped in skippedToolCalls)
+            {
+                // Emit tool_call_start + tool_call_result so the UI shows the skipped call
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_call_start",
+                        ToolCall: new AgentRuntimeToolCallState(
+                            skipped.Id,
+                            skipped.Name,
+                            skipped.Input,
+                            "running",
+                            null,
+                            null,
+                            false,
+                            AgentLoop.NowMs(),
+                            null)));
+
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_call_result",
+                        ToolCallId: skipped.Id,
+                        ToolName: skipped.Name,
+                        ToolCall: new AgentRuntimeToolCallState(
+                            skipped.Id,
+                            skipped.Name,
+                            skipped.Input,
+                            "error",
+                            AgentRuntimeProviderSupport.CreateStringElement(skipMessage),
+                            skipMessage,
+                            false,
+                            AgentLoop.NowMs(),
+                            AgentLoop.NowMs())));
+
+                results.Add(new AgentRuntimeToolResult(
+                    skipped.Id,
+                    AgentRuntimeProviderSupport.CreateStringElement(skipMessage),
+                    true));
+            }
         }
 
         return results;
