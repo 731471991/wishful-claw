@@ -11,6 +11,7 @@ import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
 import { registerNativeAgentRuntimeHandlers } from './ipc/native-agent-runtime'
 import { registerGitHandlers } from './ipc/git-handlers'
 import { registerFsHandlers } from './ipc/fs-handlers'
+import { registerTerminalHandlers } from './ipc/terminal-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -187,6 +188,7 @@ app.whenReady().then(() => {
 
   // ── File system handlers (extracted to ipc/fs-handlers.ts) ──
   registerFsHandlers()
+  registerTerminalHandlers()
 
   // ── Agent history handlers (forwarded to C# Worker SQLite) ──
   registerMessagePackHandler<{ toolUseId: string }, unknown>(
