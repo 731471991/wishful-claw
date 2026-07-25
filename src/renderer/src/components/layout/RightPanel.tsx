@@ -10,6 +10,7 @@ import { cn } from '@renderer/lib/utils'
 import { RightPanelHeader } from './RightPanelHeader'
 import { ActivityPanel } from '@renderer/components/activity/ActivityPanel'
 import { MemoryPanel } from '@renderer/components/memory/MemoryPanel'
+import { SubAgentsPanel } from '@renderer/components/layout/SubAgentsPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
 export function RightPanel(): React.JSX.Element {
@@ -129,12 +130,7 @@ export function RightPanel(): React.JSX.Element {
       return <MemoryPanel workingFolder={workingFolder} />
     }
     if (tab.kind === 'subagent') {
-      // SubAgentsPanel will be added in Plan 11-2
-      return (
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          {t('subAgentsPanel.title', { defaultValue: 'SubAgents' })} — Coming soon
-        </div>
-      )
+      return <SubAgentsPanel sessionId={tab.sessionId ?? panelSessionId} />
     }
     if (tab.kind === 'browser') {
       // BrowserPanel will be added in Plan 11-3
