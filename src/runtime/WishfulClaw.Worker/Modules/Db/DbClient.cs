@@ -177,6 +177,17 @@ internal static class DbClient
             }
         }
     }
+    /// <summary>
+    /// 确保 DB 已初始化（无参版本，用于非 IPC 上下文调用）。
+    /// 要求 DB 已通过 IPC handler 初始化过。
+    /// </summary>
+    public static void EnsureInitialized()
+    {
+        if (_db is null || !_initialized)
+        {
+            throw new InvalidOperationException("DB has not been initialized. Call EnsureInitialized(parameters) from an IPC handler first.");
+        }
+    }
 
     /// <summary>
     /// Adds a column to an existing table if it doesn't exist.
