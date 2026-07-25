@@ -1,18 +1,13 @@
 // InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
-import { useState as useLocalState } from 'react'
 import { toast } from 'sonner'
 import {
-  Send, FolderOpen, AlertTriangle, FileUp,
-  Sparkles, X, Trash2, ClipboardList, Globe, Wand2,
-  Target
+  Sparkles, X, FileUp
 } from 'lucide-react'
-import { Button } from '@renderer/components/ui/button'
 import type { AIModelConfig } from '@renderer/lib/api/types'
 import { Spinner } from '@renderer/components/ui/spinner'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { updateWebSearchToolRegistration } from '@renderer/lib/tools'
@@ -42,9 +37,6 @@ import {
   removeReferenceNode, replaceEditorRange, serializeEditorDocument,
   type EditorDocumentNode, type SelectedFileItem
 } from '@renderer/lib/select-file-editor'
-import { SkillsMenu } from '../SkillsMenu'
-import { ModelSwitcher } from '../ModelSwitcher'
-import { PersonaSwitcher } from '../PersonaSwitcher'
 import { FileAwareEditor, type FileAwareEditorHandle } from '../FileAwareEditor'
 import { listCommands, type CommandCatalogItem } from '@renderer/lib/commands/command-loader'
 import { usePlanStore } from '@renderer/stores/plan-store'
@@ -58,18 +50,12 @@ import {
   type AppPluginId
 } from '@renderer/lib/app-plugin/types'
 import {
-  clearPendingSessionMessages, type SendMessageOptions
+  type SendMessageOptions
 } from '@renderer/hooks/use-chat-actions'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger
-} from '@renderer/components/ui/alert-dialog'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { cn } from '@renderer/lib/utils'
 import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
 import { isProjectSession, workspaceContextAvailable } from '@renderer/lib/session-scope'
-import { getDroppedLocalPaths } from '@renderer/lib/drag-folder'
 import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
 
 // Extracted modules
@@ -77,23 +63,24 @@ import {
   InputAreaProps, FileSearchItem, SlashSuggestionItem, AppPluginPromptItem, ContextCompressionStatus
 } from './types'
 import {
-  INTERNAL_FILE_DRAG_MIME, MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, MAX_SLASH_COMMAND_RESULTS, BUILTIN_SLASH_COMMANDS, placeholderKeys, defaultRecommendationKeys
+  MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, MAX_SLASH_COMMAND_RESULTS, BUILTIN_SLASH_COMMANDS, placeholderKeys, defaultRecommendationKeys
 } from './types'
 import {
   getAppPluginPromptContent, getSlashCommandQuery, scoreSlashCommand, summarizeQueuedMessage, isReferenceOnlyDocument, selectedFileItemToReference
 } from './utils'
-import { ContextRing } from './context-ring'
-import { ActiveMcpsBadge, ActiveExtensionsBadge, ReadOnlyModelBadge } from './badges'
 import { ComposerRuntimeStatus } from './runtime-status'
 import { useComposerHeight } from './use-composer-height'
 import { useImageAttachments } from './use-image-attachments'
 import { useQueuedMessages } from './use-queued-messages'
 import { usePromptOptimizer } from './use-prompt-optimizer'
 import { OptimizationDialog } from './optimization-dialog'
-import { PermissionControl } from './permission-control'
 import { QueuedMessagesPanel } from './queued-messages-panel'
 import { ComposerFlyovers } from './composer-flyovers'
 import { ImagePreviewStrip } from './image-preview-strip'
+import { ComposerBanners } from './composer-banners'
+import { ComposerToolbar } from './composer-toolbar'
+import { useComposerKeydown } from './use-composer-keydown'
+import { useDragDrop } from './use-drag-drop'
 
 export function InputArea({
   sessionId,
@@ -1297,112 +1284,17 @@ export function InputArea({
     ]
   )
 
-  const handleKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>): void => {
-      // keyCode 229 marks the keydown that starts an IME composition, which
-      // fires before nativeEvent.isComposing becomes true.
-      if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229 || isOptimizingLocked) return
-
-      if (fileMenuOpen) {
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowDown') {
-          e.preventDefault()
-          setSelectedFileSearchIndex((prev) =>
-            fileSearchResults.length === 0 ? 0 : (prev + 1) % fileSearchResults.length
-          )
-          return
-        }
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowUp') {
-          e.preventDefault()
-          setSelectedFileSearchIndex((prev) =>
-            fileSearchResults.length === 0
-              ? 0
-              : (prev - 1 + fileSearchResults.length) % fileSearchResults.length
-          )
-          return
-        }
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'Tab' || e.key === 'Enter')) {
-          const selectedFile = fileSearchResults[selectedFileSearchIndex]
-          if (selectedFile) {
-            e.preventDefault()
-            insertSelectedFile(selectedFile.path)
-            return
-          }
-        }
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'Escape') {
-          e.preventDefault()
-          const nextCursor = activeFileMention?.start ?? 0
-          editorRef.current?.focus()
-          editorRef.current?.setSelectionOffsets(nextCursor, nextCursor)
-          setEditorSelection({ start: nextCursor, end: nextCursor })
-          handleRecommendationSelectionChange()
-          return
-        }
-      }
-
-      if (slashMenuOpen) {
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowDown') {
-          e.preventDefault()
-          setSelectedSlashIndex((prev) =>
-            filteredSlashSuggestions.length === 0 ? 0 : (prev + 1) % filteredSlashSuggestions.length
-          )
-          return
-        }
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowUp') {
-          e.preventDefault()
-          setSelectedSlashIndex((prev) =>
-            filteredSlashSuggestions.length === 0
-              ? 0
-              : (prev - 1 + filteredSlashSuggestions.length) % filteredSlashSuggestions.length
-          )
-          return
-        }
-        if (!e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'Tab' || e.key === 'Enter')) {
-          const selectedSuggestion = filteredSlashSuggestions[selectedSlashIndex]
-          if (selectedSuggestion) {
-            e.preventDefault()
-            applySlashSuggestion(selectedSuggestion)
-            return
-          }
-        }
-      }
-
-      if (!e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.key === 'Tab') {
-        const acceptedSuggestion = acceptSuggestion()
-        if (acceptedSuggestion) {
-          e.preventDefault()
-          applyEditorStateFromSerializedText(acceptedSuggestion, selectedFiles)
-          requestAnimationFrame(() => {
-            focusInputAtEnd()
-            handleRecommendationSelectionChange()
-          })
-          return
-        }
-      }
-
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault()
-        handleSend()
-      }
-    },
-    [
-      isOptimizing,
-      fileMenuOpen,
-      slashMenuOpen,
-      fileSearchResults,
-      selectedFileSearchIndex,
-      filteredSlashSuggestions,
-      selectedSlashIndex,
-      activeFileMention,
-      insertSelectedFile,
-      applySlashSuggestion,
-      acceptSuggestion,
-      applyEditorStateFromSerializedText,
-      selectedFiles,
-      focusInputAtEnd,
-      handleRecommendationSelectionChange,
-      handleSend
-    ]
-  )
+  const handleKeyDown = useComposerKeydown({
+    isOptimizingLocked,
+    fileMenuOpen, slashMenuOpen,
+    fileSearchResults, selectedFileSearchIndex, setSelectedFileSearchIndex,
+    filteredSlashSuggestions, selectedSlashIndex, setSelectedSlashIndex,
+    activeFileMention, editorRef, setEditorSelection,
+    insertSelectedFile, applySlashSuggestion,
+    acceptSuggestion, applyEditorStateFromSerializedText,
+    selectedFiles, focusInputAtEnd,
+    handleRecommendationSelectionChange, handleSend
+  })
 
   const handlePaste = React.useCallback(
     (e: React.ClipboardEvent<HTMLDivElement>): void => {
@@ -1424,77 +1316,9 @@ export function InputArea({
     [addImages, editorSelection, getPastedImageFiles, replaceSelectionWithText]
   )
 
-  const getDraggedFilePaths = React.useCallback((dataTransfer: DataTransfer | null): string[] => {
-    if (!dataTransfer) return []
-    const payload = dataTransfer.getData(INTERNAL_FILE_DRAG_MIME)
-    if (!payload) return []
-
-    try {
-      const parsed = JSON.parse(payload)
-      if (!Array.isArray(parsed)) return []
-      return parsed.filter((item): item is string => typeof item === 'string' && item.length > 0)
-    } catch {
-      return []
-    }
-  }, [])
-
-  const handleDropFiles = React.useCallback(
-    (dataTransfer: DataTransfer | null) => {
-      if (!dataTransfer || dataTransfer.files.length === 0) return
-      const paths = getDroppedLocalPaths(dataTransfer)
-      const fallbackPaths = Array.from(dataTransfer.files)
-        .map((f) => (f as File & { path?: string }).path)
-        .filter((filePath): filePath is string => Boolean(filePath))
-      const uniquePaths = Array.from(new Set([...paths, ...fallbackPaths]))
-
-      if (uniquePaths.length > 0) {
-        addFilesToEditor(uniquePaths)
-      }
-    },
-    [addFilesToEditor]
-  )
-
-  const [dragging, setDragging] = useLocalState(false)
-
-  const handleDragOver = React.useCallback(
-    (e: React.DragEvent<HTMLDivElement>): void => {
-      const transfer = e.dataTransfer
-      const types = Array.from(transfer?.types ?? [])
-      const canHandle = types.includes('Files') || types.includes(INTERNAL_FILE_DRAG_MIME)
-      if (!canHandle) return
-      e.preventDefault()
-      if (transfer) {
-        transfer.dropEffect = 'copy'
-      }
-      setDragging(true)
-    },
-    [setDragging]
-  )
-
-  const handleDragLeave = React.useCallback(
-    (e: React.DragEvent<HTMLDivElement>): void => {
-      const nextTarget = e.relatedTarget as Node | null
-      if (nextTarget && e.currentTarget.contains(nextTarget)) return
-      setDragging(false)
-    },
-    [setDragging]
-  )
-
-  const handleDropWrapped = React.useCallback(
-    (e: React.DragEvent<HTMLDivElement>): void => {
-      const draggedPaths = getDraggedFilePaths(e.dataTransfer)
-      const hasNativeFiles = (e.dataTransfer?.files?.length ?? 0) > 0
-      if (draggedPaths.length === 0 && !hasNativeFiles) return
-      e.preventDefault()
-      setDragging(false)
-      if (draggedPaths.length > 0) {
-        addFilesToEditor(draggedPaths)
-        return
-      }
-      handleDropFiles(e.dataTransfer ?? null)
-    },
-    [addFilesToEditor, getDraggedFilePaths, handleDropFiles, setDragging]
-  )
+  const { dragging, handleDragOver, handleDragLeave, handleDropWrapped } = useDragDrop({
+    addFilesToEditor
+  })
 
   const handleCompressContext = React.useCallback(() => {
     if (!onCompressContext || isContextCompressing) return
@@ -1536,97 +1360,6 @@ export function InputArea({
     }
   }, [contextCompressionStatus, t])
 
-  const composerVariant = 'session'
-  const composerIconControlClass = 'composer-control rounded-xl'
-
-  const webSearchToggleControl = canToggleWebSearch && (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={composerIconControlClass}
-          data-active={webSearchEnabled ? 'true' : 'false'}
-          onClick={toggleWebSearch}
-          disabled={disabled || isStreaming}
-        >
-          <Globe className="size-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {webSearchEnabled
-          ? t('input.disableWebSearch', { defaultValue: 'Disable web search' })
-          : t('input.enableWebSearch', { defaultValue: 'Enable web search' })}
-      </TooltipContent>
-    </Tooltip>
-  )
-
-  const skillsMenuControl = (
-    <SkillsMenu
-      onSelectSkill={(name) => {
-        setSelectedSkill(name)
-        editorRef.current?.focus()
-      }}
-      onSelectCommand={(name) => {
-        insertSlashCommand(name)
-      }}
-      onSelectPlugin={(pluginId) => {
-        insertPluginPrompt(pluginId)
-      }}
-      onAttachMedia={() => void handleAttachMedia()}
-      disabled={disabled || isStreaming}
-      projectId={activeProjectId}
-      showChannels={mode !== 'chat'}
-      triggerClassName={composerIconControlClass}
-      menuClassName="composer-flyout"
-      showModeToggles={!hideModeSwitch}
-      planModeEnabled={planMode}
-      goalModeEnabled={goalModeEnabled}
-      planModeDisabled={disabled || isStreaming || !projectScoped}
-      goalModeDisabled={disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0}
-      onPlanModeChange={handlePlanModeChange}
-      onGoalModeChange={handleGoalModeChange}
-    />
-  )
-
-  const activeMcpBadge = <ActiveMcpsBadge projectId={activeProjectId} />
-  const activeExtensionBadge = <ActiveExtensionsBadge projectId={activeProjectId} />
-
-  const folderControl = onSelectFolder && !hideWorkingFolderPicker && (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={composerIconControlClass}
-          onClick={onSelectFolder}
-        >
-          <FolderOpen className="size-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{t('input.selectFolder')}</TooltipContent>
-    </Tooltip>
-  )
-
-  const optimizeControl = !isStreaming && (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={composerIconControlClass}
-          onClick={handleOptimizePrompt}
-          disabled={!text.trim() || disabled || isOptimizingLocked}
-        >
-          {isOptimizing ? <Spinner className="size-4" /> : <Wand2 className="size-4" />}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {isOptimizing ? t('input.optimizing') : t('input.optimizePrompt')}
-      </TooltipContent>
-    </Tooltip>
-  )
-
   const permissionMode: 'default' | 'whitelist' | 'fullAccess' = autoApprove
     ? 'fullAccess'
     : permissionWhitelistEnabled
@@ -1655,55 +1388,7 @@ export function InputArea({
     })
   }
 
-  const permissionControl = (
-    <PermissionControl
-      permissionMode={permissionMode}
-      onSelectMode={handleSelectPermissionMode}
-      onOpenSettings={(tab) => openSettings(tab as never)}
-    />
-  )
-
-  const sendControl = (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          size="default"
-          className="composer-send rounded-xl px-3.5 transition-[filter,box-shadow] duration-200"
-          data-composer-variant={composerVariant}
-          data-tone={isStreaming ? 'warning' : undefined}
-          onMouseDown={(event) => {
-            event.preventDefault()
-          }}
-          onClick={isStreaming ? () => onStop?.() : handleSend}
-          disabled={
-            isStreaming
-              ? false
-              : (!finalSerializedText.trim() && attachedImages.length === 0) ||
-                disabled ||
-                needsWorkingFolder ||
-                pendingImageReads > 0 ||
-                isOptimizingLocked
-          }
-          aria-label={isStreaming ? t('input.stopTooltip') : t('input.sendTooltip')}
-        >
-          {isStreaming ? (
-            <>
-              <Spinner className="mr-1.5 size-3.5" />
-              <span>{t('action.stop', { ns: 'common' })}</span>
-            </>
-          ) : (
-            <>
-              <span>{t(sessionId ? 'action.send' : 'action.start', { ns: 'common' })}</span>
-              <Send className="ml-1.5 size-3.5" />
-            </>
-          )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {isStreaming ? t('input.stopTooltip') : t('input.sendTooltip')}
-      </TooltipContent>
-    </Tooltip>
-  )
+  const composerIconControlClass = 'composer-control rounded-xl'
 
   const queuedMessagesPanel = (
     <QueuedMessagesPanel
@@ -1736,59 +1421,20 @@ export function InputArea({
       data-tour="composer"
       className={cn('px-4 py-3', attachedFooter ? 'pb-0' : 'pb-4')}
     >
-      {/* API key warning */}
-      {!hasApiKey && (
-        <button
-          type="button"
-          className="mb-2 flex w-full items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-left text-xs text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
-          onClick={() => openSettings('provider')}
-        >
-          <AlertTriangle className="size-3.5 shrink-0" />
-          <span>{t('input.noApiKey')}</span>
-        </button>
-      )}
-
-      {/* Working folder required warning */}
-      {needsWorkingFolder && onSelectFolder && (
-        <button
-          type="button"
-          className="mb-2 flex w-full items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-left text-xs text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
-          onClick={onSelectFolder}
-        >
-          <FolderOpen className="size-3.5 shrink-0" />
-          <span>{t('input.noWorkingFolder', { mode })}</span>
-        </button>
-      )}
-
-      {/* Plan mode banner */}
-      {planMode && projectScoped && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-1.5">
-          <div className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
-            <ClipboardList className="size-3.5 shrink-0" />
-            <span>
-              {t('input.planModeActive', {
-                defaultValue: 'Plan Mode — exploring codebase, no file changes'
-              })}
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 px-1.5 text-[10px] text-violet-600 dark:text-violet-400 hover:bg-violet-500/10"
-            onClick={() => useUIStore.getState().exitPlanMode(draftSessionId)}
-          >
-            {t('input.exitPlanMode', { defaultValue: 'Exit Plan Mode' })}
-          </Button>
-        </div>
-      )}
-
-      {/* Working folder indicator */}
-      {workingFolder && !hideWorkingFolderIndicator && (
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <FolderOpen className="size-3" />
-          <span className="truncate">{workingFolder}</span>
-        </div>
-      )}
+      <ComposerBanners
+        hasApiKey={hasApiKey}
+        needsWorkingFolder={needsWorkingFolder}
+        onSelectFolder={onSelectFolder}
+        mode={mode}
+        planMode={planMode}
+        projectScoped={projectScoped}
+        draftSessionId={draftSessionId}
+        workingFolder={workingFolder}
+        hideWorkingFolderIndicator={hideWorkingFolderIndicator}
+        hasPendingGoalMode={hasPendingGoalMode}
+        composerWidthClass={composerWidthClass}
+        onOpenSettings={(tab) => openSettings(tab as never)}
+      />
 
       {queuedMessagesPanel}
 
@@ -1799,22 +1445,7 @@ export function InputArea({
         />
       )}
 
-      {hasPendingGoalMode && (
-        <div
-          className={cn(
-            composerWidthClass,
-            'mb-2 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300'
-          )}
-        >
-          <Target className="size-3.5 shrink-0" />
-          <span>
-            {t('input.pendingGoalBanner', {
-              defaultValue:
-                'Goal pursuit is ready. Your next text message will be used as the goal and sent normally.'
-            })}
-          </span>
-        </div>
-      )}
+
 
       <div className={composerWidthClass}>
         <div
@@ -1825,7 +1456,7 @@ export function InputArea({
             attachedFooter && 'composer-shell--attached-footer',
             dragging && 'ring-2 ring-primary/50'
           )}
-          data-composer-variant={composerVariant}
+          data-composer-variant="session"
           style={
             inputHeight !== null
               ? { height: inputHeight }
@@ -2002,91 +1633,53 @@ export function InputArea({
           />
 
           {/* Bottom toolbar */}
-          <div
-            ref={bottomToolbarRef}
-            className="composer-toolbar relative z-20 mt-1 shrink-0 flex items-center justify-between gap-2 px-2 pb-2"
-          >
-            <div className="flex w-full items-center justify-between gap-2">
-              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pr-1 [scrollbar-width:none]">
-                <div className="shrink-0">
-                  {readOnlyModel !== undefined ? (
-                    <ReadOnlyModelBadge model={readOnlyModel} />
-                  ) : (
-                    <ModelSwitcher modelRoute={modelRoute} sessionId={draftSessionId} />
-                  )}
-                </div>
-                {draftSessionId && (
-                  <div className="shrink-0">
-                    <PersonaSwitcher sessionId={draftSessionId} />
-                  </div>
-                )}
-                {webSearchToggleControl}
-                {skillsMenuControl}
-                {activeMcpBadge}
-                {activeExtensionBadge}
-                {folderControl}
-              </div>
-
-              <div className="flex shrink-0 items-center gap-1.5">
-                <ContextRing
-                  sessionId={draftSessionId}
-                  onCompressContext={onCompressContext ? handleCompressContext : undefined}
-                  isCompressing={isContextCompressing}
-                />
-
-                {showInlineClearConversation && hasMessages && !isStreaming && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="composer-control rounded-lg"
-                        data-tone="danger"
-                        aria-label={t('input.clearConversation')}
-                        title={t('input.clearConversation')}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent size="sm">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t('input.clearConfirmTitle')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {queuedMessages.length > 0
-                            ? t('input.clearConfirmDescWithQueue', {
-                                defaultValue:
-                                  'This will delete all messages in this conversation and clear {{count}} pending messages in the current session. This action cannot be undone.',
-                                count: queuedMessages.length
-                              })
-                            : t('input.clearConfirmDesc')}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel size="sm">
-                          {t('action.cancel', { ns: 'common' })}
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (!activeSessionId) return
-                            clearSessionMessages(activeSessionId)
-                            clearPendingSessionMessages(activeSessionId)
-                          }}
-                        >
-                          {t('action.clear', { ns: 'common' })}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-
-                {optimizeControl}
-                {permissionControl}
-                {sendControl}
-              </div>
-            </div>
-          </div>
+          <ComposerToolbar
+            readOnlyModel={readOnlyModel}
+            modelRoute={modelRoute}
+            draftSessionId={draftSessionId}
+            canToggleWebSearch={canToggleWebSearch}
+            webSearchEnabled={webSearchEnabled}
+            toggleWebSearch={toggleWebSearch}
+            disabled={disabled}
+            isStreaming={isStreaming}
+            setSelectedSkill={setSelectedSkill}
+            insertSlashCommand={insertSlashCommand}
+            insertPluginPrompt={(id, _focus) => insertPluginPrompt(id as AppPluginId)}
+            handleAttachMedia={handleAttachMedia}
+            activeProjectId={activeProjectId}
+            mode={mode}
+            hideModeSwitch={hideModeSwitch}
+            planMode={planMode}
+            goalModeEnabled={goalModeEnabled}
+            planModeDisabled={disabled || isStreaming || !projectScoped}
+            goalModeDisabled={disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0}
+            onPlanModeChange={handlePlanModeChange}
+            onGoalModeChange={handleGoalModeChange}
+            onSelectFolder={onSelectFolder}
+            hideWorkingFolderPicker={hideWorkingFolderPicker}
+            isOptimizing={isOptimizing}
+            isOptimizingLocked={isOptimizingLocked}
+            handleOptimizePrompt={handleOptimizePrompt}
+            hasText={Boolean(text.trim())}
+            permissionMode={permissionMode}
+            onSelectPermissionMode={handleSelectPermissionMode}
+            onOpenSettings={(tab) => openSettings(tab as never)}
+            onStop={onStop}
+            onSend={handleSend}
+            finalSerializedText={finalSerializedText}
+            attachedImagesCount={attachedImages.length}
+            needsWorkingFolder={needsWorkingFolder}
+            pendingImageReads={pendingImageReads}
+            onCompressContext={onCompressContext ? handleCompressContext : undefined}
+            isContextCompressing={isContextCompressing}
+            showInlineClearConversation={showInlineClearConversation}
+            hasMessages={hasMessages}
+            activeSessionId={activeSessionId}
+            queuedMessagesCount={queuedMessages.length}
+            onClearSession={clearSessionMessages}
+            composerIconControlClass={composerIconControlClass}
+            toolbarRef={bottomToolbarRef}
+          />
         </div>
 
         {draftSessionId && (
