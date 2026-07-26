@@ -41,6 +41,18 @@ export interface AgentActions {
 
 export type ChatStore = SessionSlice & ProjectSlice & StreamingSlice & AgentActions
 
+// ─── rAF-batched streaming delta buffer ───
+// Multiple tokens arrive per animation frame; batching them into a single
+// set() call reduces Zustand/React re-renders from ~100/s to ≤60/s.
+type StreamDelta =
+  | { kind: 'text'; sessionId: string; msgId: string; text: string }
+  | { kind: 'thinking'; sessionId: string; msgId: string; thinking: string }
+
+const _pendingStreamDeltas: StreamDelta[] = []
+let _streamDeltaRafId: number | null = null
+// Assigned after useChatStore is created (avoids temporal dead zone).
+let _scheduleStreamDeltaFlush: () => void = () => {}
+
 // Use immer middleware so set((state) => { state.x = y }) works
 export const useChatStore = create<ChatStore>()(
   immer((...args) => ({
@@ -208,29 +220,14 @@ export const useChatStore = create<ChatStore>()(
           case 'text_delta': {
             // Clear retry state — retry succeeded, actual content is arriving
             useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
-            set((state) => {
-              const session = state.sessions.find((s) => s.id === targetSessionId)
-              if (session) {
-                const msg = session.messages.find((m) => m.id === envelope.runId)
-                if (msg) {
-                  msg.text += event.text
-                  if (!msg.segments) msg.segments = []
-                  if (!msg.currentIteration) msg.currentIteration = 1
-                  // Mark the last thinking segment as completed when text output starts
-                  const lastSegForText = msg.segments[msg.segments.length - 1]
-                  if (lastSegForText && lastSegForText.type === 'thinking' && !lastSegForText.completedAt) {
-                    lastSegForText.completedAt = Date.now()
-                  }
-                  // Append to last text segment of current iteration, or create new
-                  const lastSeg = msg.segments[msg.segments.length - 1]
-                  if (lastSeg && lastSeg.type === 'text' && lastSeg.iteration === msg.currentIteration) {
-                    lastSeg.text = (lastSeg.text ?? '') + event.text
-                  } else {
-                    msg.segments.push({ type: 'text', iteration: msg.currentIteration, text: event.text })
-                  }
-                }
-              }
+            // Queue delta for rAF batch flush instead of immediate set()
+            _pendingStreamDeltas.push({
+              kind: 'text',
+              sessionId: targetSessionId,
+              msgId: envelope.runId,
+              text: event.text
             })
+            _scheduleStreamDeltaFlush()
             break
           }
 
@@ -248,24 +245,14 @@ export const useChatStore = create<ChatStore>()(
             break
 
         case 'thinking_delta':
-            set((state) => {
-              const session = state.sessions.find((s) => s.id === targetSessionId)
-              if (session) {
-                const msg = session.messages.find((m) => m.id === envelope.runId)
-                if (msg) {
-                  msg.thinking = (msg.thinking ?? '') + event.thinking
-                  if (!msg.segments) msg.segments = []
-                  if (!msg.currentIteration) msg.currentIteration = 1
-                  // Append to last thinking segment of current iteration, or create new
-                  const lastSeg = msg.segments[msg.segments.length - 1]
-                  if (lastSeg && lastSeg.type === 'thinking' && lastSeg.iteration === msg.currentIteration) {
-                    lastSeg.thinking = (lastSeg.thinking ?? '') + event.thinking
-                  } else {
-                    msg.segments.push({ type: 'thinking', iteration: msg.currentIteration, thinking: event.thinking, startedAt: Date.now() })
-                  }
-                }
-              }
+            // Queue delta for rAF batch flush instead of immediate set()
+            _pendingStreamDeltas.push({
+              kind: 'thinking',
+              sessionId: targetSessionId,
+              msgId: envelope.runId,
+              thinking: event.thinking
             })
+            _scheduleStreamDeltaFlush()
             break
 
           // message_end = one LLM turn finished, but the loop may continue
@@ -532,6 +519,8 @@ export const useChatStore = create<ChatStore>()(
 
           // loop_end = entire agent loop finished, now we can stop streaming
           case 'loop_end':
+            // Flush any pending stream deltas before clearing streaming state
+            flushPendingStreamDeltas()
             // Move any remaining pending tool calls to executed in agentStore
             {
               const agentState = useAgentStore.getState()
@@ -589,6 +578,8 @@ export const useChatStore = create<ChatStore>()(
           }
 
           case 'error':
+            // Flush any pending stream deltas before clearing streaming state
+            flushPendingStreamDeltas()
             // Clear agentStore pending tool calls on error
             useAgentStore.getState().resetLiveSessionExecution(targetSessionId)
             set((state) => {
@@ -613,3 +604,79 @@ export const useChatStore = create<ChatStore>()(
 getAgentStreamReceiver().start((envelope) => {
   useChatStore.getState().handleEnvelope(envelope)
 })
+
+// ─── rAF delta flush (wired after store creation to avoid TDZ) ───
+
+function flushStreamDeltas(): void {
+  _streamDeltaRafId = null
+  if (_pendingStreamDeltas.length === 0) return
+
+  const deltas = _pendingStreamDeltas.splice(0)
+
+  // Group by session+msgId to batch updates
+  const grouped = new Map<string, StreamDelta[]>()
+  for (const delta of deltas) {
+    const key = `${delta.sessionId}\u0000${delta.msgId}`
+    let arr = grouped.get(key)
+    if (!arr) {
+      arr = []
+      grouped.set(key, arr)
+    }
+    arr.push(delta)
+  }
+
+  useChatStore.setState((state) => {
+    const now = Date.now()
+    for (const [, sessionDeltas] of grouped) {
+      const first = sessionDeltas[0]
+      const session = state.sessions.find((s) => s.id === first.sessionId)
+      if (!session) continue
+      const msg = session.messages.find((m) => m.id === first.msgId)
+      if (!msg) continue
+
+      if (!msg.segments) msg.segments = []
+      if (!msg.currentIteration) msg.currentIteration = 1
+
+      for (const delta of sessionDeltas) {
+        if (delta.kind === 'text') {
+          msg.text += delta.text
+          // Mark the last thinking segment as completed when text output starts
+          const lastSegForText = msg.segments[msg.segments.length - 1]
+          if (lastSegForText && lastSegForText.type === 'thinking' && !lastSegForText.completedAt) {
+            lastSegForText.completedAt = now
+          }
+          // Append to last text segment of current iteration, or create new
+          const lastSeg = msg.segments[msg.segments.length - 1]
+          if (lastSeg && lastSeg.type === 'text' && lastSeg.iteration === msg.currentIteration) {
+            lastSeg.text = (lastSeg.text ?? '') + delta.text
+          } else {
+            msg.segments.push({ type: 'text', iteration: msg.currentIteration, text: delta.text })
+          }
+        } else {
+          msg.thinking = (msg.thinking ?? '') + delta.thinking
+          // Append to last thinking segment of current iteration, or create new
+          const lastSeg = msg.segments[msg.segments.length - 1]
+          if (lastSeg && lastSeg.type === 'thinking' && lastSeg.iteration === msg.currentIteration) {
+            lastSeg.thinking = (lastSeg.thinking ?? '') + delta.thinking
+          } else {
+            msg.segments.push({ type: 'thinking', iteration: msg.currentIteration, thinking: delta.thinking, startedAt: now })
+          }
+        }
+      }
+    }
+  })
+}
+
+/** Synchronous flush — drains pending deltas immediately (used by loop_end/error). */
+function flushPendingStreamDeltas(): void {
+  if (_streamDeltaRafId !== null) {
+    cancelAnimationFrame(_streamDeltaRafId)
+    _streamDeltaRafId = null
+  }
+  flushStreamDeltas()
+}
+
+_scheduleStreamDeltaFlush = () => {
+  if (_streamDeltaRafId !== null) return
+  _streamDeltaRafId = requestAnimationFrame(flushStreamDeltas)
+}
