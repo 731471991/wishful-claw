@@ -76,13 +76,6 @@ export function RightPanel(): React.JSX.Element {
   // browser tools keep working in the background even while the panel is collapsed.
   const hasBrowserTab = tabs.some((tab) => tab.kind === 'browser')
   const browserTabAlive = hasBrowserTab && browserPluginEnabled
-  // Debug: log state changes
-  useEffect(() => {
-    console.warn('[RightPanel] browserTabAlive:', browserTabAlive,
-      'hasBrowserTab:', hasBrowserTab, 'pluginEnabled:', browserPluginEnabled,
-      'rightPanelOpen:', rightPanelOpen, 'activeTabKind:', activeTab?.kind,
-      'panelSessionId:', panelSessionId)
-  }, [browserTabAlive, hasBrowserTab, browserPluginEnabled, rightPanelOpen, activeTab])
   const browserPanelKey = panelSessionId
     ? `session:${panelSessionId}`
     : activeProjectId
@@ -91,6 +84,14 @@ export function RightPanel(): React.JSX.Element {
 
   const activeTab = rightPanelOpen ? selectedTab : undefined
   const browserVisible = rightPanelOpen && activeTab?.kind === 'browser'
+
+  // Debug: log state changes
+  useEffect(() => {
+    console.warn('[RightPanel] browserTabAlive:', browserTabAlive,
+      'hasBrowserTab:', hasBrowserTab, 'pluginEnabled:', browserPluginEnabled,
+      'rightPanelOpen:', rightPanelOpen, 'activeTabKind:', activeTab?.kind,
+      'panelSessionId:', panelSessionId)
+  }, [browserTabAlive, hasBrowserTab, browserPluginEnabled, rightPanelOpen, activeTab, panelSessionId])
 
   const draggingRef = useRef(false)
   const startXRef = useRef(0)
