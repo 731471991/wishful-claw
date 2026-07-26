@@ -26,6 +26,9 @@
     "channel": {
       "label": "渠道配置",
       "desc": "配置消息渠道（飞书、微信等）"
+    },
+    "websearch": {
+      "label": "联网搜索"
     }
   },
   "general": {
@@ -802,5 +805,30 @@
       "wsUrl": "WebSocket 中继地址（可选）"
     },
     "wsUrl": "WebSocket 中继地址（可选）"
+  },
+  "websearch": {
+    "title": "联网搜索",
+    "subtitle": "配置联网搜索提供商和设置",
+    "enable": "启用联网搜索",
+    "enableDesc": "允许 AI 搜索网络以获取最新信息",
+    "provider": "搜索提供商",
+    "providerDesc": "选择要使用的搜索提供商",
+    "selectProvider": "选择提供商",
+    "apiKey": "API 密钥",
+    "apiKeyDesc": "所选提供商的 API 密钥",
+    "apiKeyPlaceholder": "输入您的 API 密钥...",
+    "maxResults": "最大结果数",
+    "maxResultsDesc": "要返回的最大搜索结果数量",
+    "timeout": "超时时间（毫秒）",
+    "timeoutDesc": "请求超时时间（毫秒）",
+    "test": "测试搜索",
+    "testing": "测试中...",
+    "testDesc": "测试您的联网搜索配置",
+    "configSummary": "配置摘要",
+    "notSet": "未设置",
+    "disabledError": "联网搜索已禁用。请在设置中启用。",
+    "apiKeyRequired": "此提供商需要 API 密钥。",
+    "testSuccess": "联网搜索测试成功！找到 {{count}} 条结果。",
+    "testFailed": "联网搜索测试失败：{{error}}"
   }
 }

@@ -21,6 +21,9 @@
     "persona": {
       "label": "Persona",
       "desc": "Manage persona library, edit identity, soul, ontology and behavior rules"
+    },
+    "websearch": {
+      "label": "Web Search"
     }
   },
   "general": {
@@ -692,5 +695,30 @@
       "noProvider": "Please configure an AI provider first",
       "noModel": "Please select a model first"
     }
+  },
+  "websearch": {
+    "title": "Web Search",
+    "subtitle": "Configure web search providers and settings",
+    "enable": "Enable Web Search",
+    "enableDesc": "Allow the AI to search the web for current information",
+    "provider": "Search Provider",
+    "providerDesc": "Select a search provider to use",
+    "selectProvider": "Select a provider",
+    "apiKey": "API Key",
+    "apiKeyDesc": "API key for the selected provider",
+    "apiKeyPlaceholder": "Enter your API key...",
+    "maxResults": "Max Results",
+    "maxResultsDesc": "Maximum number of search results to return",
+    "timeout": "Timeout (ms)",
+    "timeoutDesc": "Request timeout in milliseconds",
+    "test": "Test Search",
+    "testing": "Testing...",
+    "testDesc": "Test your web search configuration",
+    "configSummary": "Configuration Summary",
+    "notSet": "Not set",
+    "disabledError": "Web search is disabled. Please enable it in settings.",
+    "apiKeyRequired": "API key is required for this provider.",
+    "testSuccess": "Web search test successful! Found {{count}} results.",
+    "testFailed": "Web search test failed: {{error}}"
   }
 }

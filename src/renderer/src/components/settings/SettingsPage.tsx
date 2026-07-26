@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Server, Info, Settings, User, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Search } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
@@ -9,6 +9,7 @@ import { PluginPanel } from '@renderer/components/settings/PluginPanel'
 import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
+import { WebSearchPanel } from '@renderer/components/settings/WebSearchPanel'
 
 function SettingsPage(): React.JSX.Element {
   const { t } = useTranslation('settings')
@@ -30,7 +31,8 @@ function SettingsPage(): React.JSX.Element {
     {
       label: t('tabs.groups.aiService'),
       items: [
-        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') }
+        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') },
+        { id: 'websearch', icon: <Search className="size-4" />, label: t('tabs.websearch.label', { defaultValue: '联网搜索' }) }
       ]
     },
     {
@@ -126,6 +128,18 @@ function SettingsPage(): React.JSX.Element {
             ) : settingsTab === 'persona' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <PersonaPanel />
+              </div>
+            ) : settingsTab === 'websearch' ? (
+              <div className="flex-1 overflow-y-auto">
+                <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
+                  <WebSearchPanel />
+                </div>
+              </div>
+            ) : settingsTab === 'websearch' ? (
+              <div className="flex-1 overflow-y-auto">
+                <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
+                  <WebSearchPanel />
+                </div>
               </div>
             ) : settingsTab === 'channel' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">

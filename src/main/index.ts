@@ -16,6 +16,7 @@ import { registerAgentChangeHandlers } from './ipc/agent-change-handlers'
 import { registerMcpHandlers } from './ipc/mcp-handlers'
 import { registerVideoHandlers } from './ipc/video-handlers'
 import { registerExtensionHandlers } from './ipc/extension-handlers'
+import { registerWebSearchHandlers } from './ipc/web-search-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -197,6 +198,7 @@ app.whenReady().then(() => {
   registerMcpHandlers()
   registerVideoHandlers()
   registerExtensionHandlers()
+registerWebSearchHandlers()
 
   // ── Agent history handlers (forwarded to C# Worker SQLite) ──
   registerMessagePackHandler<{ toolUseId: string }, unknown>(

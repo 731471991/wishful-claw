@@ -93,6 +93,7 @@ export type SettingsTab =
   | 'plugin'
   | 'extension'
   | 'mcp'
+  | 'websearch'
 
 export type PreviewSource = 'file' | 'dev-server' | 'markdown' | 'diff'
 export type DiffSource = 'git' | 'agent'
