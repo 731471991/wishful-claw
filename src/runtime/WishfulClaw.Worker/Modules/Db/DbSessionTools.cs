@@ -164,6 +164,62 @@ internal static class DbSessionTools
 
     // ─── Private helpers ───
 
+    public static WorkerResponse ResetConversation(JsonElement parameters)
+    {
+        try
+        {
+            var sessionId = RequireString(parameters, "sessionId");
+            var updatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            DbClient.EnsureInitialized(parameters);
+            var db = DbClient.GetClient(parameters);
+
+            var deleted = db.Deleteable<MessageEntity>()
+                .Where(m => m.SessionId == sessionId)
+                .ExecuteCommand();
+
+            var session = db.Queryable<SessionEntity>().First(s => s.Id == sessionId);
+            if (session is not null)
+            {
+                session.Title = "New Conversation";
+                session.UpdatedAt = updatedAt;
+                session.MessageCount = 0;
+                db.Updateable(session).UpdateColumns(s => new { s.Title, s.UpdatedAt, s.MessageCount }).ExecuteCommand();
+            }
+
+            return WorkerResponse.Json(new SessionResetResult(true, deleted, updatedAt, null));
+        }
+        catch (Exception ex)
+        {
+            return WorkerResponse.Json(new SessionResetResult(false, 0, 0, ex.Message));
+        }
+    }
+
+    public static WorkerResponse Status(JsonElement parameters)
+    {
+        try
+        {
+            var sessionId = RequireString(parameters, "sessionId");
+            DbClient.EnsureInitialized(parameters);
+            var db = DbClient.GetClient(parameters);
+
+            var session = db.Queryable<SessionEntity>().First(s => s.Id == sessionId);
+            if (session is null)
+            {
+                return WorkerResponse.Json(new SessionStatusResult(true, false, null, null, null, 0, null));
+            }
+
+            var messageCount = db.Queryable<MessageEntity>().Where(m => m.SessionId == sessionId).Count();
+
+            return WorkerResponse.Json(new SessionStatusResult(
+                true, true, session.Title, session.CreatedAt, session.UpdatedAt, messageCount, null));
+        }
+        catch (Exception ex)
+        {
+            return WorkerResponse.Json(new SessionStatusResult(false, false, null, null, null, 0, ex.Message));
+        }
+    }
+
     private static SessionEntity ReadSessionInput(JsonElement parameters)
     {
         var providerId = DbProjectTools.NormalizeOptional(JsonHelpers.GetString(parameters, "providerId"));

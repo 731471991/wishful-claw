@@ -28,6 +28,8 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/sessions-update", DbSessionTools.Update);
         context.Register("db/sessions-delete", DbSessionTools.Delete);
         context.Register("db/sessions-clear-all", DbSessionTools.ClearAll);
+        context.Register("db/session-reset-conversation", DbSessionTools.ResetConversation);
+        context.Register("db/session-status", DbSessionTools.Status);
 
         // ── Messages ──
         context.Register("db/messages-list", DbMessageTools.List);
@@ -41,6 +43,8 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/messages-count", DbMessageTools.Count);
         context.Register("db/messages-delete-last", DbMessageTools.DeleteLast);
         context.Register("db/messages-truncate-from", DbMessageTools.TruncateFrom);
+        context.Register("db/messages-compact-session", DbMessageCompactTools.CompactSession);
+        context.Register("db/messages-usage-stats", DbMessageCompactTools.UsageStats);
 
         // ── Sub-Agent Runs ──
         context.Register("db/sub-agent-read-by-tool-use-id", DbSubAgentTools.ReadByToolUseId);
