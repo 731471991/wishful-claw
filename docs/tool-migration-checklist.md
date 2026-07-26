@@ -1,7 +1,7 @@
 # 工具移植清单 — OpenCowork → wishful-claw
 
 > 参考源码路径：`D:\claw\OpenCowork`
-> 更新日期：2026-07-25（第二轮校准）
+> 更新日期：2026-07-26（第三轮校准）
 
 ---
 
@@ -197,14 +197,21 @@
 - ✅ AGENTS.md 第一轮 + 第二轮代码拆分
 - ✅ 前端组件（DesktopActionToolCard + AskUserQuestionCard 拆分）
 
-### 下一步
+### 已完成（第三轮）
 
-- ⏳ Video 模块（Seedance / XaiVideo）移植
-- ⏳ Extension 运行时接入
 - ✅ 渠道系统全量移植（8 个 provider: feishu/weixin/dingtalk/wecom/qq/telegram/discord/whatsapp）
 - ✅ 渠道配置 UI（PluginPanel 选项卡式配置 + 扫码绑定 + i18n）
 - ✅ 渠道代码拆分（feishu-api/weixin-api/plugin-commands/channel-handlers）
 - ✅ C# Worker 渠道模块（ChannelConfigModule + DbPluginSessionTools）
+- ✅ 工具定义注册（60 个工具：14 直接注册 + 46 Provider 注册）
+- ✅ IToolProvider 架构重构（17 个分类 Provider + 反射自动发现）
+- ✅ 前端 toolRegistry 残留清理（7 个文件删除）
+- ✅ DB IPC 补全（session-reset-conversation / session-status / messages-compact-session / messages-usage-stats）
 - ✅ 双编译验证（npm run build + dotnet build）
+
+### 下一步
+
+- ⏳ Video 模块（Seedance / XaiVideo）移植
+- ⏳ Extension 运行时接入
 - ⏳ CodeGraph 引擎接入
 - ⏳ 第三轮代码拆分（前端仍有大文件）

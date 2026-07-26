@@ -66,7 +66,7 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/plugin-session-messages-clear", DbPluginSessionTools.ClearPluginSession);
         context.Register("db/plugin-session-delete", DbPluginSessionTools.DeletePluginSession);
         context.Register("db/plugin-session-rename", DbPluginSessionTools.RenamePluginSession);
-        context.Register("db/plugin-route-session", DbPluginSessionTools.RoutePluginSession);
+        context.Register("db/plugin-route-session", DbPluginSessionRouting.RoutePluginSession);
     }
 
     private static WorkerResponse DbInitialize(JsonElement parameters)

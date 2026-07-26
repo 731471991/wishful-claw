@@ -7,8 +7,8 @@ namespace WishfulClaw.Worker.Modules.Db;
 
 internal static class DbPluginSessionTools
 {
-    private const string PlaceholderNewConversation = "New Conversation";
-    private const string PlaceholderNewChat = "New Chat";
+    internal const string PlaceholderNewConversation = "New Conversation";
+    internal const string PlaceholderNewChat = "New Chat";
 
     // ── Public IPC handlers ──
 
@@ -393,189 +393,12 @@ internal static class DbPluginSessionTools
         }
     }
 
-    public static WorkerResponse RoutePluginSession(JsonElement parameters)
-    {
-        try
-        {
-            var pluginId = RequireString(parameters, "pluginId");
-            var chatId = RequireString(parameters, "chatId");
-            var chatName = NormalizeOptional(JsonHelpers.GetString(parameters, "chatName"));
-            var senderName = NormalizeOptional(JsonHelpers.GetString(parameters, "senderName"));
-            var requestedProjectId = NormalizeOptional(JsonHelpers.GetString(parameters, "projectId"));
-            var providerId = NormalizeOptional(JsonHelpers.GetString(parameters, "providerId"));
-            var modelId = NormalizeOptional(JsonHelpers.GetString(parameters, "modelId"));
-            var compositeKey = BuildPluginMessageSessionKey(pluginId, chatId);
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-
-            // Resolve project
-            ProjectEntity? project = null;
-            if (requestedProjectId is not null)
-            {
-                project = db.Queryable<ProjectEntity>().First(p => p.Id == requestedProjectId);
-            }
-
-            // Find existing session by external chat ID
-            var session = db.Queryable<SessionEntity>()
-                .Where(s => s.ExternalChatId == compositeKey)
-                .First();
-
-            var modelSelectionMode = providerId is not null && modelId is not null
-                ? "manual"
-                : "inherit";
-
-            string sessionId;
-            string sessionTitle;
-            string? sessionProjectId;
-
-            if (session is null)
-            {
-                // Create new session
-                sessionId = CreateSessionId();
-                sessionTitle = FirstNonEmpty(chatName, senderName, chatId) ?? chatId;
-                sessionProjectId = project?.Id;
-
-                var entity = new SessionEntity
-                {
-                    Id = sessionId,
-                    Title = sessionTitle,
-                    Mode = "cowork",
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    ProjectId = project?.Id,
-                    WorkingFolder = EmptyToNull(project?.WorkingFolder),
-                    SshConnectionId = project?.SshConnectionId,
-                    Pinned = 0,
-                    PluginId = pluginId,
-                    ExternalChatId = compositeKey,
-                    ProviderId = providerId,
-                    ModelId = modelId,
-                    ModelSelectionMode = modelSelectionMode
-                };
-
-                db.Insertable(entity).ExecuteCommand();
-            }
-            else
-            {
-                sessionId = session.Id;
-                sessionTitle = session.Title;
-                sessionProjectId = session.ProjectId;
-
-                // Update existing session
-                if (project is not null)
-                {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity
-                        {
-                            UpdatedAt = now,
-                            ProjectId = project.Id,
-                            WorkingFolder = EmptyToNull(project.WorkingFolder),
-                            SshConnectionId = project.SshConnectionId
-                        })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
-                    sessionProjectId = project.Id;
-                }
-                else
-                {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity { UpdatedAt = now })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
-                }
-
-                if (providerId is not null || modelId is not null)
-                {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity
-                        {
-                            ProviderId = providerId,
-                            ModelId = modelId,
-                            ModelSelectionMode = modelSelectionMode
-                        })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
-                }
-
-                // Replace title if we have a better one
-                var betterTitle = FirstNonEmpty(chatName, senderName);
-                if (ShouldReplaceSessionTitle(sessionTitle, betterTitle))
-                {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity { Title = betterTitle! })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
-                    sessionTitle = betterTitle!;
-                }
-            }
-
-            return WorkerResponse.Json(new PluginRouteSessionResult(
-                true,
-                sessionId,
-                sessionTitle,
-                sessionProjectId,
-                EmptyToNull(project?.WorkingFolder),
-                project?.SshConnectionId,
-                null));
-        }
-        catch (Exception ex)
-        {
-            return WorkerResponse.Json(
-                new PluginRouteSessionResult(false, null, null, null, null, null, ex.Message));
-        }
-    }
-
-    // ── Internal helpers (used by auto-reply pipeline) ──
-
-    internal static PluginSessionFindResult FindPluginSessionRecordByChat(string externalChatId)
-    {
-        try
-        {
-            DbClient.EnsureInitialized();
-            var db = DbClient.GetClient();
-
-            var entity = db.Queryable<SessionEntity>()
-                .Where(s => s.ExternalChatId == externalChatId)
-                .First();
-
-            var row = entity is null ? null : SessionToPluginRow(entity);
-            return new PluginSessionFindResult(true, row, null);
-        }
-        catch (Exception ex)
-        {
-            return new PluginSessionFindResult(false, null, ex.Message);
-        }
-    }
-
-    internal static List<PluginSessionMessageRow> ListPluginSessionMessageRecords(
-        string sessionId,
-        int limit,
-        int offset = 0)
-    {
-        DbClient.EnsureInitialized();
-        var db = DbClient.GetClient();
-
-        var entities = db.Queryable<MessageEntity>()
-            .Where(m => m.SessionId == sessionId)
-            .OrderBy("sort_order ASC")
-            .Take(Math.Clamp(limit, 1, 500))
-            .Skip(Math.Max(0, offset))
-            .ToList();
-
-        return entities.Select(m => new PluginSessionMessageRow
-        {
-            Id = m.Id,
-            Role = m.Role,
-            Content = m.Content,
-            CreatedAt = m.CreatedAt
-        }).ToList();
-    }
+    // NOTE: RoutePluginSession and auto-reply helpers are in DbPluginSessionRouting.cs
 
     // ── Private helpers ──
 
-    private static PluginSessionRow SessionToPluginRow(SessionEntity e) => new()
+    internal static PluginSessionRow SessionToPluginRow(SessionEntity e) => new()
     {
         Id = e.Id,
         Title = e.Title,
@@ -596,34 +419,34 @@ internal static class DbPluginSessionTools
         MessageCount = e.MessageCount
     };
 
-    private static WorkerResponse Mutation(int changed, int deleted)
+    internal static WorkerResponse Mutation(int changed, int deleted)
     {
         return WorkerResponse.Json(new PluginSessionMutationResult(true, changed, deleted, null));
     }
 
-    private static WorkerResponse MutationError(string error)
+    internal static WorkerResponse MutationError(string error)
     {
         return WorkerResponse.Json(new PluginSessionMutationResult(false, 0, 0, error));
     }
 
-    private static string RequireString(JsonElement parameters, string name)
+    internal static string RequireString(JsonElement parameters, string name)
     {
         return JsonHelpers.GetString(parameters, name) is { Length: > 0 } value
             ? value
             : throw new InvalidOperationException($"Missing required plugin session field: {name}");
     }
 
-    private static string BuildPluginMessageSessionKey(string pluginId, string chatId)
+    internal static string BuildPluginMessageSessionKey(string pluginId, string chatId)
     {
         return $"plugin:{pluginId}:chat:{EncodeSessionKeyPart(chatId)}";
     }
 
-    private static string CreateSessionId()
+    internal static string CreateSessionId()
     {
         return $"wc_{Guid.NewGuid():N}";
     }
 
-    private static string EncodeSessionKeyPart(string value)
+    internal static string EncodeSessionKeyPart(string value)
     {
         return Uri.EscapeDataString(value)
             .Replace("%21", "!", StringComparison.OrdinalIgnoreCase)
@@ -633,7 +456,7 @@ internal static class DbPluginSessionTools
             .Replace("%2A", "*", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool ShouldReplaceSessionTitle(string? currentTitle, string? nextTitle)
+    internal static bool ShouldReplaceSessionTitle(string? currentTitle, string? nextTitle)
     {
         var current = NormalizeOptional(currentTitle);
         var next = NormalizeOptional(nextTitle);
@@ -650,7 +473,7 @@ internal static class DbPluginSessionTools
             current.StartsWith("Plugin ", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string? FirstNonEmpty(params string?[] values)
+    internal static string? FirstNonEmpty(params string?[] values)
     {
         foreach (var value in values)
         {
@@ -662,13 +485,13 @@ internal static class DbPluginSessionTools
         return null;
     }
 
-    private static string? NormalizeOptional(string? value)
+    internal static string? NormalizeOptional(string? value)
     {
         var trimmed = value?.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
-    private static string? EmptyToNull(string? value)
+    internal static string? EmptyToNull(string? value)
     {
         return string.IsNullOrEmpty(value) ? null : value;
     }
