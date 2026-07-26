@@ -27,7 +27,9 @@ public static class ToolProviderDiscovery
             try
             {
                 var provider = (IToolProvider)Activator.CreateInstance(type)!;
+                registry.PushCategory(provider.Category);
                 provider.RegisterTools(registry);
+                registry.PopCategory();
             }
             catch (Exception ex)
             {

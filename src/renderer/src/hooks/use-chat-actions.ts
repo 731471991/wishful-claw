@@ -16,12 +16,14 @@ export interface SendMessageOptions {
 
 // Fetch tool definitions from the C# Worker (single source of truth for tool definitions)
 let cachedTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null
+let cachedPreset: string | null = null
 
-async function getToolDefinitions(): Promise<typeof cachedTools> {
-  if (cachedTools) return cachedTools
+async function getToolDefinitions(preset = 'chat'): Promise<typeof cachedTools> {
+  if (cachedTools && cachedPreset === preset) return cachedTools
   try {
-    const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', {})
+    const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', { preset })
     cachedTools = result.tools
+    cachedPreset = preset
     return cachedTools
   } catch {
     return null
@@ -114,8 +116,10 @@ export function useChatActions() {
       // Refresh dynamic tool catalog (skills, sub-agents, extensions)
       await ensureRequestToolCatalogFresh()
 
-      // Fetch tool definitions from the C# Worker
-      const tools = await getToolDefinitions()
+      // Fetch tool definitions from the C# Worker.
+      // Preset selection: workingFolder present = coding, otherwise chat.
+      const toolPreset = workingFolder ? 'coding' : 'chat'
+      const tools = await getToolDefinitions(toolPreset)
 
       // System prompt is now built by the backend PromptBuilder
       // using personaId + workingFolder + language + userRules.

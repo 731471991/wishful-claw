@@ -38,12 +38,23 @@ public sealed class ToolModule : IWorkerModule
         ToolModuleState.Registry = registry;
 
         // Register IPC handler: tool/list — returns tool definitions for the LLM
-        context.Register("tool/list", _ =>
+        // Optional "preset" parameter filters tools by scenario (chat/coding/channel/automation/minimal/full).
+        context.Register("tool/list", args =>
         {
-            var defs = registry.GetToolDefinitions();
+            var presetId = args.TryGetProperty("preset", out var presetEl)
+                ? presetEl.GetString() ?? "full"
+                : "full";
+
+            var preset = ToolPreset.BuiltIn.TryGetValue(presetId, out var p)
+                ? p
+                : ToolPreset.BuiltIn["full"];
+
+            var defs = registry.GetToolDefinitions(preset);
             return Task.FromResult(WorkerResponse.FromWriter(writer =>
             {
                 writer.WriteStartObject();
+                writer.WriteString("preset", preset.Id);
+                writer.WriteNumber("count", defs.Count);
                 writer.WritePropertyName("tools");
                 writer.WriteStartArray();
                 foreach (var def in defs)
