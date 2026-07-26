@@ -1,3 +1,4 @@
+using System.Reflection;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Worker.Tools.FileTools;
@@ -9,7 +10,13 @@ using WishfulClaw.Workspace.Memory;
 namespace WishfulClaw.Worker.Tools;
 
 /// <summary>
-/// Worker module that registers all tool executors.
+/// Worker module that registers all tool executors and definitions.
+/// 
+/// Registration modes:
+/// 1. Direct registration — tools with real IToolExecutor implementations (File, Memory, Search, Shell, Task).
+/// 2. Auto-discovered providers — IToolProvider implementations found via reflection scanning.
+///    Each provider registers tool definitions for its category (Desktop, Web, Browser, Plugin, etc.).
+///    Execution of these tools is intercepted by ToolDispatchRouter.
 /// </summary>
 public sealed class ToolModule : IWorkerModule
 {
@@ -19,6 +26,47 @@ public sealed class ToolModule : IWorkerModule
     {
         var registry = new ToolRegistry();
 
+        // ── Mode 1: Direct registration (tools with real executors) ──
+        RegisterDirectExecutors(registry);
+
+        // ── Mode 2: Auto-discover all IToolProvider implementations ──
+        // Scans the Worker assembly for IToolProvider classes and calls RegisterTools on each.
+        // Adding a new category = add a new file in Tools/Providers/, no edits needed here.
+        ToolProviderDiscovery.DiscoverAndRegister(registry, typeof(ToolModule).Assembly);
+
+        // Expose via shared state for AgentLoop to access
+        ToolModuleState.Registry = registry;
+
+        // Register IPC handler: tool/list — returns tool definitions for the LLM
+        context.Register("tool/list", _ =>
+        {
+            var defs = registry.GetToolDefinitions();
+            return Task.FromResult(WorkerResponse.FromWriter(writer =>
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("tools");
+                writer.WriteStartArray();
+                foreach (var def in defs)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("name", def.Name);
+                    writer.WriteString("description", def.Description);
+                    writer.WritePropertyName("inputSchema");
+                    def.InputSchema.WriteTo(writer);
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }));
+        });
+    }
+
+    /// <summary>
+    /// Register tools that have real IToolExecutor implementations.
+    /// These tools execute directly in the Worker process.
+    /// </summary>
+    private static void RegisterDirectExecutors(ToolRegistry registry)
+    {
         // File tools
         registry.Register(new FileReadTool());
         registry.Register(new FileWriteTool());
@@ -44,52 +92,8 @@ public sealed class ToolModule : IWorkerModule
         registry.Register(new MemoryUpdateTool());
         registry.Register(new MemorySearchTool(memorySearch));
 
-        // Browser tools — definitions only, execution via reverse-request to renderer
-        // Browser tools — definitions only, execution via reverse-request to renderer
-        BrowserToolRegistration.RegisterAll(registry);
-
-        // All other ToolDispatchRouter-intercepted tools — definitions only.
-        // Execution is handled by the corresponding AgentRuntime*Executor.
-        // Not registered here: MCP (mcp__*, dynamic), Extension (extension__*, dynamic),
-        // CodeGraph (conditional), SubAgent Task (already registered above).
-        ToolDefinitionRegistration.RegisterAll(registry);
-
-        // Expose via shared state for AgentLoop to access
-        ToolModuleState.Registry = registry;
+        // Expose shared instances for AgentLoop
         ToolModuleState.MemoryStore = memoryStore;
         ToolModuleState.MemorySearch = memorySearch;
-
-        // Register IPC handler: tool/list — returns tool definitions for the LLM
-        context.Register("tool/list", _ =>
-        {
-            var defs = registry.GetToolDefinitions();
-            return Task.FromResult(WorkerResponse.FromWriter(writer =>
-            {
-                writer.WriteStartObject();
-                writer.WritePropertyName("tools");
-                writer.WriteStartArray();
-                foreach (var def in defs)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("name", def.Name);
-                    writer.WriteString("description", def.Description);
-                    writer.WritePropertyName("inputSchema");
-                    def.InputSchema.WriteTo(writer);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-                writer.WriteEndObject();
-            }));
-        });
     }
-}
-
-/// <summary>
-/// Static accessor for the tool registry, used by AgentLoop.
-/// </summary>
-internal static class ToolModuleState
-{
-    public static ToolRegistry? Registry { get; set; }
-    public static IMemoryStore? MemoryStore { get; set; }
-    public static IMemorySearch? MemorySearch { get; set; }
 }

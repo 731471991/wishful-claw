@@ -1,14 +1,17 @@
+using WishfulClaw.Worker.Tools;
 using System.Text.Json;
 using WishfulClaw.Core.Tools;
 
-namespace WishfulClaw.Worker.Tools;
+namespace WishfulClaw.Worker.Tools.Providers;
 
 /// <summary>
-/// Registers browser tool definitions so the LLM can invoke them.
-/// Execution is handled by ToolCallProcessor → AgentRuntimeBrowserExecutor → reverse-request.
+/// Registers browser tool definitions.
+/// Execution: ToolDispatchRouter → AgentRuntimeBrowserExecutor (reverse-request to renderer).
 /// </summary>
-internal static class BrowserToolRegistration
+internal sealed class BrowserToolProvider : IToolProvider
 {
+    public string Category => "browser";
+
     private static readonly string BrowserNavigateDesc =
         "Navigate the built-in browser to a URL or control page history.\n\n" +
         "This is the entry point for all browser interactions. The browser panel opens automatically on the right side.\n\n" +
@@ -81,82 +84,98 @@ internal static class BrowserToolRegistration
         "- Prefer BrowserSnapshot, BrowserClick, BrowserType, or BrowserGetContent for common actions.\n" +
         "- A page must already be loaded via BrowserNavigate before calling this tool.";
 
-    public static void RegisterAll(ToolRegistry registry)
+    public void RegisterTools(ToolRegistry registry)
     {
         // BrowserNavigate
-        var navigateSchema = BrowserToolSchema.CreateObjectSchema(
-            new Dictionary<string, JsonElement>
-            {
-                ["url"] = BrowserToolSchema.CreateStringProperty(
-                    "The URL to navigate to. Required when action is \"goto\". Example: \"https://example.com\" or \"http://localhost:3000\"."),
-                ["action"] = BrowserToolSchema.CreateStringProperty(
-                    "Navigation action: \"goto\" (default) opens a URL, \"back\"/\"forward\" navigate history, \"refresh\" reloads the current page.")
-            });
-        registry.Register(new BrowserToolPlaceholder("BrowserNavigate", BrowserNavigateDesc, navigateSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserNavigate",
+            BrowserNavigateDesc,
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["url"] = BrowserToolSchema.CreateStringProperty(
+                        "The URL to navigate to. Required when action is \"goto\". Example: \"https://example.com\" or \"http://localhost:3000\"."),
+                    ["action"] = BrowserToolSchema.CreateStringProperty(
+                        "Navigation action: \"goto\" (default) opens a URL, \"back\"/\"forward\" navigate history, \"refresh\" reloads the current page.")
+                })));
 
         // BrowserGetContent
-        var getContentSchema = BrowserToolSchema.CreateObjectSchema(
-            new Dictionary<string, JsonElement>
-            {
-                ["selector"] = BrowserToolSchema.CreateStringProperty(
-                    "CSS selector to scope extraction to a specific element. Omit to extract the entire page body."),
-                ["type"] = BrowserToolSchema.CreateStringProperty(
-                    "Output format: \"markdown\" (default) converts HTML to readable Markdown, \"html\" returns raw HTML source.")
-            });
-        registry.Register(new BrowserToolPlaceholder("BrowserGetContent", BrowserGetContentDesc, getContentSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserGetContent",
+            BrowserGetContentDesc,
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["selector"] = BrowserToolSchema.CreateStringProperty(
+                        "CSS selector to scope extraction to a specific element. Omit to extract the entire page body."),
+                    ["type"] = BrowserToolSchema.CreateStringProperty(
+                        "Output format: \"markdown\" (default) converts HTML to readable Markdown, \"html\" returns raw HTML source.")
+                })));
 
         // BrowserScreenshot
-        var screenshotSchema = BrowserToolSchema.CreateObjectSchema(new Dictionary<string, JsonElement>());
-        registry.Register(new BrowserToolPlaceholder("BrowserScreenshot", BrowserScreenshotDesc, screenshotSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserScreenshot",
+            BrowserScreenshotDesc,
+            BrowserToolSchema.CreateObjectSchema(new Dictionary<string, JsonElement>())));
 
         // BrowserSnapshot
-        var snapshotSchema = BrowserToolSchema.CreateObjectSchema(new Dictionary<string, JsonElement>());
-        registry.Register(new BrowserToolPlaceholder("BrowserSnapshot", BrowserSnapshotDesc, snapshotSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserSnapshot",
+            BrowserSnapshotDesc,
+            BrowserToolSchema.CreateObjectSchema(new Dictionary<string, JsonElement>())));
 
         // BrowserClick
-        var clickSchema = BrowserToolSchema.CreateObjectSchema(
-            new Dictionary<string, JsonElement>
-            {
-                ["selector"] = BrowserToolSchema.CreateStringProperty(
-                    "CSS selector from BrowserSnapshot, or text=<visible text> to match by content.")
-            },
-            new[] { "selector" });
-        registry.Register(new BrowserToolPlaceholder("BrowserClick", BrowserClickDesc, clickSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserClick",
+            BrowserClickDesc,
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["selector"] = BrowserToolSchema.CreateStringProperty(
+                        "CSS selector from BrowserSnapshot, or text=<visible text> to match by content.")
+                },
+                new[] { "selector" })));
 
         // BrowserType
-        var typeSchema = BrowserToolSchema.CreateObjectSchema(
-            new Dictionary<string, JsonElement>
-            {
-                ["selector"] = BrowserToolSchema.CreateStringProperty(
-                    "CSS selector of the input element from BrowserSnapshot."),
-                ["text"] = BrowserToolSchema.CreateStringProperty("The text to type into the element."),
-                ["clear"] = BrowserToolSchema.CreateBooleanProperty(
-                    "Clear existing content before typing. Default: true.", true),
-                ["submit"] = BrowserToolSchema.CreateBooleanProperty(
-                    "Press Enter after typing to submit the form. Default: false.", false)
-            },
-            new[] { "selector", "text" });
-        registry.Register(new BrowserToolPlaceholder("BrowserType", BrowserTypeDesc, typeSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserType",
+            BrowserTypeDesc,
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["selector"] = BrowserToolSchema.CreateStringProperty(
+                        "CSS selector of the input element from BrowserSnapshot."),
+                    ["text"] = BrowserToolSchema.CreateStringProperty("The text to type into the element."),
+                    ["clear"] = BrowserToolSchema.CreateBooleanProperty(
+                        "Clear existing content before typing. Default: true.", true),
+                    ["submit"] = BrowserToolSchema.CreateBooleanProperty(
+                        "Press Enter after typing to submit the form. Default: false.", false)
+                },
+                new[] { "selector", "text" })));
 
         // BrowserScroll
-        var scrollSchema = BrowserToolSchema.CreateObjectSchema(
-            new Dictionary<string, JsonElement>
-            {
-                ["direction"] = BrowserToolSchema.CreateStringProperty(
-                    "Scroll direction: \"down\" (default) or \"up\"."),
-                ["amount"] = BrowserToolSchema.CreateNumberProperty(
-                    "Pixels to scroll. Omit to scroll by one full viewport height.")
-            });
-        registry.Register(new BrowserToolPlaceholder("BrowserScroll", BrowserScrollDesc, scrollSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserScroll",
+            BrowserScrollDesc,
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["direction"] = BrowserToolSchema.CreateStringProperty(
+                        "Scroll direction: \"down\" (default) or \"up\"."),
+                    ["amount"] = BrowserToolSchema.CreateNumberProperty(
+                        "Pixels to scroll. Omit to scroll by one full viewport height.")
+                })));
 
         // BrowserEvaluate
-        var evaluateSchema = BrowserToolSchema.CreateObjectSchema(
-            new Dictionary<string, JsonElement>
-            {
-                ["code"] = BrowserToolSchema.CreateStringProperty(
-                    "JavaScript to execute in the page. Use `return <expr>` to return a value; `await` is supported.")
-            },
-            new[] { "code" });
-        registry.Register(new BrowserToolPlaceholder("BrowserEvaluate", BrowserEvaluateDesc, evaluateSchema));
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserEvaluate",
+            BrowserEvaluateDesc,
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["code"] = BrowserToolSchema.CreateStringProperty(
+                        "JavaScript to execute in the page. Use `return <expr>` to return a value; `await` is supported.")
+                },
+                new[] { "code" })));
     }
 }
