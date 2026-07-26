@@ -25,6 +25,7 @@ import {
   type NativePluginSessionMutationResult,
   type NativePluginSessionFindResult
 } from './channel-handler-utils'
+import { safeSendMessagePackToAllWindows } from '../../window-ipc'
 import {
   startWeixinLoginWithQr,
   waitForWeixinLogin,
@@ -421,7 +422,6 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
       ),
       'Delete plugin session'
     )
-    const { safeSendMessagePackToAllWindows } = await import('../../window-ipc')
     safeSendMessagePackToAllWindows('plugin:session-deleted', { sessionId: args.sessionId })
     return { ok: true }
   })

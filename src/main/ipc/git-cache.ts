@@ -1,4 +1,10 @@
+import { ipcMain } from 'electron'
 import { getNativeWorker } from '../lib/native-worker'
+import {
+  decodeMessagePackPayload,
+  encodeMessagePackPayload,
+  toMessagePackChannel
+} from '../../shared/messagepack/binary-ipc'
 
 // ── Cache configuration ──
 
