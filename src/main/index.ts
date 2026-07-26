@@ -14,6 +14,7 @@ import { registerFsHandlers } from './ipc/fs-handlers'
 import { registerTerminalHandlers } from './ipc/terminal-handlers'
 import { registerAgentChangeHandlers } from './ipc/agent-change-handlers'
 import { registerMcpHandlers } from './ipc/mcp-handlers'
+import { registerVideoHandlers } from './ipc/video-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -193,6 +194,7 @@ app.whenReady().then(() => {
   registerTerminalHandlers()
   registerAgentChangeHandlers()
   registerMcpHandlers()
+  registerVideoHandlers()
 
   // ── Agent history handlers (forwarded to C# Worker SQLite) ──
   registerMessagePackHandler<{ toolUseId: string }, unknown>(

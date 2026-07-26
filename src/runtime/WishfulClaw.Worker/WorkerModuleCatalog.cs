@@ -7,6 +7,7 @@ using WishfulClaw.Worker.Modules.Git;
 using WishfulClaw.Worker.Modules.Channels;
 using WishfulClaw.Worker.Modules.Media;
 using WishfulClaw.Worker.Modules.OpenAIAudio;
+using WishfulClaw.Worker.Modules.Video;
 using WishfulClaw.Worker.Persona;
 using WishfulClaw.Worker.Tools;
 
@@ -29,6 +30,8 @@ public static class WorkerModuleCatalog
         new MediaFileModule(),
         new AgentChangeModule(),
         new OpenAIAudioModule(),
-        new ChannelConfigModule()
+        new ChannelConfigModule(),
+        new SeedanceVideoModule(),
+        new XaiVideoModule()
     ];
 }
