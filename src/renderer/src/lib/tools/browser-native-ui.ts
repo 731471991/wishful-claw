@@ -80,9 +80,8 @@ async function executeBrowserNavigate(
     }
     const accessError = getBrowserAccessError(url)
     if (accessError) return accessError
-    // Open in the background: attach the webview and start loading without forcing
-    // the right panel open, so the agent can drive the browser while it stays hidden.
-    useUIStore.getState().openBrowserTab(url, ctx.sessionId, undefined, { background: true })
+    // Open the browser panel visibly so the user can see the page being loaded.
+    useUIStore.getState().openBrowserTab(url, ctx.sessionId)
     const webview = await waitForWebview(ctx)
     if (!webview) {
       return encodeToolError('Browser view did not attach. Reopen the browser tab and try again.')
