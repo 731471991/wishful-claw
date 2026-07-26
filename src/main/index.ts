@@ -392,6 +392,74 @@ app.whenReady().then(() => {
     }
   )
 
+  // -- Image persistence (browser screenshots, generated images) --
+  const GENERATED_IMAGES_DIR = 'wishful-claw'
+  const GENERATED_IMAGES_SUBDIR = 'image'
+
+  function getGeneratedImagesDir(): string {
+    const { homedir } = require('os')
+    const dir = join(homedir(), GENERATED_IMAGES_DIR, GENERATED_IMAGES_SUBDIR)
+    fs.mkdirSync(dir, { recursive: true })
+    return dir
+  }
+
+  function guessMimeTypeFromExtension(ext: string): string {
+    switch (ext.toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg'
+      case '.webp':
+        return 'image/webp'
+      case '.gif':
+        return 'image/gif'
+      case '.bmp':
+        return 'image/bmp'
+      default:
+        return 'image/png'
+    }
+  }
+
+  function guessExtensionFromMimeType(mediaType?: string): string {
+    switch ((mediaType || '').toLowerCase()) {
+      case 'image/jpeg':
+        return '.jpg'
+      case 'image/webp':
+        return '.webp'
+      case 'image/gif':
+        return '.gif'
+      case 'image/bmp':
+        return '.bmp'
+      default:
+        return '.png'
+    }
+  }
+
+  registerMessagePackHandler<{ data?: string; mediaType?: string; url?: string; filePath?: string }, { filePath?: string; mediaType?: string; data?: string; error?: string }>(
+    'image:persist-generated',
+    async (args) => {
+      try {
+        let buffer: Buffer
+        if (typeof args.data === 'string' && args.data.trim()) {
+          buffer = Buffer.from(args.data, 'base64')
+        } else {
+          return { error: 'Missing image data' }
+        }
+        const mediaType = args.mediaType || 'image/png'
+        const fileExt = guessExtensionFromMimeType(mediaType)
+        const { randomUUID } = require('crypto')
+        const filePath = join(getGeneratedImagesDir(), `${Date.now()}-${randomUUID()}${fileExt}`)
+        fs.writeFileSync(filePath, buffer)
+        return {
+          filePath,
+          mediaType,
+          data: args.data
+        }
+      } catch (err) {
+        return { error: String(err) }
+      }
+    }
+  )
+
   createWindow()
 
 function formatLocalDateFolderName(date = new Date()): string {
