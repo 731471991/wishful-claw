@@ -20,6 +20,7 @@ import type {
   MessageLocatorIndexRow,
   MessageLocatorSource,
 } from './utils'
+import { ASSISTANT_RAIL_PREVIEW_LIMIT } from './utils'
 
 export function normalizeLocatorPreview(text: string): string {
   return text.replace(/\s+/g, ' ').trim()
