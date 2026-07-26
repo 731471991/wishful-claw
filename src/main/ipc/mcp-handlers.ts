@@ -35,7 +35,7 @@ function writeServers(servers: McpServerConfig[]): void {
 
 let activeMcpManager: McpManager | null = null
 
-function getMcpManager(): McpManager {
+export function getMcpManager(): McpManager {
   if (!activeMcpManager) {
     throw new Error('MCP manager is not initialized. Call registerMcpHandlers() first.')
   }

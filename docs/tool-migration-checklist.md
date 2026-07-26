@@ -122,8 +122,8 @@
 
 | 模块 | IPC 通道 | 功能 | 优先级 | 备注 |
 |------|----------|------|:------:|------|
-| Video | Seedance | 视频生成 | P2 | OpenCowork 有，wishful-claw 未创建 |
-| Video | XaiVideo | 视频生成 | P2 | OpenCowork 有，wishful-claw 未创建 |
+| Video | Seedance | 视频生成 | P2 | ✅ 已移植 (SeedanceVideoModule + Tools + video-handlers.ts) |
+| Video | XaiVideo | 视频生成 | P2 | ✅ 已移植 (XaiVideoModule + Tools + video-handlers.ts) |
 
 ---
 
@@ -211,7 +211,7 @@
 
 ### 下一步
 
-- ⏳ Video 模块（Seedance / XaiVideo）移植
+- ✅ Video 模块（Seedance / XaiVideo）移植 — commit c194fdd
 - ⏳ Extension 运行时接入
 - ⏳ CodeGraph 引擎接入
 - ⏳ 第三轮代码拆分（前端仍有大文件）
