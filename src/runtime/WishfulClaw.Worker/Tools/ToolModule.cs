@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
@@ -34,6 +35,9 @@ public sealed class ToolModule : IWorkerModule
         // Adding a new category = add a new file in Tools/Providers/, no edits needed here.
         ToolProviderDiscovery.DiscoverAndRegister(registry, typeof(ToolModule).Assembly);
 
+        // Register the discover_tools meta-tool (always visible regardless of preset)
+        registry.Register(new DiscoverToolsTool());
+
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;
 
@@ -49,7 +53,18 @@ public sealed class ToolModule : IWorkerModule
                 ? p
                 : ToolPreset.BuiltIn["full"];
 
-            var defs = registry.GetToolDefinitions(preset);
+            var defs = registry.GetToolDefinitions(preset).ToList();
+
+            // Ensure discover_tools is always included regardless of preset
+            var allDefs = registry.GetToolDefinitions();
+            var hasDiscover = defs.Any(d => d.Name == "discover_tools");
+            if (!hasDiscover)
+            {
+                var discoverDef = allDefs.FirstOrDefault(d => d.Name == "discover_tools");
+                if (discoverDef is not null)
+                    defs.Add(discoverDef);
+            }
+
             return Task.FromResult(WorkerResponse.FromWriter(writer =>
             {
                 writer.WriteStartObject();
