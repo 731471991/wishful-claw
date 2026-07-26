@@ -1746,27 +1746,6 @@ export const routinAiPreset: BuiltinProviderPreset = {
   ]
 }
 
-/** Model IDs for Routin 套餐（https://api.routin.ai/plan/v1）：Codex 全系、GPT-5.4 系、Claude 全系 */
-const ROUTIN_AI_PLAN_MODEL_ORDER = [
-  'gpt-5.3-codex-spark',
-  'gpt-5.5',
-  'gpt-5.6-terra',
-  'gpt-5.6-luna',
-  'gpt-5.6-sol',
-  'claude-fable-5',
-  'claude-sonnet-5',
-  'claude-opus-4-8',
-  'claude-opus-4-7',
-  'claude-opus-4-6',
-  'claude-sonnet-4-6',
-  'claude-sonnet-4-5-20250929',
-  'claude-haiku-4-5-20251001',
-  'claude-opus-4-5-20251101'
-] as const
-
-const routinAiModelById = new Map(routinAiPreset.defaultModels.map((m) => [m.id, m]))
-
-
 // Plan preset extracted to routin-ai-plan-preset.ts
 export {
   routinAiPlanPreset,
