@@ -16,6 +16,7 @@ import {
   LIVE_SHELL_OUTPUT_MAX_CHARS
 } from './types'
 import { WIDGET_BRIDGE_SOURCE } from './types'
+import { isRecord } from './utils'
 
 // ── Record / equality helpers ──
 
