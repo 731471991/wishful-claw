@@ -57,7 +57,12 @@ export function AskUserQuestionCard({
   const isError = status === 'error' || !!outputErrorMessage
   const isCanceled = status === 'canceled'
   const isAnswered = status === 'completed' && answeredPairs.length > 0
-  const isPending = !isAnswered && !isError && !isCanceled && (status === 'running' || isLive)
+  // AskUserQuestion is special: the agent stream ends while waiting for user input,
+  // so status may fall back to 'canceled' or 'completed' even though the question
+  // is still pending. The true signal for answered is having parsed answer pairs.
+  // If there are no answers, no error, and no output text, the question is still open.
+  const isPending = !isAnswered && !isError && !isCanceled && !answeredText &&
+    (status === 'running' || isLive || status === 'completed' || status === 'canceled')
   const isCompletedWithoutAnswers =
     status === 'completed' && !isAnswered && !isError && !isCanceled && !!answeredText
 
