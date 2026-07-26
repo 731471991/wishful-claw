@@ -71,7 +71,7 @@ async function waitForLoad(webview: ElectronWebview, timeoutMs = 30000): Promise
 
 async function waitForWebview(
   ctx?: ToolContext,
-  maxWaitMs = 10000
+  maxWaitMs = 5000
 ): Promise<ElectronWebview | null> {
   const start = Date.now()
   while (Date.now() - start < maxWaitMs) {

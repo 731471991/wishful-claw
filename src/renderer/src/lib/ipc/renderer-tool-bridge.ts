@@ -24,12 +24,44 @@ async function sendRendererToolResponse(response: RendererToolResponsePayload): 
   await invokeMessagePack(SIDECAR_RENDERER_TOOL_RESPONSE_MSGPACK_CHANNEL, response)
 }
 
+/**
+ * Wrap a promise with a timeout. If the promise doesn't resolve within
+ * timeoutMs, rejects with a timeout error so the caller can still send
+ * an error response back to the worker instead of leaving the agent
+ * hanging forever.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${timeoutMs / 1000}s`)),
+      timeoutMs
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 async function handleRendererToolRequest(payload: RendererToolRequestPayload): Promise<void> {
   if (!payload?.requestId) return
 
   try {
     if (payload.method === 'browser/tool-request') {
-      const result = await handleNativeBrowserToolRequest(payload.params)
+      // Browser tools must return quickly even on failure — the agent loop
+      // is blocked waiting for the result. 20s is generous enough for page
+      // loads but prevents infinite hangs if the webview never attaches.
+      const result = await withTimeout(
+        handleNativeBrowserToolRequest(payload.params),
+        20_000,
+        'browser/tool-request'
+      )
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result
@@ -38,13 +70,18 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
     }
 
     if (payload.method === 'ask-user/request') {
+      // ask-user may wait for explicit user interaction — no extra timeout
+      // here; the Main process 60s fallback covers the worst case.
+      const result = await handleNativeAskUserRequest(payload.params)
       await sendRendererToolResponse({
         requestId: payload.requestId,
-        result: await handleNativeAskUserRequest(payload.params)
+        result
       })
       return
     }
   } catch (error) {
+    // CRITICAL: even if the tool handler throws or times out, we must send
+    // a response back so the agent loop doesn't hang forever.
     await sendRendererToolResponse({
       requestId: payload.requestId,
       error: error instanceof Error ? error.message : String(error)

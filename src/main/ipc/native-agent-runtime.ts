@@ -21,7 +21,7 @@ import {
 } from './desktop-control'
 import { isMainProcessMethod, dispatchReverseRequest } from './reverse-handlers'
 
-const SIDECAR_RENDERER_REQUEST_TIMEOUT_MS = 60_000
+const SIDECAR_RENDERER_REQUEST_TIMEOUT_MS = 30_000
 
 type RendererToolRequest = {
   id?: number | string
