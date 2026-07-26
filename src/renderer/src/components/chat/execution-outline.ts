@@ -178,16 +178,15 @@ function getToolCategory(options: {
 }): ToolExecutionCategory {
   const { name, hasError, status, requiresApproval } = options
   if (HIDDEN_TOOL_NAMES.has(name)) return 'hidden'
-  if (
-    hasError ||
-    status === 'streaming' ||
-    status === 'running' ||
-    status === 'pending_approval' ||
-    status === 'canceled' ||
-    requiresApproval
-  ) {
+
+  // Errors and approval requests always need user attention regardless of tool type
+  if (hasError || status === 'pending_approval' || requiresApproval) {
     return 'attention'
   }
+
+  // Classify by tool name first — ordinary context/command/file-change tools keep
+  // their category even while running/streaming, so they stay grouped in a
+  // collapsible run during concurrent execution instead of showing individually.
   if (isMcpTool(name)) return 'mcp'
   if (ORDINARY_CONTEXT_TOOL_NAMES.has(name)) return 'context'
   if (FILE_CHANGE_TOOL_NAMES.has(name)) return 'file-change'
@@ -198,6 +197,11 @@ function getToolCategory(options: {
   if (name === TASK_TOOL_NAME || TEAM_TOOL_NAMES.has(name)) return 'orchestration'
   if (name === IMAGE_GENERATE_TOOL_NAME || name === 'visualize_show_widget') return 'visual'
   if (name === 'Skill') return 'skill'
+
+  // For non-ordinary (unknown) tools, running/streaming/canceled still needs attention
+  if (status === 'streaming' || status === 'running' || status === 'canceled') {
+    return 'attention'
+  }
   return 'unknown'
 }
 
@@ -293,7 +297,7 @@ export function buildToolExecutionOutline({
         activeCount: activeItems.length,
         totalItemCount: visibleItems.length,
         ordinaryItemCount: ordinaryRunItemIds.length,
-        defaultCollapsed: ordinaryRunItemIds.length > 0,
+        defaultCollapsed: ordinaryRunItemIds.length > 0 && activeItems.length === 0,
         showToggle: ordinaryRunItemIds.length > 0,
         activeSummary: activeItem ? buildActiveSummary(activeItem, t) : null
       }
@@ -404,7 +408,7 @@ export function buildToolExecutionOutline({
     activeCount: activeItems.length,
     totalItemCount,
     ordinaryItemCount: ordinaryItemIds.length,
-    defaultCollapsed: ordinaryItemIds.length > 0,
+    defaultCollapsed: ordinaryItemIds.length > 0 && activeItems.length === 0,
     showToggle: ordinaryItemIds.length > 0,
     activeSummary
   }
