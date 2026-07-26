@@ -1,5 +1,7 @@
 import type { ImageBlock, ToolResultContent } from '@renderer/lib/api/types'
 import { getBrowserAccessDecision } from '../app-plugin/browser-access'
+import { BROWSER_PLUGIN_ID } from '../app-plugin/types'
+import { useAppPluginStore } from '../../stores/app-plugin-store'
 import { describeWebviewOperationError } from '../browser/webview-helpers'
 import { IPC } from '../ipc/channels'
 import { ipcClient } from '../ipc/ipc-client'
@@ -19,6 +21,7 @@ import {
   runWebviewCommand,
   waitForLoad,
   waitForWebview,
+  waitForPageReady,
   parseWebviewJson,
   extractBase64ImageData
 } from './browser-webview-helpers'
@@ -80,17 +83,23 @@ async function executeBrowserNavigate(
     }
     const accessError = getBrowserAccessError(url)
     if (accessError) return accessError
-    // Open the browser panel visibly so the user can see the page being loaded.
-    useUIStore.getState().openBrowserTab(url, ctx.sessionId)
-    const webview = await waitForWebview(ctx)
-    if (!webview) {
-      return encodeToolError('Browser view did not attach. Reopen the browser tab and try again.')
+    // Ensure the browser plugin is enabled — otherwise BrowserPanel won't render
+    // and the webview will never attach.
+    const browserPlugin = useAppPluginStore.getState().getPlugin(BROWSER_PLUGIN_ID)
+    if (browserPlugin && !browserPlugin.enabled) {
+      useAppPluginStore.getState().togglePluginEnabled(BROWSER_PLUGIN_ID)
     }
-    const loadPromise = waitForLoad(webview)
-    await runWebviewCommand(webview, 'navigate', (target) => {
-      target.src = url
-    })
-    await loadPromise
+    // Open the browser panel visibly so the user can see the page being loaded.
+    // The webview element mounts with src={url} and starts loading immediately.
+    useUIStore.getState().openBrowserTab(url, ctx.sessionId)
+    const webview = await waitForWebview(ctx, 10000)
+    if (!webview) {
+      return encodeToolError('Browser panel did not attach in time. Ensure the browser plugin is enabled.')
+    }
+    // The webview already started loading from BrowserPanel's src={committedUrl}.
+    // Poll readyState instead of listening for did-stop-loading to avoid a race
+    // condition where the event fires before we start listening.
+    await waitForPageReady(webview, 15000)
     const browserState = useUIStore.getState().getBrowserState(ctx.sessionId)
     return encodeStructuredToolResult({
       success: true,

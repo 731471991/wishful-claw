@@ -70,7 +70,7 @@ async function waitForLoad(webview: ElectronWebview, timeoutMs = 30000): Promise
 
 async function waitForWebview(
   ctx?: ToolContext,
-  maxWaitMs = 3000
+  maxWaitMs = 10000
 ): Promise<ElectronWebview | null> {
   const start = Date.now()
   while (Date.now() - start < maxWaitMs) {
@@ -79,6 +79,28 @@ async function waitForWebview(
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   return null
+}
+
+/**
+ * Polls document.readyState until the page reports 'complete' or the timeout
+ * elapses. Unlike event-based waitForLoad, this is immune to race conditions
+ * where did-stop-loading fires before the listener is attached.
+ */
+async function waitForPageReady(
+  webview: ElectronWebview,
+  timeoutMs = 15000
+): Promise<void> {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    if (!isWebviewConnected(webview)) return
+    try {
+      const readyState = await webview.executeJavaScript('document.readyState')
+      if (readyState === 'complete') return
+    } catch {
+      // Page might not be ready yet — keep polling
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
 }
 
 // Returns the attached browser webview, self-healing when none is present.
@@ -138,6 +160,7 @@ export {
   runWebviewCommand,
   waitForLoad,
   waitForWebview,
+  waitForPageReady,
   ensureAttachedWebview,
   parseWebviewJson,
   extractBase64ImageData
