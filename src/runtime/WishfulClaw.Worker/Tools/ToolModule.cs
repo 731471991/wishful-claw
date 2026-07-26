@@ -45,7 +45,14 @@ public sealed class ToolModule : IWorkerModule
         registry.Register(new MemorySearchTool(memorySearch));
 
         // Browser tools — definitions only, execution via reverse-request to renderer
+        // Browser tools — definitions only, execution via reverse-request to renderer
         BrowserToolRegistration.RegisterAll(registry);
+
+        // All other ToolDispatchRouter-intercepted tools — definitions only.
+        // Execution is handled by the corresponding AgentRuntime*Executor.
+        // Not registered here: MCP (mcp__*, dynamic), Extension (extension__*, dynamic),
+        // CodeGraph (conditional), SubAgent Task (already registered above).
+        ToolDefinitionRegistration.RegisterAll(registry);
 
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;
