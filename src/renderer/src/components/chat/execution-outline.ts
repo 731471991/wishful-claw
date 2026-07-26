@@ -312,8 +312,13 @@ export function buildToolExecutionOutline({
 
   for (let blockIndex = 0; blockIndex < (blocks?.length ?? 0); blockIndex += 1) {
     const block = blocks?.[blockIndex]
-    if (!block || block.type !== 'tool_use') {
+    if (!block || (block.type !== 'tool_use' && block.type !== 'tool_result')) {
       closePendingRun()
+      continue
+    }
+    // tool_result blocks are inline results appended after their tool_use;
+    // skip them without breaking the current tool run.
+    if (block.type === 'tool_result') {
       continue
     }
 
