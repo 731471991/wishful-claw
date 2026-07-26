@@ -3,6 +3,14 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import { toolRegistry } from '@renderer/lib/agent/tool-registry'
+import { ensureRequestToolCatalogFresh } from '@renderer/lib/tools'
+import {
+  registerPluginTools,
+  unregisterPluginTools,
+  isPluginToolsRegistered
+} from '@renderer/lib/channel/plugin-tools'
+import { useChannelStore } from '@renderer/stores/channel-store'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -13,18 +21,11 @@ export interface SendMessageOptions {
   [key: string]: unknown
 }
 
-// Cache tool definitions to avoid fetching on every message
-let cachedTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null
-
-async function getToolDefinitions(): Promise<typeof cachedTools> {
-  if (cachedTools) return cachedTools
-  try {
-    const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', {})
-    cachedTools = result.tools
-    return cachedTools
-  } catch {
-    return null
-  }
+// Refresh dynamic tool catalog (skills, sub-agents, extensions) before reading the registry
+// so that newly added tools are included in the tool list sent to the LLM.
+async function getToolDefinitions(): Promise<Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>> {
+  await ensureRequestToolCatalogFresh()
+  return toolRegistry.getStableDefinitions() as Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
 }
 
 export function useChatActions() {
@@ -110,7 +111,16 @@ export function useChatActions() {
         }
       }
 
-      // Fetch tool definitions
+      // Dynamically register/unregister plugin (channel) tools based on active channels
+      const activeChannels = useChannelStore.getState().channels.filter((c) => c.enabled)
+      const needsPluginTools = activeChannels.length > 0 || !!session?.pluginId
+      if (needsPluginTools && !isPluginToolsRegistered()) {
+        registerPluginTools()
+      } else if (!needsPluginTools && isPluginToolsRegistered()) {
+        unregisterPluginTools()
+      }
+
+      // Fetch tool definitions from the registry (refreshes dynamic catalog first)
       const tools = await getToolDefinitions()
 
       // System prompt is now built by the backend PromptBuilder
