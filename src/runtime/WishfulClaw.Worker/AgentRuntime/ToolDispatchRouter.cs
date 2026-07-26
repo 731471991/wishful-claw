@@ -378,7 +378,7 @@ internal static class ToolDispatchRouter
             {
                 var toolContext = new ToolExecutionContext(
                 workingFolder, state.SessionId, state.RunId, null, state.CancellationToken);
-                var result = await executor.ExecuteAsync(toolCall.Input, toolContext);
+                var result = await executor!.ExecuteAsync(toolCall.Input, toolContext);
                 toolOutput = result.Content;
                 isToolError = result.IsError;
             }
