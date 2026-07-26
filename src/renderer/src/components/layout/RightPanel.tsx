@@ -74,7 +74,15 @@ export function RightPanel(): React.JSX.Element {
   // The browser webview stays mounted whenever a browser tab exists and the plugin
   // is enabled — independent of whether the panel is open. This lets agent-driven
   // browser tools keep working in the background even while the panel is collapsed.
-  const browserTabAlive = tabs.some((tab) => tab.kind === 'browser') && browserPluginEnabled
+  const hasBrowserTab = tabs.some((tab) => tab.kind === 'browser')
+  const browserTabAlive = hasBrowserTab && browserPluginEnabled
+  // Debug: log state changes
+  useEffect(() => {
+    console.warn('[RightPanel] browserTabAlive:', browserTabAlive,
+      'hasBrowserTab:', hasBrowserTab, 'pluginEnabled:', browserPluginEnabled,
+      'rightPanelOpen:', rightPanelOpen, 'activeTabKind:', activeTab?.kind,
+      'panelSessionId:', panelSessionId)
+  }, [browserTabAlive, hasBrowserTab, browserPluginEnabled, rightPanelOpen, activeTab])
   const browserPanelKey = panelSessionId
     ? `session:${panelSessionId}`
     : activeProjectId

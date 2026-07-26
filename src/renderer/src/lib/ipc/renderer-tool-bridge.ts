@@ -27,16 +27,22 @@ async function sendRendererToolResponse(response: RendererToolResponsePayload): 
 async function handleRendererToolRequest(payload: RendererToolRequestPayload): Promise<void> {
   if (!payload?.requestId) return
 
-  console.warn('[RendererToolBridge] Received request:', payload.method, 'id:', payload.requestId)
+  const params = payload.params as Record<string, unknown> | undefined
+  console.warn('[RendererToolBridge] Received request:', payload.method, 'id:', payload.requestId,
+    'toolName:', params?.toolName, 'sessionId:', params?.sessionId)
 
   try {
     if (payload.method === 'browser/tool-request') {
+      console.warn('[RendererToolBridge] Calling handleNativeBrowserToolRequest...')
       const result = await handleNativeBrowserToolRequest(payload.params)
-      console.warn('[RendererToolBridge] Browser tool result:', JSON.stringify(result).slice(0, 200))
+      console.warn('[RendererToolBridge] Browser tool result isError:', result.isError,
+        'contentLen:', JSON.stringify(result.content).length)
+      console.warn('[RendererToolBridge] Sending response for id:', payload.requestId)
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result
       })
+      console.warn('[RendererToolBridge] Response sent successfully')
       return
     }
 

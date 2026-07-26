@@ -86,20 +86,24 @@ async function executeBrowserNavigate(
     // Ensure the browser plugin is enabled — otherwise BrowserPanel won't render
     // and the webview will never attach.
     const browserPlugin = useAppPluginStore.getState().getPlugin(BROWSER_PLUGIN_ID)
+    console.warn('[BrowserNav] plugin enabled?', browserPlugin?.enabled, 'sessionId:', ctx.sessionId)
     if (browserPlugin && !browserPlugin.enabled) {
       useAppPluginStore.getState().togglePluginEnabled(BROWSER_PLUGIN_ID)
+      console.warn('[BrowserNav] Plugin was disabled, now enabled')
     }
     // Open the browser panel visibly so the user can see the page being loaded.
     // The webview element mounts with src={url} and starts loading immediately.
+    console.warn('[BrowserNav] Opening browser tab, url:', url, 'sessionId:', ctx.sessionId)
     useUIStore.getState().openBrowserTab(url, ctx.sessionId)
+    console.warn('[BrowserNav] Waiting for webview to attach...')
     const webview = await waitForWebview(ctx, 10000)
     if (!webview) {
+      console.warn('[BrowserNav] Webview did NOT attach within 10s')
       return encodeToolError('Browser panel did not attach in time. Ensure the browser plugin is enabled.')
     }
-    // The webview already started loading from BrowserPanel's src={committedUrl}.
-    // Poll readyState instead of listening for did-stop-loading to avoid a race
-    // condition where the event fires before we start listening.
+    console.warn('[BrowserNav] Webview attached, waiting for page ready...')
     await waitForPageReady(webview, 15000)
+    console.warn('[BrowserNav] Page ready, returning result')
     const browserState = useUIStore.getState().getBrowserState(ctx.sessionId)
     return encodeStructuredToolResult({
       success: true,

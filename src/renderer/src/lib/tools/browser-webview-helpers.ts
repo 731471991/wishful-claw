@@ -16,8 +16,15 @@ interface NativeImageLike {
 }
 
 function getWebview(ctx?: ToolContext): ElectronWebview | null {
-  const webview = useUIStore.getState().getBrowserWebviewRef(ctx?.sessionId)?.current ?? null
-  return isWebviewConnected(webview) ? webview : null
+  const ref = useUIStore.getState().getBrowserWebviewRef(ctx?.sessionId)
+  const webview = ref?.current ?? null
+  const connected = isWebviewConnected(webview)
+  if (!connected) {
+    console.warn('[BrowserWebviewHelper] getWebview: ref exists:', !!ref,
+      'ref.current exists:', !!ref?.current, 'connected:', connected,
+      'sessionId:', ctx?.sessionId)
+  }
+  return connected ? webview : null
 }
 
 function requireWebview(ctx?: ToolContext): ElectronWebview {
@@ -73,9 +80,16 @@ async function waitForWebview(
   maxWaitMs = 10000
 ): Promise<ElectronWebview | null> {
   const start = Date.now()
+  let lastLog = 0
   while (Date.now() - start < maxWaitMs) {
     const webview = getWebview(ctx)
     if (webview) return webview
+    const now = Date.now()
+    if (now - lastLog > 2000) {
+      console.warn('[BrowserWebviewHelper] waitForWebview: still waiting...',
+        Math.round((now - start) / 1000) + 's', 'sessionId:', ctx?.sessionId)
+      lastLog = now
+    }
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   return null

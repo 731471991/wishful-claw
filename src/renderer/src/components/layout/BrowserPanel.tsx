@@ -122,8 +122,10 @@ export function BrowserPanel({
   )
 
   useEffect(() => {
+    console.warn('[BrowserPanel] Mount, setBrowserWebviewRef sessionId:', sessionId, 'projectId:', projectId)
     setBrowserWebviewRef(webviewRef, sessionId, projectId)
     return () => {
+      console.warn('[BrowserPanel] Unmount, clear webviewRef sessionId:', sessionId)
       setBrowserWebviewRef(null, sessionId, projectId)
       setBrowserLoading(false, sessionId, projectId)
     }
