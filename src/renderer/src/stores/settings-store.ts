@@ -58,6 +58,16 @@ import {
   MIN_MAX_TOOL_CALLS_PER_TURN,
   MAX_MAX_TOOL_CALLS_PER_TURN,
   type RecentWorkingTarget,
+  createDefaultClaudeCodeConfig,
+  createDefaultCodexConfig,
+  getReasoningEffortKey,
+  getRecentWorkingTargetKey,
+  normalizeShellExecutionEndpoint,
+  resolveReasoningEffortForModel,
+  resolveShellExecutable,
+  clampMaxConcurrentSubAgents,
+  clampMaxParallelToolCalls,
+  clampMaxToolCallsPerTurn,
 } from './settings-store-types'
 
 // Re-export types for consumers
