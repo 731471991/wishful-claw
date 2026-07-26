@@ -221,7 +221,7 @@ internal static class XaiVideoTools
 
     private static string GetXaiBaseUrl(JsonElement provider)
     {
-        var baseUrl = (JsonHelpers.GetString(provider, "baseUrl") ?? "https://api.routin.ai/v1")
+        var baseUrl = (JsonHelpers.GetString(provider, "baseUrl") ?? "https://api.x.ai/v1")
             .Trim().TrimEnd('/');
         if (baseUrl.EndsWith("/xai/v1", StringComparison.OrdinalIgnoreCase)) return baseUrl;
         if (baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)) baseUrl = baseUrl[..^3];
