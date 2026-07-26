@@ -139,7 +139,7 @@
 | Team (Main 直接) | 1 | ✅ 已实现 | stub-reverse-handler.ts |
 | MCP (Main 已接客户端) | 2 | ✅ 已实现 | mcp-client.ts + mcp-manager.ts |
 | CodeGraph (Main stub) | 1 | ⏳ 待接引擎 | stub-reverse-handler.ts |
-| Extension (Main stub) | 1 | ⏳ 待接运行时 | stub-reverse-handler.ts |
+| Extension (Main) | 10+3 | ✅ 已接入 | extension-handlers.ts + extension-plugin-sync.ts + extension-native-bridge.ts |
 | Plugin (Main) | 2 | ✅ 已接入 | channel-plugin-handlers.ts |
 | Feishu (Main) | 10 | ✅ 已接入 | channel-feishu-handlers.ts |
 | WeChat (Main stub) | 2 | ⏳ 待接 API | stub-reverse-handler.ts |
@@ -212,6 +212,6 @@
 ### 下一步
 
 - ✅ Video 模块（Seedance / XaiVideo）移植 — commit c194fdd
-- ⏳ Extension 运行时接入
-- ⏳ CodeGraph 引擎接入
+- ✅ Extension 运行时接入 — commit b83a2bc
+- ⏳ CodeGraph 引擎接入（198 文件/6 万行，暂不迁移）
 - ⏳ 第三轮代码拆分（前端仍有大文件）
