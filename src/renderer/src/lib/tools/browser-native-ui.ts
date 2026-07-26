@@ -1,7 +1,5 @@
 import type { ImageBlock, ToolResultContent } from '@renderer/lib/api/types'
-import { getBrowserAccessDecision } from '../app-plugin/browser-access'
-import { BROWSER_PLUGIN_ID } from '../app-plugin/types'
-import { useAppPluginStore } from '../../stores/app-plugin-store'
+import { getBrowserAccessDecision, normalizeBrowserUrl } from '../app-plugin/browser-access'
 import { describeWebviewOperationError } from '../browser/webview-helpers'
 import { IPC } from '../ipc/channels'
 import { ipcClient } from '../ipc/ipc-client'
@@ -21,7 +19,6 @@ import {
   runWebviewCommand,
   waitForLoad,
   waitForWebview,
-  waitForPageReady,
   parseWebviewJson,
   extractBase64ImageData
 } from './browser-webview-helpers'
@@ -81,29 +78,26 @@ async function executeBrowserNavigate(
     if (!/^https?:\/\//i.test(url) && !url.startsWith('http://localhost')) {
       url = `https://${url}`
     }
+    url = normalizeBrowserUrl(url)
     const accessError = getBrowserAccessError(url)
     if (accessError) return accessError
-    // Ensure the browser plugin is enabled — otherwise BrowserPanel won't render
-    // and the webview will never attach.
-    const browserPlugin = useAppPluginStore.getState().getPlugin(BROWSER_PLUGIN_ID)
-    console.warn('[BrowserNav] plugin enabled?', browserPlugin?.enabled, 'sessionId:', ctx.sessionId)
-    if (browserPlugin && !browserPlugin.enabled) {
-      useAppPluginStore.getState().togglePluginEnabled(BROWSER_PLUGIN_ID)
-      console.warn('[BrowserNav] Plugin was disabled, now enabled')
-    }
-    // Open the browser panel visibly so the user can see the page being loaded.
-    // The webview element mounts with src={url} and starts loading immediately.
-    console.warn('[BrowserNav] Opening browser tab, url:', url, 'sessionId:', ctx.sessionId)
+    // Reveal the browser panel so the user can see the page being loaded.
+    // openBrowserTab adds the browser tab to rightPanelTabs, opens the panel,
+    // and stores the URL in browser session state. BrowserPanel picks up the
+    // URL via its storedUrl selector and renders <webview src={committedUrl}>.
     useUIStore.getState().openBrowserTab(url, ctx.sessionId)
-    console.warn('[BrowserNav] Waiting for webview to attach...')
+    // Wait for the webview element to mount and register its ref.
     const webview = await waitForWebview(ctx, 10000)
     if (!webview) {
-      console.warn('[BrowserNav] Webview did NOT attach within 10s')
       return encodeToolError('Browser panel did not attach in time. Ensure the browser plugin is enabled.')
     }
-    console.warn('[BrowserNav] Webview attached, waiting for page ready...')
-    await waitForPageReady(webview, 15000)
-    console.warn('[BrowserNav] Page ready, returning result')
+    // Explicitly set src in case BrowserPanel's committedUrl hasn't updated yet
+    // (React state propagation may lag behind the webview element mounting).
+    const loadPromise = waitForLoad(webview)
+    await runWebviewCommand(webview, 'navigate', (target) => {
+      target.src = url
+    })
+    await loadPromise
     const browserState = useUIStore.getState().getBrowserState(ctx.sessionId)
     return encodeStructuredToolResult({
       success: true,

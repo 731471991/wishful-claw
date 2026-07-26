@@ -18,13 +18,7 @@ interface NativeImageLike {
 function getWebview(ctx?: ToolContext): ElectronWebview | null {
   const ref = useUIStore.getState().getBrowserWebviewRef(ctx?.sessionId)
   const webview = ref?.current ?? null
-  const connected = isWebviewConnected(webview)
-  if (!connected) {
-    console.warn('[BrowserWebviewHelper] getWebview: ref exists:', !!ref,
-      'ref.current exists:', !!ref?.current, 'connected:', connected,
-      'sessionId:', ctx?.sessionId)
-  }
-  return connected ? webview : null
+  return isWebviewConnected(webview) ? webview : null
 }
 
 function requireWebview(ctx?: ToolContext): ElectronWebview {
@@ -80,41 +74,12 @@ async function waitForWebview(
   maxWaitMs = 10000
 ): Promise<ElectronWebview | null> {
   const start = Date.now()
-  let lastLog = 0
   while (Date.now() - start < maxWaitMs) {
     const webview = getWebview(ctx)
     if (webview) return webview
-    const now = Date.now()
-    if (now - lastLog > 2000) {
-      console.warn('[BrowserWebviewHelper] waitForWebview: still waiting...',
-        Math.round((now - start) / 1000) + 's', 'sessionId:', ctx?.sessionId)
-      lastLog = now
-    }
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   return null
-}
-
-/**
- * Polls document.readyState until the page reports 'complete' or the timeout
- * elapses. Unlike event-based waitForLoad, this is immune to race conditions
- * where did-stop-loading fires before the listener is attached.
- */
-async function waitForPageReady(
-  webview: ElectronWebview,
-  timeoutMs = 15000
-): Promise<void> {
-  const start = Date.now()
-  while (Date.now() - start < timeoutMs) {
-    if (!isWebviewConnected(webview)) return
-    try {
-      const readyState = await webview.executeJavaScript('document.readyState')
-      if (readyState === 'complete') return
-    } catch {
-      // Page might not be ready yet — keep polling
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
 }
 
 // Returns the attached browser webview, self-healing when none is present.
@@ -174,7 +139,6 @@ export {
   runWebviewCommand,
   waitForLoad,
   waitForWebview,
-  waitForPageReady,
   ensureAttachedWebview,
   parseWebviewJson,
   extractBase64ImageData

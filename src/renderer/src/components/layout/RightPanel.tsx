@@ -85,14 +85,6 @@ export function RightPanel(): React.JSX.Element {
   const activeTab = rightPanelOpen ? selectedTab : undefined
   const browserVisible = rightPanelOpen && activeTab?.kind === 'browser'
 
-  // Debug: log state changes
-  useEffect(() => {
-    console.warn('[RightPanel] browserTabAlive:', browserTabAlive,
-      'hasBrowserTab:', hasBrowserTab, 'pluginEnabled:', browserPluginEnabled,
-      'rightPanelOpen:', rightPanelOpen, 'activeTabKind:', activeTab?.kind,
-      'panelSessionId:', panelSessionId)
-  }, [browserTabAlive, hasBrowserTab, browserPluginEnabled, rightPanelOpen, activeTab, panelSessionId])
-
   const draggingRef = useRef(false)
   const startXRef = useRef(0)
   const startWidthRef = useRef(rightPanelWidth)
