@@ -10,6 +10,8 @@ import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
 import { WebSearchPanel } from '@renderer/components/settings/WebSearchPanel'
+import { SshPanel } from '@renderer/components/settings/SshPanel'
+import { Server as ServerIcon } from 'lucide-react'
 
 function SettingsPage(): React.JSX.Element {
   const { t } = useTranslation('settings')
@@ -25,7 +27,8 @@ function SettingsPage(): React.JSX.Element {
       label: t('tabs.groups.general'),
       items: [
         { id: 'general', icon: <Settings className="size-4" />, label: t('tabs.general.label') },
-        { id: 'persona', icon: <User className="size-4" />, label: t('tabs.persona.label', { defaultValue: '人格管理' }) }
+        { id: 'persona', icon: <User className="size-4" />, label: t('tabs.persona.label', { defaultValue: '人格管理' }) },
+        { id: 'ssh', icon: <ServerIcon className="size-4" />, label: t('tabs.ssh.label', { defaultValue: 'SSH 连接' }) }
       ]
     },
     {
@@ -144,6 +147,10 @@ function SettingsPage(): React.JSX.Element {
             ) : settingsTab === 'channel' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <PluginPanel />
+              </div>
+            ) : settingsTab === 'ssh' ? (
+              <div className="flex-1 overflow-y-auto">
+                <SshPanel />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
