@@ -499,7 +499,8 @@
       "memory_hot_write": "热写",
       "memory_search": "搜索",
       "memory_append": "追加",
-      "memory_update": "更新"
+      "memory_update": "更新",
+      "discover_tools": "发现工具"
     }
   },
   "toolCall": {

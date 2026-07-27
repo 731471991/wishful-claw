@@ -499,7 +499,8 @@
       "memory_hot_write": "Hot Write",
       "memory_search": "Search",
       "memory_append": "Append",
-      "memory_update": "Update"
+      "memory_update": "Update",
+      "discover_tools": "Discover Tools"
     }
   },
   "toolCall": {
