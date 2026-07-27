@@ -25,13 +25,6 @@ import {
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { cn } from '@renderer/lib/utils'
-import {
-  useChannelStore,
-  type PluginInstance
-} from '@renderer/stores/channel-store'
-import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { IPC } from '@renderer/lib/ipc/channels'
-import { cn } from '@renderer/lib/utils'
 export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
   const { t } = useTranslation('settings')
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
