@@ -9,6 +9,7 @@ import {
   isCompactBoundaryMessage,
   isCompactSummaryLikeMessage
 } from '@renderer/lib/agent/context-compression'
+import { THINK_OPEN_TAG_RE } from './AssistantMessage/types'
 
 export function isToolResultOnlyUserMessage(message: UnifiedMessage): boolean {
   return (
