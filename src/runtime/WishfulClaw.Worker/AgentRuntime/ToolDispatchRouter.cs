@@ -353,6 +353,22 @@ internal static class ToolDispatchRouter
                 isToolError = true;
             }
         }
+        // SSH remote execution: route Bash/Shell to remote server when sshConnectionId is present
+        else if (AgentRuntimeSshToolExecutor.ShouldRouteToSsh(
+            toolCall.Name, toolCall.Input, state.Parameters))
+        {
+            try
+            {
+                (toolOutput, isToolError) = await AgentRuntimeSshToolExecutor.ExecuteAsync(
+                    toolCall, state.Parameters, context, state.CancellationToken);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"SSH tool execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
         else if (SubAgentExecutor.IsTaskTool(toolCall.Name))
         {
             try

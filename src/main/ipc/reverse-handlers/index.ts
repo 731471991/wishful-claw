@@ -15,6 +15,7 @@ import {
   executeChannelSpecificPluginTool,
   isPluginToolEnabled
 } from '../channel-handlers'
+import { execSshCommand } from '../ssh/connection-manager'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
 
@@ -23,6 +24,13 @@ const directHandlers = new Map<string, ReverseHandler>([
   ['image:generate', (p) => handleImageGenerate(p)],
   ['mcp:call-tool', (p) => executeMcpToolFromMain(p as { serverId: string; toolName: string; args: Record<string, unknown> })],
   ['mcp:read-resource', (p) => readMcpResourceFromMain(p as { serverId: string; uri?: string; resourceName?: string })],
+  ['ssh:exec', async (p) => {
+    const { connectionId, command, timeoutMs } = p as { connectionId: string; command: string; timeoutMs?: number }
+    if (!connectionId || !command) {
+      return { success: false, exitCode: 1, stdout: '', stderr: 'connectionId and command are required', error: 'connectionId and command are required' }
+    }
+    return await execSshCommand(connectionId, command, timeoutMs ?? 60_000)
+  }],
 ])
 
 // Channel-specific plugin methods — routed to real channel handlers
@@ -72,7 +80,8 @@ export function isMainProcessMethod(method: string): boolean {
     pluginActionMethods.has(method) ||
     stubMethods.has(method) ||
     method.startsWith(CRON_PREFIX) ||
-    method === 'notify:desktop'
+    method === 'notify:desktop' ||
+    method === 'ssh:exec'
   )
 }
 
