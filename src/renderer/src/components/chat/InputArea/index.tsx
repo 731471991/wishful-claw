@@ -1,52 +1,33 @@
 // InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
-
-import type { AIModelConfig } from '@renderer/lib/api/types'
 import { toast } from 'sonner'
 import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
 import type { SendMessageOptions } from '@renderer/hooks/use-chat-actions'
-import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { updateWebSearchToolRegistration } from '@renderer/lib/tools'
-import { useUIStore } from '@renderer/stores/ui-store'
 import { useDebouncedTokens } from '@renderer/hooks/use-estimated-tokens'
 import { usePromptRecommendation } from '@renderer/hooks/use-prompt-recommendation'
 import { useChatStore } from '@renderer/stores/chat-store'
-import { useChannelStore } from '@renderer/stores/channel-store'
+import { useTranslation } from 'react-i18next'
+import { type ImageAttachment } from '@renderer/lib/image-attachments'
+import { type FileAwareEditorHandle } from '../FileAwareEditor'
+import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
+import { cn } from '@renderer/lib/utils'
+import type { AppPluginId } from '@renderer/lib/app-plugin/types'
 import {
   getHomeInputDraftKey, getProjectInputDraftKey, getSessionInputDraftKey,
   type InputDraftContext
 } from '@renderer/lib/input-drafts'
 import { useInputDraftPersistence } from '@renderer/hooks/use-input-draft-persistence'
-import { useShallow } from 'zustand/react/shallow'
-import { useTranslation } from 'react-i18next'
-import {
-  cloneImageAttachments,
-  type ImageAttachment
-} from '@renderer/lib/image-attachments'
-import { type FileAwareEditorHandle } from '../FileAwareEditor'
-import { usePlanStore } from '@renderer/stores/plan-store'
-import { useGoalStore } from '@renderer/stores/goal-store'
-import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
-import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { cn } from '@renderer/lib/utils'
-import { deserializeEditorState } from '@renderer/lib/select-file-editor'
-import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
-import type { AppPluginId } from '@renderer/lib/app-plugin/types'
-import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
-import { isProjectSession, workspaceContextAvailable } from '@renderer/lib/session-scope'
-import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
 
 // Extracted modules
-import {
-  InputAreaProps
-} from './types'
+import { InputAreaProps } from './types'
 import {
   MIN_INPUT_HEIGHT, DEFAULT_SESSION_INPUT_HEIGHT, placeholderKeys, defaultRecommendationKeys
 } from './types'
 import {
-  summarizeQueuedMessage, isReferenceOnlyDocument, selectedFileItemToReference
+  summarizeQueuedMessage, selectedFileItemToReference
 } from './utils'
 import { ComposerRuntimeStatus } from './runtime-status'
 import { RetryBanner } from './retry-banner'
@@ -67,34 +48,33 @@ import { useContextCompression } from './use-context-compression'
 import { usePermissionMode } from './use-permission-mode'
 import { useModeControls } from './use-mode-controls'
 import { ComposerEditorArea } from './composer-editor-area'
+import { useInputAreaSelectors } from './use-input-area-selectors'
+import { useInputAreaEffects } from './use-input-area-effects'
 
 export function InputArea({
-  sessionId,
-  onSend,
-  onStop,
-  onSelectFolder,
-  isStreaming = false,
-  workingFolder,
-  hideWorkingFolderIndicator = false,
-  hideWorkingFolderPicker = false,
-  onCompressContext,
-  disabled = false,
-  draftKeyOverride,
-  suppressPendingQueue = false,
-  hideGoalSessionBar = false,
-  hideModeSwitch = false,
-  modelRoute = 'main',
-  readOnlyModel,
-  attachedFooter = false,
-  fullWidth = false
+  sessionId, onSend, onStop, onSelectFolder, isStreaming = false, workingFolder,
+  hideWorkingFolderIndicator = false, hideWorkingFolderPicker = false, onCompressContext,
+  disabled = false, draftKeyOverride, suppressPendingQueue = false,
+  hideGoalSessionBar = false, hideModeSwitch = false, modelRoute = 'main',
+  readOnlyModel, attachedFooter = false, fullWidth = false
 }: InputAreaProps): React.JSX.Element {
   const { t } = useTranslation('chat')
-  const chatView = useUIStore((s) => s.chatView)
-  const isSessionComposer = chatView === 'session' || Boolean(sessionId)
-  const isHomeComposer = chatView === 'home' || chatView === 'project'
-  const minComposerHeight = MIN_INPUT_HEIGHT
-  const defaultSessionInputHeight = Math.max(DEFAULT_SESSION_INPUT_HEIGHT, minComposerHeight)
+  const defaultSessionInputHeight = Math.max(DEFAULT_SESSION_INPUT_HEIGHT, MIN_INPUT_HEIGHT)
 
+  const sel = useInputAreaSelectors({ sessionId, workingFolder, modelRoute })
+  const {
+    chatView, isHomeComposer,
+    language: currentLanguage, autoApprove,
+    permissionWhitelistEnabled, clarifyAutoAcceptRecommended, animationsEnabled,
+    webSearchEnabled, canToggleWebSearch,
+    supportsVision, composerModelCfg,
+    mode, openSettings, openFilePreview,
+    activeProjectId, activeSshConnectionId, activeSessionId, hasMessages, clearSessionMessages,
+    draftSessionId, projectScoped, workspaceReady,
+    planMode, hasActiveGoal, pendingReviewPlanId, hasApiKey
+  } = sel
+
+  const needsWorkingFolder = projectScoped && !workingFolder && Boolean(onSelectFolder)
 
   const [selectedSkill, setSelectedSkill] = React.useState<string | null>(null)
   const [autoAcceptCountdown, setAutoAcceptCountdown] = React.useState<number | null>(null)
@@ -102,13 +82,10 @@ export function InputArea({
   const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
   const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
   const removePersistedDraftRef = React.useRef<(() => void) | null>(null)
-
-
   const flyoutPointerRef = React.useRef<{ x: number; y: number } | null>(null)
   const slashListRef = React.useRef<HTMLDivElement | null>(null)
   const fileListRef = React.useRef<HTMLDivElement | null>(null)
   const draftReadyKeyRef = React.useRef<string | null>(null)
-
   const editorRef = React.useRef<FileAwareEditorHandle | null>(null)
   const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
   const [attachedImages, setAttachedImages] = React.useState<ImageAttachment[]>([])
@@ -133,121 +110,24 @@ export function InputArea({
     setSelectedSkill, setAttachedImages, setPreviewImage
   })
 
-  const currentLanguage = useSettingsStore((state) => state.language)
-  const mainModelSelectionMode = useSettingsStore((state) => state.mainModelSelectionMode)
-  const autoApprove = useSettingsStore((state) => state.autoApprove)
-  const permissionWhitelistEnabled = useSettingsStore((state) => state.permissionPolicy.enabled)
-  const clarifyAutoAcceptRecommended = useSettingsStore((state) => state.clarifyAutoAcceptRecommended)
-  const animationsEnabled = useSettingsStore((state) => state.animationsEnabled)
-
-  const targetSession = useChatStore(
-    useShallow((s) => {
-      const targetSessionId = sessionId ?? s.activeSessionId
-      const idx = targetSessionId ? s.sessionsById[targetSessionId] : undefined
-      const session = idx !== undefined ? s.sessions[idx] : undefined
-      if (!session) return undefined
-      return {
-        id: session.id, projectId: session.projectId, pluginId: session.pluginId,
-        providerId: session.providerId, modelId: session.modelId,
-        modelSelectionMode: session.modelSelectionMode
-      }
-    })
-  )
-  const channels = useChannelStore((s) => s.channels)
-  const autoSelection = useUIStore((s) =>
-    targetSession ? (s.autoModelSelectionsBySession[targetSession.id] ?? null) : null
-  )
-  const activeProvider = useProviderStore(
-    useShallow((s) => {
-      const { providers, activeProviderId, activeModelId } = s
-      const fastConfig = modelRoute === 'fast' ? s.getFastProviderConfig() : null
-      const session = isSessionComposer ? targetSession : null
-      const channel = session?.pluginId
-        ? (channels.find((item) => item.id === session.pluginId) ?? null)
-        : null
-      const selection = session
-        ? resolveSessionModelSelection({
-            session, providers, activeProviderId, activeModelId,
-            globalMode: mainModelSelectionMode,
-            channelProviderId: channel?.providerId, channelModelId: channel?.model
-          })
-        : null
-      const providerId = fastConfig?.providerId ??
-        (selection ? (selection.isAutoModeActive && autoSelection?.providerId ? autoSelection.providerId : selection.providerId) : activeProviderId)
-      const modelId = fastConfig?.model ??
-        (selection ? (selection.isAutoModeActive && autoSelection?.modelId ? autoSelection.modelId : selection.modelId) : activeModelId)
-      if (!providerId || !modelId) return null
-      const provider = providers.find((item) => item.id === providerId)
-      if (!provider) return null
-      const model = provider.models.find((item) => item.id === modelId)
-      if (!model) return null
-      return { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey, type: provider.type, models: provider.models, modelId }
-    })
-  )
-  const supportsVision = React.useMemo(() => {
-    if (!activeProvider) return false
-    const model = activeProvider.models.find((m) => m.id === activeProvider.modelId)
-    return modelSupportsVision(model, activeProvider.type)
-  }, [activeProvider])
-  const composerModelCfg = React.useMemo<AIModelConfig | null>(() => {
-    if (!activeProvider) return null
-    return activeProvider.models.find((m) => m.id === activeProvider.modelId) ?? null
-  }, [activeProvider])
-  const webSearchEnabled = useSettingsStore((s) => s.webSearchEnabled)
-  const webSearchProvider = useSettingsStore((s) => s.webSearchProvider)
-  const webSearchApiKey = useSettingsStore((s) => s.webSearchApiKey)
-  const webSearchRequiresApiKey = ['tavily','searxng','exa','exa-mcp','bocha','zhipu'].includes(webSearchProvider)
-  const canToggleWebSearch = !webSearchRequiresApiKey || Boolean(webSearchApiKey)
+────
   const toggleWebSearch = React.useCallback(() => {
-    const store = useSettingsStore.getState()
-    const newEnabled = !store.webSearchEnabled
+    const newEnabled = !useSettingsStore.getState().webSearchEnabled
     useSettingsStore.getState().updateSettings({ webSearchEnabled: newEnabled })
     updateWebSearchToolRegistration(newEnabled)
   }, [])
-  const openSettings = useUIStore((s) => s.openSettings)
-  const openFilePreview = useUIStore((s) => s.openFilePreview)
-  const mode = useUIStore((s) => s.mode)
-  const activeProjectId = useChatStore((s) => {
-    const targetSessionId = sessionId ?? s.activeSessionId
-    const idx = targetSessionId ? s.sessionsById[targetSessionId] : undefined
-    const targetSession = idx !== undefined ? s.sessions[idx] : undefined
-    return targetSession?.projectId ?? s.activeProjectId
-  })
-  const activeSshConnectionId = useChatStore((s) => {
-    const targetSessionId = sessionId ?? s.activeSessionId
-    const idx = targetSessionId ? s.sessionsById[targetSessionId] : undefined
-    const targetSession = idx !== undefined ? s.sessions[idx] : undefined
-    const projectId = targetSession?.projectId ?? s.activeProjectId
-    const activeProject = projectId ? s.projects.find((project) => project.id === projectId) : undefined
-    return targetSession?.sshConnectionId ?? activeProject?.sshConnectionId ?? null
-  })
-  const showInlineClearConversation = false
-  const { activeSessionId, hasMessages, clearSessionMessages } = useChatStore(
-    useShallow((s) => {
-      const targetSessionId = sessionId ?? s.activeSessionId
-      const idx = targetSessionId ? s.sessionsById[targetSessionId] : undefined
-      const targetSession = idx !== undefined ? s.sessions[idx] : undefined
-      return {
-        activeSessionId: targetSessionId,
-        hasMessages: (targetSession?.messageCount ?? 0) > 0,
-        clearSessionMessages: s.clearSessionMessages
-      }
-    })
-  )
+
   const getSessionMessages = React.useCallback(
     () => useChatStore.getState().getSessionMessages(activeSessionId ?? ''),
     [activeSessionId]
   )
-  const draftSessionId = sessionId ?? (chatView === 'session' ? activeSessionId : null)
-  const projectScoped = isProjectSession({ chatView, session: targetSession, activeProjectId, workingFolder })
-  const workspaceReady = workspaceContextAvailable({ chatView, session: targetSession, activeProjectId, workingFolder })
 
-  const debouncedTokens = useDebouncedTokens(finalSerializedText)
   const {
     rootRef, containerRef, imagePreviewRef, bottomToolbarRef,
     inputHeight, autoInputHeight, autoMaxInputHeight, handleDragStart
   } = useComposerHeight({
-    isSessionComposer, defaultSessionInputHeight, editorRef,
+    isSessionComposer: chatView === 'session' || Boolean(sessionId),
+    defaultSessionInputHeight, editorRef,
     attachedImagesCount: attachedImages.length, selectedSkill,
     documentNodes, selectedFiles
   })
@@ -256,16 +136,13 @@ export function InputArea({
     isOptimizing, optimizationOptions, showOptimizationDialog,
     setShowOptimizationDialog, selectedOptionIndex, setSelectedOptionIndex,
     handleOptimizePrompt, handleSelectOption, handleCancelOptimization
-  } = usePromptOptimizer({
-    text, currentLanguage, setText, focusInputAtEnd
-  })
+  } = usePromptOptimizer({ text, currentLanguage, setText, focusInputAtEnd })
   const isOptimizingLocked = isOptimizing || showOptimizationDialog
 
   const {
     fileSearchResults, fileSearchLoading,
     selectedFileSearchIndex, setSelectedFileSearchIndex,
-    activeFileMention, fileMenuOpen,
-    insertSelectedFile
+    activeFileMention, fileMenuOpen, insertSelectedFile
   } = useFileSearch({
     text, editorSelection, projectScoped, workingFolder,
     selectedFilesRef, replaceSelectionWithText,
@@ -295,9 +172,6 @@ export function InputArea({
     isStreaming, fallbackSuggestion: recommendationFallback, getCaretAtEnd
   })
 
-
-
-
   const activeDraftKey = React.useMemo(() => {
     if (draftKeyOverride) return draftKeyOverride
     if (draftSessionId) return getSessionInputDraftKey(draftSessionId)
@@ -306,38 +180,23 @@ export function InputArea({
   }, [activeProjectId, draftKeyOverride, draftSessionId])
 
   const draftContext = React.useMemo<InputDraftContext>(() => {
-    if (draftKeyOverride) {
-      return {
-        scope: draftKeyOverride.startsWith('subagent:') ? 'subagent' : 'custom',
-        sessionId: draftSessionId, projectId: activeProjectId, mode,
-        workingFolder: workingFolder ?? null
-      }
-    }
-    if (draftSessionId) {
-      return { scope: 'session', sessionId: draftSessionId, projectId: activeProjectId, mode, workingFolder: workingFolder ?? null }
-    }
-    if (activeProjectId) {
-      return { scope: 'project', projectId: activeProjectId, mode, workingFolder: workingFolder ?? null }
-    }
-    return { scope: 'home', mode, workingFolder: workingFolder ?? null }
+    const wf = workingFolder ?? null
+    if (draftKeyOverride) return { scope: draftKeyOverride.startsWith('subagent:') ? 'subagent' : 'custom', sessionId: draftSessionId, projectId: activeProjectId, mode, workingFolder: wf }
+    if (draftSessionId) return { scope: 'session', sessionId: draftSessionId, projectId: activeProjectId, mode, workingFolder: wf }
+    if (activeProjectId) return { scope: 'project', projectId: activeProjectId, mode, workingFolder: wf }
+    return { scope: 'home', mode, workingFolder: wf }
   }, [activeProjectId, draftKeyOverride, draftSessionId, mode, workingFolder])
 
   const {
-    hydrated: inputDraftHydrated,
-    loadedDraft: persistedDraft,
-    saveDraft: savePersistedDraft,
-    removeDraft: removePersistedDraft
-  } = useInputDraftPersistence({
-    draftKey: activeDraftKey,
-    context: draftContext
-  })
+    hydrated: inputDraftHydrated, loadedDraft: persistedDraft,
+    saveDraft: savePersistedDraft, removeDraft: removePersistedDraft
+  } = useInputDraftPersistence({ draftKey: activeDraftKey, context: draftContext })
   removePersistedDraftRef.current = removePersistedDraft
 
   const {
     slashQuery, slashMenuOpen, slashSuggestionsLoading,
     filteredSlashSuggestions, selectedSlashIndex, setSelectedSlashIndex,
-    insertSlashCommand,
-    insertPluginPrompt, applySlashSuggestion
+    insertSlashCommand, insertPluginPrompt, applySlashSuggestion
   } = useSlashCommands({
     text, workingFolder, activeProjectId,
     editorRef, editorSelection, selectedFiles, selectedFilesRef, documentRef,
@@ -345,428 +204,110 @@ export function InputArea({
     setSelectedSkill, setSelectedFiles, setDocumentNodes, slashListRef
   })
 
-  const activeProviderForAuth = useProviderStore(
-    useShallow((s) => {
-      const provider = s.providers.find((p) => p.id === s.activeProviderId)
-      return provider ? { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey } : null
-    })
-  )
-  const providersCount = useProviderStore((s) => s.providers.length)
-  const hasApiKey = providersCount === 0 || !!activeProviderForAuth?.apiKey || activeProviderForAuth?.requiresApiKey === false
-  const needsWorkingFolder = projectScoped && !workingFolder && Boolean(onSelectFolder)
-  const planMode = useUIStore((s) =>
-    draftSessionId ? Boolean(s.planModesBySession[draftSessionId]) : pendingPlanMode
-  )
-  const activeGoal = useGoalStore((s) =>
-    draftSessionId ? s.goalsBySession[draftSessionId] : undefined
-  )
-  const hasActiveGoal = activeGoal?.status === 'active'
   const hasPendingGoalMode = pendingGoalMode && !hasActiveGoal
   const goalModeEnabled = hasActiveGoal || hasPendingGoalMode
-  const pendingReviewPlanId = usePlanStore((s) =>
-    draftSessionId ? (s.getPendingReviewPlan(draftSessionId)?.id ?? null) : null
-  )
-
   const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 
-  React.useEffect(() => {
-    if (draftSessionId) {
-      setPendingPlanMode(false)
-    }
-    setPendingGoalMode(false)
-  }, [draftSessionId])
+  useInputAreaEffects({
+    draftSessionId, hasActiveGoal, workspaceReady, activeSshConnectionId, workingFolder, isHomeComposer,
+    shouldAutoAcceptRecommendation, suggestionText, text, acceptSuggestion,
+    applyEditorStateFromSerializedText, selectedFiles, focusInputAtEnd, handleRecommendationSelectionChange,
+    inputDraftHydrated, persistedDraft, activeDraftKey, finalSerializedText,
+    attachedImages, selectedSkill, savePersistedDraft,
+    setPendingPlanMode, setPendingGoalMode, setAutoAcceptCountdown, setIsWorkspaceAgentsMissing,
+    setAttachedImages, setPreviewImage, setSelectedSkill, setHighlightedFileId, setEditorSelection,
+    editorRef, rootRef, draftSaveTimerRef, draftReadyKeyRef, isStreaming, disabled, replaceSelectionWithText,
+  })
 
-  React.useEffect(() => {
-    if (hasActiveGoal) {
-      setPendingGoalMode(false)
-    }
-  }, [hasActiveGoal])
-
-  React.useEffect(() => {
-    let cancelled = false
-
-    if (!workspaceReady || activeSshConnectionId) {
-      setIsWorkspaceAgentsMissing(false)
-      return
-    }
-
-    setIsWorkspaceAgentsMissing(false)
-
-    void resolveProjectMemoryTextFile(ipcClient, workingFolder ?? '', 'AGENTS.md').then(
-      ({ missingFile }) => {
-        if (cancelled) return
-        setIsWorkspaceAgentsMissing(missingFile)
-      }
-    )
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeSshConnectionId, workspaceReady, workingFolder])
-
-  React.useEffect(() => {
-    if (!shouldAutoAcceptRecommendation || !suggestionText || !text.trim()) {
-      setAutoAcceptCountdown(null)
-      return
-    }
-
-    setAutoAcceptCountdown(8)
-
-    const intervalId = window.setInterval(() => {
-      setAutoAcceptCountdown((prev) => {
-        if (prev === null) return null
-        return prev > 1 ? prev - 1 : 0
-      })
-    }, 1000)
-
-    const timeoutId = window.setTimeout(() => {
-      const acceptedSuggestion = acceptSuggestion()
-      if (!acceptedSuggestion) return
-      applyEditorStateFromSerializedText(acceptedSuggestion, selectedFiles)
-      setAutoAcceptCountdown(null)
-      requestAnimationFrame(() => {
-        focusInputAtEnd()
-        handleRecommendationSelectionChange()
-      })
-    }, 8000)
-
-    return () => {
-      window.clearInterval(intervalId)
-      window.clearTimeout(timeoutId)
-    }
-  }, [
-    acceptSuggestion,
-    applyEditorStateFromSerializedText,
-    focusInputAtEnd,
-    handleRecommendationSelectionChange,
-    selectedFiles,
-    shouldAutoAcceptRecommendation,
-    suggestionText,
-    text
-  ])
-
-  React.useEffect(() => {
-    if (!inputDraftHydrated) return
-
-    clearTimeout(draftSaveTimerRef.current)
-    const persistedText = persistedDraft?.text ?? ''
-    const persistedSelectedFiles = persistedDraft?.selectedFiles ?? []
-    const shouldResetHomeReferenceDraft =
-      isHomeComposer &&
-      !persistedDraft?.skill &&
-      (persistedDraft?.images?.length ?? 0) === 0 &&
-      isReferenceOnlyDocument(
-        deserializeEditorState(persistedText, workingFolder, persistedSelectedFiles).document
-      )
-
-    draftReadyKeyRef.current = null
-    applyEditorStateFromSerializedText(
-      shouldResetHomeReferenceDraft ? '' : persistedText,
-      shouldResetHomeReferenceDraft ? [] : persistedSelectedFiles
-    )
-    setAttachedImages(persistedDraft?.images ? cloneImageAttachments(persistedDraft.images) : [])
-    setPreviewImage(null)
-    setSelectedSkill(persistedDraft?.skill ?? null)
-    setHighlightedFileId(null)
-    setEditorSelection({ start: 0, end: 0 })
-
-    const rafId = window.requestAnimationFrame(() => {
-      draftReadyKeyRef.current = activeDraftKey
-    })
-
-    return () => {
-      window.cancelAnimationFrame(rafId)
-    }
-  }, [
-    activeDraftKey,
-    applyEditorStateFromSerializedText,
-    inputDraftHydrated,
-    isHomeComposer,
-    persistedDraft,
-    workingFolder
-  ])
-
-  React.useEffect(() => {
-    if (isStreaming || disabled || !inputDraftHydrated) return
-
-    const rafId = window.requestAnimationFrame(() => {
-      if (activeDraftKey && draftReadyKeyRef.current !== activeDraftKey) return
-
-      const activeElement = document.activeElement
-      if (
-        activeElement &&
-        activeElement !== document.body &&
-        !rootRef.current?.contains(activeElement)
-      ) {
-        return
-      }
-
-      editorRef.current?.focus()
-    })
-
-    return () => {
-      window.cancelAnimationFrame(rafId)
-    }
-  }, [activeDraftKey, disabled, inputDraftHydrated, isStreaming])
-
-  React.useEffect(() => {
-    if (!activeDraftKey || !inputDraftHydrated) return
-    if (draftReadyKeyRef.current !== activeDraftKey) return
-
-    clearTimeout(draftSaveTimerRef.current)
-    draftSaveTimerRef.current = setTimeout(() => {
-      const nextDraft = {
-        text: finalSerializedText,
-        images: cloneImageAttachments(attachedImages),
-        skill: selectedSkill,
-        selectedFiles: selectedFiles.map((file) => ({ ...file }))
-      }
-
-      void savePersistedDraft(nextDraft)
-    }, 400)
-
-    return () => clearTimeout(draftSaveTimerRef.current)
-  }, [
-    activeDraftKey,
-    attachedImages,
-    finalSerializedText,
-    inputDraftHydrated,
-    selectedFiles,
-    selectedSkill,
-    savePersistedDraft
-  ])
-
-  // Consume pendingInsertText from FileTree clicks
-  const pendingInsert = useUIStore((s) => s.pendingInsertText)
-  React.useEffect(() => {
-    if (!pendingInsert) return
-
-    const selection = editorRef.current?.getSelectionOffsets() ?? {
-      start: text.length,
-      end: text.length
-    }
-    const pendingPlainText = selectFileTextToPlainText(pendingInsert)
-    const needsPrefix =
-      selection.start === selection.end &&
-      selection.start > 0 &&
-      !/\s$/.test(text.slice(0, selection.start)) &&
-      pendingPlainText.length > 0 &&
-      !/^\s/.test(pendingPlainText)
-
-    replaceSelectionWithText(`${needsPrefix ? ' ' : ''}${pendingInsert}`, selection)
-    useUIStore.getState().setPendingInsertText(null)
-  }, [pendingInsert, replaceSelectionWithText, text])
-
-
-
-  const {
-    addImages, removeImage, getPastedImageFiles, handleAttachMedia
-  } = useImageAttachments({
-    supportsVision, t, addFilesToEditor,
-    setAttachedImages, setPreviewImage, setPendingImageReads
+  const { addImages, removeImage, getPastedImageFiles, handleAttachMedia } = useImageAttachments({
+    supportsVision, t, addFilesToEditor, setAttachedImages, setPreviewImage, setPendingImageReads
   })
 
   const {
-    queuedMessages,
-    editingQueueItemId, editingQueueText, setEditingQueueText,
-    editingQueueImages, setEditingQueueImages,
-    queueClearConfirmOpen, setQueueClearConfirmOpen,
-    queueFileInputRef,
-    startEditQueuedMessage, cancelEditQueuedMessage, removeQueuedMessage,
-    addQueuedImages, removeQueuedImage, saveQueuedMessage,
-    clearQueuedMessagesForActiveSession,
+    queuedMessages, editingQueueItemId, editingQueueText, setEditingQueueText,
+    editingQueueImages, setEditingQueueImages, queueClearConfirmOpen, setQueueClearConfirmOpen,
+    queueFileInputRef, startEditQueuedMessage, cancelEditQueuedMessage, removeQueuedMessage,
+    addQueuedImages, removeQueuedImage, saveQueuedMessage, clearQueuedMessagesForActiveSession,
     quoteQueuedMessage, handleQueueEditPaste
   } = useQueuedMessages({
-    activeSessionId, suppressPendingQueue, t, isStreaming,
-    getPastedImageFiles, setPreviewImage
+    activeSessionId, suppressPendingQueue, t, isStreaming, getPastedImageFiles, setPreviewImage
   })
 
-  const handlePreviewFile = React.useCallback(
-    (fileId: string) => {
-      const file = selectedFilesRef.current.find((item) => item.id === fileId)
-      if (file) {
-        openFilePreview(file.previewPath)
-      }
-    },
-    [openFilePreview]
-  )
+  const handlePreviewFile = React.useCallback((fileId: string) => {
+    const file = selectedFilesRef.current.find((item) => item.id === fileId)
+    if (file) openFilePreview(file.previewPath)
+  }, [openFilePreview])
 
   const handleLocateFileReference = React.useCallback((fileId: string) => {
-    setHighlightedFileId(fileId)
-    editorRef.current?.scrollToReference(fileId)
-    editorRef.current?.focus()
+    setHighlightedFileId(fileId); editorRef.current?.scrollToReference(fileId); editorRef.current?.focus()
   }, [])
 
-  const handleEditorSelectionChange = React.useCallback(
-    (selection: { start: number; end: number }) => {
-      setEditorSelection((current) =>
-        current.start === selection.start && current.end === selection.end ? current : selection
-      )
-      handleRecommendationSelectionChange()
-    },
-    [handleRecommendationSelectionChange]
-  )
-
-
-
-
-
-
-
-
+  const handleEditorSelectionChange = React.useCallback((sel: { start: number; end: number }) => {
+    setEditorSelection((cur) => cur.start === sel.start && cur.end === sel.end ? cur : sel)
+    handleRecommendationSelectionChange()
+  }, [handleRecommendationSelectionChange])
 
   const handleSend = React.useCallback((): void => {
     const liveEditorState = getLiveEditorState()
     const promptText = liveEditorState.promptText.trim()
     if (!promptText && attachedImages.length === 0) return
     if (disabled || needsWorkingFolder || pendingImageReads > 0) return
-
     let goalObjective: string | undefined
     if (hasPendingGoalMode && promptText) {
       const validation = validateGoalObjective(promptText)
-      if (validation) {
-        toast.error(t('goal.toasts.objectiveInvalid'), { description: validation })
-        return
-      }
+      if (validation) { toast.error(t('goal.toasts.objectiveInvalid'), { description: validation }); return }
       goalObjective = promptText
     }
-
     cancelPromptRecommendation()
-
     const hasLeadingSlashCommand = liveEditorState.plainText.trimStart().startsWith('/')
-    const message =
-      selectedSkill && !hasLeadingSlashCommand
-        ? `[Skill: ${selectedSkill}]\n${promptText}`
-        : promptText
-    const sendOptions: SendMessageOptions = {
-      clearCompletedTasksOnTurnStart: true,
-      enablePlanMode: planMode || undefined
-    }
+    const message = selectedSkill && !hasLeadingSlashCommand ? `[Skill: ${selectedSkill}]\n${promptText}` : promptText
+    const sendOptions: SendMessageOptions = { clearCompletedTasksOnTurnStart: true, enablePlanMode: planMode || undefined }
     const selectedFileReferences = liveEditorState.selectedFiles.map(selectedFileItemToReference)
-    if (selectedFileReferences.length > 0) {
-      sendOptions.selectedFileReferences = selectedFileReferences
-    }
-    if (goalObjective) {
-      sendOptions.goalObjective = goalObjective
-    }
-
+    if (selectedFileReferences.length > 0) sendOptions.selectedFileReferences = selectedFileReferences
+    if (goalObjective) sendOptions.goalObjective = goalObjective
     onSend?.(message, attachedImages.length > 0 ? attachedImages : undefined, sendOptions)
-
     resetComposer()
-    if (goalObjective) {
-      setPendingGoalMode(false)
-    }
-  }, [
-    getLiveEditorState,
-    attachedImages,
-    disabled,
-    needsWorkingFolder,
-    pendingImageReads,
-    hasPendingGoalMode,
-    cancelPromptRecommendation,
-    selectedSkill,
-    onSend,
-    planMode,
-    resetComposer,
-    t
-  ])
+    if (goalObjective) setPendingGoalMode(false)
+  }, [getLiveEditorState, attachedImages, disabled, needsWorkingFolder, pendingImageReads,
+      hasPendingGoalMode, cancelPromptRecommendation, selectedSkill, onSend, planMode, resetComposer, t])
 
   const { handlePlanModeChange, handleGoalModeChange } = useModeControls({
-    projectScoped, draftSessionId, disabled, isStreaming, isOptimizingLocked,
-    pendingImageReads, hasActiveGoal, focusInputAtEnd,
-    setPendingPlanMode, setPendingGoalMode, t
+    projectScoped, draftSessionId, disabled, isStreaming, isOptimizingLocked, pendingImageReads, hasActiveGoal, focusInputAtEnd, setPendingPlanMode, setPendingGoalMode, t
   })
 
-
-
   const handleKeyDown = useComposerKeydown({
-    isOptimizingLocked, fileMenuOpen, slashMenuOpen,
-    fileSearchResults, selectedFileSearchIndex, setSelectedFileSearchIndex,
-    filteredSlashSuggestions, selectedSlashIndex, setSelectedSlashIndex,
-    activeFileMention, editorRef, setEditorSelection,
-    insertSelectedFile, applySlashSuggestion,
-    acceptSuggestion, applyEditorStateFromSerializedText,
-    selectedFiles, focusInputAtEnd,
+    isOptimizingLocked, fileMenuOpen, slashMenuOpen, fileSearchResults, selectedFileSearchIndex,
+    setSelectedFileSearchIndex, filteredSlashSuggestions, selectedSlashIndex, setSelectedSlashIndex,
+    activeFileMention, editorRef, setEditorSelection, insertSelectedFile, applySlashSuggestion,
+    acceptSuggestion, applyEditorStateFromSerializedText, selectedFiles, focusInputAtEnd,
     handleRecommendationSelectionChange, handleSend
   })
 
-  const handlePaste = React.useCallback(
-    (e: React.ClipboardEvent<HTMLDivElement>): void => {
-      const imageFiles = getPastedImageFiles(e.clipboardData)
+  const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLDivElement>): void => {
+    const imageFiles = getPastedImageFiles(e.clipboardData)
+    if (imageFiles.length > 0) { e.preventDefault(); void addImages(imageFiles); return }
+    const plainText = e.clipboardData.getData('text/plain')
+    if (!plainText) return
+    e.preventDefault()
+    const selection = editorRef.current?.getSelectionOffsets() ?? editorSelection
+    replaceSelectionWithText(plainText, selection)
+  }, [addImages, editorSelection, getPastedImageFiles, replaceSelectionWithText])
 
-      if (imageFiles.length > 0) {
-        e.preventDefault()
-        void addImages(imageFiles)
-        return
-      }
-
-      const plainText = e.clipboardData.getData('text/plain')
-      if (!plainText) return
-
-      e.preventDefault()
-      const selection = editorRef.current?.getSelectionOffsets() ?? editorSelection
-      replaceSelectionWithText(plainText, selection)
-    },
-    [addImages, editorSelection, getPastedImageFiles, replaceSelectionWithText]
-  )
-
-  const { dragging, handleDragOver, handleDragLeave, handleDropWrapped } = useDragDrop({
-    addFilesToEditor
-  })
-
-  const {
-    contextCompressionStatus, isContextCompressing,
-    handleCompressContext, contextCompressionStatusLabel
-  } = useContextCompression({ onCompressContext, t })
-
-  const { permissionMode, handleSelectPermissionMode } = usePermissionMode({
-    autoApprove, permissionWhitelistEnabled, t
-  })
+  const { dragging, handleDragOver, handleDragLeave, handleDropWrapped } = useDragDrop({ addFilesToEditor })
+  const { contextCompressionStatus, isContextCompressing, handleCompressContext, contextCompressionStatusLabel } = useContextCompression({ onCompressContext, t })
+  const { permissionMode, handleSelectPermissionMode } = usePermissionMode({ autoApprove, permissionWhitelistEnabled, t })
 
   const editorPlaceholder = pendingReviewPlanId
-    ? t('input.placeholderPlanReview', {
-        defaultValue: 'Enter suggestions for this plan, or click the card above to implement it...'
-      })
+    ? t('input.placeholderPlanReview', { defaultValue: 'Enter suggestions for this plan...' })
     : hasPendingGoalMode
       ? t('input.placeholderPendingGoal', { defaultValue: 'Describe the goal to pursue...' })
-      : (effectivePlaceholder ??
-        (shouldRecommendInit
-          ? t('input.placeholderInitWorkspace')
-          : t(placeholderKeys[mode] ?? 'input.placeholder')))
+      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode] ?? 'input.placeholder')))
 
   const composerIconControlClass = 'composer-control rounded-xl'
-
-  const queuedMessagesPanel = (
-    <QueuedMessagesPanel
-      queuedMessages={queuedMessages}
-      composerWidthClass={composerWidthClass}
-      animationsEnabled={animationsEnabled}
-      editingQueueItemId={editingQueueItemId}
-      editingQueueText={editingQueueText}
-      editingQueueImages={editingQueueImages}
-      setEditingQueueText={setEditingQueueText}
-      setEditingQueueImages={setEditingQueueImages}
-      setPreviewImage={setPreviewImage}
-      saveQueuedMessage={saveQueuedMessage}
-      cancelEditQueuedMessage={cancelEditQueuedMessage}
-      removeQueuedImage={removeQueuedImage}
-      handleQueueEditPaste={handleQueueEditPaste}
-      editQueuedMessage={startEditQueuedMessage}
-      removePendingSessionMessage={removeQueuedMessage}
-      quotePendingSessionMessageIntoConversation={quoteQueuedMessage}
-      queueClearConfirmOpen={queueClearConfirmOpen}
-      setQueueClearConfirmOpen={setQueueClearConfirmOpen}
-      clearQueuedMessagesForActiveSession={clearQueuedMessagesForActiveSession}
-      summarizeQueuedMessage={summarizeQueuedMessage}
-    />
-  )
+  const debouncedTokens = useDebouncedTokens(finalSerializedText)
 
   return (
-    <div
-      ref={rootRef}
-      data-tour="composer"
-      className={cn('px-4 py-3', attachedFooter ? 'pb-0' : 'pb-4')}
-    >
+    <div ref={rootRef} data-tour="composer" className={cn('px-4 py-3', attachedFooter ? 'pb-0' : 'pb-4')}>
       <ComposerBanners
         hasApiKey={hasApiKey}
         needsWorkingFolder={needsWorkingFolder}
@@ -782,21 +323,24 @@ export function InputArea({
         onOpenSettings={(tab) => openSettings(tab as never)}
       />
 
-      {queuedMessagesPanel}
+      <QueuedMessagesPanel
+        queuedMessages={queuedMessages} composerWidthClass={composerWidthClass} animationsEnabled={animationsEnabled}
+        editingQueueItemId={editingQueueItemId} editingQueueText={editingQueueText} editingQueueImages={editingQueueImages}
+        setEditingQueueText={setEditingQueueText} setEditingQueueImages={setEditingQueueImages} setPreviewImage={setPreviewImage}
+        saveQueuedMessage={saveQueuedMessage} cancelEditQueuedMessage={cancelEditQueuedMessage}
+        removeQueuedImage={removeQueuedImage} handleQueueEditPaste={handleQueueEditPaste}
+        editQueuedMessage={startEditQueuedMessage} removePendingSessionMessage={removeQueuedMessage}
+        quotePendingSessionMessageIntoConversation={quoteQueuedMessage} queueClearConfirmOpen={queueClearConfirmOpen}
+        setQueueClearConfirmOpen={setQueueClearConfirmOpen} clearQueuedMessagesForActiveSession={clearQueuedMessagesForActiveSession}
+        summarizeQueuedMessage={summarizeQueuedMessage}
+      />
 
       {!hideGoalSessionBar && draftSessionId && (
-        <GoalSessionBar
-          sessionId={draftSessionId}
-          className={cn('mb-2', fullWidth && 'max-w-none')}
-        />
+        <GoalSessionBar sessionId={draftSessionId} className={cn('mb-2', fullWidth && 'max-w-none')} />
       )}
 
-
-
       <div className={composerWidthClass}>
-        {draftSessionId && (
-          <RetryBanner sessionId={draftSessionId} />
-        )}
+        {draftSessionId && <RetryBanner sessionId={draftSessionId} />}
         <div
           ref={containerRef}
           className={cn(
@@ -806,21 +350,13 @@ export function InputArea({
             dragging && 'ring-2 ring-primary/50'
           )}
           data-composer-variant="session"
-          style={
-            inputHeight !== null
-              ? { height: inputHeight }
-              : { height: autoInputHeight, maxHeight: autoMaxInputHeight }
-          }
+          style={inputHeight !== null ? { height: inputHeight } : { height: autoInputHeight, maxHeight: autoMaxInputHeight }}
         >
-          {/* Top drag handle */}
-          {isSessionComposer && (
-            <div
-              className="composer-drag-handle flex h-3 cursor-row-resize items-center justify-center"
-              onMouseDown={handleDragStart}
-            >
+          {chatView === 'session' || Boolean(sessionId) ? (
+            <div className="composer-drag-handle flex h-3 cursor-row-resize items-center justify-center" onMouseDown={handleDragStart}>
               <div className="composer-drag-grip h-1 w-11 rounded-full" />
             </div>
-          )}
+          ) : null}
           <ImagePreviewStrip
             attachedImages={attachedImages}
             animationsEnabled={animationsEnabled}
@@ -829,7 +365,6 @@ export function InputArea({
             removeImage={removeImage}
             previewImage={previewImage}
           />
-
           <ComposerEditorArea
             dragging={dragging}
             handleDragOver={handleDragOver}
@@ -847,13 +382,7 @@ export function InputArea({
             supportsVision={supportsVision}
             placeholder={editorPlaceholder}
             suggestionText={suggestionText}
-            showSuggestion={Boolean(
-              suggestionText &&
-              text.length > 0 &&
-              !hasFileReferences &&
-              !activeFileMention &&
-              !slashMenuOpen
-            )}
+            showSuggestion={Boolean(suggestionText && text.length > 0 && !hasFileReferences && !activeFileMention && !slashMenuOpen)}
             shouldAutoAcceptRecommendation={shouldAutoAcceptRecommendation}
             autoAcceptCountdown={autoAcceptCountdown}
             hasFileReferences={hasFileReferences}
@@ -896,8 +425,6 @@ export function InputArea({
             queueFileInputRef={queueFileInputRef}
             addQueuedImages={addQueuedImages}
           />
-
-          {/* Bottom toolbar */}
           <ComposerToolbar
             readOnlyModel={readOnlyModel}
             modelRoute={modelRoute}
@@ -937,7 +464,7 @@ export function InputArea({
             pendingImageReads={pendingImageReads}
             onCompressContext={onCompressContext ? handleCompressContext : undefined}
             isContextCompressing={isContextCompressing}
-            showInlineClearConversation={showInlineClearConversation}
+            showInlineClearConversation={false}
             hasMessages={hasMessages}
             activeSessionId={activeSessionId}
             queuedMessagesCount={queuedMessages.length}
@@ -946,7 +473,6 @@ export function InputArea({
             toolbarRef={bottomToolbarRef}
           />
         </div>
-
         {draftSessionId && (
           <ComposerRuntimeStatus
             sessionId={draftSessionId}
