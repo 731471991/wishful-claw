@@ -557,6 +557,7 @@ function ToolCallCardInner({
                 'Skill',
                 'visualize_show_widget'
               ].includes(name) &&
+              !(isProcessing && ['WebSearch', 'WebFetch'].includes(name)) &&
               (hasImageBlocks(output) ? (
                 <ImageOutputBlock output={output} />
               ) : outputText ? (
