@@ -216,15 +216,6 @@ export const useChatStore = create<ChatStore>()(
 
         if (!isChatStreamEvent(event)) continue
 
-        // Clear retry state on any event that indicates the retry succeeded
-        // (text_delta, thinking_delta, iteration_start, tool_call_start, etc.)
-        // Not just text_delta — the response may contain only tool calls.
-        if (event.type !== 'request_retry' && event.type !== 'error') {
-          if (useAgentStore.getState().sessionRequestRetryState[targetSessionId]) {
-            useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
-          }
-        }
-
         switch (event.type) {
           case 'text_delta': {
             // Queue delta for rAF batch flush instead of immediate set()
@@ -526,6 +517,8 @@ export const useChatStore = create<ChatStore>()(
 
           // loop_end = entire agent loop finished, now we can stop streaming
           case 'loop_end':
+            // Request completed successfully — clear retry state
+            useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
             // Flush any pending stream deltas before clearing streaming state
             flushPendingStreamDeltas()
             // Move any remaining pending tool calls to executed in agentStore
@@ -585,6 +578,8 @@ export const useChatStore = create<ChatStore>()(
           }
 
           case 'error':
+            // Request failed — clear retry state
+            useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
             // Flush any pending stream deltas before clearing streaming state
             flushPendingStreamDeltas()
             // Clear agentStore pending tool calls on error
