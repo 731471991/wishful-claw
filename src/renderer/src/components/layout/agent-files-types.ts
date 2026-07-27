@@ -1,3 +1,5 @@
+import { GitStatusFile } from '../../stores/git-store-types'
+import { AggregatedFileChange } from '../chat/file-change-utils'
 export type GitSection = 'staged' | 'unstaged' | 'untracked' | 'conflicted'
 
 export interface GitChangeRow {

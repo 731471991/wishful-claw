@@ -91,6 +91,7 @@ export type {
   ShellExecutionEndpoint,
   ThemeMode,
 } from './settings-store-types'
+import { isThemeSetting, normalizeWorkingFolderPath, sanitizeClaudeCodeConfigs, sanitizeCodexConfigs, sanitizeRecentWorkingTargets } from './settings-store-types'
 
 // Re-export constants and functions for consumers
 export {

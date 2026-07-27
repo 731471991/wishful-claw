@@ -84,6 +84,7 @@ let activeStreamRequestId: string | null = null
 
 
 import { getAudioContext, stopStreamingPlayback, decodeBase64Chunk } from './pet-voice-audio'
+import { stopPetSpeech } from './pet-voice-audio'
 
 const streamUnsupported = new Set<string>()
 

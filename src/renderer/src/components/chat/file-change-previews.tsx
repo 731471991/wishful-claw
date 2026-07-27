@@ -36,6 +36,7 @@ import {
   resolveEditSummaryDiff, trackedStatusLabelKey, trackedTransportLabelKey,
   trackedStatusTone, trackedStatusDotTone
 } from './FileChangeCard/utils'
+import { CompactDiffCopyButton, CompactEditDiff } from './file-change-diff'
 
 // ── Types ────────────────────────────────────────────────────────
 

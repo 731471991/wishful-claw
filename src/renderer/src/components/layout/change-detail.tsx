@@ -14,6 +14,7 @@ import {
   type AggregatedFileChange
 } from '@renderer/components/chat/file-change-utils'
 import { actionLabel, statusTone } from './session-change-utils'
+import { isErrorResult } from './session-change-utils'
 
 export function CopyIconButton({ text }: { text: string }): React.JSX.Element {
   const { t } = useTranslation('common')

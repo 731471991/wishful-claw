@@ -2,6 +2,12 @@
 import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig } from './sidecar-protocol'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import { clampMaxConcurrentSubAgents } from '../../stores/settings-store'
+import { CompressionConfig } from '../agent/context-compression-config'
+import { toolRegistry } from '../agent/tool-registry'
+import { resolveProviderUserAgent } from '../api/api-user-agent'
+import { ContentBlock, MessageMeta, ProviderConfig, ToolDefinition, UnifiedMessage } from '../api/types'
+import { SidecarAgentRunRequest, SidecarApprovalRequest, SidecarContentBlock, SidecarContextSource, SidecarPlanExecutionContext, SidecarPlanRevisionContext, SidecarPluginChannelContext, SidecarProviderConfig, SidecarSlashCommandContext, SidecarSystemCommandContext, SidecarToolDefinition, SidecarTranslationContext, SidecarUnifiedMessage, SidecarWebSearchConfig } from './sidecar-protocol-types'
 
 export function mapSidecarContentBlock(block: ContentBlock): SidecarContentBlock | null {
   switch (block.type) {

@@ -18,6 +18,7 @@ import {
   dirname, gitDiffKey,
   repoRelativePath, statusLetters, summarizeUnifiedDiff
 } from './agent-files-utils'
+import { DIFF_PRELOAD_BATCH_SIZE } from './agent-files-types'
 
 export interface UseAgentFilesOptions {
   sessionId?: string | null

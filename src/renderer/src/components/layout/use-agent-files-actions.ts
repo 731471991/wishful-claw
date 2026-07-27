@@ -7,6 +7,9 @@ import type { AgentFilesState } from './use-agent-files'
 import type { ChangeRow, GitChangeRow, AgentChangeRow } from './agent-files-types'
 import type { AgentFileTreeCommand } from '@renderer/components/cowork/file-tree-types'
 import { gitDiffKey, dirname, repoRelativePath } from './agent-files-utils'
+import { normalizeLanguageCode } from '../../lib/i18n-language'
+import { useGitStore } from '../../stores/git-store'
+import { actionableSourceChanges } from '../chat/file-change-utils'
 
 export function useAgentFilesActions(state: AgentFilesState) {
   const {

@@ -24,6 +24,7 @@ import {
   type ChannelProviderDescriptor
 } from '@renderer/stores/channel-store'
 import { cn } from '@renderer/lib/utils'
+import { QrLoginPanel } from './plugin-panel-qr'
 export function CredentialsPanel({
   channel,
   descriptor

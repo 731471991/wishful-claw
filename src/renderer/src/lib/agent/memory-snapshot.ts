@@ -1,5 +1,6 @@
 import { IPC } from '@renderer/lib/ipc/channels'
 import type { IPCClient } from '@renderer/lib/tools/tool-types'
+import { GlobalMemorySnapshot, LayeredMemorySnapshot, SessionMemoryScope, joinFsPath } from './memory-files'
 
 
 export function getLayeredMemorySnapshot(): LayeredMemorySnapshot {

@@ -1,6 +1,11 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { isRecord, readStringProp, readArrayProp, readString, readStringArray, safeHttpUrl, formatFieldValue, stringifyData } from './extension-tool-helpers'
+import { useExtensionStore } from '../../stores/extension-store'
+import { Badge } from '@renderer/components/ui/badge'
+import { Button } from '@renderer/components/ui/button'
+import { Coffee, CreditCard, ExternalLink, MapPin, PackageSearch, ReceiptText, Store } from 'lucide-react'
+import { ExtensionToolResult } from '@renderer/lib/extensions/extension-result'
 
 function ComponentShell({
   icon,

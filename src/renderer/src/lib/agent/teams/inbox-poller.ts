@@ -4,6 +4,8 @@ import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initialize
 import { inboxPollerState } from './inbox-poller-state'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { useTeamStore } from '@renderer/stores/team-store'
+import { teamEvents } from './events'
+import { TeamMessage } from './types'
 
 
 export async function sendApprovalResponse(params: {

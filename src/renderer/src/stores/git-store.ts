@@ -13,6 +13,8 @@ export type {
   GitCommitHistoryItem,
   GitBranchItem,
 } from './git-store-types'
+import { getErrorMessage } from '../lib/agent/memory-json-parsers'
+import { GitBranchItem, GitCommitHistoryItem, GitRepositoryItem, GitStatusDetailed } from './git-store-types'
 
 export const useGitStore = create<GitStore>((set, get) => ({
   repositories: [],

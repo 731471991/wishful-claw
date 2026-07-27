@@ -1,6 +1,11 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ExtensionComponentRenderer, SchemaRenderer } from './extension-tool-components'
+import { ToolResultContent } from '../../lib/api/types'
+import { MONO_FONT } from '../../lib/constants'
+import { parseExtensionToolResult } from '../../lib/extensions/extension-result'
+import { stringifyData } from './extension-tool-helpers'
+import { Puzzle } from 'lucide-react'
 
 export function ExtensionToolResultCard({
   output

@@ -13,6 +13,7 @@ import {
   DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
 } from '../../../shared/messagepack/binary-ipc'
 import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, isGoalRow, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable } from './goal-store-helpers'
+import { SessionGoal } from './goal-store-helpers'
 export { EMPTY_SESSION_GOAL_EVENTS }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({

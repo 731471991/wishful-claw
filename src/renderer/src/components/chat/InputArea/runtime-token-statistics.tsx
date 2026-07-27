@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import type { MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
+import { ComposerRuntimeStatus } from './runtime-status'
 export function RuntimeTokenStatistics({
   sessionId,
   messages,

@@ -5,7 +5,10 @@ import { runSidecarTextRequest } from '@renderer/lib/ipc/agent-bridge'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import type { ProviderConfig } from '@renderer/lib/api/types'
-import {
+import type { DailyRollupOptions } from './memory-automation-utils'
+import { TargetDescriptor, escapeRegExp, findRootForScope, hasUsableProvider, resolveAutomationProvider, yesterdayString } from './memory-automation-utils'
+import { getProjectMemoryCandidatePaths, joinFsPath } from './memory-files'
+
 // Extracted from memory-automation.ts
 export async function runDailyMemoryRollup(options: DailyRollupOptions = {}): Promise<void> {
   const settings = useSettingsStore.getState()

@@ -44,6 +44,7 @@ export type {
   SidecarApprovalRequest,
   SidecarApprovalResponse,
 } from './sidecar-protocol-types'
+import { SidecarPlanExecutionContext, SidecarPlanRevisionContext, SidecarPluginChannelContext, SidecarSlashCommandContext, SidecarSystemCommandContext, isRecord } from './sidecar-protocol-types'
 
 export function normalizeSidecarRecord(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {}

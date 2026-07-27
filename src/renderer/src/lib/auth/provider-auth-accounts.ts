@@ -16,6 +16,7 @@ import {
   syncCopilotQuota
 } from './copilot'
 import { sendChannelCode, verifyChannelCode, fetchChannelUserInfo } from './channel'
+import { findAccountById, getAccountsArray, getProviderById, pickUsableAccount, resolveOAuthConfig, setProviderAuth } from './provider-auth-utils'
 
 const REFRESH_SKEW_MS = 2 * 60 * 1000
 

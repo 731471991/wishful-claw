@@ -6,6 +6,10 @@ import { FileCode, Folder, Search, Clock, Bot } from 'lucide-react'
 import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
 import { COMMAND_TOOL_NAMES } from './types'
 import { formatStructuredInputValue } from './search-utils'
+import { detectLang, lineCount } from '../FileChangeCard/utils'
+import { EditPayloadPane } from './input-renderers'
+import { InputField } from './shared'
+import { getSkillNameFromInput, normalizeWidgetPayload } from './utils'
 export function StructuredInput({
   name,
   input

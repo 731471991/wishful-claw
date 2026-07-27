@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
+import { formatGoalElapsedSeconds, formatGoalTokens, validateGoalObjective } from '../../lib/agent/goal-context'
 import {
   AlertTriangle,
   CheckCircle2,

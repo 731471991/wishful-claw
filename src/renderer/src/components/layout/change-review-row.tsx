@@ -8,6 +8,12 @@ import { statusLabelKey, statusTone, actionLabel } from './session-change-utils'
 import {  AnimatePresence, motion } from 'motion/react'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import { MONO_FONT } from '../../lib/constants'
+import { fileName } from '../chat/FileChangeCard/utils'
+import { ChangeDetail } from '../chat/change-review-helpers'
+import { DiffSummaryStats } from '../chat/change-summary-utils'
+import { actionableSourceChanges } from '../chat/file-change-utils'
+import { X } from 'lucide-react'
 
 export function ChangeRow({
   change,

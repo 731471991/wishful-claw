@@ -1,5 +1,14 @@
 import { agentBridge } from './agent-bridge'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
+import { CompressionResult } from '../agent/context-compression-config'
+import { toAgentEvent } from '../agent/stream-event-adapter'
+import { AgentEvent } from '../agent/types'
+import { RESPONSES_SESSION_SCOPE_SIDECAR_TEXT_REQUEST, withAuxiliaryResponsesRequestPolicy } from '../api/responses-session-policy'
+import { ProviderConfig, StreamEvent, ToolDefinition, UnifiedMessage } from '../api/types'
+import { mapAgentEventToProviderEvents, toProviderErrorEvent } from './agent-bridge-events'
+import { agentStream } from './agent-stream-receiver'
+import { buildSidecarAgentRunRequest, isNativeSidecarProviderConfig, sanitizeSidecarMessageMeta } from './sidecar-protocol'
+import { SidecarSlashCommandContext, SidecarSystemCommandContext } from './sidecar-protocol-types'
 
 const DEBUG_BODY_READ_TIMEOUT_MS = 15_000
 

@@ -43,6 +43,8 @@ import {
   ScmFileRowView
 } from './GitPage/utils'
 import type { TFunction } from 'i18next'
+import { Textarea } from '@renderer/components/ui/textarea'
+import { CloudDownload, CloudUpload, EllipsisVertical, Upload, Wand2 } from 'lucide-react'
 
 interface ScmSidebarProps {
   scmWidth: number
@@ -135,6 +137,7 @@ export function ScmSidebar(props: ScmSidebarProps): React.JSX.Element {
   } = props
 
   return (
+        <>
           <aside
             style={{ width: scmWidth }}
             className="flex min-w-0 shrink-0 flex-col border-r border-border/60 bg-muted/10"
@@ -598,6 +601,6 @@ export function ScmSidebar(props: ScmSidebarProps): React.JSX.Element {
             onPointerDown={onScmResizePointerDown}
             className="w-[5px] shrink-0 cursor-col-resize border-x border-transparent bg-border/50 hover:bg-primary/35"
           />
-
+        </>
   )
 }

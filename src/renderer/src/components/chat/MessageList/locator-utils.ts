@@ -21,6 +21,7 @@ import type {
   MessageLocatorSource,
 } from './utils'
 import { ASSISTANT_RAIL_PREVIEW_LIMIT, EMPTY_ASSISTANT_RAIL_LAYOUT } from './utils'
+import { AssistantRailLayout, AssistantRailLayoutRow, AssistantRailMarkerKind, AssistantReplyRailItem } from './utils'
 
 export function normalizeLocatorPreview(text: string): string {
   return text.replace(/\s+/g, ' ').trim()

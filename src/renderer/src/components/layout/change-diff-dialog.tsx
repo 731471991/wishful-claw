@@ -14,6 +14,11 @@ import {
 } from '@renderer/components/chat/file-change-utils'
 import type { ChangeRow, GitChangeRow } from './agent-files-types'
 import { dirname, gitDiffKey, repoRelativePath } from './agent-files-utils'
+import { DialogContent } from '../ui/dialog'
+import { joinPath, parseUnifiedDiff } from './agent-files-utils'
+import { AgentFilesEmptyState, ChangeItemRow } from './change-item-row'
+import { Dialog } from '@renderer/components/ui/dialog'
+import { ExternalLink, FileCode, Loader2, X } from 'lucide-react'
 
 export function ChangeDiffDialog({
   open,

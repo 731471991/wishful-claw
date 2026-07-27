@@ -13,6 +13,9 @@ import { cn } from '@renderer/lib/utils'
 import { AnimatePresence, motion } from 'motion/react'
 import type { TreeNode, TreeEditState, TreeActions } from './file-tree-types'
 import { fileIcon, DepthGuides } from './file-tree-utils'
+import { IGNORED_DIRS } from './file-tree-utils'
+import { Check } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 // --- Inline input for rename / new item ---
 

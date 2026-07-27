@@ -4,6 +4,7 @@ import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { ensureProviderAuthReady } from '@renderer/lib/auth/provider-auth'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { usePetAgentStore, type PetVoiceMode } from '@renderer/stores/pet-agent-store'
+import { PetVoiceParams, resolvePetVoiceMode } from './pet-voice'
 
 /**
  * Voice playback for the pet's AI speech. Synthesis runs in the native

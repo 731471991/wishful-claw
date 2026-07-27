@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import type { ChangeRow } from './agent-files-types'
 import { dirname, rowOpLabel, rowOpTone } from './agent-files-utils'
+import { fileName } from '../chat/FileChangeCard/utils'
+import { FileCode, RotateCcw } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 export function AgentFilesEmptyState({
   title,

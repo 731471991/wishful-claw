@@ -1,6 +1,7 @@
 import type { GitStatusFile, GitBranchItem } from '@renderer/stores/git-store'
 import type { DiffChunk } from '@renderer/components/chat/file-change-utils'
 import type { GitSection, GitChangeRow, ChangeRow } from './agent-files-types'
+import { foldContext } from '../chat/FileChangeCard/utils'
 
 export function dirname(input: string): string {
   const normalized = input.replace(/\\/g, '/')

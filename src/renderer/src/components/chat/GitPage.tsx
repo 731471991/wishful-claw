@@ -2,9 +2,6 @@ import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-
-import { useGitPageHandlers } from './git-page-handlers'
-import { ScmSidebar } from './GitPage/ScmSidebar'
   ChevronDown,
   CloudDownload,
   CloudUpload,
@@ -16,6 +13,8 @@ import { ScmSidebar } from './GitPage/ScmSidebar'
   Upload,
   Wand2
 } from 'lucide-react'
+import { useGitPageHandlers } from './git-page-handlers'
+import { ScmSidebar } from './GitPage/ScmSidebar'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
@@ -306,6 +305,7 @@ export function GitPage(): React.JSX.Element {
     i18n
   })
 
+  if (!activeProject) {
     return (
       <div className="flex flex-1 items-center justify-center bg-background px-6">
         <div className="max-w-md text-center">

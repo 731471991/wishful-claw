@@ -18,6 +18,7 @@ import {
   detectLang
 } from '../utils'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { stripReadLineNumbers } from '../utils'
 
 // ── ImageOutputBlock ──
 

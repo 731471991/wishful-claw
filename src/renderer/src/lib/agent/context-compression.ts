@@ -44,6 +44,7 @@ export {
   shouldCompress,
   shouldPreCompress,
 } from './context-compression-config'
+import { CompressionResult } from './context-compression-config'
 
 export function isCompactBoundaryMessage(message: UnifiedMessage): boolean {
   return message.role === 'system' && !!message.meta?.compactBoundary

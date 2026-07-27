@@ -1,5 +1,14 @@
 import { stripThinkTagMarkers, upsertBufferedToolUse, _explicitVisibleSessionIds, invalidateVisibleSessionCache, setSessionForegroundVisibility, debouncedMarkSessionUpdate, cancelDebouncedMarkSessionUpdate } from './session-runtime-utils'
 import { useChatStore } from '@renderer/stores/chat-store'
+import { ThinkingBlock } from '../../components/chat/ThinkingBlock'
+import { useBackgroundSessionStore } from '../../stores/background-session-store'
+import { ContentBlock, TokenUsage, ToolUseBlock, UnifiedMessage } from '../api/types'
+import { appendOrUpsertContentBlock } from '../content-blocks'
+import { createResidentRequestDebugInfo } from '../debug-store'
+import { emitSessionRuntimeSync } from '../session-runtime-sync'
+import { recordStreamingForegroundFlush } from '../streaming-perf'
+import { summarizeToolInputForHistory } from '../tools/tool-input-sanitizer'
+import { mergeUsageSnapshot } from './usage-merge'
 
 function resolveChatStoreSeed(sessionId: string, messageId: string): UnifiedMessage | undefined {
   return useChatStore

@@ -36,6 +36,7 @@ import {
   resolveEditSummaryDiff, trackedStatusLabelKey, trackedTransportLabelKey,
   trackedStatusTone, trackedStatusDotTone
 } from './FileChangeCard/utils'
+import { FilePreviewShell, SnapshotSummaryNotice } from './file-change-previews'
 
 // ── Types ────────────────────────────────────────────────────────
 

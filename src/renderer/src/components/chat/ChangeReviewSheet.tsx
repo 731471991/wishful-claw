@@ -10,6 +10,8 @@ import type { AgentRunChangeSet } from '@renderer/stores/agent-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { CodeDiffViewer } from './CodeDiffViewer'
 import { ActionLabel, CopyIconButton, CodeFrame, EmptyState, ChangeDetail, ChangeRow } from './change-review-helpers'
+import { useAggregatedChangeSummaries } from './change-summary-utils'
+import { aggregateDisplayableRunFileChanges, matchesAggregatedChangeId } from './file-change-utils'
 
 export function ChangeReviewPanelContent({
   runId,

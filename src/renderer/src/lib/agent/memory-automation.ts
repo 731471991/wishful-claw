@@ -20,6 +20,9 @@ import {
   writeWithRetry,
   runPhase2ForRoot
 } from './memory-automation-internal'
+import { AUTO_RUN_DEBOUNCE_MS, INVALID_MEMORY_JSON_ERROR, RunSessionOptions, TargetDescriptor, buildConversationExcerpt, buildMemoryRootInputs, buildStage1Input, findRootForScope, fingerprintContent, hasUsableProvider, resolveAutomationProvider, summarizeMemorySnapshot, targetForRoot } from './memory-automation-utils'
+import { loadLayeredMemorySnapshot } from './memory-files'
+import { getErrorMessage } from './memory-json-parsers'
 
 export async function runMemoryAutomationForSession(options: RunSessionOptions): Promise<void> {
   const settings = useSettingsStore.getState()

@@ -16,6 +16,7 @@ import {
   setSelectionOffsets,
   editorDocumentToPlainText,
 } from './file-aware-editor-utils'
+import { EditorSelectionOffsets } from './file-aware-editor-utils'
 
 export const FileAwareEditor = React.forwardRef<FileAwareEditorHandle, FileAwareEditorProps>(
   function FileAwareEditor(

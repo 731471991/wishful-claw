@@ -57,6 +57,7 @@ export type {
   SettingsTab,
   DetailPanelContent
 } from './ui-types'
+import { RightPanelTabInstance } from './ui-types'
 export type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './preview-panel-helpers'
 
 // ─── Store Implementation ───
