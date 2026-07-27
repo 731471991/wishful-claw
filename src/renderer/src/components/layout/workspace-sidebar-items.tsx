@@ -72,7 +72,7 @@ function sortSessions(sessions: Session[]): Session[] {
   })
 }
 
-function sortProjects(projects: Project[]): Project[] {
+export function sortProjects(projects: Project[]): Project[] {
   return [...projects].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1
     if (!a.pinned && b.pinned) return 1

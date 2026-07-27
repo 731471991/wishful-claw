@@ -47,7 +47,7 @@ import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFo
 import { MoreHorizontal } from 'lucide-react'
 
 // ─── Helpers ───
-import { SessionItem, ProjectItem } from './workspace-sidebar-items'
+import { SessionItem, ProjectItem, sortProjects } from './workspace-sidebar-items'
 import { ResizeHandle, renderNavItem } from './workspace-sidebar-nav'
 
 export function WorkspaceSidebar(): React.JSX.Element | null {

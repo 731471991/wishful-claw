@@ -22,11 +22,11 @@ import { appendTeamRuntimeMessage, consumeTeamRuntimeMessages } from './runtime-
 
 
 
-let pollerTimer: ReturnType<typeof setInterval> | null = null
+export let pollerTimer: ReturnType<typeof setInterval> | null = null
 
-let pollerStartedAt = 0
+export let pollerStartedAt = 0
 
-let activePollTeamKey: string | null = null
+export let activePollTeamKey: string | null = null
 
 let lastLeadMessageTimestamp = 0
 
