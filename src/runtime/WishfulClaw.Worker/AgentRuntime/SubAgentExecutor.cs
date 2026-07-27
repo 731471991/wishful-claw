@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Text;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -142,9 +143,16 @@ internal static class SubAgentExecutor
             childState.Dispose();
         }
 
+        // Build tool call summary for main agent context (Phase 2)
+        var toolCallSummary = BuildToolCallSummary(collector.ToolCallSummaries);
+        var toolResultText = string.IsNullOrEmpty(toolCallSummary)
+            ? subAgentOutput
+            : subAgentOutput + "\n\n" + toolCallSummary;
+
         // Emit sub_agent_end event to parent's stream
         var resultJson = BuildResultJson(
-            definition.Name, toolCallId, subAgentOutput, !subAgentError, childState.StopReason);
+            definition.Name, toolCallId, subAgentOutput, !subAgentError, childState.StopReason,
+            collector.ToolCallCount, collector.Iterations);
 
         await AgentRuntimeTools.EmitAsync(
             parentState, context,
@@ -157,9 +165,11 @@ internal static class SubAgentExecutor
         WorkerLog.Info(
             $"sub-agent end parentRunId={parentState.RunId} toolUseId={toolCallId} " +
             $"agent={definition.Name} success={!subAgentError} " +
-            $"outputLen={subAgentOutput.Length}");
+            $"outputLen={subAgentOutput.Length} toolCalls={collector.ToolCallCount} " +
+            $"iterations={collector.Iterations}");
 
-        return new ToolResult(subAgentOutput, subAgentError);
+        // Return the enriched text (report + tool call summary) to the main agent
+        return new ToolResult(toolResultText, subAgentError);
     }
 
     // ── Definition resolution ──
@@ -271,9 +281,16 @@ internal static class SubAgentExecutor
             writer.WriteString(
                 "text",
                 "<system-reminder>\n" +
-                "Your final assistant message is returned verbatim to the parent agent as the task report. " +
-                "End every run with a self-contained report, whether the task succeeded, partially succeeded, " +
-                "was blocked, or failed. Do not call tools after writing that final report.\n" +
+                "Your final assistant message is returned verbatim to the parent agent as the task report.\n" +
+                "The parent agent relies on this report to answer follow-up questions from the user, " +
+                "so it MUST be self-contained and include:\n" +
+                "- What you did and why\n" +
+                "- Key findings or information discovered\n" +
+                "- What was modified (file names, specific changes)\n" +
+                "- Any problems encountered and how they were resolved\n" +
+                "Do NOT just say \"done\" or \"completed\" — the parent agent must be able to answer " +
+                "questions like \"what files were read?\" or \"what was changed?\" from your report alone.\n" +
+                "Do not call tools after writing that final report.\n" +
                 "</system-reminder>");
             writer.WriteEndObject();
             writer.WriteEndArray();
@@ -307,7 +324,9 @@ internal static class SubAgentExecutor
         string toolUseId,
         string output,
         bool success,
-        string? stopReason)
+        string? stopReason,
+        int toolCallCount,
+        int iterations)
     {
         var buffer = new ArrayBufferWriter<byte>();
         using (var writer = new Utf8JsonWriter(buffer, WriteOptions))
@@ -318,10 +337,100 @@ internal static class SubAgentExecutor
             writer.WriteBoolean("success", success);
             writer.WriteString("output", output);
             writer.WriteString("stopReason", stopReason ?? "completed");
+            writer.WriteNumber("toolCallCount", toolCallCount);
+            writer.WriteNumber("iterations", iterations);
             writer.WriteEndObject();
         }
         using var document = JsonDocument.Parse(buffer.WrittenMemory);
         return document.RootElement.Clone();
+    }
+
+    /// <summary>
+    /// Builds a concise tool call summary appended to the tool_result
+    /// so the main agent has context about what the sub-agent did.
+    /// Format: "工具调用摘要：\n1. Read(agents.md) → 成功\n..."
+    /// </summary>
+    private static string BuildToolCallSummary(IReadOnlyList<ToolCallSummary> summaries)
+    {
+        if (summaries.Count == 0) return string.Empty;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("工具调用摘要：");
+        for (var i = 0; i < summaries.Count; i++)
+        {
+            var s = summaries[i];
+            var keyParam = ExtractKeyParam(s.Name, s.Input);
+            var statusText = s.Status switch
+            {
+                "completed" => "成功",
+                "error" => "失败",
+                _ => s.Status
+            };
+            var paramPart = string.IsNullOrEmpty(keyParam) ? "" : $"({keyParam})";
+            sb.AppendLine($"{i + 1}. {s.Name}{paramPart} → {statusText}");
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// Extracts the first key parameter from a tool call input for the summary.
+    /// E.g., Read → file_path, Bash → command, Grep → pattern.
+    /// </summary>
+    private static string ExtractKeyParam(string toolName, JsonElement? input)
+    {
+        if (input is not { ValueKind: JsonValueKind.Object }) return string.Empty;
+
+        var el = input.Value;
+        var key = toolName switch
+        {
+            "Read" or "Edit" or "Write" or "WriteFile" or "CreateFile" => "file_path",
+            "Bash" or "ShellExec" => "command",
+            "Glob" => "pattern",
+            "Grep" => "pattern",
+            "Task" => "description",
+            "WebFetch" or "WebSearch" => "url",
+            _ => null
+        };
+
+        // Try the mapped key first, then fall back to the first property
+        if (key is not null && el.TryGetProperty(key, out var prop) && prop.ValueKind == JsonValueKind.String)
+        {
+            return TruncateForSummary(prop.GetString() ?? string.Empty, toolName);
+        }
+
+        // Fall back to first string property
+        foreach (var p in el.EnumerateObject())
+        {
+            if (p.Value.ValueKind == JsonValueKind.String)
+            {
+                return TruncateForSummary(p.Value.GetString() ?? string.Empty, toolName);
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string TruncateForSummary(string value, string toolName)
+    {
+        // For Bash commands, truncate at first && or |
+        if (toolName is "Bash" or "ShellExec")
+        {
+            var cutIdx = value.IndexOfAny(['&', '|']);
+            if (cutIdx > 0) value = value[..cutIdx].Trim();
+        }
+
+        // Only show file name, not full path
+        if (toolName is "Read" or "Edit" or "Write" or "WriteFile" or "CreateFile")
+        {
+            var lastSlash = value.LastIndexOfAny(['/', '\\']);
+            if (lastSlash >= 0 && lastSlash < value.Length - 1)
+            {
+                value = value[(lastSlash + 1)..];
+            }
+        }
+
+        // Max 40 chars
+        return value.Length > 40 ? value[..40] + "..." : value;
     }
 
     // ── Helpers ──

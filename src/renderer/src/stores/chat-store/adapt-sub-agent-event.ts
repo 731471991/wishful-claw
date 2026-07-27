@@ -37,6 +37,8 @@ export function adaptSubAgentEvent(
       const output = String(rawResult.output ?? '')
       const success = rawResult.success === true
       const stopReason = String(rawResult.stopReason ?? 'completed')
+      const toolCallCount = Number(rawResult.toolCallCount ?? 0)
+      const iterations = Number(rawResult.iterations ?? 0)
       return {
         type: 'sub_agent_end',
         subAgentName,
@@ -45,8 +47,8 @@ export function adaptSubAgentEvent(
           success,
           output,
           reportSubmitted: output.length > 0,
-          toolCallCount: 0,
-          iterations: 0,
+          toolCallCount,
+          iterations,
           endReason: stopReason === 'completed' ? 'completed' : stopReason === 'max_iterations' ? 'max_iterations' : 'error',
           usage: {
             inputTokens: 0,
