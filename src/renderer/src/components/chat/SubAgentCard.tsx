@@ -13,7 +13,7 @@ import {
   getStepStatusIcon
 } from '@renderer/lib/agent/sub-agents/step-descriptions'
 import {
-  getPendingApproval,
+  isEarlyResolved,
   resolveSubAgentApproval
 } from '@renderer/lib/tools/sub-agent-approval'
 import { useAgentStore } from '@renderer/stores/agent-store'
@@ -91,7 +91,8 @@ function SubAgentStepList({
         const desc = generateStepDescription(tc)
         const statusIcon = getStepStatusIcon(tc.status)
         const statusColor = getStepStatusColor(tc.status)
-        const pendingApproval = tc.status === 'pending_approval' ? getPendingApproval(tc.id) : null
+        const needsApproval = tc.status === 'pending_approval'
+        const alreadyResolved = needsApproval && isEarlyResolved(tc.id)
         return (
           <div
             key={tc.id ?? idx}
@@ -101,7 +102,7 @@ function SubAgentStepList({
               {statusIcon}
             </span>
             <span className="min-w-0 truncate text-foreground/70">{desc}</span>
-            {pendingApproval ? (
+            {needsApproval && !alreadyResolved ? (
               <span className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
@@ -126,6 +127,8 @@ function SubAgentStepList({
                   拒绝
                 </button>
               </span>
+            ) : alreadyResolved ? (
+              <span className="shrink-0 text-[10px] text-muted-foreground/50">处理中...</span>
             ) : null}
           </div>
         )

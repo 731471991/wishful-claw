@@ -388,7 +388,8 @@ internal static class SubAgentExecutor
             "Glob" => "pattern",
             "Grep" => "pattern",
             "Task" => "description",
-            "WebFetch" or "WebSearch" => "url",
+            "WebFetch" => "url",
+            "WebSearch" => "query",
             _ => null
         };
 

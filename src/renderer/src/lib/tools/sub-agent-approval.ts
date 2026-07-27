@@ -6,12 +6,21 @@
  * registers a pending approval promise and returns it. The SubAgentCard UI
  * renders approve/reject buttons, and resolving the promise sends the response
  * back to the Worker.
+ *
+ * Race condition handling: the stream event (tool_call_start with pending_approval
+ * status) may arrive at the renderer before the reverse-request reaches the
+ * renderer tool bridge. To handle this, early resolutions are cached: if the
+ * user clicks approve/reject before the reverse-request arrives, the result
+ * is stored and applied when the request arrives.
  */
 
 const pendingApprovals = new Map<
   string,
   { resolve: (approved: boolean) => void; toolName: string; input: Record<string, unknown> }
 >()
+
+/** Early resolutions: user clicked before reverse-request arrived. */
+const earlyResolutions = new Map<string, boolean>()
 
 export interface SubAgentApprovalRequest {
   toolCallId: string
@@ -27,6 +36,8 @@ export interface SubAgentApprovalResponse {
  * Called by the renderer tool bridge when a sub-agent:approve-tool
  * reverse-request arrives. Returns a promise that resolves when the
  * user clicks approve/reject in the SubAgentCard UI.
+ *
+ * If the user already clicked (early resolution), resolves immediately.
  */
 export async function handleSubAgentApprovalRequest(
   params: unknown
@@ -39,6 +50,13 @@ export async function handleSubAgentApprovalRequest(
 
   if (!toolCallId) {
     return { approved: false }
+  }
+
+  // Check if user already resolved before the request arrived
+  if (earlyResolutions.has(toolCallId)) {
+    const approved = earlyResolutions.get(toolCallId)!
+    earlyResolutions.delete(toolCallId)
+    return { approved }
   }
 
   return new Promise<SubAgentApprovalResponse>((resolve) => {
@@ -59,17 +77,6 @@ export async function handleSubAgentApprovalRequest(
 }
 
 /**
- * Returns all pending approval requests for UI rendering.
- */
-export function getPendingApprovals(): SubAgentApprovalRequest[] {
-  return Array.from(pendingApprovals.entries()).map(([toolCallId, { toolName, input }]) => ({
-    toolCallId,
-    toolName,
-    input
-  }))
-}
-
-/**
  * Returns a specific pending approval by toolCallId, or null if not pending.
  */
 export function getPendingApproval(toolCallId: string): SubAgentApprovalRequest | null {
@@ -81,13 +88,27 @@ export function getPendingApproval(toolCallId: string): SubAgentApprovalRequest 
 /**
  * Resolves a pending approval. Called by SubAgentCard when user clicks
  * approve or reject.
+ *
+ * If the reverse-request hasn't arrived yet (early resolution), the result
+ * is cached and applied when the request arrives.
  */
 export function resolveSubAgentApproval(toolCallId: string, approved: boolean): void {
   const entry = pendingApprovals.get(toolCallId)
   if (entry) {
     pendingApprovals.delete(toolCallId)
     entry.resolve(approved)
+  } else {
+    // Early resolution: cache until the reverse-request arrives
+    earlyResolutions.set(toolCallId, approved)
   }
+}
+
+/**
+ * Checks if a tool call has been early-resolved (user clicked before
+ * the reverse-request arrived). Used by UI to show "processing" state.
+ */
+export function isEarlyResolved(toolCallId: string): boolean {
+  return earlyResolutions.has(toolCallId)
 }
 
 /**
@@ -98,6 +119,7 @@ export function cancelAllPendingApprovals(): void {
     entry.resolve(false)
   }
   pendingApprovals.clear()
+  earlyResolutions.clear()
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
