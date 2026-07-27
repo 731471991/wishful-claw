@@ -185,7 +185,7 @@ function ToolCallCardInner({
   const displayError = suppressErrorPanel
     ? null
     : error || (status === 'error' ? outputError : null)
-  const shouldRenderOutputPanels = !displayError || !outputIsErrorOnly
+  const shouldRenderOutputPanels = (!displayError || !outputIsErrorOnly) && (!isProcessing || isCommandTool)
   const hideLivePayload =
     isProcessing &&
     (name === 'Write' || name === 'Edit') &&
@@ -557,7 +557,6 @@ function ToolCallCardInner({
                 'Skill',
                 'visualize_show_widget'
               ].includes(name) &&
-              !(isProcessing && ['WebSearch', 'WebFetch'].includes(name)) &&
               (hasImageBlocks(output) ? (
                 <ImageOutputBlock output={output} />
               ) : outputText ? (
