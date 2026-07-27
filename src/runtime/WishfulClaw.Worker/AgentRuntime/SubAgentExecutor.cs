@@ -82,8 +82,22 @@ internal static class SubAgentExecutor
         var childState = new AgentRuntimeRunState(childRunId, parentState.SessionId);
         childState.SuppressTransportEvents = true;
 
-        // Collector captures text events from the child loop
-        var collector = new SubAgentRunCollector();
+        // Collector captures text events from the child loop and forwards
+        // key events to the parent's stream with sub_agent_ prefix wrapping.
+        var collector = new SubAgentRunCollector
+        {
+            ForwardEvent = async (evt) =>
+            {
+                // Wrap the event with sub-agent identification fields and
+                // emit to the parent's stream (which is NOT suppressed).
+                var wrappedEvent = evt with
+                {
+                    SubAgentName = definition.Name,
+                    ToolUseId = toolCallId
+                };
+                await AgentRuntimeTools.EmitAsync(parentState, context, wrappedEvent);
+            }
+        };
         childState.EventObserver = collector.ObserveAsync;
 
         childState.ReplaceParameters(childParameters);

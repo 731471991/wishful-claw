@@ -1,18 +1,30 @@
+using System.Text.Json;
+
 namespace WishfulClaw.Worker.AgentRuntime;
 
 /// <summary>
-/// Collects text events from a sub-agent's event stream.
+/// Collects text events from a sub-agent's event stream and forwards
+/// key events to the parent's stream via a callback.
+///
 /// The final assistant text is accumulated from "text" events and returned
-/// as the sub-agent's output.
+/// as the sub-agent's output. Tool call details are collected for the
+/// context summary that gets appended to the tool_result in Phase 2.
 /// </summary>
 internal sealed class SubAgentRunCollector
 {
     private readonly List<string> _textParts = [];
-    private string? _lastText;
     private int _toolCallCount;
     private int _iterations;
+    private readonly List<ToolCallSummary> _toolCallSummaries = [];
 
-    public ValueTask ObserveAsync(AgentRuntimeStreamEvent evt)
+    /// <summary>
+    /// Callback invoked for each event that should be forwarded to the
+    /// parent's stream. The SubAgentExecutor sets this to wrap events
+    /// with sub_agent_ prefix and emit to the parent stream.
+    /// </summary>
+    public Func<AgentRuntimeStreamEvent, ValueTask>? ForwardEvent { get; set; }
+
+    public async ValueTask ObserveAsync(AgentRuntimeStreamEvent evt)
     {
         switch (evt.Type)
         {
@@ -21,20 +33,60 @@ internal sealed class SubAgentRunCollector
                 if (!string.IsNullOrEmpty(evt.Text))
                 {
                     _textParts.Add(evt.Text);
-                    _lastText = evt.Text;
                 }
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_text_delta",
+                    Text: evt.Text));
                 break;
+
+            case "thinking_delta":
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_thinking_delta",
+                    Thinking: evt.Thinking));
+                break;
+
             case "tool_call_start":
                 _toolCallCount++;
+                if (evt.ToolCall is not null)
+                {
+                    _toolCallSummaries.Add(new ToolCallSummary(
+                        evt.ToolCall.Id,
+                        evt.ToolCall.Name,
+                        evt.ToolCall.Input,
+                        "running"));
+                }
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_tool_call",
+                    ToolCall: evt.ToolCall));
                 break;
+
+            case "tool_call_result":
+                if (evt.ToolCall is not null)
+                {
+                    var idx = _toolCallSummaries.FindIndex(t => t.Id == evt.ToolCall.Id);
+                    if (idx >= 0)
+                    {
+                        _toolCallSummaries[idx] = _toolCallSummaries[idx] with
+                        {
+                            Status = evt.ToolCall.Status
+                        };
+                    }
+                }
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_tool_call",
+                    ToolCall: evt.ToolCall));
+                break;
+
             case "iteration_start":
                 if (evt.Iteration.HasValue)
                 {
                     _iterations = evt.Iteration.Value;
                 }
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_iteration",
+                    Iteration: evt.Iteration));
                 break;
         }
-        return ValueTask.CompletedTask;
     }
 
     /// <summary>
@@ -50,8 +102,33 @@ internal sealed class SubAgentRunCollector
             return string.Empty;
         }
 
-        // Concatenate all text deltas — the agent loop emits text as
-        // streaming deltas, so the full output is the concatenation.
         return string.Concat(_textParts);
     }
+
+    /// <summary>
+    /// Tool call summaries collected during the sub-agent run.
+    /// Used by SubAgentExecutor to build the context summary for Phase 2.
+    /// </summary>
+    public IReadOnlyList<ToolCallSummary> ToolCallSummaries => _toolCallSummaries;
+
+    public int Iterations => _iterations;
+    public int ToolCallCount => _toolCallCount;
+
+    private async ValueTask ForwardAsync(AgentRuntimeStreamEvent evt)
+    {
+        if (ForwardEvent is not null)
+        {
+            await ForwardEvent(evt);
+        }
+    }
 }
+
+/// <summary>
+/// Summary of a single tool call within a sub-agent run.
+/// Used to build the context summary appended to the tool_result.
+/// </summary>
+internal sealed record ToolCallSummary(
+    string Id,
+    string Name,
+    JsonElement Input,
+    string Status);

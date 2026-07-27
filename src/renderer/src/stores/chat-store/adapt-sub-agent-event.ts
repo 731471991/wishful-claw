@@ -70,7 +70,20 @@ export function adaptSubAgentEvent(
         subAgentName,
         toolUseId,
         iteration: Number(event.iteration ?? 0),
-        assistantMessage: event.assistantMessage as unknown as UnifiedMessage
+        assistantMessage: (event.assistantMessage as unknown as UnifiedMessage) ?? {
+          id: `subagent_iter_${toolUseId}_${Number(event.iteration ?? 0)}`,
+          role: 'assistant' as const,
+          content: [],
+          createdAt: Date.now()
+        }
+      }
+    }
+    case 'sub_agent_thinking_delta': {
+      return {
+        type: 'sub_agent_thinking_delta',
+        subAgentName,
+        toolUseId,
+        thinking: String(event.thinking ?? '')
       }
     }
     case 'sub_agent_tool_call': {
