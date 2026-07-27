@@ -54,7 +54,7 @@ public sealed class FileWriteTool : IToolExecutor
                 catch { /* file may be locked or binary */ }
             }
 
-            await File.WriteAllTextAsync(path, content, Encoding.UTF8, context.CancellationToken);
+            await WriteAndFlushAsync(path, content, context.CancellationToken);
 
             // Record change for tracking/rollback
             if (!string.IsNullOrEmpty(context.RunId))

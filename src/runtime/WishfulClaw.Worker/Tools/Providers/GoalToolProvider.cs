@@ -22,8 +22,8 @@ internal sealed class GoalToolProvider : IToolProvider
             "create_goal",
             "Create a new goal for the agent session.",
             ToolSchemaBuilder.Object(
-                new() { ["goal"] = ToolSchemaBuilder.String("The goal description.") },
-                ["goal"])));
+                new() { ["objective"] = ToolSchemaBuilder.String("The goal description.") },
+                ["objective"])));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "update_goal",
@@ -31,7 +31,7 @@ internal sealed class GoalToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new()
                 {
-                    ["goal"] = ToolSchemaBuilder.String("Updated goal description."),
+                    ["objective"] = ToolSchemaBuilder.String("Updated goal description."),
                     ["status"] = ToolSchemaBuilder.String("New status.", ["active", "completed", "failed"])
                 })));
     }

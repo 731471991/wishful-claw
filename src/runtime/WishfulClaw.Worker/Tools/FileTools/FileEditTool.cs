@@ -78,7 +78,7 @@ public sealed class FileEditTool : IToolExecutor
                 updated = updated.Replace("\n", "\r\n");
             }
 
-            await File.WriteAllTextAsync(path, updated, Encoding.UTF8, context.CancellationToken);
+            await WriteAndFlushAsync(path, updated, context.CancellationToken);
 
             // Record change for tracking/rollback
             if (!string.IsNullOrEmpty(context.RunId))
