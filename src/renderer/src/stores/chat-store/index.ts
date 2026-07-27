@@ -216,13 +216,17 @@ export const useChatStore = create<ChatStore>()(
 
         if (!isChatStreamEvent(event)) continue
 
-        // Any stream event (text_delta, iteration_start, tool_call_start, etc.)
-        // means the request succeeded — clear retry state immediately.
-        // This is safe because 429 retries don't produce stream events; only
-        // a successful response does. The banner has no exit animation, so
-        // it disappears instantly without flickering. request_retry updates
-        // retryState in-place (same DOM node, only the number changes).
-        if (event.type !== 'request_retry' && event.type !== 'error' && event.type !== 'loop_end') {
+        // Only clear retry state on events that prove the request succeeded:
+        // thinking_delta, text_delta, tool_use_streaming_start, tool_call_start.
+        // NOT on request_debug (emitted before each retry attempt),
+        // iteration_start, message_end, etc. — those can occur during retry
+        // sequences and would cause the banner to flicker.
+        if (
+          event.type === 'thinking_delta' ||
+          event.type === 'text_delta' ||
+          event.type === 'tool_use_streaming_start' ||
+          event.type === 'tool_call_start'
+        ) {
           useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
         }
 
