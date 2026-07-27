@@ -8,6 +8,7 @@ import {
   Globe,
   PanelRightClose,
   Plus,
+  SquareTerminal,
   X
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -30,6 +31,7 @@ interface RightPanelHeaderProps {
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
   onAddBrowser: () => void
+  onAddTerminal: () => void
   onOpenFile: () => void
   onClosePanel: () => void
   t: (key: string, options?: Record<string, unknown>) => string
@@ -42,6 +44,7 @@ function TabIcon({ tab }: { tab: RightPanelTabInstance }): React.JSX.Element {
   if (tab.kind === 'files') return <FolderOpen className="size-3.5" />
   if (tab.kind === 'browser') return <Globe className="size-3.5" />
   if (tab.kind === 'subagent') return <Bot className="size-3.5" />
+  if (tab.kind === 'terminal') return <SquareTerminal className="size-3.5" />
   return <FileCode className="size-3.5" />
 }
 
@@ -141,6 +144,7 @@ export function RightPanelHeader({
   onSelectTab,
   onCloseTab,
   onAddBrowser,
+  onAddTerminal,
   onOpenFile,
   onClosePanel,
   t
@@ -193,6 +197,10 @@ export function RightPanelHeader({
           <DropdownMenuItem disabled={!browserEnabled} onSelect={onAddBrowser}>
             <Globe className="size-4" />
             {t('rightPanel.browser', { defaultValue: 'Browser' })}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onAddTerminal}>
+            <SquareTerminal className="size-4" />
+            {t('rightPanel.terminal', { defaultValue: 'Terminal' })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

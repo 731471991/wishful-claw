@@ -451,6 +451,47 @@ export const useUIStore = create<UIStore>((set, get) => ({
   openSubAgentsPanel: (toolUseId, sessionId) =>
     get().ensureSubAgentTab(toolUseId ?? null, null, null, sessionId),
 
+  ensureTerminalTab: () =>
+    set((state) => {
+      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'terminal')
+      if (existing) {
+        return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
+      }
+      const tab: RightPanelTabInstance = {
+        id: 'terminal',
+        kind: 'terminal',
+        title: 'Terminal',
+        closable: true,
+        createdAt: Date.now()
+      }
+      return {
+        rightPanelTabs: ensureRightPanelTabs([...state.rightPanelTabs, tab]),
+        rightPanelActiveTabId: tab.id,
+        rightPanelOpen: true
+      }
+    }),
+
+  ensureFilesTab: (sessionId) =>
+    set((state) => {
+      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'files')
+      if (existing) {
+        return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
+      }
+      const tab: RightPanelTabInstance = {
+        id: 'files',
+        kind: 'files',
+        title: 'Files',
+        closable: true,
+        createdAt: Date.now(),
+        sessionId: sessionId ?? null
+      }
+      return {
+        rightPanelTabs: ensureRightPanelTabs([...state.rightPanelTabs, tab]),
+        rightPanelActiveTabId: tab.id,
+        rightPanelOpen: true
+      }
+    }),
+
   getBrowserState: (sessionId, projectId) => {
     const state = get()
     const scope = resolvePanelScope(state, sessionId, projectId)
