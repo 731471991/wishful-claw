@@ -15,8 +15,8 @@ import {
   executeChannelSpecificPluginTool,
   isPluginToolEnabled
 } from '../channel-handlers'
-import { execSshCommand } from '../ssh/ssh-exec'
-import { listConnections, initializeSshRepository } from '../ssh/repository'
+import { execSshCommand } from '../../ssh/ssh-exec'
+import { listConnections, initializeSshRepository } from '../../ssh/repository'
 import { safeSendMessagePackToAllWindows } from '../../window-ipc'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
