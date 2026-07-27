@@ -30,9 +30,9 @@ let activePollTeamKey: string | null = null
 
 let lastLeadMessageTimestamp = 0
 
-const seenMessageIds = new Set<string>()
+export const seenMessageIds = new Set<string>()
 
-const approvalRequestToToolCallId = new Map<string, string>()
+export const approvalRequestToToolCallId = new Map<string, string>()
 
 const LEAD_WAKE_MESSAGE_TYPES = new Set([
 
@@ -48,7 +48,7 @@ const LEAD_WAKE_MESSAGE_TYPES = new Set([
 
 
 
-function getTeamPollKey(team: ActiveTeam): string {
+export function getTeamPollKey(team: ActiveTeam): string {
 
   return `${team.name}:${team.createdAt}`
 
@@ -56,7 +56,7 @@ function getTeamPollKey(team: ActiveTeam): string {
 
 
 
-function initializeTeamCursor(team: ActiveTeam, seedExistingMessages: boolean): void {
+export function initializeTeamCursor(team: ActiveTeam, seedExistingMessages: boolean): void {
 
   activePollTeamKey = getTeamPollKey(team)
 
@@ -86,7 +86,7 @@ function initializeTeamCursor(team: ActiveTeam, seedExistingMessages: boolean): 
 
 
 
-function clearTeamCursor(): void {
+export function clearTeamCursor(): void {
 
   activePollTeamKey = null
 
@@ -100,7 +100,7 @@ function clearTeamCursor(): void {
 
 
 
-function parseToolCall(content?: string): ToolCallState | null {
+export function parseToolCall(content?: string): ToolCallState | null {
 
   if (!content) return null
 
@@ -126,7 +126,7 @@ function parseToolCall(content?: string): ToolCallState | null {
 
 
 
-function parsePermissionUpdate(content?: string): TeamRuntimePermissionUpdatePayload | null {
+export function parsePermissionUpdate(content?: string): TeamRuntimePermissionUpdatePayload | null {
 
   if (!content) return null
 
@@ -148,7 +148,7 @@ function parsePermissionUpdate(content?: string): TeamRuntimePermissionUpdatePay
 
 
 
-function parsePlanApprovalRequest(content?: string): TeamRuntimePlanApprovalRequestPayload | null {
+export function parsePlanApprovalRequest(content?: string): TeamRuntimePlanApprovalRequestPayload | null {
 
   if (!content) return null
 
@@ -174,7 +174,7 @@ function parsePlanApprovalRequest(content?: string): TeamRuntimePlanApprovalRequ
 
 
 
-function registerPendingApproval(requestId: string, toolCallId: string, replyTo?: string): void {
+export function registerPendingApproval(requestId: string, toolCallId: string, replyTo?: string): void {
 
   approvalRequestToToolCallId.set(requestId, toolCallId)
 
