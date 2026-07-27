@@ -174,11 +174,11 @@ function scheduleJob(job: CronJob): boolean {
 // ── Handler functions ──
 
 export async function handleCronAdd(params: Record<string, unknown>): Promise<unknown> {
-  const name = params.name as string | undefined
+  const name = (params.name ?? params.title) as string | undefined
   const prompt = params.prompt as string | undefined
   const schedule = params.schedule as CronSchedule | undefined
 
-  if (!name) return { error: 'name is required' }
+  if (!name) return { error: 'name (or title) is required' }
   if (!prompt) return { error: 'prompt is required' }
 
   const schedErr = validateSchedule(schedule)
@@ -307,7 +307,10 @@ export async function handleCronReverseRequest(
   method: string,
   params: unknown
 ): Promise<unknown> {
-  const args = (params as Record<string, unknown>) ?? {}
+  const raw = (params as Record<string, unknown>) ?? {}
+  // .NET executor sends { toolName, input: {...tool params...}, parameters }
+  // Extract the actual tool input from the nested `input` field
+  const args = (raw.input as Record<string, unknown>) ?? raw
   switch (method) {
     case 'cron:add':
       return handleCronAdd(args)

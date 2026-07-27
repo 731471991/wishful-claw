@@ -50,7 +50,7 @@ internal static class AgentRuntimeTaskExecutor
 
     private static string GetTask(JsonElement input, ConcurrentDictionary<string, TaskRecord> tasks)
     {
-        var id = JsonHelpers.GetString(input, "task_id")?.Trim() ?? string.Empty;
+        var id = (JsonHelpers.GetString(input, "taskId") ?? JsonHelpers.GetString(input, "task_id"))?.Trim() ?? string.Empty;
         if (!tasks.TryGetValue(id, out var task))
             return EncodeError($"Task not found: {id}");
         return EncodeTask(task);
@@ -58,7 +58,7 @@ internal static class AgentRuntimeTaskExecutor
 
     private static string UpdateTask(JsonElement input, ConcurrentDictionary<string, TaskRecord> tasks)
     {
-        var id = JsonHelpers.GetString(input, "task_id")?.Trim() ?? string.Empty;
+        var id = (JsonHelpers.GetString(input, "taskId") ?? JsonHelpers.GetString(input, "task_id"))?.Trim() ?? string.Empty;
         if (!tasks.TryGetValue(id, out var existing))
             return EncodeError($"Task not found: {id}");
 
