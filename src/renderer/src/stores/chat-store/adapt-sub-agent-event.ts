@@ -1,5 +1,5 @@
 import type { SubAgentEvent } from '@renderer/lib/agent/sub-agents/types'
-import type { UnifiedMessage } from '@renderer/lib/api/types'
+import type { UnifiedMessage, ToolUseBlock, TokenUsage } from '@renderer/lib/api/types'
 import type { ToolCallState } from '@renderer/lib/agent/types'
 
 /**
@@ -103,6 +103,40 @@ export function adaptSubAgentEvent(
         toolUseId,
         report: String(event.report ?? ''),
         status: (event.status as 'pending' | 'submitted' | 'missing') ?? 'pending'
+      }
+    }
+    case 'sub_agent_tool_use_streaming_start': {
+      return {
+        type: 'sub_agent_tool_use_streaming_start',
+        subAgentName,
+        toolUseId,
+        toolCallId: String(event.toolCallId ?? ''),
+        toolName: String(event.toolName ?? '')
+      }
+    }
+    case 'sub_agent_tool_use_args_delta': {
+      return {
+        type: 'sub_agent_tool_use_args_delta',
+        subAgentName,
+        toolUseId,
+        toolCallId: String(event.toolCallId ?? ''),
+        partialInput: (event.partialInput as Record<string, unknown>) ?? {}
+      }
+    }
+    case 'sub_agent_tool_use_generated': {
+      return {
+        type: 'sub_agent_tool_use_generated',
+        subAgentName,
+        toolUseId,
+        toolUseBlock: event.toolUseBlock as unknown as ToolUseBlock
+      }
+    }
+    case 'sub_agent_message_end': {
+      return {
+        type: 'sub_agent_message_end',
+        subAgentName,
+        toolUseId,
+        usage: event.usage as unknown as TokenUsage | undefined
       }
     }
     default:

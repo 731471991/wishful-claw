@@ -86,6 +86,32 @@ internal sealed class SubAgentRunCollector
                     "sub_agent_iteration",
                     Iteration: evt.Iteration));
                 break;
+
+            case "tool_use_streaming_start":
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_tool_use_streaming_start",
+                    ToolCallId: evt.ToolCallId,
+                    ToolName: evt.ToolName));
+                break;
+
+            case "tool_use_args_delta":
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_tool_use_args_delta",
+                    ToolCallId: evt.ToolCallId,
+                    PartialInput: evt.PartialInput));
+                break;
+
+            case "tool_use_generated":
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_tool_use_generated",
+                    ToolUseBlock: evt.ToolUseBlock));
+                break;
+
+            case "message_end":
+                await ForwardAsync(new AgentRuntimeStreamEvent(
+                    "sub_agent_message_end",
+                    Usage: evt.Usage));
+                break;
         }
     }
 
