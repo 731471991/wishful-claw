@@ -31,7 +31,7 @@ export type TodoItem = TaskItem
 
 // --- DB persistence helpers (fire-and-forget) ---
 
-function dbCreateTask(task: TaskItem, sortOrder: number): void {
+export function dbCreateTask(task: TaskItem, sortOrder: number): void {
   if (!task.sessionId) return
   invokeMessagePackBinary(DB_TASKS_CREATE_MSGPACK_CHANNEL, {
     id: task.id,
@@ -51,15 +51,15 @@ function dbCreateTask(task: TaskItem, sortOrder: number): void {
   }).catch(() => {})
 }
 
-function dbUpdateTask(id: string, patch: Record<string, unknown>): void {
+export function dbUpdateTask(id: string, patch: Record<string, unknown>): void {
   invokeMessagePackBinary(DB_TASKS_UPDATE_MSGPACK_CHANNEL, { id, patch }).catch(() => {})
 }
 
-function dbDeleteTask(id: string): void {
+export function dbDeleteTask(id: string): void {
   invokeMessagePackBinary(DB_TASKS_DELETE_MSGPACK_CHANNEL, id).catch(() => {})
 }
 
-function dbDeleteTasksBySession(sessionId: string): void {
+export function dbDeleteTasksBySession(sessionId: string): void {
   invokeMessagePackBinary(DB_TASKS_DELETE_BY_SESSION_MSGPACK_CHANNEL, sessionId).catch(() => {})
 }
 
@@ -80,7 +80,7 @@ interface TaskRow {
   updated_at: number
 }
 
-function rowToTask(row: TaskRow): TaskItem {
+export function rowToTask(row: TaskRow): TaskItem {
   return {
     id: row.id,
     sessionId: row.session_id,
@@ -98,7 +98,7 @@ function rowToTask(row: TaskRow): TaskItem {
   }
 }
 
-function buildDbPatch(
+export function buildDbPatch(
   patch: Partial<Omit<TaskItem, 'id' | 'createdAt'>>,
   now: number
 ): Record<string, unknown> {

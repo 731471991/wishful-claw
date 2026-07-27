@@ -40,7 +40,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────
 
 
-function StatusIndicator({
+export function StatusIndicator({
   status
 }: {
   status: FileChangeCardProps['status']
@@ -63,7 +63,7 @@ function StatusIndicator({
   }
 }
 
-function CompactStatusDot({
+export function CompactStatusDot({
   status
 }: {
   status: FileChangeCardProps['status']
@@ -119,7 +119,7 @@ function CompactStatusDot({
 
 // ── File Icon ────────────────────────────────────────────────────
 
-function FileIcon({ name }: { name: string }): React.JSX.Element {
+export function FileIcon({ name }: { name: string }): React.JSX.Element {
   switch (name) {
     case 'Write':
       return <FilePlus2 className="size-4 text-green-500" />
@@ -134,7 +134,7 @@ function FileIcon({ name }: { name: string }): React.JSX.Element {
 
 // ── Change Stats Badge ───────────────────────────────────────────
 
-function ChangeStats({
+export function ChangeStats({
   name,
   input,
   trackedChange,
@@ -234,7 +234,7 @@ function ChangeStats({
   return null
 }
 
-function WriteRealtimeStats({
+export function WriteRealtimeStats({
   input,
   resolvedWrite,
   op

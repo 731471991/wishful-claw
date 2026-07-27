@@ -292,9 +292,9 @@ import {
   parseJsonTextCandidate,
   parseJsonPayload,
   parseStage1Json,
-  parseConsolidationJson,
-  getErrorMessage
 } from './memory-json-parsers'
+
+export { parseConsolidationJson, getErrorMessage } from './memory-json-parsers'
 
 
 export function targetForRoot(root: MemoryRootDescriptor): MemoryAutomationTarget {

@@ -26,8 +26,8 @@ export interface StartOAuthFlowOptions {
   onDeviceCode?: (info: OAuthDeviceCodeInfo) => void
 }
 
-const KIMI_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098'
-const KIMI_CLIENT_VERSION = '1.30.0'
+export const KIMI_CLIENT_ID = '17e5f671-d194-4dfb-9706-5516cb48c098'
+export const KIMI_CLIENT_VERSION = '1.30.0'
 
 interface AppSystemInfoPayload {
   machineName?: string

@@ -409,3 +409,5 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   getActiveTodo: () => get().tasks.find((t) => t.status === 'in_progress')
 }))
+
+export type { TaskItem } from "./task-store-helpers"

@@ -176,4 +176,4 @@ ipcClient.on('sidecar:lifecycle', (payload) => {
 // the 60s native-worker default when a body read stalls.
 
 // Re-export streaming functions from separate module
-export { streamSidecarProviderTurn, runSidecarTextRequest, runSidecarContextCompression } from './agent-bridge-streaming'
+export { streamSidecarProviderTurn, runSidecarTextRequest, runSidecarContextCompression, readSidecarDebugBody } from './agent-bridge-streaming'

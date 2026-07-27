@@ -76,7 +76,7 @@ interface UserMessageProps {
 
 import { UserSkillBadge } from './user-message-helpers'
 
-function UserSelectedFileReadsView({
+export function UserSelectedFileReadsView({
   reads
 }: {
   reads?: SelectedFileReadsMeta
@@ -165,7 +165,7 @@ function UserSelectedFileReadsView({
   )
 }
 
-function UserSkillEditControl({
+export function UserSkillEditControl({
   name,
   skills,
   loading,
@@ -273,7 +273,7 @@ async function copyImageAttachmentToClipboard(image: ImageAttachment): Promise<v
   await copyImageSourceToClipboard(image.dataUrl)
 }
 
-function UserImageAttachmentView({
+export function UserImageAttachmentView({
   image,
   variant,
   onPreview,

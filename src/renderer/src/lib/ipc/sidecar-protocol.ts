@@ -54,12 +54,12 @@ function sanitizeSidecarToolInput(name: string, rawInput: unknown): Record<strin
   return summarizeToolInputForHistory(name, input)
 }
 
-function normalizeMaxParallelTools(value: number | undefined): number | undefined {
+export function normalizeMaxParallelTools(value: number | undefined): number | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined
   return Math.min(16, Math.max(1, Math.floor(value)))
 }
 
-function normalizePlanRevision(
+export function normalizePlanRevision(
   value: SidecarPlanRevisionContext | null | undefined
 ): SidecarPlanRevisionContext | undefined {
   if (!value) return undefined
@@ -74,7 +74,7 @@ function normalizePlanRevision(
   }
 }
 
-function normalizePlanExecution(
+export function normalizePlanExecution(
   value: SidecarPlanExecutionContext | null | undefined
 ): SidecarPlanExecutionContext | undefined {
   if (!value) return undefined
@@ -85,7 +85,7 @@ function normalizePlanExecution(
   }
 }
 
-function normalizeSlashCommand(
+export function normalizeSlashCommand(
   value: SidecarSlashCommandContext | null | undefined
 ): SidecarSlashCommandContext | undefined {
   if (!value) return undefined
@@ -101,7 +101,7 @@ function normalizeSlashCommand(
   }
 }
 
-function normalizeSystemCommand(
+export function normalizeSystemCommand(
   value: SidecarSystemCommandContext | null | undefined
 ): SidecarSystemCommandContext | undefined {
   if (!value) return undefined
@@ -111,7 +111,7 @@ function normalizeSystemCommand(
   return { name, content }
 }
 
-function normalizePluginChannelContext(
+export function normalizePluginChannelContext(
   value: SidecarPluginChannelContext | null | undefined
 ): SidecarPluginChannelContext | undefined {
   if (!value) return undefined
@@ -137,7 +137,7 @@ function normalizePluginChannelContext(
   }
 }
 
-function normalizeRequestContextTexts(value: readonly string[] | null | undefined): string[] {
+export function normalizeRequestContextTexts(value: readonly string[] | null | undefined): string[] {
   if (!value) return []
   return value.map((item) => item.trim()).filter(Boolean)
 }
@@ -161,4 +161,4 @@ export function isNativeSidecarProviderConfig(provider: SidecarProviderInput): b
 
 
 // Re-export mapping functions from separate module
-export { mapSidecarContentBlock, mapSidecarMessage, mapSidecarProvider, mapSidecarWebSearchConfig } from './sidecar-mapping'
+export { mapSidecarContentBlock, mapSidecarMessage, mapSidecarProvider, mapSidecarWebSearchConfig, buildSidecarAgentRunRequest, sanitizeSidecarMessageMeta, normalizeSidecarApprovalRequest } from './sidecar-mapping'

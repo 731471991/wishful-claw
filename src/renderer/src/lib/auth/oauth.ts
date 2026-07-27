@@ -3,6 +3,8 @@ import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import type { OAuthConfig, OAuthToken } from '@renderer/lib/api/types'
 import { isMoonshotOAuthConfig, isMoonshotProviderConfig, buildMoonshotCommonHeaders, KIMI_CLIENT_ID, KIMI_CLIENT_VERSION } from './oauth-utils'
+import type { StartOAuthFlowOptions } from './oauth-utils'
+export type { StartOAuthFlowOptions } from './oauth-utils'
 
 function buildAuthorizeUrl(config: OAuthConfig, params: Record<string, string>): string {
   const url = new URL(config.authorizeUrl)

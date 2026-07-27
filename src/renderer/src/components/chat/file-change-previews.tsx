@@ -40,7 +40,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────
 
 
-function FilePreviewShell({
+export function FilePreviewShell({
   filePath,
   added,
   deleted,
@@ -103,7 +103,7 @@ function FilePreviewShell({
   )
 }
 
-function CodeFrame({
+export function CodeFrame({
   content,
   filePath,
   tone
@@ -138,7 +138,7 @@ function CodeFrame({
 }
 
 
-function NewFileContent({
+export function NewFileContent({
   content,
   filePath,
   isStreaming,
@@ -189,7 +189,7 @@ function NewFileContent({
   )
 }
 
-function SnapshotSummaryNotice({
+export function SnapshotSummaryNotice({
   before,
   after,
   filePath,
@@ -244,7 +244,7 @@ function SnapshotSummaryNotice({
   )
 }
 
-function PendingEditPreview({ input }: { input: Record<string, unknown> }): React.JSX.Element {
+export function PendingEditPreview({ input }: { input: Record<string, unknown> }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const filePath = String(input.file_path ?? input.path ?? '')
   const explanation = input.explanation ? String(input.explanation) : null
@@ -399,7 +399,7 @@ function TrackedEditDiff({
   )
 }
 
-function PendingWritePreview({
+export function PendingWritePreview({
   input,
   isStreaming,
   op = 'modify'

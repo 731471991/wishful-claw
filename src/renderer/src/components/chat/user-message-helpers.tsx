@@ -74,7 +74,7 @@ interface UserMessageProps {
 }
 
 
-function ActionIconButton({
+export function ActionIconButton({
   label,
   icon,
   onClick,
@@ -128,7 +128,7 @@ function serializeUserSkillDirective(name: string, body: string): string {
   return trimmedBody ? `[Skill: ${name}]\n${trimmedBody}` : `[Skill: ${name}]`
 }
 
-function UserSkillBadge({ name }: { name: string }): React.JSX.Element {
+export function UserSkillBadge({ name }: { name: string }): React.JSX.Element {
   const { t } = useTranslation('chat')
   return (
     <div className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-700 dark:text-emerald-300">

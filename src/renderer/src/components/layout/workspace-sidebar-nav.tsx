@@ -49,7 +49,7 @@ import { MoreHorizontal } from 'lucide-react'
 // ─── Helpers ───
 
 
-function ResizeHandle(): React.JSX.Element {
+export function ResizeHandle(): React.JSX.Element {
   const setLeftSidebarWidth = useUIStore((s) => s.setLeftSidebarWidth)
   const leftSidebarWidth = useUIStore((s) => s.leftSidebarWidth)
   const isDragging = useRef(false)
@@ -98,7 +98,7 @@ interface NavButtonItem {
   onClick: () => void
 }
 
-function renderNavItem(item: NavButtonItem): React.JSX.Element {
+export function renderNavItem(item: NavButtonItem): React.JSX.Element {
   return (
     <button
       key={item.key}

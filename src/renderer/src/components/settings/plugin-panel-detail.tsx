@@ -24,7 +24,7 @@ import {
   type ChannelProviderDescriptor
 } from '@renderer/stores/channel-store'
 import { cn } from '@renderer/lib/utils'
-function CredentialsPanel({
+export function CredentialsPanel({
   channel,
   descriptor
 }: {
@@ -101,7 +101,7 @@ function CredentialsPanel({
 
 // ── Features & Permissions Panel ──
 
-function FeaturesPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
+export function FeaturesPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
   const { t } = useTranslation('settings')
   const { updateChannel } = useChannelStore()
 
@@ -221,7 +221,7 @@ function FeaturesPanel({ channel }: { channel: PluginInstance }): React.JSX.Elem
 
 type ConfigTab = 'qr' | 'credentials' | 'features'
 
-function ChannelDetailPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
+export function ChannelDetailPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
   const { t } = useTranslation('settings')
   const { providers, channelStatuses, startChannel, stopChannel } = useChannelStore()
   const [activeTab, setActiveTab] = useState<ConfigTab>('qr')

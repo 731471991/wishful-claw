@@ -43,7 +43,7 @@ function transportTone(change: AggregatedFileChange): string {
     : 'text-muted-foreground dark:text-zinc-400'
 }
 
-function ActionLabel({ change }: { change: AggregatedFileChange }): React.JSX.Element {
+export function ActionLabel({ change }: { change: AggregatedFileChange }): React.JSX.Element {
   const { t } = useTranslation('chat')
   return (
     <span className={cn('inline-flex items-center text-[10px] font-medium', actionTone())}>
@@ -52,7 +52,7 @@ function ActionLabel({ change }: { change: AggregatedFileChange }): React.JSX.El
   )
 }
 
-function CopyIconButton({ text }: { text: string }): React.JSX.Element {
+export function CopyIconButton({ text }: { text: string }): React.JSX.Element {
   const { t } = useTranslation(['common'])
   const [copied, setCopied] = React.useState(false)
 
@@ -75,7 +75,7 @@ function CopyIconButton({ text }: { text: string }): React.JSX.Element {
   )
 }
 
-function CodeFrame({
+export function CodeFrame({
   content,
   maxHeight = 520
 }: {
@@ -106,7 +106,7 @@ function CodeFrame({
   )
 }
 
-function EmptyState(): React.JSX.Element {
+export function EmptyState(): React.JSX.Element {
   const { t } = useTranslation('chat')
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center">
@@ -125,7 +125,7 @@ function EmptyState(): React.JSX.Element {
   )
 }
 
-function ChangeDetail({ change }: { change: AggregatedFileChange }): React.JSX.Element {
+export function ChangeDetail({ change }: { change: AggregatedFileChange }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const [loadedContent, setLoadedContent] = React.useState<LoadedChangeContent | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
@@ -239,7 +239,7 @@ function ChangeDetail({ change }: { change: AggregatedFileChange }): React.JSX.E
   )
 }
 
-function ChangeRow({
+export function ChangeRow({
   change,
   summary,
   expanded,

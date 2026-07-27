@@ -16,7 +16,7 @@ import type {
   AskUserStructuredResult
 } from '@renderer/lib/tools/ask-user-tool'
 
-interface AnsweredPair {
+export interface AnsweredPair {
   question: string
   answer: string
   annotation?: AskUserAnnotation

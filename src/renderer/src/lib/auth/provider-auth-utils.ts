@@ -17,20 +17,20 @@ import {
 } from './copilot'
 import { sendChannelCode, verifyChannelCode, fetchChannelUserInfo } from './channel'
 
-const REFRESH_SKEW_MS = 2 * 60 * 1000
+export const REFRESH_SKEW_MS = 2 * 60 * 1000
 
-function getProviderById(providerId: string): AIProvider | null {
+export function getProviderById(providerId: string): AIProvider | null {
   const providers = useProviderStore.getState().providers
   return providers.find((p) => p.id === providerId) ?? null
 }
 
-function resolveOAuthConfig(provider: AIProvider): OAuthConfig | null {
+export function resolveOAuthConfig(provider: AIProvider): OAuthConfig | null {
   if (provider.oauthConfig?.authorizeUrl && provider.oauthConfig?.tokenUrl)
     return provider.oauthConfig
   return provider.oauthConfig ?? null
 }
 
-function parseExpiryTimestamp(value: unknown): number | undefined {
+export function parseExpiryTimestamp(value: unknown): number | undefined {
   if (value == null) return undefined
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value > 10_000_000_000 ? Math.floor(value) : Math.floor(value * 1000)
@@ -48,7 +48,7 @@ function parseExpiryTimestamp(value: unknown): number | undefined {
   return undefined
 }
 
-function asString(value: unknown): string | undefined {
+export function asString(value: unknown): string | undefined {
   if (typeof value === 'string') {
     const trimmed = value.trim()
     return trimmed || undefined
@@ -155,12 +155,12 @@ function parseManualOAuthPayload(raw: string): AIProvider['oauth'] {
   }
 }
 
-function setProviderAuth(providerId: string, patch: Partial<AIProvider>): void {
+export function setProviderAuth(providerId: string, patch: Partial<AIProvider>): void {
   useProviderStore.getState().updateProvider(providerId, patch)
 }
 
 /** Extract a usable email hint from an OAuth token (id_token claim or known fields). */
-function extractEmailFromToken(token: OAuthToken): string | undefined {
+export function extractEmailFromToken(token: OAuthToken): string | undefined {
   // Try id_token payload: base64url middle segment
   const idToken = token.idToken
   if (idToken && idToken.split('.').length === 3) {
@@ -178,17 +178,17 @@ function extractEmailFromToken(token: OAuthToken): string | undefined {
 }
 
 /** Decide if an account should be considered rate-limited right now. Self-heals when resetAt elapses. */
-function isAccountRateLimited(account: ProviderOAuthAccount): boolean {
+export function isAccountRateLimited(account: ProviderOAuthAccount): boolean {
   if (!account.rateLimit) return false
   if (account.rateLimit.resetAt <= Date.now()) return false
   return true
 }
 
-function getAccountsArray(provider: AIProvider): ProviderOAuthAccount[] {
+export function getAccountsArray(provider: AIProvider): ProviderOAuthAccount[] {
   return provider.oauthAccounts ?? []
 }
 
-function findAccountById(
+export function findAccountById(
   provider: AIProvider,
   accountId: string | undefined
 ): ProviderOAuthAccount | undefined {

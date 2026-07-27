@@ -98,3 +98,7 @@ function PluginPanel(): React.JSX.Element {
 }
 
 export { PluginPanel }
+
+export function ChannelPanel(_props: { projectId?: string }): React.JSX.Element | null {
+  return null
+}

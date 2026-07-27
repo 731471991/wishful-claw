@@ -11,9 +11,9 @@ import {
   joinFsPath,
   loadLayeredMemorySnapshot,
   readTextFile,
-  resolveGlobalMemoryHomePath,
   resolveProjectMemoryTextFileForTarget,
 } from './memory-files'
+import { resolveGlobalMemoryHomePath } from './memory-snapshot'
 import type {
   MemoryAutomationCandidateKind,
   MemoryAutomationEntry,
@@ -80,7 +80,7 @@ let rollupInstalled = false
 
 
 
-async function recordEntry(
+export async function recordEntry(
   input: MemoryAutomationRecordInput
 ): Promise<MemoryAutomationEntry | null> {
   const result = (await ipcClient.invoke(
@@ -94,7 +94,7 @@ async function recordEntry(
   return result.entry ?? null
 }
 
-async function recordSyntheticEntry(args: {
+export async function recordSyntheticEntry(args: {
   status: MemoryAutomationStatus
   reason?: MemoryAutomationFilterReason
   sourceSessionId?: string | null
@@ -131,11 +131,11 @@ async function recordSyntheticEntry(args: {
 
 
 
-async function pipelineRun(args: Record<string, unknown>): Promise<MemoryPipelineRunResult> {
+export async function pipelineRun(args: Record<string, unknown>): Promise<MemoryPipelineRunResult> {
   return (await ipcClient.invoke(IPC.MEMORY_PIPELINE_RUN, args)) as MemoryPipelineRunResult
 }
 
-async function prepareSessionPipeline(args: {
+export async function prepareSessionPipeline(args: {
   sessionId: string
   roots: MemoryRootInput[]
 }): Promise<MemoryPipelineRunResult> {
@@ -147,7 +147,7 @@ async function prepareSessionPipeline(args: {
   })
 }
 
-async function completeStage1(args: {
+export async function completeStage1(args: {
   sessionId: string
   jobId?: string | null
   status?: MemoryJobStatus
@@ -164,7 +164,7 @@ async function completeStage1(args: {
   })
 }
 
-async function createPhase2Job(root: MemoryRootDescriptor, sessionId?: string | null): Promise<MemoryPipelineJob | null> {
+export async function createPhase2Job(root: MemoryRootDescriptor, sessionId?: string | null): Promise<MemoryPipelineJob | null> {
   const result = await pipelineRun({
     action: 'record-job',
     jobKind: 'phase2',
@@ -176,7 +176,7 @@ async function createPhase2Job(root: MemoryRootDescriptor, sessionId?: string | 
   return result.job ?? null
 }
 
-async function completePhase2Job(args: {
+export async function completePhase2Job(args: {
   root: MemoryRootDescriptor
   jobId?: string | null
   sessionId?: string | null
@@ -193,7 +193,7 @@ async function completePhase2Job(args: {
   })
 }
 
-async function listStage1Outputs(root: MemoryRootDescriptor): Promise<MemoryStage1Output[]> {
+export async function listStage1Outputs(root: MemoryRootDescriptor): Promise<MemoryStage1Output[]> {
   const settings = useSettingsStore.getState()
   const result = await pipelineRun({
     action: 'list-stage1-outputs',
@@ -204,7 +204,7 @@ async function listStage1Outputs(root: MemoryRootDescriptor): Promise<MemoryStag
 }
 
 
-async function readRootFile(
+export async function readRootFile(
   root: MemoryRootDescriptor,
   relativePath: string,
   fallback: string
@@ -225,7 +225,7 @@ async function readRootFile(
   }
 }
 
-async function writeTargetContent(
+export async function writeTargetContent(
   descriptor: TargetDescriptor,
   nextContent: string,
   beforeContent?: string
@@ -251,7 +251,7 @@ async function writeTargetContent(
 }
 
 
-async function runConsolidation(args: {
+export async function runConsolidation(args: {
   provider: ProviderConfig
   root: MemoryRootDescriptor
   userMarkdown: string
@@ -274,7 +274,7 @@ async function runConsolidation(args: {
   return parseConsolidationJson(raw)
 }
 
-async function writeWithRetry(descriptor: TargetDescriptor, nextContent: string): Promise<string | null> {
+export async function writeWithRetry(descriptor: TargetDescriptor, nextContent: string): Promise<string | null> {
   const before = descriptor.missingFile ? undefined : descriptor.content
   let error = await writeTargetContent(descriptor, nextContent, before)
   if (error?.includes('File changed since it was read')) {
@@ -286,7 +286,7 @@ async function writeWithRetry(descriptor: TargetDescriptor, nextContent: string)
   return error
 }
 
-async function runPhase2ForRoot(args: {
+export async function runPhase2ForRoot(args: {
   root: MemoryRootDescriptor
   provider: ProviderConfig
   sourceSessionId?: string | null

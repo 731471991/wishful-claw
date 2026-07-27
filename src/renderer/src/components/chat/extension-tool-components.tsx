@@ -346,7 +346,7 @@ function LuckinPaymentComponent({ props }: { props: Record<string, unknown> }): 
   )
 }
 
-function ExtensionComponentRenderer({
+export function ExtensionComponentRenderer({
   result,
   ui
 }: {
@@ -404,7 +404,7 @@ function ExtensionComponentRenderer({
   )
 }
 
-function SchemaRenderer({ result }: { result: ExtensionToolResult }): React.JSX.Element | null {
+export function SchemaRenderer({ result }: { result: ExtensionToolResult }): React.JSX.Element | null {
   const ui = isRecord(result.ui) ? result.ui : null
   if (!ui) return null
   const kind = ui.kind

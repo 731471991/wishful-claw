@@ -154,7 +154,7 @@ interface GoalStore {
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
 }
 
-function rowToGoal(row: SessionGoalRow): SessionGoal {
+export function rowToGoal(row: SessionGoalRow): SessionGoal {
   return {
     sessionId: row.session_id,
     goalId: row.goal_id,
@@ -168,7 +168,7 @@ function rowToGoal(row: SessionGoalRow): SessionGoal {
   }
 }
 
-function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
+export function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
   let metadata: Record<string, unknown> | null = null
   if (row.metadata_json) {
     try {
@@ -192,11 +192,11 @@ function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
   }
 }
 
-function isGoalRow(value: GoalMutationResult | SessionGoalRow): value is SessionGoalRow {
+export function isGoalRow(value: GoalMutationResult | SessionGoalRow): value is SessionGoalRow {
   return 'session_id' in value
 }
 
-function asGoal(
+export function asGoal(
   result: GoalMutationResult | SessionGoalRow | null | undefined
 ): SessionGoal | null {
   if (!result) return null
@@ -204,14 +204,14 @@ function asGoal(
   return row ? rowToGoal(row) : null
 }
 
-function mutationError(error: unknown): string {
+export function mutationError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
 let goalEventsIpcUnavailable = false
 let goalEventsIpcUnavailableWarned = false
 
-function markGoalEventsIpcUnavailable(error: unknown): boolean {
+export function markGoalEventsIpcUnavailable(error: unknown): boolean {
   const message = mutationError(error)
   if (!message.includes('No handler registered') || !message.includes('db:goal-events')) {
     return false
@@ -231,7 +231,7 @@ type GoalStoreSetter = (
   partial: Partial<GoalStore> | ((state: GoalStore) => Partial<GoalStore>)
 ) => void
 
-function upsertGoal(setState: GoalStoreSetter, goal: SessionGoal): void {
+export function upsertGoal(setState: GoalStoreSetter, goal: SessionGoal): void {
   setState((state) => ({
     goalsBySession: {
       ...state.goalsBySession,
@@ -240,7 +240,7 @@ function upsertGoal(setState: GoalStoreSetter, goal: SessionGoal): void {
   }))
 }
 
-function upsertGoalEvent(setState: GoalStoreSetter, event: SessionGoalEvent): void {
+export function upsertGoalEvent(setState: GoalStoreSetter, event: SessionGoalEvent): void {
   setState((state) => {
     const existing = state.goalEventsBySession[event.sessionId] ?? []
     const next = [event, ...existing.filter((item) => item.id !== event.id)]

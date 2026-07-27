@@ -5,7 +5,7 @@ import type { AIProvider, AIModelConfig, BuiltinProviderPreset, ProviderType, Re
 import { builtinProviderPresets } from '@renderer/stores/providers'
 import { aiProviderStorage } from '@renderer/lib/ipc/ai-provider-storage'
 
-const STORAGE_KEY = 'wishful-claw-providers'
+export const STORAGE_KEY = 'wishful-claw-providers'
 
 export { builtinProviderPresets }
 export type { BuiltinProviderPreset }
@@ -58,7 +58,7 @@ interface ProviderState {
   fetchModels: (provider: AIProvider) => Promise<AIModelConfig[]>
 }
 
-function createProviderFromPreset(preset: BuiltinProviderPreset): AIProvider {
+export function createProviderFromPreset(preset: BuiltinProviderPreset): AIProvider {
   return {
     id: nanoid(),
     name: preset.name,
@@ -78,13 +78,13 @@ function createProviderFromPreset(preset: BuiltinProviderPreset): AIProvider {
 /**
  * Normalize a model ID for case-insensitive matching.
  */
-function normalizeModelKey(modelId: string): string {
+export function normalizeModelKey(modelId: string): string {
   return modelId.trim().toLowerCase()
 }
 
 /** Default reasoning effort levels for thinking models that don't specify their own. */
-const DEFAULT_REASONING_EFFORT_LEVELS: ReasoningEffortLevel[] = ['medium', 'high', 'xhigh']
-const DEFAULT_REASONING_EFFORT: ReasoningEffortLevel = 'medium'
+export const DEFAULT_REASONING_EFFORT_LEVELS: ReasoningEffortLevel[] = ['medium', 'high', 'xhigh']
+export const DEFAULT_REASONING_EFFORT: ReasoningEffortLevel = 'medium'
 
 /**
  * Ensure a thinking model has reasoning effort levels configured.
@@ -92,7 +92,7 @@ const DEFAULT_REASONING_EFFORT: ReasoningEffortLevel = 'medium'
  * fill in the default levels so the UI shows a usable effort selector
  * without requiring manual configuration.
  */
-function ensureDefaultReasoningEffort(model: AIModelConfig): AIModelConfig {
+export function ensureDefaultReasoningEffort(model: AIModelConfig): AIModelConfig {
   if (!model.supportsThinking) return model
   if (model.thinkingConfig?.reasoningEffortLevels?.length) return model
   return {
@@ -111,7 +111,7 @@ function ensureDefaultReasoningEffort(model: AIModelConfig): AIModelConfig {
  * against builtin metadata (thinkingConfig, icon, pricing, etc.).
  * Thinking models without explicit reasoning effort levels get sensible defaults.
  */
-const builtinModelRegistry = new Map<string, AIModelConfig>()
+export const builtinModelRegistry = new Map<string, AIModelConfig>()
 for (const preset of builtinProviderPresets) {
   for (const model of preset.defaultModels) {
     const key = normalizeModelKey(model.id)
@@ -126,7 +126,7 @@ for (const preset of builtinProviderPresets) {
  * Returns a partial AIModelConfig with metadata (thinkingConfig, icon, pricing, etc.)
  * or undefined if no match is found.
  */
-function resolveBuiltinModelFallback(modelId: string): AIModelConfig | undefined {
+export function resolveBuiltinModelFallback(modelId: string): AIModelConfig | undefined {
   return builtinModelRegistry.get(normalizeModelKey(modelId))
 }
 
@@ -135,7 +135,7 @@ function resolveBuiltinModelFallback(modelId: string): AIModelConfig | undefined
  * Builtin metadata (thinkingConfig, icon, supportsThinking, pricing, etc.) is used
  * as the base; discovered values (id, name, enabled) override.
  */
-function enrichDiscoveredModel(raw: AIModelConfig): AIModelConfig {
+export function enrichDiscoveredModel(raw: AIModelConfig): AIModelConfig {
   const fallback = resolveBuiltinModelFallback(raw.id)
   if (!fallback) return ensureDefaultReasoningEffort(raw)
   const merged = { ...fallback, ...raw }
@@ -146,7 +146,7 @@ function enrichDiscoveredModel(raw: AIModelConfig): AIModelConfig {
   return merged
 }
 
-function createCustomProvider(name: string, type: ProviderType, baseUrl: string): AIProvider {
+export function createCustomProvider(name: string, type: ProviderType, baseUrl: string): AIProvider {
   return {
     id: nanoid(),
     name,
@@ -170,7 +170,7 @@ function createCustomProvider(name: string, type: ProviderType, baseUrl: string)
  *   - User customizations (apiKey, enabled, per-model enabled flags) are preserved
  * Called on store initialization (after hydration).
  */
-function ensureBuiltinPresets(): void {
+export function ensureBuiltinPresets(): void {
   const currentProviders = useProviderStore.getState().providers
   let changed = false
   const nextProviders = [...currentProviders]

@@ -18,13 +18,13 @@ import { usePetAgentStore, type PetVoiceMode } from '@renderer/stores/pet-agent-
  */
 
 
-function getAudioContext(): AudioContext {
+export function getAudioContext(): AudioContext {
   if (!audioContext) audioContext = new AudioContext()
   if (audioContext.state === 'suspended') void audioContext.resume()
   return audioContext
 }
 
-function stopStreamingPlayback(): void {
+export function stopStreamingPlayback(): void {
   for (const source of streamSources) {
     try {
       source.stop()
@@ -104,7 +104,7 @@ async function synthesizeClip(params: PetVoiceParams, text: string): Promise<Spe
   }
 }
 
-function decodeBase64Chunk(base64: string): Uint8Array {
+export function decodeBase64Chunk(base64: string): Uint8Array {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let index = 0; index < binary.length; index += 1) {

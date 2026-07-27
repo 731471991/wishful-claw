@@ -45,7 +45,7 @@ export interface FileAwareEditorProps {
   className?: string
 }
 
-function appendTextContent(target: HTMLElement, text: string): void {
+export function appendTextContent(target: HTMLElement, text: string): void {
   const parts = text.split('\n')
   parts.forEach((part, index) => {
     if (part) {
@@ -57,14 +57,14 @@ function appendTextContent(target: HTMLElement, text: string): void {
   })
 }
 
-function getFileChipLabel(file: SelectedFileItem | undefined, fallbackText: string): string {
+export function getFileChipLabel(file: SelectedFileItem | undefined, fallbackText: string): string {
   if (file?.name) return file.name
   const normalized = fallbackText.replace(/\\/g, '/')
   const segments = normalized.split('/').filter(Boolean)
   return segments[segments.length - 1] || fallbackText
 }
 
-function buildFileChip(
+export function buildFileChip(
   node: EditorFileNode,
   file: SelectedFileItem | undefined,
   handlers: Pick<
@@ -158,7 +158,7 @@ function buildFileChip(
   return wrapper
 }
 
-function buildPluginChip(
+export function buildPluginChip(
   node: EditorPluginNode,
   handlers: Pick<FileAwareEditorProps, 'onReferenceDelete'>
 ): HTMLElement {
@@ -206,7 +206,7 @@ function buildPluginChip(
   return wrapper
 }
 
-function renderDocument(
+export function renderDocument(
   root: HTMLDivElement,
   documentNodes: EditorDocumentNode[],
   files: SelectedFileItem[],
@@ -240,7 +240,7 @@ function renderDocument(
   }
 }
 
-function collectTextContent(node: Node): string {
+export function collectTextContent(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) {
     return node.textContent || ''
   }
@@ -269,7 +269,7 @@ function collectTextContent(node: Node): string {
   return Array.from(element.childNodes).map(collectTextContent).join('')
 }
 
-function isSameDocument(left: EditorDocumentNode[], right: EditorDocumentNode[]): boolean {
+export function isSameDocument(left: EditorDocumentNode[], right: EditorDocumentNode[]): boolean {
   if (left.length !== right.length) return false
 
   for (let index = 0; index < left.length; index += 1) {
@@ -307,7 +307,7 @@ function isSameDocument(left: EditorDocumentNode[], right: EditorDocumentNode[])
   return true
 }
 
-function parseDomToDocument(root: HTMLDivElement): EditorDocumentNode[] {
+export function parseDomToDocument(root: HTMLDivElement): EditorDocumentNode[] {
   const nextDocument: EditorDocumentNode[] = []
 
   const appendText = (text: string): void => {
@@ -377,7 +377,7 @@ function parseDomToDocument(root: HTMLDivElement): EditorDocumentNode[] {
   return nextDocument.filter((node) => node.type !== 'text' || node.text.length > 0)
 }
 
-function getSelectionOffsets(
+export function getSelectionOffsets(
   root: HTMLDivElement,
   files: SelectedFileItem[],
   fallback?: EditorSelectionOffsets
@@ -406,7 +406,7 @@ function getSelectionOffsets(
   }
 }
 
-function setSelectionFromPoint(root: HTMLDivElement, clientX: number, clientY: number): boolean {
+export function setSelectionFromPoint(root: HTMLDivElement, clientX: number, clientY: number): boolean {
   const doc = root.ownerDocument
   const anyDoc = doc as Document & {
     caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null
@@ -441,7 +441,7 @@ function setSelectionFromPoint(root: HTMLDivElement, clientX: number, clientY: n
   return true
 }
 
-function setSelectionOffsets(root: HTMLDivElement, start: number, end: number): void {
+export function setSelectionOffsets(root: HTMLDivElement, start: number, end: number): void {
   const selection = window.getSelection()
   if (!selection) return
 

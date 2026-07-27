@@ -1,13 +1,13 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-const HTML_RENDERER_SOURCE = 'open_cowork_extension_renderer'
+export const HTML_RENDERER_SOURCE = 'open_cowork_extension_renderer'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
-function stringifyData(value: unknown): string {
+export function stringifyData(value: unknown): string {
   if (value === undefined || value === null) return ''
   if (typeof value === 'string') return value
   try {
@@ -17,13 +17,13 @@ function stringifyData(value: unknown): string {
   }
 }
 
-function readString(value: unknown): string {
+export function readString(value: unknown): string {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   return ''
 }
 
-function readStringProp(source: Record<string, unknown>, keys: string[]): string {
+export function readStringProp(source: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
     const value = readString(source[key]).trim()
     if (value) return value
@@ -31,7 +31,7 @@ function readStringProp(source: Record<string, unknown>, keys: string[]): string
   return ''
 }
 
-function readArrayProp(source: Record<string, unknown>, keys: string[]): Record<string, unknown>[] {
+export function readArrayProp(source: Record<string, unknown>, keys: string[]): Record<string, unknown>[] {
   for (const key of keys) {
     const value = source[key]
     if (Array.isArray(value)) return value.filter(isRecord)
@@ -39,12 +39,12 @@ function readArrayProp(source: Record<string, unknown>, keys: string[]): Record<
   return []
 }
 
-function readStringArray(value: unknown): string[] {
+export function readStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.map((item) => readString(item).trim()).filter(Boolean)
 }
 
-function safeHttpUrl(value: unknown): string {
+export function safeHttpUrl(value: unknown): string {
   const raw = readString(value).trim()
   if (!raw) return ''
   try {
@@ -55,13 +55,13 @@ function safeHttpUrl(value: unknown): string {
   }
 }
 
-function formatFieldValue(value: unknown): string {
+export function formatFieldValue(value: unknown): string {
   const text = readString(value)
   if (text) return text
   return stringifyData(value)
 }
 
-function buildHtmlRendererDocument(html: string): string {
+export function buildHtmlRendererDocument(html: string): string {
   return `<!DOCTYPE html>
 <html>
   <head>

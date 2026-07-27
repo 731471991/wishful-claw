@@ -40,7 +40,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────
 
 
-function CompactDiffCopyButton({ text }: { text: string }): React.JSX.Element {
+export function CompactDiffCopyButton({ text }: { text: string }): React.JSX.Element {
   const { t } = useTranslation(['chat', 'common'])
   const [copied, setCopied] = React.useState(false)
 
@@ -61,7 +61,7 @@ function CompactDiffCopyButton({ text }: { text: string }): React.JSX.Element {
   )
 }
 
-function DiffCodeChunk({
+export function DiffCodeChunk({
   lines,
   filePath
 }: {
@@ -104,7 +104,7 @@ function DiffCodeChunk({
   )
 }
 
-function CompactEditDiff({
+export function CompactEditDiff({
   oldStr,
   newStr,
   filePath
@@ -161,7 +161,7 @@ function CompactEditDiff({
 }
 
 
-function InlineDiff({
+export function InlineDiff({
   oldStr,
   newStr,
   filePath
@@ -174,7 +174,7 @@ function InlineDiff({
 }
 
 
-function TrackedEditDiff({
+export function TrackedEditDiff({
   change,
   filePath
 }: {

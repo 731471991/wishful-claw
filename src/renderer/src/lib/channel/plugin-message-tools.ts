@@ -5,13 +5,13 @@ import type { ToolHandler } from '../tools/tool-types'
 // All provider-agnostic — route via plugin_id to the correct backend service
 
 
-function nativeOnlyPluginResult(toolName: string): string {
+export function nativeOnlyPluginResult(toolName: string): string {
   return JSON.stringify({
     error: `${toolName} executes in the .NET Native Worker and is unavailable through the renderer boundary.`
   })
 }
 
-const pluginSendMessage: ToolHandler = {
+export const pluginSendMessage: ToolHandler = {
   definition: {
     name: 'PluginSendMessage',
     description:
@@ -30,7 +30,7 @@ const pluginSendMessage: ToolHandler = {
   requiresApproval: () => true
 }
 
-const pluginReplyMessage: ToolHandler = {
+export const pluginReplyMessage: ToolHandler = {
   definition: {
     name: 'PluginReplyMessage',
     description: 'Reply to a specific message via a messaging channel. Requires approval.',
@@ -48,7 +48,7 @@ const pluginReplyMessage: ToolHandler = {
   requiresApproval: () => true
 }
 
-const pluginGetGroupMessages: ToolHandler = {
+export const pluginGetGroupMessages: ToolHandler = {
   definition: {
     name: 'PluginGetGroupMessages',
     description: 'Get recent messages from a chat/group via a messaging channel.',
@@ -65,7 +65,7 @@ const pluginGetGroupMessages: ToolHandler = {
   execute: async () => nativeOnlyPluginResult('PluginGetGroupMessages')
 }
 
-const pluginListGroups: ToolHandler = {
+export const pluginListGroups: ToolHandler = {
   definition: {
     name: 'PluginListGroups',
     description: 'List all available groups/chats for a messaging channel.',
@@ -80,7 +80,7 @@ const pluginListGroups: ToolHandler = {
   execute: async () => nativeOnlyPluginResult('PluginListGroups')
 }
 
-const pluginSummarizeGroup: ToolHandler = {
+export const pluginSummarizeGroup: ToolHandler = {
   definition: {
     name: 'PluginSummarizeGroup',
     description:
@@ -101,7 +101,7 @@ const pluginSummarizeGroup: ToolHandler = {
   execute: async () => nativeOnlyPluginResult('PluginSummarizeGroup')
 }
 
-const pluginGetCurrentChatMessages: ToolHandler = {
+export const pluginGetCurrentChatMessages: ToolHandler = {
   definition: {
     name: 'PluginGetCurrentChatMessages',
     description: 'Get recent messages from the current channel chat session.',

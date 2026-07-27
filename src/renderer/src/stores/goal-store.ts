@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { ipcClient } from '../lib/ipc/ipc-client'
 import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
-import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, isGoalRow } from './goal-store-helpers'
+import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, isGoalRow, EMPTY_SESSION_GOAL_EVENTS } from './goal-store-helpers'
+export { EMPTY_SESSION_GOAL_EVENTS }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
   goalsBySession: {},
@@ -304,3 +305,5 @@ export function installGoalSyncListener(): () => void {
     offRunState()
   }
 }
+
+export type { SessionGoal, SessionGoalEvent, SessionGoalEventType } from "./goal-store-helpers"

@@ -1,7 +1,7 @@
 
-import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig, sanitizeSidecarMessageMeta } from './sidecar-protocol'
+import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig } from './sidecar-protocol'
 
-function mapSidecarContentBlock(block: ContentBlock): SidecarContentBlock | null {
+export function mapSidecarContentBlock(block: ContentBlock): SidecarContentBlock | null {
   switch (block.type) {
     case 'text':
       return { type: 'text', text: block.text }
@@ -80,7 +80,7 @@ export function sanitizeSidecarMessageMeta(meta: MessageMeta | undefined): Messa
   }
 }
 
-function mapSidecarMessage(message: UnifiedMessage): SidecarUnifiedMessage | null {
+export function mapSidecarMessage(message: UnifiedMessage): SidecarUnifiedMessage | null {
   const meta = sanitizeSidecarMessageMeta(message.meta)
 
   if (typeof message.content === 'string') {
@@ -115,7 +115,7 @@ function mapSidecarMessage(message: UnifiedMessage): SidecarUnifiedMessage | nul
   }
 }
 
-function mapSidecarProvider(provider: SidecarProviderInput): SidecarProviderConfig {
+export function mapSidecarProvider(provider: SidecarProviderInput): SidecarProviderConfig {
   return {
     type: provider.type,
     apiKey: provider.apiKey,
@@ -181,7 +181,7 @@ function mapSidecarTool(tool: ToolDefinition): SidecarToolDefinition {
   }
 }
 
-function mapSidecarWebSearchConfig(tools: ToolDefinition[]): SidecarWebSearchConfig | undefined {
+export function mapSidecarWebSearchConfig(tools: ToolDefinition[]): SidecarWebSearchConfig | undefined {
   if (!tools.some((tool) => tool.name === 'WebSearch' || tool.name === 'WebFetch')) {
     return undefined
   }

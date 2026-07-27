@@ -9,6 +9,8 @@ import { MessageRow } from './MessageRow'
 import {
   buildChatRenderableMessageMetaFromAnalysis,
   buildTranscriptStaticAnalysis,
+} from '../transcript-utils'
+import {
   collectDuplicatePlanReviewToolUseIds,
   getMessageToolUseIds,
   mergeHiddenToolUseIds,

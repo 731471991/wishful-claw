@@ -18,11 +18,11 @@ import { mergeUsageSnapshot } from './usage-merge'
  * Strip any <think>...</think> markers streamed by providers that wrap thinking in pseudo-tags.
  * Mirrors the chat-store helper so buffered writes share the same sanitization.
  */
-function stripThinkTagMarkers(text: string): string {
+export function stripThinkTagMarkers(text: string): string {
   return text.replace(/<\s*\/?\s*think\s*>/gi, '')
 }
 
-function upsertBufferedToolUse(blocks: ContentBlock[], toolUse: ToolUseBlock): void {
+export function upsertBufferedToolUse(blocks: ContentBlock[], toolUse: ToolUseBlock): void {
   const existingIndex = blocks.findIndex(
     (block): block is ToolUseBlock => block.type === 'tool_use' && block.id === toolUse.id
   )
@@ -46,7 +46,7 @@ function upsertBufferedToolUse(blocks: ContentBlock[], toolUse: ToolUseBlock): v
 let _cachedVisibleIds: Set<string> | null = null
 let _cachedVisibleIdsTs = 0
 const VISIBLE_IDS_CACHE_TTL_MS = 50
-const _explicitVisibleSessionIds = new Set<string>()
+export const _explicitVisibleSessionIds = new Set<string>()
 
 /**
  * Invalidate the visible-session cache. Call this whenever `activeSessionId`
@@ -77,7 +77,7 @@ export function setSessionForegroundVisibility(sessionId: string, visible: boole
 const _pendingSessionUpdates = new Map<string, ReturnType<typeof setTimeout>>()
 const MARK_SESSION_UPDATE_DEBOUNCE_MS = 500
 
-function debouncedMarkSessionUpdate(sessionId: string): void {
+export function debouncedMarkSessionUpdate(sessionId: string): void {
   if (_pendingSessionUpdates.has(sessionId)) return
   _pendingSessionUpdates.set(
     sessionId,
@@ -88,7 +88,7 @@ function debouncedMarkSessionUpdate(sessionId: string): void {
   )
 }
 
-function cancelDebouncedMarkSessionUpdate(sessionId: string): void {
+export function cancelDebouncedMarkSessionUpdate(sessionId: string): void {
   const timer = _pendingSessionUpdates.get(sessionId)
   if (timer) {
     clearTimeout(timer)

@@ -9,7 +9,7 @@ import type { ToolContext } from './tool-types'
 type ElectronWebview = Electron.WebviewTag
 
 /** Minimal type for Electron nativeImage returned by webview.capturePage() */
-interface NativeImageLike {
+export interface NativeImageLike {
   isEmpty(): boolean
   toDataURL(): string
   getSize(): { width: number; height: number }

@@ -1,5 +1,6 @@
 import * as React from 'react'
-import { getMessageColumnClass, getMessageColumnCompactClass, modeHints } from './utils'
+import { getMessageColumnClass, getMessageColumnCompactClass } from './utils'
+import { modeHints } from './mode-hints'
 
 interface MessageListEmptyStateProps {
   fullWidth: boolean

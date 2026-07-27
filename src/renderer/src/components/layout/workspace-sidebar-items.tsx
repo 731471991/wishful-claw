@@ -88,7 +88,7 @@ interface SessionItemProps {
   onClick: () => void
 }
 
-function SessionItem({ session, isActive, onClick }: SessionItemProps): React.JSX.Element {
+export function SessionItem({ session, isActive, onClick }: SessionItemProps): React.JSX.Element {
   const { t } = useTranslation('layout')
   const deleteSession = useChatStore((s) => s.deleteSession)
   const updateSessionTitle = useChatStore((s) => s.updateSessionTitle)
@@ -213,7 +213,7 @@ interface ProjectItemProps {
   onToggleExpand: () => void
 }
 
-function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectItemProps): React.JSX.Element {
+export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: ProjectItemProps): React.JSX.Element {
   const { t } = useTranslation('layout')
   const activeSessionId = useChatStore((s) => s.activeSessionId)
   const activeProjectId = useChatStore((s) => s.activeProjectId)

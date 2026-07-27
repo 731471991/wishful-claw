@@ -18,11 +18,11 @@ export function isToolResultOnlyUserMessage(message: UnifiedMessage): boolean {
   )
 }
 
-function isRealUserMessage(message: UnifiedMessage): boolean {
+export function isRealUserMessage(message: UnifiedMessage): boolean {
   return isEditableUserMessage(message) && !isCompactSummaryLikeMessage(message)
 }
 
-function hasVisibleAssistantBlock(block: ContentBlock): boolean {
+export function hasVisibleAssistantBlock(block: ContentBlock): boolean {
   if (block.type === 'tool_use') {
     return !HIDDEN_MESSAGE_LIST_TOOL_NAMES.has(block.name)
   }
@@ -38,7 +38,7 @@ function hasVisibleAssistantBlock(block: ContentBlock): boolean {
   return true
 }
 
-function hasVisibleAssistantStringContent(content: string): boolean {
+export function hasVisibleAssistantStringContent(content: string): boolean {
   if (!THINK_OPEN_TAG_RE.test(content)) {
     return content.trim().length > 0
   }
@@ -59,7 +59,7 @@ function hasVisibleAssistantStringContent(content: string): boolean {
   return false
 }
 
-function shouldRenderInMessageList(
+export function shouldRenderInMessageList(
   message: UnifiedMessage,
   activeCompactSummaryId: string | null
 ): boolean {
@@ -74,11 +74,11 @@ function shouldRenderInMessageList(
   return message.content.some(hasVisibleAssistantBlock)
 }
 
-function isTransparentSystemMessage(message: UnifiedMessage): boolean {
+export function isTransparentSystemMessage(message: UnifiedMessage): boolean {
   return message.role === 'system' && !isCompactBoundaryMessage(message)
 }
 
-function collectToolResults(
+export function collectToolResults(
   blocks: ContentBlock[],
   target: Map<string, { content: ToolResultContent; isError?: boolean }>
 ): void {
@@ -89,7 +89,7 @@ function collectToolResults(
   }
 }
 
-function buildOrchestrationMessageBindingEntry(message: UnifiedMessage): string {
+export function buildOrchestrationMessageBindingEntry(message: UnifiedMessage): string {
   if (message.role !== 'assistant') {
     return `${message.id}:${message.role}`
   }
@@ -112,7 +112,7 @@ function buildOrchestrationMessageBindingEntry(message: UnifiedMessage): string 
   return `${message.id}:${message.role}:blocks:${message.content.length}:${toolUseSignature}`
 }
 
-function buildTailToolExecutionState(messages: UnifiedMessage[]): TailToolExecutionState | null {
+export function buildTailToolExecutionState(messages: UnifiedMessage[]): TailToolExecutionState | null {
   if (messages.length === 0) return null
 
   const toolResultMap = new Map<string, { content: ToolResultContent; isError?: boolean }>()

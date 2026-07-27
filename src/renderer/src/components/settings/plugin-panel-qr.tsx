@@ -32,7 +32,7 @@ import {
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { cn } from '@renderer/lib/utils'
-function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
+export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
   const { t } = useTranslation('settings')
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'waiting' | 'connected' | 'error'>('idle')
