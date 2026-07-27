@@ -74,6 +74,7 @@ interface UserMessageProps {
 }
 import { ActionIconButton, UserSkillBadge, parseUserSkillDirective, USER_MESSAGE_WIDTH_CLASS, USER_MESSAGE_BUBBLE_CLASS, serializeUserSkillDirective } from './user-message-helpers'
 import { UserSelectedFileReadsView, UserSkillEditControl, UserImageAttachmentView } from './user-message-views'
+import { copyImageSourceToClipboard } from './user-message-views'
 
 export function UserMessage({
   messageId,

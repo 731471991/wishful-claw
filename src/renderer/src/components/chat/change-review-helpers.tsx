@@ -11,7 +11,7 @@ import { useAgentStore } from '@renderer/stores/agent-store'
 import { CodeDiffViewer } from './CodeDiffViewer'
 import type { AggregatedFileChange } from './file-change-utils'
 import { buildDiffCopyText, canRenderInlineSnapshot, computeDiff, detectLang, fileName, foldContext, lineCount, snapshotText } from './FileChangeCard/utils'
-import { DiffSummaryStats, LoadedChangeContent, isLoadedChangeContent } from './change-summary-utils'
+import { DiffSummaryStats, LoadedChangeContent, isLoadedChangeContent, loadAggregatedChangeContent } from './change-summary-utils'
 import { actionableSourceChanges } from './file-change-utils'
 
 function isErrorResult(value: unknown): value is { error: string } {

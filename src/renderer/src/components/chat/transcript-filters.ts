@@ -11,6 +11,7 @@ import {
 } from '@renderer/lib/agent/context-compression'
 import { THINK_OPEN_TAG_RE } from './AssistantMessage/types'
 import { TailToolExecutionState } from './transcript-utils'
+import { HIDDEN_MESSAGE_LIST_TOOL_NAMES } from './transcript-utils'
 
 export function isToolResultOnlyUserMessage(message: UnifiedMessage): boolean {
   return (

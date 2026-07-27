@@ -258,7 +258,7 @@ export function UserSkillEditControl({
   )
 }
 
-async function copyImageSourceToClipboard(src: string): Promise<void> {
+export async function copyImageSourceToClipboard(src: string): Promise<void> {
   if (src.startsWith('data:')) {
     await writeImageDataUrlToClipboard(src)
     return

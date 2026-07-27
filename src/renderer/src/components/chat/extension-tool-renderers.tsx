@@ -7,7 +7,7 @@ import { IPC } from '../../lib/ipc/channels'
 import { useExtensionStore } from '../../stores/extension-store'
 import { ExtensionToolResult } from '@renderer/lib/extensions/extension-result'
 
-function ExtensionAssetHtmlRenderer({
+export function ExtensionAssetHtmlRenderer({
   extensionId,
   assetPath,
   title,
@@ -111,7 +111,7 @@ function ExtensionAssetHtmlRenderer({
   )
 }
 
-function ExtensionHtmlRenderer({
+export function ExtensionHtmlRenderer({
   result,
   ui
 }: {
@@ -134,7 +134,7 @@ function ExtensionHtmlRenderer({
   )
 }
 
-function CardRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Element {
+export function CardRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Element {
   const title = typeof ui.title === 'string' ? ui.title : ''
   const subtitle = typeof ui.subtitle === 'string' ? ui.subtitle : ''
   const body = typeof ui.body === 'string' ? ui.body : ''
@@ -157,7 +157,7 @@ function CardRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Elemen
   )
 }
 
-function TableRenderer({
+export function TableRenderer({
   ui,
   fallbackData
 }: {
@@ -220,7 +220,7 @@ function TableRenderer({
   )
 }
 
-function FormRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Element {
+export function FormRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Element {
   const fields = Array.isArray(ui.fields) ? ui.fields.filter(isRecord) : []
   return (
     <div className="grid gap-2 rounded-lg border border-border/60 bg-muted/10 p-3">
@@ -242,7 +242,7 @@ function FormRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Elemen
   )
 }
 
-function ChartRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Element {
+export function ChartRenderer({ ui }: { ui: Record<string, unknown> }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const data = Array.isArray(ui.data) ? ui.data.filter(isRecord) : []
   const values = data.map((item) => Number(item.value ?? 0)).filter(Number.isFinite)

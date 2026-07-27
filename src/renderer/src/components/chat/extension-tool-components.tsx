@@ -6,6 +6,7 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Coffee, CreditCard, ExternalLink, MapPin, PackageSearch, ReceiptText, Store } from 'lucide-react'
 import { ExtensionToolResult } from '@renderer/lib/extensions/extension-result'
+import { CardRenderer, TableRenderer, FormRenderer, ChartRenderer, ExtensionHtmlRenderer, ExtensionAssetHtmlRenderer } from './extension-tool-renderers'
 
 function ComponentShell({
   icon,
