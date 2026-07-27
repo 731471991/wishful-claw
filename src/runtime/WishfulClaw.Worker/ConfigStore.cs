@@ -110,6 +110,35 @@ internal static class ConfigStore
         return ToResponse(Mutation(true, null));
     }
 
+    /// <summary>Sets a value by key (internal use by other modules).</summary>
+    internal static void SetValue(string key, JsonNode? value)
+    {
+        lock (Sync)
+        {
+            var root = ReadRoot();
+            if (value is null || value.GetValueKind() is JsonValueKind.Null or JsonValueKind.Undefined)
+            {
+                root.Remove(key);
+            }
+            else
+            {
+                root[key] = value.DeepClone();
+            }
+            WriteRoot(root);
+        }
+    }
+
+    /// <summary>Deletes a key (internal use by other modules).</summary>
+    internal static void DeleteKey(string key)
+    {
+        lock (Sync)
+        {
+            var root = ReadRoot();
+            root.Remove(key);
+            WriteRoot(root);
+        }
+    }
+
     /// <summary>Reads a string value by key (internal use by other modules).</summary>
     internal static string GetStringValue(string key)
     {

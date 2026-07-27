@@ -4,89 +4,101 @@
 
 ---
 
-我是 wishful-claw 项目的作者，这是一个 Agent 编程软件，融合三个开源项目的优点：OpenCowork（Agent Loop / 工具链 / Provider / 架构）、KodaClaw（记忆系统 / 人格系统设计）、OpenClaw.net（记忆主动回忆机制）。
+老大，继续 wishful-claw 开发。这是 Agent 编程软件，融合三个开源项目：OpenCowork（Agent Loop / 工具链 / Provider / 架构）、KodaClaw（记忆系统 / 人格系统设计）、OpenClaw.net（记忆主动回忆机制）。
 
 **项目路径**：`D:\claw\wishful-claw`
 **GitHub**：731471991/wishful-claw
-**技术栈**：React + Electron（前端）+ .NET 10（后端）+ MessagePack（IPC 通信）
+**技术栈**：React 19 + Electron 35（前端）+ .NET 10（后端）+ MessagePack（IPC 通信）
 
 **开工前请先阅读以下文档**：
-1. `AGENTS.md` — 项目结构、分层约定、参考源码路径
-2. `docs/iteration-plan.md` — 8 个迭代计划，当前执行迭代五
-3. `docs/dev-workflow.md` — 六阶段开发工作流 SOP（含 Git 工作流）
-4. `docs/mvp-scope.md` — MVP 边界
-5. `docs/data-storage.md` — 数据存储设计
-6. `docs/project-structure.md` — 目录结构说明
+1. `AGENTS.md` — 项目结构、分层约定、参考源码路径、Git 提交规范、大文件拆分规则
+2. `docs/dev-workflow.md` — 六阶段开发工作流 SOP
+3. `docs/plans/iter-11/plan.md` — 迭代十一计划文档
 
-**参考源码位置**：
-- OpenCowork：`D:\gy\OpenCowork`（搬入 Agent Loop / 工具链 / Provider / 前端 UI / SQLite DB 层）
-- KodaClaw：`D:\gy\koda-claw\koda-claw`（参考记忆 / 人格设计思路）
-- OpenClaw.net：`D:\claw\openclaw.net`（参考记忆主动回忆 / 上下文预算）
+**参考源码位置**（笔记本实际路径）：
+- OpenCowork：`D:\claw\OpenCowork`（Agent Loop / 工具链 / Provider / 前端 UI）
+- KodaClaw：`D:\claw\koda-claw`（记忆 / 人格设计思路）
+- OpenClaw.net：`D:\claw\openclaw.net`（记忆主动回忆 / 上下文预算）
 
 **当前状态**：
-- 迭代一~四已完成，当前在 `dev/iter-4` 分支上（迭代四代码完成，待用户确认完结后合并 main）
-- **本次新开 `dev/iter-5` 分支**，从 `dev/iter-4`（或 main，取决于迭代四是否已合并）切出
-- 迭代五目标：项目注册 + 会话历史（SQLite 持久化）
+- 迭代一~八已完成，代码已合并到 `main`（main 最新 commit: `e04aa28`）
+- 当前分支 `dev/iter-11`，已有 **107 个 commit**（尚未合并 main）
+- 最新 commit: `5cbb096`（refactor: split input-renderers and runtime-status）
+- dev/iter-11 已 push 到 origin
 
-**已完成的基础设施**（迭代一~四）：
+**已完成的基础设施**（迭代一~八，已合并 main）：
 - Electron + React 前端 + .NET 10 后端 + MessagePack IPC 通信全链路打通
 - Provider 配置（28 个预设 + CRUD + 连通性测试 + 模型拉取）
-- Agent Loop（流式对话 + 取消 + 上下文压缩）
-- 工具链（7 个工具：Read/Write/Edit/LS/Glob/Grep/Bash + 工具调用 UI）
-- 前端布局完整搬自 OpenCowork（NavRail + WorkspaceSidebar + TitleBar + SessionConversationPane + ChatHomePage + ProjectHomePage）
-- 聊天 UI 完整可用（流式渲染 + 工具调用卡片 + ModelSwitcher + 消息导航条）
+- Agent Loop（流式对话 + 取消 + 上下文压缩 + 工具调用循环）
+- 工具链（7 个基础工具 + 工具调用 UI）
+- 项目注册 + 会话历史（SQLite 持久化，实时写入）
+- 人格系统（6 套 24 个预设 + PromptBuilder + 会话级切换 + AI 辅助创建）
+- 记忆系统（三层 Hot/Warm/Cold + FTS5 全文搜索 + TryInjectRecall 主动回忆 + 记忆工具）
+- 集成验证（全链路修复 + 日志系统 + Worker 防崩溃）
+- 提示词优化器（从 OpenCowork 移植，弹窗式 3 选项）
+- 子 Agent（Task 工具 + SubAgentExecutor + 事件流 + 前端 SubAgentCard/OrchestrationBlock + 并发上限双信号量 + 超限反馈）
+- 前端布局完整搬自 OpenCowork（NavRail + WorkspaceSidebar + TitleBar + SessionConversationPane）
 
-**迭代五的现状（已有的桩代码）**：
-- 前端 `src/renderer/src/stores/chat-store/db-helpers.ts` — 全是 placeholder no-op，标注了 `TODO (迭代五): Implement with SQLite via MessagePack IPC`
-- 前端 `src/renderer/src/stores/chat-store/types.ts` — `Session` 和 `Project` 类型已定义完整（字段对齐 OpenCowork）
-- 前端 `src/renderer/src/stores/chat-store/session-slice.ts` — 会话 CRUD 逻辑完整，但调用 `dbCreateSession` 等 placeholder 不持久化
-- 前端 `src/renderer/src/stores/chat-store/project-slice.ts` — 项目 CRUD 逻辑完整，同样不持久化
-- 前端 `src/main/ipc/` — 目前只有 agent-stream/ai-provider/settings/messagepack 四个 handler，没有 DB handler
-- 后端 `src/runtime/WishfulClaw.Worker/` — 目前有 SystemModule/ConfigModule/ProviderModule/ProviderTestModule/AgentRuntimeModule/ToolModule，**没有 DbModule**
-- 后端没有任何 SQLite 依赖（csproj 中无 `Microsoft.Data.Sqlite`）
-- 后端 `WishfulClaw.Worker/WorkerModuleCatalog.cs` — 模块注册目录，需要添加 DbModule
+**迭代十一已完成的工作**（dev/iter-11 分支，107 commits）：
 
-**OpenCowork 的 DB 层参考**（直接搬入并精简）：
-- 后端 C#：`D:\gy\OpenCowork\sidecars\OpenCowork.Native.Worker\Modules\Db\` — 完整的 DbModule + DbConnectionFactory + DbSchemaMigrator + DbProjectTools/DbSessionTools/DbMessageTools 等
-  - `DbConnectionFactory.cs` — SQLite 连接管理（WAL 模式、PRAGMA 配置、dbPath 解析）
-  - `DbSchemaMigrator.cs` — 建表脚本（sessions / messages / projects 三张核心表）
-  - `DbProjectTools.cs` + `DbProjectModels.cs` — 项目 CRUD
-  - `DbSessionTools.cs` + `DbSessionModels.cs` — 会话 CRUD
-  - `DbMessageTools.cs` + `DbMessageModels.cs` — 消息 CRUD（含分页加载、批量插入）
-  - `DbModule.cs` — 注册所有 `db/*` IPC handler
-- 前端 TS（Electron Main 侧）：`D:\gy\OpenCowork\src\main\db\` — database.ts + sessions-dao.ts + projects-dao.ts + messages-dao.ts
-  - `database.ts` — 调用 native worker `db/initialize`，管理初始化 Promise
-  - `*-dao.ts` — 通过 native worker request 调用后端 `db/*` 方法
-- 前端 TS（Electron Main IPC）：`D:\gy\OpenCowork\src\main\ipc\db-handlers.ts` — 注册 MessagePack channel，桥接 renderer ↔ native worker
-- **wishful-claw 架构差异**：OpenCowork 的前端 DAO 层通过 `getNativeWorker().request()` 直接调用后端；wishful-claw 的前端通过 `window.api.ipc.invoke()` 调用 Electron Main，Main 再转发到 .NET Worker。需要按照现有 wishful-claw 的 IPC 模式适配（参考 `src/main/ipc/ai-provider-handlers.ts` 的转发模式）
+Plan 11-1~11-5 全部完成：
+- **11-1 右侧面板 Tab 系统重构**：RightPanel 重写为动态 tab 系统（拖拽调宽 + 切换动画 + 关闭按钮），RightPanelHeader 动态 tab 条，ui-store 补全浏览器/sub-agent/preview 状态管理，webviewTag 开启
+- **11-2 SubAgentsPanel**：子 Agent 编排面板（列表 + 详情），搬入 SubAgentsPanel + SubAgentExecutionDetail + sub-agent-run-data + sub-agent-visuals，子 Agent 历史持久化（SQLite + 按需加载）
+- **11-3 BrowserPanel**：内置浏览器面板（webview + 地址栏 + 前进后退刷新），browser-access 完整版（URL 规范化 + 域名白/黑名单），webview 常驻不随 tab 切换销毁，Agent 浏览器工具可驱动同一 webview
+- **11-4 PreviewPanel**：文件预览面板，多格式查看器（代码/Markdown/图片/HTML/视频/音频/PDF/SVG/字体/表格），Monaco 编辑器 + 文件监听热更新
+- **11-5 AgentFilesPanel + SessionChangeReviewPanel**：文件树浏览 + Agent 变更审查面板，GitPage SCM 面板
 
-**请按 dev-workflow.md 的六阶段 SOP 执行迭代五：项目注册 + 会话历史**。
+工具链大幅扩展（从 OpenCowork 移植）：
+- Git 工具（6 个 IPC 通道：状态解析/仓库扫描/查询操作/命令执行/模块注册）
+- 浏览器工具（BrowserNavigate/GetContent/Snapshot/Type/Click/Screenshot 注册为 Agent 可调用工具）
+- 桌面控制工具（5 个）、Terminal 会话（node-pty）、WebSearch + WebFetch、AskUserQuestion
+- MCP 客户端集成（@modelcontextprotocol/sdk 替换 stub）
+- Extension 运行时模块（扩展 manifest 管理 + HTTP 工具执行器）
+- IToolProvider 模式重构（可扩展工具注册）
+- Seedance + xAI 视频生成模块
+
+Channel 系统（从 OpenCowork 移植）：
+- 8 个渠道：飞书/微信/钉钉/企业微信/QQ/Telegram/Discord/WhatsApp
+- 全局模式（非 per-project），QR 码绑定 UI，IPC handler 完整
+
+Bug 修复和体验优化：
+- 流式回复聊天窗抖动修复（rAF 批处理 delta flush）
+- 并发工具调用完成后显示散开修复（跳过 tool_result block 不关闭 run 分组）
+- WebSearch 设置面板补充（provider 选择 + API Key + 测试按钮）
+- Browser panel 激活失败修复（webview src 恢复 + 诊断代码移除）
+- 浏览器工具错误处理修复（throw 而非返回 encodeToolError）
+- AskUserQuestion 提交按钮不可点击修复
+- AgentRuntimeJsonContext CamelCase 缺失修复
+- 反幻觉检测注入 + 撤回
+- 工具描述截断 + browser 诊断日志
+- per-turn 工具调用上限错误返回
+
+大规模代码拆分（按 AGENTS.md 规则）：
+- 已拆分 30+ 个超 500 行文件，包括 ExtensionManifestStore.cs(1682→5文件)、FileChangeCard.tsx(1315→4文件)、MessageList.tsx(1321→1155+3子文件)、GitPage.tsx(1190→610+2子文件)、ExtensionToolResultCard.tsx(865→4文件) 等
+- 仍剩 30 个文件超 500 行（多为单巨型组件需提取 custom hooks、store 定义需按 slice 拆分、provider preset 数据对象）
+- 4 个超 1000 行文件已降到 1 个（MessageList.tsx 1155 行，剩余 scroll 逻辑需提取为 custom hook）
+
+**迭代十一尚未完成的事项**：
+1. **代码拆分继续**：剩余 30 个文件超 500 行，优先处理 MessageList.tsx(1155)、InputArea(969)、ModelSwitcher(811)、settings-store(801) 等大文件
+2. **agent:changes 后端记录**：Plan 11-5 中 Agent 变更审查的后端持久化（SQLite DAO + 变更快照 + 撤销）标记为后续迭代
+3. **迭代验证 + 合并 main**：dev/iter-11 有 107 commits 尚未合并 main，需用户确认后合并、打 tag v0.11.0
+
+**Git 工作流**（AGENTS.md 中有提交规范）：
+- 当前在 `dev/iter-11` 分支，已有 107 commits
+- **功能单元测试通过后才 commit**，不要改一点就提交。中间反复修改不产生 commit
+- Plan 执行期间只 commit 不 push（当前已 push 一次，后续按需 push）
+- 迭代验证通过后打 tag `v0.11.0`，合并回 main 并 push（**需用户确认后才执行**）
+- Git push 需要代理：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin dev/iter-11`
+
+**特别注意**：
+- 从 OpenCowork 搬代码时必须适配项目命名空间（`WishfulClaw.*`）和分层约定，清理不需要的功能
+- 大文件搬入时按职责拆分（AGENTS.md：200~500 行为宜，超 500 行必须拆，C# 用 partial class，TS 用 export/import 模块化）
+- 拆分后必须 `tsc --noEmit` + `dotnet build` 双编译验证
+- 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
 
 **会话开始时请先执行**（dev-workflow.md 会话边界规则）：
 1. `git status` + `git log --oneline -10` — 定位当前进度
-2. `git push` — 推送遗留的未推送 commit（如果有）
-3. 读 `docs/PROGRESS.md` — 确认当前迭代和步骤
-4. 报告进度摘要，然后继续执行
+2. 读 `docs/plans/iter-11/plan.md` — 确认 Plan 和步骤
+3. 报告进度摘要，然后继续执行
 
-迭代五流程：探索态 → 规划态 → 规划验证 → **停下来等我确认** → 执行态（自动连续执行 + 每步 commit）→ 审查态 → 验证态 → **停下来等我确认是否达标**。
-
-**不要问"要不要 push""要不要继续下一步"这类工作流有规则的事**，按规则自动走。只在规划确认和验证结果两个节点停下来问我。
-
-**Git 注意事项**：
-- 从 `dev/iter-4`（或 main，如果迭代四已合并）切 `dev/iter-5` 分支开发
-- 每完成一个步骤立即 commit（Plan 内不 push）
-- Plan 所有步骤完成并通过验证后，一次性 push 该 Plan 的所有 commit
-- 迭代验证通过后打 tag `v0.5.0`，合并回 main 并 push（**需用户确认后才执行**）
-
-**特别注意**：
-- **迭代执行前必须先拆分 Plan**：一个迭代拆 2~4 个 Plan，每个 Plan 是一次会话能吃透的工作单元。不要在一个会话里试图做完整个迭代。详见 docs/iteration-plan.md 开头的「迭代拆分规则」
-- **后端 DB 层直接从 OpenCowork 搬入并精简**：OpenCowork 的 DbModule 架构完善（ConnectionFactory + SchemaMigrator + 分表 Tools/Models），搬入时只保留 projects/sessions/messages 三张表，去掉 plans/tasks/goals/ssh/cron/draw/sync/usage/agent-changes 等不需要的表和对应 Tools
-- **前端 DB 层按 wishful-claw 的 IPC 模式适配**：OpenCowork 前端 DAO 直接调 native worker，wishful-claw 需要通过 Electron Main 中转。参考现有 `src/main/ipc/ai-provider-handlers.ts` 的转发模式
-- **前端 db-helpers.ts 已有桩代码**：所有函数签名已定义好，只需要把 placeholder 实现为真正的 IPC 调用
-- **消息持久化要实时**：对话流式输出时就写入 SQLite，不是等对话结束才写。参考 OpenCowork 的 `db/messages-upsert` 模式
-- **数据存储路径**：`~/.wishful-claw/index.db`（详见 `docs/data-storage.md`）
-- **每个迭代交付必须完整可用**：有入口、有反馈、有闭环，不能是半成品
-- **迭代是否完结由用户确认**，Agent 不得自行合并 main / 打 tag / 删分支。详见 docs/iteration-plan.md「迭代完结规则」
-- 大文件搬入时必须按职责拆分为多个文件
-
-叫我老大，我们是并肩协作的兄弟。
+叫老大，我们是并肩协作的兄弟。

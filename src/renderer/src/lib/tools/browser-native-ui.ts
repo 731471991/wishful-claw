@@ -1,28 +1,32 @@
 import type { ImageBlock, ToolResultContent } from '@renderer/lib/api/types'
-import { getBrowserAccessDecision } from '../app-plugin/browser-access'
-import {
-  describeWebviewOperationError,
-  isPromiseLike,
-  isWebviewConnected,
-  type MaybePromise
-} from '../browser/webview-helpers'
+import { getBrowserAccessDecision, normalizeBrowserUrl } from '../app-plugin/browser-access'
+import { describeWebviewOperationError } from '../browser/webview-helpers'
 import { IPC } from '../ipc/channels'
 import { ipcClient } from '../ipc/ipc-client'
 import { useUIStore } from '../../stores/ui-store'
 import { encodeStructuredToolResult, encodeToolError } from './tool-result-format'
 import type { ToolContext } from './tool-types'
+import {
+  HTML_TO_MD_SCRIPT,
+  SNAPSHOT_SCRIPT,
+  CLICK_SCRIPT,
+  TYPE_SCRIPT
+} from './browser-scripts'
+import {
+  type NativeImageLike,
+  ensureAttachedWebview,
+  requireWebview,
+  runWebviewCommand,
+  waitForLoad,
+  waitForWebview,
+  parseWebviewJson,
+  extractBase64ImageData
+} from './browser-webview-helpers'
 
 type NativeBrowserToolResponse = {
   content: ToolResultContent
   isError?: boolean
   error?: string
-}
-
-/** Minimal type for Electron nativeImage returned by webview.capturePage() */
-interface NativeImageLike {
-  isEmpty(): boolean
-  toDataURL(): string
-  getSize(): { width: number; height: number }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -49,130 +53,26 @@ function createToolContext(record: Record<string, unknown>): ToolContext {
   }
 }
 
-function getWebview(ctx?: ToolContext): Electron.WebviewTag | null {
-  const webview = useUIStore.getState().getBrowserWebviewRef(ctx?.sessionId)?.current ?? null
-  return isWebviewConnected(webview) ? webview : null
-}
-
-function requireWebview(ctx?: ToolContext): Electron.WebviewTag {
-  const webview = getWebview(ctx)
-  if (!webview) {
-    throw new Error('No attached browser view is available. Use BrowserNavigate first.')
-  }
-  return webview
-}
-
-async function runWebviewCommand<T>(
-  webview: Electron.WebviewTag,
-  action: string,
-  command: (webview: Electron.WebviewTag) => MaybePromise<T>
-): Promise<T> {
-  if (!isWebviewConnected(webview)) {
-    throw new Error(`Browser view is not attached while trying to ${action}.`)
-  }
-
-  const result = command(webview)
-  return isPromiseLike<T>(result) ? await result : result
-}
-
-async function waitForLoad(webview: Electron.WebviewTag, timeoutMs = 30000): Promise<void> {
-  return new Promise<void>((resolve) => {
-    if (!isWebviewConnected(webview)) {
-      resolve()
-      return
-    }
-
-    let resolved = false
-    const timers: { timeout?: number; detach?: number } = {}
-    const done = (): void => {
-      if (resolved) return
-      resolved = true
-      if (timers.timeout !== undefined) window.clearTimeout(timers.timeout)
-      if (timers.detach !== undefined) window.clearInterval(timers.detach)
-      webview.removeEventListener('did-stop-loading', done)
-      webview.removeEventListener('did-fail-load', done)
-      resolve()
-    }
-    webview.addEventListener('did-stop-loading', done)
-    webview.addEventListener('did-fail-load', done)
-    timers.timeout = window.setTimeout(done, timeoutMs)
-    timers.detach = window.setInterval(() => {
-      if (!isWebviewConnected(webview)) done()
-    }, 100)
-  })
-}
-
-async function waitForWebview(
-  ctx?: ToolContext,
-  maxWaitMs = 3000
-): Promise<Electron.WebviewTag | null> {
-  const start = Date.now()
-  while (Date.now() - start < maxWaitMs) {
-    const webview = getWebview(ctx)
-    if (webview) return webview
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
-  return null
-}
-
-// Returns the attached browser webview, self-healing when none is present.
-// The webview stays mounted in the background once a page has been opened (see
-// RightPanel), so this normally hits the fast path. If it is missing — e.g. the
-// browser tab was never created for this session — we launch it in the background
-// (without stealing the UI) using the last known URL so the tool can still run.
-async function ensureAttachedWebview(ctx: ToolContext): Promise<Electron.WebviewTag> {
-  const existing = getWebview(ctx)
-  if (existing) return existing
-
-  // Nothing is attached. Without a previously opened page there is genuinely
-  // nothing to read or interact with, so keep the original "navigate first" hint
-  // rather than spawning an empty browser tab.
-  const storedUrl = useUIStore.getState().getBrowserState(ctx.sessionId).url
-  if (!storedUrl) {
-    throw new Error('No attached browser view is available. Use BrowserNavigate first.')
-  }
-
-  // A page was opened before but its webview is no longer mounted (e.g. the tab was
-  // dropped). Relaunch it in the background — without stealing the UI — and wait for
-  // the freshly mounted webview to reload the stored URL before proceeding.
-  useUIStore.getState().openBrowserTab(storedUrl, ctx.sessionId, undefined, { background: true })
-
-  const webview = await waitForWebview(ctx)
-  if (!webview) {
-    throw new Error('No attached browser view is available. Use BrowserNavigate first.')
-  }
-  await waitForLoad(webview)
-  return webview
-}
-
-function getBrowserAccessError(url: string): ToolResultContent | null {
+/** Check URL access rules; throw if blocked. */
+function assertBrowserAccess(url: string): void {
   const decision = getBrowserAccessDecision(url)
-  return decision.allowed ? null : encodeToolError(decision.reason ?? 'Browser navigation blocked.')
-}
-
-function getCurrentBrowserAccessError(ctx?: ToolContext): ToolResultContent | null {
-  const url = useUIStore.getState().getBrowserState(ctx?.sessionId).url
-  return url ? getBrowserAccessError(url) : null
-}
-
-function extractBase64ImageData(dataUrl: string): { data: string; mediaType: string } | null {
-  const commaIndex = dataUrl.indexOf(',')
-  if (!dataUrl.startsWith('data:') || commaIndex === -1) return null
-
-  const metadata = dataUrl.slice(5, commaIndex)
-  if (!metadata.includes(';base64')) return null
-
-  return {
-    data: dataUrl.slice(commaIndex + 1),
-    mediaType: metadata.split(';')[0] || 'image/png'
+  if (!decision.allowed) {
+    throw new Error(decision.reason ?? 'Browser navigation blocked.')
   }
 }
 
-function parseWebviewJson<T>(raw: unknown): T {
-  if (typeof raw === 'string') return JSON.parse(raw) as T
-  if (raw && typeof raw === 'object') return raw as T
-  throw new Error(`Unexpected browser script result: ${String(raw)}`)
+/** Check current page URL access rules; throw if blocked. */
+function assertCurrentBrowserAccess(ctx?: ToolContext): void {
+  const url = useUIStore.getState().getBrowserState(ctx?.sessionId).url
+  if (url) assertBrowserAccess(url)
 }
+
+// ── Tool executors ──
+//
+// Convention: all execute* functions throw on error (never return encodeToolError).
+// handleNativeBrowserToolRequest's catch block converts thrown errors into
+// { content, isError: true, error } so the Worker can emit tool_call_result
+// with status "error" and the agent loop continues.
 
 async function executeBrowserNavigate(
   input: Record<string, unknown>,
@@ -182,20 +82,21 @@ async function executeBrowserNavigate(
 
   if (action === 'goto') {
     let url = input.url as string
-    if (!url || typeof url !== 'string') return encodeToolError('"url" is required for goto')
+    if (!url || typeof url !== 'string') throw new Error('"url" is required for goto')
     url = url.trim()
     if (!/^https?:\/\//i.test(url) && !url.startsWith('http://localhost')) {
       url = `https://${url}`
     }
-    const accessError = getBrowserAccessError(url)
-    if (accessError) return accessError
-    // Open in the background: attach the webview and start loading without forcing
-    // the right panel open, so the agent can drive the browser while it stays hidden.
-    useUIStore.getState().openBrowserTab(url, ctx.sessionId, undefined, { background: true })
-    const webview = await waitForWebview(ctx)
+    url = normalizeBrowserUrl(url)
+    assertBrowserAccess(url)
+    // Reveal the browser panel so the user can see the page being loaded.
+    useUIStore.getState().openBrowserTab(url, ctx.sessionId)
+    // Wait for the webview element to mount and register its ref.
+    const webview = await waitForWebview(ctx, 10000)
     if (!webview) {
-      return encodeToolError('Browser view did not attach. Reopen the browser tab and try again.')
+      throw new Error('Browser panel did not attach in time. Ensure the browser plugin is enabled.')
     }
+    // Explicitly set src in case BrowserPanel's committedUrl hasn't updated yet.
     const loadPromise = waitForLoad(webview)
     await runWebviewCommand(webview, 'navigate', (target) => {
       target.src = url
@@ -210,7 +111,7 @@ async function executeBrowserNavigate(
   }
 
   if (action !== 'back' && action !== 'forward' && action !== 'refresh') {
-    return encodeToolError(`Unknown action "${action}". Use goto, back, forward, or refresh.`)
+    throw new Error(`Unknown action "${action}". Use goto, back, forward, or refresh.`)
   }
 
   const webview = requireWebview(ctx)
@@ -218,17 +119,16 @@ async function executeBrowserNavigate(
     const canGoBack = await runWebviewCommand(webview, 'read back navigation state', (target) =>
       target.canGoBack()
     )
-    if (!canGoBack) return encodeToolError('Browser cannot go back.')
+    if (!canGoBack) throw new Error('Browser cannot go back.')
   } else if (action === 'forward') {
     const canGoForward = await runWebviewCommand(
       webview,
       'read forward navigation state',
       (target) => target.canGoForward()
     )
-    if (!canGoForward) return encodeToolError('Browser cannot go forward.')
+    if (!canGoForward) throw new Error('Browser cannot go forward.')
   } else {
-    const accessError = getCurrentBrowserAccessError(ctx)
-    if (accessError) return accessError
+    assertCurrentBrowserAccess(ctx)
   }
 
   const loadPromise = waitForLoad(webview)
@@ -248,89 +148,11 @@ async function executeBrowserNavigate(
   })
 }
 
-const HTML_TO_MD_SCRIPT = `
-(function(sel) {
-  var root = sel ? document.querySelector(sel) : document.body
-  if (!root) return JSON.stringify({ error: 'Element not found: ' + sel })
-
-  function convert(node, listDepth) {
-    if (node.nodeType === 3) return node.textContent || ''
-    if (node.nodeType !== 1) return ''
-    var el = node
-    var tag = el.tagName.toLowerCase()
-    var children = ''
-    for (var i = 0; i < el.childNodes.length; i++) children += convert(el.childNodes[i], listDepth)
-    children = children.trim()
-    if (!children && !['img','br','hr','input'].includes(tag)) return ''
-
-    switch (tag) {
-      case 'h1': return '\\n# ' + children + '\\n'
-      case 'h2': return '\\n## ' + children + '\\n'
-      case 'h3': return '\\n### ' + children + '\\n'
-      case 'h4': return '\\n#### ' + children + '\\n'
-      case 'h5': return '\\n##### ' + children + '\\n'
-      case 'h6': return '\\n###### ' + children + '\\n'
-      case 'p': return '\\n' + children + '\\n'
-      case 'br': return '\\n'
-      case 'hr': return '\\n---\\n'
-      case 'strong': case 'b': return '**' + children + '**'
-      case 'em': case 'i': return '*' + children + '*'
-      case 'del': case 's': return '~~' + children + '~~'
-      case 'code':
-        if (el.parentElement && el.parentElement.tagName.toLowerCase() === 'pre') return children
-        return '\`' + children + '\`'
-      case 'pre':
-        var code = el.querySelector('code')
-        var lang = ''
-        if (code) {
-          var cls = code.className || ''
-          var m = cls.match(/language-(\\w+)/)
-          if (m) lang = m[1]
-        }
-        return '\\n\`\`\`' + lang + '\\n' + (code ? code.textContent : el.textContent) + '\\n\`\`\`\\n'
-      case 'blockquote': return '\\n' + children.split('\\n').map(function(l) { return '> ' + l }).join('\\n') + '\\n'
-      case 'a':
-        var href = el.getAttribute('href') || ''
-        if (!href || href === '#') return children
-        return '[' + children + '](' + href + ')'
-      case 'img':
-        var src = el.getAttribute('src') || ''
-        var alt = el.getAttribute('alt') || ''
-        return '![' + alt + '](' + src + ')'
-      case 'ul': case 'ol':
-        return '\\n' + Array.from(el.children).map(function(li, idx) {
-          var prefix = tag === 'ol' ? (idx + 1) + '. ' : '- '
-          var indent = '  '.repeat(listDepth)
-          var content = convert(li, listDepth + 1).trim()
-          return indent + prefix + content
-        }).join('\\n') + '\\n'
-      case 'li': return children
-      case 'table':
-        var rows = Array.from(el.querySelectorAll('tr'))
-        if (!rows.length) return children
-        var result = '\\n'
-        rows.forEach(function(tr, ri) {
-          var cells = Array.from(tr.querySelectorAll('th, td')).map(function(c) { return convert(c, 0).trim() })
-          result += '| ' + cells.join(' | ') + ' |\\n'
-          if (ri === 0) result += '| ' + cells.map(function() { return '---' }).join(' | ') + ' |\\n'
-        })
-        return result
-      case 'script': case 'style': case 'noscript': return ''
-      default: return children
-    }
-  }
-
-  var md = convert(root, 0).replace(/\\n{3,}/g, '\\n\\n').trim()
-  return JSON.stringify({ title: document.title, content: md })
-})
-`
-
 async function executeBrowserGetContent(
   input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const selector = (input.selector as string) || ''
   const outputType = (input.type as string) || 'markdown'
@@ -346,7 +168,7 @@ async function executeBrowserGetContent(
       )
     )
     const parsed = parseWebviewJson<{ error?: string; title?: string; content?: string }>(raw)
-    if (parsed.error) return encodeToolError(parsed.error)
+    if (parsed.error) throw new Error(parsed.error)
     const content = (parsed.content ?? '').slice(0, 80000)
     return encodeStructuredToolResult({
       url: useUIStore.getState().getBrowserState(ctx.sessionId).url,
@@ -362,7 +184,7 @@ async function executeBrowserGetContent(
     )
   )
   const parsed = parseWebviewJson<{ error?: string; title?: string; content?: string }>(raw)
-  if (parsed.error) return encodeToolError(parsed.error)
+  if (parsed.error) throw new Error(parsed.error)
   const content = (parsed.content ?? '').slice(0, 80000)
   return encodeStructuredToolResult({
     url: useUIStore.getState().getBrowserState(ctx.sessionId).url,
@@ -376,18 +198,17 @@ async function executeBrowserScreenshot(
   _input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const nativeImage = await runWebviewCommand<NativeImageLike>(webview, 'capture screenshot', (target) =>
     (target as unknown as { capturePage: () => NativeImageLike }).capturePage()
   )
   if (nativeImage.isEmpty()) {
-    return encodeToolError('Failed to capture screenshot; page may still be loading.')
+    throw new Error('Failed to capture screenshot; page may still be loading.')
   }
   const encodedImage = extractBase64ImageData(nativeImage.toDataURL())
   if (!encodedImage?.data) {
-    return encodeToolError('Failed to encode screenshot image.')
+    throw new Error('Failed to encode screenshot image.')
   }
   const size = nativeImage.getSize()
   const persisted = (await ctx.ipc.invoke(IPC.IMAGE_PERSIST_GENERATED, {
@@ -412,70 +233,11 @@ async function executeBrowserScreenshot(
   ]
 }
 
-const SNAPSHOT_SCRIPT = `
-(function() {
-  var selectors = 'a, button, input, select, textarea, [role="button"], [role="link"], [role="tab"], [onclick]'
-  var els = document.querySelectorAll(selectors)
-  var results = []
-  var seen = new Set()
-
-  function uniqueSelector(el) {
-    if (el.id) return '#' + CSS.escape(el.id)
-    var path = []
-    var cur = el
-    while (cur && cur !== document.body) {
-      var tag = cur.tagName.toLowerCase()
-      var parent = cur.parentElement
-      if (parent) {
-        var siblings = Array.from(parent.children).filter(function(c) { return c.tagName === cur.tagName })
-        if (siblings.length > 1) {
-          tag += ':nth-of-type(' + (siblings.indexOf(cur) + 1) + ')'
-        }
-      }
-      path.unshift(tag)
-      cur = parent
-    }
-    return path.join(' > ')
-  }
-
-  els.forEach(function(el) {
-    if (el.offsetParent === null && el.tagName !== 'INPUT' && el.getAttribute('type') !== 'hidden') return
-    var sel = uniqueSelector(el)
-    if (seen.has(sel)) return
-    seen.add(sel)
-    var tag = el.tagName.toLowerCase()
-    var text = (el.textContent || '').trim().substring(0, 80).replace(/\\s+/g, ' ')
-    var type = el.getAttribute('type') || ''
-    var name = el.getAttribute('name') || ''
-    var placeholder = el.getAttribute('placeholder') || ''
-    var role = el.getAttribute('role') || ''
-    var href = el.getAttribute('href') || ''
-    var value = ''
-    if (tag === 'input' || tag === 'textarea') value = (el.value || '').substring(0, 40)
-    if (tag === 'select') value = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : ''
-
-    var desc = tag
-    if (type) desc += '[type=' + type + ']'
-    if (role) desc += '[role=' + role + ']'
-    if (name) desc += ' name="' + name + '"'
-    if (placeholder) desc += ' placeholder="' + placeholder + '"'
-    if (href) desc += ' href="' + href.substring(0, 100) + '"'
-    if (value) desc += ' value="' + value + '"'
-    if (text) desc += ' - "' + text + '"'
-
-    results.push({ selector: sel, description: desc })
-  })
-
-  return JSON.stringify({ title: document.title, count: results.length, elements: results })
-})()
-`
-
 async function executeBrowserSnapshot(
   _input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const raw = await runWebviewCommand(webview, 'read interactive elements', (target) =>
     target.executeJavaScript(SNAPSHOT_SCRIPT)
@@ -497,47 +259,19 @@ async function executeBrowserSnapshot(
   })
 }
 
-const CLICK_SCRIPT = `
-(function(selector) {
-  var el
-  if (selector.startsWith('text=')) {
-    var searchText = selector.slice(5)
-    var all = document.querySelectorAll('a, button, [role="button"], [onclick], input[type="submit"], input[type="button"]')
-    for (var i = 0; i < all.length; i++) {
-      if ((all[i].textContent || '').trim().includes(searchText)) { el = all[i]; break }
-    }
-    if (!el) {
-      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT)
-      while (walker.nextNode()) {
-        if ((walker.currentNode.textContent || '').trim().includes(searchText) && walker.currentNode.offsetParent !== null) {
-          el = walker.currentNode; break
-        }
-      }
-    }
-  } else {
-    el = document.querySelector(selector)
-  }
-  if (!el) return JSON.stringify({ error: 'Element not found: ' + selector })
-  el.scrollIntoView({ block: 'center', behavior: 'instant' })
-  el.click()
-  return JSON.stringify({ success: true, tag: el.tagName.toLowerCase(), text: (el.textContent || '').trim().substring(0, 80) })
-})
-`
-
 async function executeBrowserClick(
   input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const selector = input.selector as string
-  if (!selector) return encodeToolError('"selector" is required')
+  if (!selector) throw new Error('"selector" is required')
   const raw = await runWebviewCommand(webview, 'click page element', (target) =>
     target.executeJavaScript(`${CLICK_SCRIPT}(${JSON.stringify(selector)})`)
   )
   const parsed = parseWebviewJson<{ error?: string; tag?: string; text?: string }>(raw)
-  if (parsed.error) return encodeToolError(parsed.error)
+  if (parsed.error) throw new Error(parsed.error)
   await new Promise((resolve) => setTimeout(resolve, 300))
   return encodeStructuredToolResult({
     success: true,
@@ -545,57 +279,25 @@ async function executeBrowserClick(
   })
 }
 
-const TYPE_SCRIPT = `
-(function(selector, text, clear, submit) {
-  var el = document.querySelector(selector)
-  if (!el) return JSON.stringify({ error: 'Element not found: ' + selector })
-  var tag = el.tagName.toLowerCase()
-  if (tag !== 'input' && tag !== 'textarea' && !el.isContentEditable) {
-    return JSON.stringify({ error: 'Element is not an input field: ' + selector })
-  }
-  el.focus()
-  if (el.isContentEditable) {
-    if (clear) el.textContent = ''
-    el.textContent += text
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-  } else {
-    var setter = Object.getOwnPropertyDescriptor(
-      tag === 'textarea' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value'
-    ).set
-    setter.call(el, (clear ? '' : el.value) + text)
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-    el.dispatchEvent(new Event('change', { bubbles: true }))
-  }
-  if (submit) {
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
-    el.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
-    el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }))
-    if (el.form) el.form.requestSubmit ? el.form.requestSubmit() : el.form.submit()
-  }
-  return JSON.stringify({ success: true, tag: tag, value: (el.value || el.textContent || '').substring(0, 200) })
-})
-`
-
 async function executeBrowserType(
   input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const selector = input.selector as string
   const text = input.text as string
   const clear = input.clear !== false
   const submit = input.submit === true
-  if (!selector) return encodeToolError('"selector" is required')
-  if (text == null) return encodeToolError('"text" is required')
+  if (!selector) throw new Error('"selector" is required')
+  if (text == null) throw new Error('"text" is required')
   const raw = await runWebviewCommand(webview, 'type into page element', (target) =>
     target.executeJavaScript(
       `${TYPE_SCRIPT}(${JSON.stringify(selector)}, ${JSON.stringify(text)}, ${clear}, ${submit})`
     )
   )
   const parsed = parseWebviewJson<{ error?: string; tag?: string; value?: string }>(raw)
-  if (parsed.error) return encodeToolError(parsed.error)
+  if (parsed.error) throw new Error(parsed.error)
   return encodeStructuredToolResult({
     success: true,
     element: parsed.tag,
@@ -607,8 +309,7 @@ async function executeBrowserScroll(
   input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const direction = (input.direction as string) || 'down'
   const amount = typeof input.amount === 'number' ? input.amount : 0
@@ -642,12 +343,11 @@ async function executeBrowserEvaluate(
   input: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResultContent> {
-  const accessError = getCurrentBrowserAccessError(ctx)
-  if (accessError) return accessError
+  assertCurrentBrowserAccess(ctx)
   const webview = await ensureAttachedWebview(ctx)
   const code = input.code
   if (typeof code !== 'string' || !code.trim()) {
-    return encodeToolError('"code" is required and must be a non-empty string')
+    throw new Error('"code" is required and must be a non-empty string')
   }
 
   // User code is inserted verbatim so it runs as real JavaScript in the page.
@@ -683,7 +383,7 @@ async function executeBrowserEvaluate(
     stack?: string
   }>(raw)
   if (parsed.error) {
-    return encodeToolError(parsed.stack ? `${parsed.error}\n${parsed.stack}` : parsed.error)
+    throw new Error(parsed.stack ? `${parsed.error}\n${parsed.stack}` : parsed.error)
   }
   return encodeStructuredToolResult({
     success: true,
@@ -692,6 +392,8 @@ async function executeBrowserEvaluate(
     result: parsed.result?.value
   })
 }
+
+// ── Dispatch + entry point ──
 
 async function runBrowserTool(
   toolName: string,
@@ -716,7 +418,7 @@ async function runBrowserTool(
     case 'BrowserEvaluate':
       return await executeBrowserEvaluate(input, ctx)
     default:
-      return encodeToolError(`Unsupported browser tool: ${toolName}`)
+      throw new Error(`Unsupported browser tool: ${toolName}`)
   }
 }
 

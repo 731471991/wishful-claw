@@ -1,17 +1,27 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { Brain, FileText, ScrollText, icons } from 'lucide-react'
+import { Brain, ChevronDown, ChevronRight, FileText, ScrollText, icons } from 'lucide-react'
 
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import { formatTokens, getBillableTotalTokens } from '@renderer/lib/format-tokens'
 import { parseSubAgentMeta } from '@renderer/lib/agent/sub-agents/create-tool'
 import { subAgentRegistry } from '@renderer/lib/agent/sub-agents/registry'
+import {
+  generateStepDescription,
+  getStepStatusColor,
+  getStepStatusIcon
+} from '@renderer/lib/agent/sub-agents/step-descriptions'
+import {
+  isEarlyResolved,
+  resolveSubAgentApproval
+} from '@renderer/lib/tools/sub-agent-approval'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { cn } from '@renderer/lib/utils'
-import type { ToolResultContent } from '@renderer/lib/api/types'
+import type { ToolCallState, ToolResultContent } from '@renderer/lib/api/types'
+import { motion, AnimatePresence } from 'motion/react'
 import {
   findSubAgentInSelection,
   selectSessionScopedAgentState
@@ -55,6 +65,79 @@ function extractToolResultText(content?: ToolResultContent): string {
     .join('\n')
     .trim()
 }
+
+// ── Step List Component ──
+
+function SubAgentStepList({
+  toolCalls,
+  isRunning
+}: {
+  toolCalls: ToolCallState[]
+  isRunning: boolean
+}): React.JSX.Element {
+  const [, forceUpdate] = React.useReducer((x: number) => x + 1, 0)
+
+  if (toolCalls.length === 0) {
+    return (
+      <div className="px-3 py-1.5 text-[11px] text-muted-foreground/50">
+        {isRunning ? '准备中...' : '无工具调用'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-h-[240px] overflow-y-auto px-3 py-1">
+      {toolCalls.map((tc, idx) => {
+        const desc = generateStepDescription(tc)
+        const statusIcon = getStepStatusIcon(tc.status)
+        const statusColor = getStepStatusColor(tc.status)
+        const needsApproval = tc.status === 'pending_approval'
+        const alreadyResolved = needsApproval && isEarlyResolved(tc.id)
+        return (
+          <div
+            key={tc.id ?? idx}
+            className="flex items-center gap-2 py-0.5 text-[11px] leading-5"
+          >
+            <span className={cn('shrink-0 text-[10px]', statusColor)} aria-hidden="true">
+              {statusIcon}
+            </span>
+            <span className="min-w-0 truncate text-foreground/70">{desc}</span>
+            {needsApproval && !alreadyResolved ? (
+              <span className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    resolveSubAgentApproval(tc.id, true)
+                    forceUpdate()
+                  }}
+                >
+                  同意
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    resolveSubAgentApproval(tc.id, false)
+                    forceUpdate()
+                  }}
+                >
+                  拒绝
+                </button>
+              </span>
+            ) : alreadyResolved ? (
+              <span className="shrink-0 text-[10px] text-muted-foreground/50">处理中...</span>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Hover Content ──
 
 function SubAgentHoverContent({
   displayName,
@@ -111,6 +194,8 @@ function SubAgentHoverContent({
     </HoverCardContent>
   )
 }
+
+// ── Main Card Component ──
 
 function SubAgentCardInner({
   name,
@@ -201,6 +286,15 @@ function SubAgentCardInner({
     return () => clearInterval(timer)
   }, [tracked?.isRunning, tracked?.startedAt])
 
+  // Expand/collapse: expanded by default when running, collapsed when done
+  const [isExpanded, setIsExpanded] = React.useState(isRunning)
+  React.useEffect(() => {
+    if (!isRunning && isExpanded) {
+      // Auto-collapse when execution ends
+      setIsExpanded(false)
+    }
+  }, [isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const elapsed = tracked
     ? (tracked.completedAt ?? (tracked.isRunning ? now : tracked.startedAt)) - tracked.startedAt
     : histMeta?.elapsed
@@ -229,7 +323,13 @@ function SubAgentCardInner({
         : reportStatus === 'fallback'
           ? t('subAgent.doneSynthesized', { defaultValue: 'Done (synthesized)' })
           : t('subAgent.done')
-  const previewText = descriptionText || promptText.replace(/\s+/g, ' ').trim() || statusText
+
+  const summaryText = !isRunning && callCount > 0
+    ? `完成 ${callCount} 次工具调用`
+    : isRunning && callCount > 0
+      ? `已执行 ${callCount} 次工具调用`
+      : descriptionText || promptText.replace(/\s+/g, ' ').trim() || statusText
+
   const icon = getSubAgentIcon(displayName)
   const metaText = [
     statusText,
@@ -247,64 +347,115 @@ function SubAgentCardInner({
       .openSubAgentExecutionDetail(toolUseId, histText ?? undefined, displayName, sessionId ?? undefined)
   }
 
+  const hasSteps = (tracked?.toolCalls?.length ?? 0) > 0
+
   const card = (
-    <button
-      type="button"
-      onClick={handleOpenPanel}
-      title={`${t('subAgent.viewDetails')} · ${metaText}`}
+    <div
       className={cn(
-        'group my-1 flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-[12px] transition-colors duration-200',
-        'hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/45 dark:hover:bg-white/[0.035]',
-        isError && 'hover:bg-destructive/[0.035]'
+        'group my-1 w-full min-w-0 overflow-hidden rounded-md border border-border/30 transition-colors duration-200',
+        'hover:border-border/50',
+        isError && 'border-destructive/20 hover:border-destructive/35'
       )}
     >
-      <span
+      {/* Header row — click toggles expand/collapse */}
+      <button
+        type="button"
+        onClick={() => hasSteps && setIsExpanded((v) => !v)}
+        title={metaText}
         className={cn(
-          'flex size-5 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-colors',
-          isQueued && 'border-amber-500/30 text-amber-600 dark:text-amber-300',
-          isRunning && 'border-sky-500/25 text-sky-600 dark:text-sky-300',
-          isError && 'border-destructive/25 text-destructive',
-          !isQueued &&
-            !isRunning &&
-            !isError &&
-            'border-lime-500/25 text-lime-600 dark:text-lime-400'
+          'flex w-full min-w-0 items-center gap-2 px-1.5 py-1.5 text-left text-[12px] transition-colors duration-200',
+          'hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/45 dark:hover:bg-white/[0.035]',
+          isError && 'hover:bg-destructive/[0.035]',
+          !hasSteps && 'cursor-default'
         )}
-        aria-hidden="true"
       >
-        {icon}
-      </span>
-
-      <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
-        <span className="shrink-0 font-mono text-[12px] font-medium text-foreground/82">
-          {displayName}
-        </span>
-        {isBackground ? (
-          <span className="hidden shrink-0 rounded-full border border-cyan-500/20 bg-cyan-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium leading-none text-cyan-700 sm:inline-flex dark:text-cyan-300">
-            {t('subAgent.background', { defaultValue: 'Background' })}
+        {/* Expand/collapse chevron */}
+        {hasSteps ? (
+          <span className="shrink-0 text-muted-foreground/50" aria-hidden="true">
+            {isExpanded ? (
+              <ChevronDown className="size-3" />
+            ) : (
+              <ChevronRight className="size-3" />
+            )}
           </span>
-        ) : null}
-        <span className="min-w-0 truncate text-[12px] text-muted-foreground/55">
-          ({previewText})
-        </span>
-      </span>
+        ) : (
+          <span className="w-3 shrink-0" />
+        )}
 
-      <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground/65">
         <span
           className={cn(
-            'size-1.5 rounded-full',
-            isQueued && 'bg-amber-500',
-            isRunning && 'animate-pulse bg-sky-500 motion-reduce:animate-none',
-            isError && 'bg-destructive',
-            !isQueued && !isRunning && !isError && 'bg-emerald-500'
+            'flex size-5 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-colors',
+            isQueued && 'border-amber-500/30 text-amber-600 dark:text-amber-300',
+            isRunning && 'border-sky-500/25 text-sky-600 dark:text-sky-300',
+            isError && 'border-destructive/25 text-destructive',
+            !isQueued &&
+              !isRunning &&
+              !isError &&
+              'border-lime-500/25 text-lime-600 dark:text-lime-400'
           )}
           aria-hidden="true"
-        />
-        <span className="max-w-28 truncate">{statusText}</span>
-        {elapsed != null ? (
-          <span className="tabular-nums text-muted-foreground/55">{formatElapsed(elapsed)}</span>
-        ) : null}
-      </span>
-    </button>
+        >
+          {icon}
+        </span>
+
+        <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+          <span className="shrink-0 font-mono text-[12px] font-medium text-foreground/82">
+            {displayName}
+          </span>
+          {isBackground ? (
+            <span className="hidden shrink-0 rounded-full border border-cyan-500/20 bg-cyan-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium leading-none text-cyan-700 sm:inline-flex dark:text-cyan-300">
+              {t('subAgent.background', { defaultValue: 'Background' })}
+            </span>
+          ) : null}
+          <span className="min-w-0 truncate text-[12px] text-muted-foreground/55">
+            ({summaryText})
+          </span>
+        </span>
+
+        <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground/65">
+          <span
+            className={cn(
+              'size-1.5 rounded-full',
+              isQueued && 'bg-amber-500',
+              isRunning && 'animate-pulse bg-sky-500 motion-reduce:animate-none',
+              isError && 'bg-destructive',
+              !isQueued && !isRunning && !isError && 'bg-emerald-500'
+            )}
+            aria-hidden="true"
+          />
+          <span className="max-w-28 truncate">{statusText}</span>
+          {elapsed != null ? (
+            <span className="tabular-nums text-muted-foreground/55">{formatElapsed(elapsed)}</span>
+          ) : null}
+        </span>
+      </button>
+
+      {/* Expanded step list */}
+      <AnimatePresence initial={false}>
+        {isExpanded && hasSteps && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden border-t border-border/20"
+          >
+            <SubAgentStepList
+              toolCalls={tracked!.toolCalls}
+              isRunning={isRunning}
+            />
+            {/* View details link */}
+            <button
+              type="button"
+              onClick={handleOpenPanel}
+              className="block w-full px-3 py-1 text-left text-[10px] text-muted-foreground/50 transition-colors hover:text-foreground/70"
+            >
+              {t('subAgent.viewDetails', { defaultValue: 'View details →' })}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 
   return descriptionText || promptText ? (

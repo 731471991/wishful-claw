@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog } from 'electron'
+﻿import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -8,6 +8,15 @@ import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
 import { registerAgentStreamForwarder } from './ipc/agent-stream-handler'
+import { registerNativeAgentRuntimeHandlers } from './ipc/native-agent-runtime'
+import { registerGitHandlers } from './ipc/git-handlers'
+import { registerFsHandlers } from './ipc/fs-handlers'
+import { registerTerminalHandlers } from './ipc/terminal-handlers'
+import { registerAgentChangeHandlers } from './ipc/agent-change-handlers'
+import { registerMcpHandlers } from './ipc/mcp-handlers'
+import { registerVideoHandlers } from './ipc/video-handlers'
+import { registerExtensionHandlers } from './ipc/extension-handlers'
+import { registerWebSearchHandlers } from './ipc/web-search-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -27,7 +36,8 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   })
 
@@ -122,6 +132,12 @@ app.whenReady().then(() => {
   // Agent stream event forwarder (worker → renderer)
   registerAgentStreamForwarder()
 
+  // Native agent runtime: handles reverse-request from worker (e.g. browser tool calls)
+  registerNativeAgentRuntimeHandlers()
+
+  // Git IPC handlers: forward git:* channels to worker
+  registerGitHandlers()
+
 
   // Dialog: open folder selector
   registerMessagePackHandler<Record<string, unknown>, { folderPath: string | null; canceled: boolean }>(
@@ -175,266 +191,39 @@ app.whenReady().then(() => {
     }
   )
 
-  // ── File system handlers (used by agent tools and dynamic context) ──
-  registerMessagePackHandler<{ path: string; maxLines?: number }, string>(
-    'fs:read-file',
-    async (args) => {
-      try {
-        const content = await fs.promises.readFile(args.path, 'utf-8')
-        return content
-      } catch (err) {
-        // Return empty string for missing files instead of throwing
-        const code = (err as NodeJS.ErrnoException).code
-        if (code === 'ENOENT' || code === 'EISDIR') return ''
-        throw new Error(String(err))
-      }
-    }
-  )
+  // ── File system handlers (extracted to ipc/fs-handlers.ts) ──
+  registerFsHandlers()
+  registerTerminalHandlers()
+  registerAgentChangeHandlers()
+  registerMcpHandlers()
+  registerVideoHandlers()
+  registerExtensionHandlers()
+registerWebSearchHandlers()
 
-  registerMessagePackHandler<{ path: string; content: string; encoding?: BufferEncoding }, void>(
-    'fs:write-file',
-    async (args) => {
-      await fs.promises.writeFile(args.path, args.content, args.encoding ?? 'utf-8')
-    }
+  // ── Agent history handlers (forwarded to C# Worker SQLite) ──
+  registerMessagePackHandler<{ toolUseId: string }, unknown>(
+    'agent-history:read-by-tool-use-id',
+    async (args) => getNativeWorker().request('db/sub-agent-read-by-tool-use-id', args)
   )
-
-  registerMessagePackHandler<{ path: string }, { isDirectory: boolean; isFile: boolean; size: number; mtime: number } | null>(
-    'fs:stat-path',
-    async (args) => {
-      try {
-        const stat = await fs.promises.stat(args.path)
-        return {
-          isDirectory: stat.isDirectory(),
-          isFile: stat.isFile(),
-          size: stat.size,
-          mtime: stat.mtimeMs
-        }
-      } catch {
-        return null
-      }
-    }
-  )
-
-  registerMessagePackHandler<{ path: string }, { name: string; isDirectory: boolean; isFile: boolean; size: number }[]>(
-    'fs:list-dir',
-    async (args) => {
-      try {
-        const entries = await fs.promises.readdir(args.path, { withFileTypes: true })
-        return entries.map((entry) => ({
-          name: entry.name,
-          isDirectory: entry.isDirectory(),
-          isFile: entry.isFile(),
-          size: 0
-        }))
-      } catch {
-        return []
-      }
-    }
-  )
-
-  registerMessagePackHandler<{ path: string; recursive?: boolean }, void>(
-    'fs:mkdir',
-    async (args) => {
-      await fs.promises.mkdir(args.path, { recursive: args.recursive ?? true })
-    }
-  )
-
-  registerMessagePackHandler<{ path: string }, void>(
-    'fs:delete',
-    async (args) => {
-      await fs.promises.unlink(args.path)
-    }
-  )
-
-  registerMessagePackHandler<{ from: string; to: string }, void>(
-    'fs:move',
-    async (args) => {
-      await fs.promises.rename(args.from, args.to)
-    }
-  )
-
-  registerMessagePackHandler<{ path: string }, string | null>(
-    'fs:read-text-file-lines',
-    async (args) => {
-      try {
-        const content = await fs.promises.readFile(args.path, 'utf-8')
-        return content
-      } catch {
-        return null
-      }
-    }
-  )
-
-  registerMessagePackHandler<{ path: string }, ArrayBuffer | null>(
-    'fs:read-file-binary',
-    async (args) => {
-      try {
-        const buffer = await fs.promises.readFile(args.path)
-        return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-      } catch {
-        return null
-      }
-    }
-  )
-
-  registerMessagePackHandler<{ path: string; content: Buffer | ArrayBuffer | Uint8Array }, void>(
-    'fs:write-file-binary',
-    async (args) => {
-      const data = Buffer.isBuffer(args.content)
-        ? args.content
-        : args.content instanceof ArrayBuffer
-          ? Buffer.from(args.content)
-          : Buffer.from(args.content)
-      await fs.promises.writeFile(args.path, data)
-    }
-  )
-
-  // Glob - simple pattern matching (supports * and **)
-  registerMessagePackHandler<{ pattern: string; cwd?: string }, { path: string; name: string; isDirectory: boolean }[]>(
-    'fs:glob',
-    async (args) => {
-      try {
-        const cwd = args.cwd ?? process.cwd()
-        const pattern = args.pattern.replace(/\\/g, '/')
-        const results: { path: string; name: string; isDirectory: boolean }[] = []
-        const globToRegex = (p: string): RegExp => {
-          let re = p.replace(/[.+^${}()|[\]]/g, '\\$&')
-          re = re.replace(/\*\*/g, '<<GLOBSTAR>>')
-          re = re.replace(/\*/g, '[^/]*')
-          re = re.replace(/<<GLOBSTAR>>/g, '.*')
-          re = re.replace(/\?/g, '.')
-          return new RegExp('^' + re + '$')
-        }
-        const regex = globToRegex(pattern)
-        const walk = async (dir: string, depth: number): Promise<void> => {
-          if (depth > 8 || results.length > 500) return
-          let entries: fs.Dirent[]
-          try { entries = await fs.promises.readdir(dir, { withFileTypes: true }) } catch { return }
-          for (const entry of entries) {
-            if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
-            const fullPath = join(dir, entry.name)
-            const relPath = fullPath.replace(cwd, '').replace(/^[\\/]+/, '').replace(/\\/g, '/')
-            if (regex.test(relPath) || regex.test(entry.name)) {
-              results.push({ path: fullPath, name: entry.name, isDirectory: entry.isDirectory() })
-            }
-            if (entry.isDirectory() && depth < 8) {
-              await walk(fullPath, depth + 1)
-            }
-          }
-        }
-        await walk(cwd, 0)
-        return results
-      } catch {
-        return []
-      }
-    }
-  )
-
-  // Grep - search file contents
-  registerMessagePackHandler<{ pattern: string; path?: string; glob?: string }, { file: string; line: number; text: string }[]>(
-    'fs:grep',
-    async (args) => {
-      try {
-        const cwd = args.path ?? process.cwd()
-        const results: { file: string; line: number; text: string }[] = []
-        const regex = new RegExp(args.pattern, 'i')
-        const fileList: string[] = []
-        const walk = async (dir: string, depth: number): Promise<void> => {
-          if (depth > 6 || fileList.length > 1000) return
-          let entries: fs.Dirent[]
-          try { entries = await fs.promises.readdir(dir, { withFileTypes: true }) } catch { return }
-          for (const entry of entries) {
-            if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
-            const fullPath = join(dir, entry.name)
-            if (entry.isFile()) {
-              fileList.push(fullPath)
-            } else if (entry.isDirectory() && depth < 6) {
-              await walk(fullPath, depth + 1)
-            }
-          }
-        }
-        await walk(cwd, 0)
-        for (const file of fileList) {
-          try {
-            const content = await fs.promises.readFile(file, 'utf-8')
-            const lines = content.split('\n')
-            for (let i = 0; i < lines.length; i++) {
-              if (regex.test(lines[i])) {
-                results.push({ file, line: i + 1, text: lines[i].trim() })
-                if (results.length >= 200) return results
-              }
-            }
-          } catch {
-            // skip binary files
-          }
-        }
-        return results
-      } catch {
-        return []
-      }
-    }
-  )
-
-  // Search files by name
-  registerMessagePackHandler<{ query: string; path?: string }, { path: string; name: string }[]>(
-    'fs:search-files',
-    async (args) => {
-      try {
-        const cwd = args.path ?? process.cwd()
-        const query = args.query.toLowerCase()
-        const results: { path: string; name: string }[] = []
-        const walk = async (dir: string, depth: number): Promise<void> => {
-          if (depth > 5 || results.length > 200) return
-          const entries = await fs.promises.readdir(dir, { withFileTypes: true })
-          for (const entry of entries) {
-            if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
-            const fullPath = join(dir, entry.name)
-            if (entry.name.toLowerCase().includes(query)) {
-              results.push({ path: fullPath, name: entry.name })
-            }
-            if (entry.isDirectory() && depth < 5) {
-              await walk(fullPath, depth + 1)
-            }
-          }
-        }
-        await walk(cwd, 0)
-        return results
-      } catch {
-        return []
-      }
-    }
-  )
-
-  // Ensure default chat working folder exists (Documents/<date>/Chat)
-  registerMessagePackHandler<void, { path?: string; error?: string }>(
-    'fs:default-chat-working-folder',
-    async () => {
-      try {
-        const folderPath = join(app.getPath('documents'), formatLocalDateFolderName(), 'Chat')
-        await fs.promises.mkdir(folderPath, { recursive: true })
-        return { path: folderPath }
-      } catch (err) {
-        return { error: String(err) }
-      }
-    }
-  )
-
-  // ── Agent history stub handlers (no persistence layer yet) ──
   registerMessagePackHandler<void, { total: number; sessions: unknown[] }>(
     'agent-history:index',
-    async () => ({ total: 0, sessions: [] })
+    async () => getNativeWorker().request('db/sub-agent-index', {})
   )
   registerMessagePackHandler<{ sessionId: string }, unknown[]>(
     'agent-history:read',
-    async () => []
+    async (args) => getNativeWorker().request('db/sub-agent-read-session', args)
   )
-  registerMessagePackHandler<unknown, void>(
+  registerMessagePackHandler<{
+    upserts?: unknown[]
+    removeIds?: string[]
+    removeSessionIds?: string[]
+  }, void>(
     'agent-history:apply',
-    async () => undefined
+    async (args) => { await getNativeWorker().request('db/sub-agent-apply', args) }
   )
-  registerMessagePackHandler<unknown, void>(
+  registerMessagePackHandler<{ snapshot: unknown }, void>(
     'agent-history:replace',
-    async () => undefined
+    async (args) => { await getNativeWorker().request('db/sub-agent-replace', args) }
   )
   // ── SSH stub handlers ──
   registerMessagePackHandler<unknown, unknown[]>(
@@ -511,28 +300,6 @@ app.whenReady().then(() => {
     async () => undefined
   )
 
-  // ── Agent changes stub handlers ──
-  registerMessagePackHandler<{ sessionId: string }, unknown[]>(
-    'agent:changes:list-session',
-    async () => []
-  )
-  registerMessagePackHandler<unknown, unknown[]>(
-    'agent:changes:list-project',
-    async () => []
-  )
-  registerMessagePackHandler<unknown, unknown>(
-    'agent:changes:diff-content',
-    async () => null
-  )
-  registerMessagePackHandler<unknown, { success: boolean }>(
-    'agent:changes:undo-run',
-    async () => ({ success: false })
-  )
-  registerMessagePackHandler<unknown, { success: boolean }>(
-    'agent:changes:undo-file',
-    async () => ({ success: false })
-  )
-
   // -- Log handlers --
   registerMessagePackHandler<{ level: string; message: string; stack?: string; extra?: Record<string, unknown> }, void>(
     'log:write',
@@ -546,6 +313,152 @@ app.whenReady().then(() => {
     'log:read',
     async (args) => {
       return readRecentLogs(args.maxLines ?? 500)
+    }
+  )
+
+  // -- Shell handlers --
+  registerMessagePackHandler<string, void>(
+    'shell:openExternal',
+    async (args) => {
+      await shell.openExternal(args)
+    }
+  )
+
+  registerMessagePackHandler<string, void>(
+    'shell:openPath',
+    async (args) => {
+      await shell.openPath(args)
+    }
+  )
+
+  // -- File selection dialog --
+  registerMessagePackHandler<{ multiSelections?: boolean }, { canceled: boolean; path: string; paths: string[] }>(
+    'fs:select-file',
+    async (args) => {
+      const properties: ('openFile' | 'multiSelections')[] = ['openFile']
+      if (args?.multiSelections) properties.push('multiSelections')
+      const result = await dialog.showOpenDialog(mainWindow!, {
+        properties: properties as ('openFile' | 'multiSelections')[]
+      })
+      return {
+        canceled: result.canceled,
+        path: result.filePaths[0] ?? '',
+        paths: result.filePaths
+      }
+    }
+  )
+
+  // -- File watch handlers --
+  const watchedFiles = new Map<string, fs.FSWatcher>()
+
+  registerMessagePackHandler<{ path: string }, { path: string }>(
+    'fs:watch-file',
+    async (args) => {
+      const filePath = args.path
+      if (watchedFiles.has(filePath)) {
+        return { path: filePath }
+      }
+      try {
+        const watcher = fs.watch(filePath, { persistent: false }, (eventType) => {
+          if (eventType === 'change') {
+            safeSendMessagePackToWindow(mainWindow!, 'fs:file-changed', { path: filePath })
+          }
+        })
+        watcher.on('error', () => {
+          watchedFiles.delete(filePath)
+        })
+        watchedFiles.set(filePath, watcher)
+        return { path: filePath }
+      } catch {
+        return { path: filePath }
+      }
+    }
+  )
+
+  registerMessagePackHandler<{ path: string }, void>(
+    'fs:unwatch-file',
+    async (args) => {
+      const watcher = watchedFiles.get(args.path)
+      if (watcher) {
+        watcher.close()
+        watchedFiles.delete(args.path)
+      }
+    }
+  )
+
+  // -- Browser emulation status (stub -- returns defaults) --
+  registerMessagePackHandler<void, { success: true; status: { reuseEnabled: boolean; userAgent: string } }>(
+    'browser:emulation-status',
+    async () => {
+      return { success: true, status: { reuseEnabled: false, userAgent: '' } }
+    }
+  )
+
+  // -- Image persistence (browser screenshots, generated images) --
+  const GENERATED_IMAGES_DIR = 'wishful-claw'
+  const GENERATED_IMAGES_SUBDIR = 'image'
+
+  function getGeneratedImagesDir(): string {
+    const { homedir } = require('os')
+    const dir = join(homedir(), GENERATED_IMAGES_DIR, GENERATED_IMAGES_SUBDIR)
+    fs.mkdirSync(dir, { recursive: true })
+    return dir
+  }
+
+  function guessMimeTypeFromExtension(ext: string): string {
+    switch (ext.toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg'
+      case '.webp':
+        return 'image/webp'
+      case '.gif':
+        return 'image/gif'
+      case '.bmp':
+        return 'image/bmp'
+      default:
+        return 'image/png'
+    }
+  }
+
+  function guessExtensionFromMimeType(mediaType?: string): string {
+    switch ((mediaType || '').toLowerCase()) {
+      case 'image/jpeg':
+        return '.jpg'
+      case 'image/webp':
+        return '.webp'
+      case 'image/gif':
+        return '.gif'
+      case 'image/bmp':
+        return '.bmp'
+      default:
+        return '.png'
+    }
+  }
+
+  registerMessagePackHandler<{ data?: string; mediaType?: string; url?: string; filePath?: string }, { filePath?: string; mediaType?: string; data?: string; error?: string }>(
+    'image:persist-generated',
+    async (args) => {
+      try {
+        let buffer: Buffer
+        if (typeof args.data === 'string' && args.data.trim()) {
+          buffer = Buffer.from(args.data, 'base64')
+        } else {
+          return { error: 'Missing image data' }
+        }
+        const mediaType = args.mediaType || 'image/png'
+        const fileExt = guessExtensionFromMimeType(mediaType)
+        const { randomUUID } = require('crypto')
+        const filePath = join(getGeneratedImagesDir(), `${Date.now()}-${randomUUID()}${fileExt}`)
+        fs.writeFileSync(filePath, buffer)
+        return {
+          filePath,
+          mediaType,
+          data: args.data
+        }
+      } catch (err) {
+        return { error: String(err) }
+      }
     }
   )
 

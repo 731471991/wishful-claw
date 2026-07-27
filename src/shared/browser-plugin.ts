@@ -1,4 +1,4 @@
-export const BUILTIN_BROWSER_PARTITION = 'persist:opencowork-browser'
+export const BUILTIN_BROWSER_PARTITION = 'persist:wishfulclaw-browser'
 export const BROWSER_SETTINGS_STORAGE_KEY = 'opencowork-settings'
 export const BROWSER_USER_DATA_REUSE_SETTING_KEY = 'browserUserDataReuseEnabled'
 export const BROWSER_USER_DATA_SOURCE_SETTING_KEY = 'browserUserDataSource'

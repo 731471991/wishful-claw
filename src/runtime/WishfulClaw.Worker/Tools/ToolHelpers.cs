@@ -1,5 +1,8 @@
 using System.IO;
+using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace WishfulClaw.Worker.Tools;
 
@@ -89,5 +92,30 @@ internal static class ToolHelpers
     {
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
+    }
+
+    /// <summary>
+    /// Writes text to a file and flushes to disk immediately.
+    /// Uses FileStream with Flush(true) to ensure subsequent reads
+    /// always see the updated content (fixes Edit->Read cache issue).
+    /// </summary>
+    public static async Task WriteAndFlushAsync(string path, string content, CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+        await using var fs = new FileStream(
+            path,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.Read,
+            bufferSize: 4096,
+            useAsync: true);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        await fs.WriteAsync(bytes.AsMemory(0, bytes.Length), cancellationToken);
+        await fs.FlushAsync(cancellationToken);
+        fs.Flush(true);
     }
 }

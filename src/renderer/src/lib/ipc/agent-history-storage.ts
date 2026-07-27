@@ -1,4 +1,4 @@
-import { ipcClient } from './ipc-client'
+﻿import { ipcClient } from './ipc-client'
 
 export interface AgentHistoryApplyRequest<T> {
   upserts?: T[]
@@ -21,6 +21,10 @@ export async function readAgentHistoryIndex(): Promise<AgentHistoryIndex> {
 
 export async function readAgentHistory<T>(sessionId: string): Promise<T[]> {
   return (await ipcClient.invoke('agent-history:read', { sessionId })) as T[]
+}
+
+export async function readSubAgentByToolUseId(toolUseId: string): Promise<{ found: boolean; data?: unknown }> {
+  return (await ipcClient.invoke('agent-history:read-by-tool-use-id', { toolUseId })) as { found: boolean; data?: unknown }
 }
 
 export async function applyAgentHistory<T>(request: AgentHistoryApplyRequest<T>): Promise<void> {

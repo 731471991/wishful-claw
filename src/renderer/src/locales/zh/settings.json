@@ -16,11 +16,19 @@
     "groups": {
       "general": "基础",
       "aiService": "AI 服务",
-      "about": "关于"
+      "about": "关于",
+      "channels": "渠道"
     },
     "persona": {
       "label": "人格管理",
       "desc": "管理人格库，编辑身份、灵魂、认知和行为准则"
+    },
+    "channel": {
+      "label": "渠道配置",
+      "desc": "配置消息渠道（飞书、微信等）"
+    },
+    "websearch": {
+      "label": "联网搜索"
     }
   },
   "general": {
@@ -692,5 +700,135 @@
       "noProvider": "请先配置 AI 服务商",
       "noModel": "请先选择模型"
     }
+  },
+  "channel": {
+    "list": {
+      "title": "渠道列表",
+      "empty": "暂无渠道配置"
+    },
+    "empty": "选择左侧渠道进行配置",
+    "status": {
+      "running": "运行中",
+      "stopped": "已停止"
+    },
+    "actions": {
+      "start": "启动",
+      "stop": "停止"
+    },
+    "tabs": {
+      "qr": "扫码绑定",
+      "credentials": "API 凭据",
+      "features": "功能设置"
+    },
+    "qr": {
+      "title": "扫码绑定",
+      "placeholder": "点击下方按钮获取二维码",
+      "start": "获取二维码",
+      "refresh": "刷新二维码",
+      "regenerate": "重新生成",
+      "waiting": "请使用微信扫描二维码",
+      "connected": "绑定成功!",
+      "expired": "二维码已过期，请刷新",
+      "failed": "获取二维码失败",
+      "notSupported": "此渠道不支持扫码绑定，请使用 API 凭据配置",
+      "noAppId": "请先在 API 凭据页填写 App ID",
+      "feishuHint": "扫描二维码在飞书中打开应用",
+      "feishuPlaceholder": "填写 App ID 后生成二维码",
+      "weixinInstructions": "1. 点击\"获取二维码\"按钮\n2. 使用微信扫描显示的二维码\n3. 在手机上确认授权\n4. 绑定成功后渠道将自动启用",
+      "feishuInstructions": "1. 先在\"API 凭据\"页填写 App ID 和 App Secret\n2. 返回此页面查看生成的二维码\n3. 扫描二维码可快速跳转到飞书应用管理页\n4. 确保机器人已发布并具有所需权限"
+    },
+    "credentials": {
+      "title": "API 凭据",
+      "save": "保存",
+      "saved": "配置已保存",
+      "saveFailed": "保存失败"
+    },
+    "features": {
+      "title": "功能与权限",
+      "section": "功能开关",
+      "autoReply": "自动回复",
+      "autoReplyDesc": "收到消息时自动使用 AI 回复",
+      "streamingReply": "流式回复",
+      "streamingReplyDesc": "实时流式输出回复内容（需要渠道支持）",
+      "autoStart": "自动启动",
+      "autoStartDesc": "应用启动时自动连接此渠道"
+    },
+    "permissions": {
+      "section": "安全权限",
+      "allowShell": "Shell 执行",
+      "allowShellDesc": "允许 AI 执行 shell 命令",
+      "allowReadHome": "读取主目录",
+      "allowReadHomeDesc": "允许读取工作目录之外的文件",
+      "allowWriteOutside": "外部写入",
+      "allowWriteOutsideDesc": "允许写入工作目录之外的文件",
+      "allowSubAgents": "子代理",
+      "allowSubAgentsDesc": "允许使用子代理工具"
+    },
+    "feishu": {
+      "appId": "App ID",
+      "appSecret": "App Secret"
+    },
+    "dingtalk": {
+      "appKey": "App Key",
+      "appSecret": "App Secret",
+      "cardTemplateId": "卡片模板 ID（可选）"
+    },
+    "wecom": {
+      "corpId": "企业 ID",
+      "agentId": "应用 Agent ID",
+      "secret": "应用 Secret",
+      "token": "Token",
+      "encodingAesKey": "EncodingAESKey"
+    },
+    "weixin": {
+      "baseUrl": "API 地址",
+      "token": "Bot Token",
+      "routeTag": "路由标签（可选）",
+      "accountId": "账号 ID（可选）",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "qq": {
+      "appId": "App ID",
+      "appSecret": "App Secret",
+      "botAppId": "Bot App ID"
+    },
+    "telegram": {
+      "botToken": "Bot Token",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "discord": {
+      "botToken": "Bot Token",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "whatsapp": {
+      "botToken": "Bot Token",
+      "wsUrl": "WebSocket 中继地址（可选）"
+    },
+    "wsUrl": "WebSocket 中继地址（可选）"
+  },
+  "websearch": {
+    "title": "联网搜索",
+    "subtitle": "配置联网搜索提供商和设置",
+    "enable": "启用联网搜索",
+    "enableDesc": "允许 AI 搜索网络以获取最新信息",
+    "provider": "搜索提供商",
+    "providerDesc": "选择要使用的搜索提供商",
+    "selectProvider": "选择提供商",
+    "apiKey": "API 密钥",
+    "apiKeyDesc": "所选提供商的 API 密钥",
+    "apiKeyPlaceholder": "输入您的 API 密钥...",
+    "maxResults": "最大结果数",
+    "maxResultsDesc": "要返回的最大搜索结果数量",
+    "timeout": "超时时间（毫秒）",
+    "timeoutDesc": "请求超时时间（毫秒）",
+    "test": "测试搜索",
+    "testing": "测试中...",
+    "testDesc": "测试您的联网搜索配置",
+    "configSummary": "配置摘要",
+    "notSet": "未设置",
+    "disabledError": "联网搜索已禁用。请在设置中启用。",
+    "apiKeyRequired": "此提供商需要 API 密钥。",
+    "testSuccess": "联网搜索测试成功！找到 {{count}} 条结果。",
+    "testFailed": "联网搜索测试失败：{{error}}"
   }
 }

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using SqlSugar;
 using WishfulClaw.Core.Protocol;
 
@@ -71,8 +71,9 @@ internal static class DbClient
             _db.CodeFirst.InitTables(
                 typeof(ProjectEntity),
                 typeof(SessionEntity),
-                typeof(MessageEntity));
-            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (3 entities, MemoryArchiveEntity excluded)");
+                typeof(MessageEntity),
+                typeof(SubAgentRunEntity));
+            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (4 entities, MemoryArchiveEntity excluded)");
 
             // memory_entries 表（手动创建，不通过 CodeFirst）
             WorkerLog.Info("DbClient: creating memory_entries table");
@@ -174,6 +175,17 @@ internal static class DbClient
             {
                 throw new InvalidOperationException($"DB initialization failed: {result.Error}");
             }
+        }
+    }
+    /// <summary>
+    /// 确保 DB 已初始化（无参版本，用于非 IPC 上下文调用）。
+    /// 要求 DB 已通过 IPC handler 初始化过。
+    /// </summary>
+    public static void EnsureInitialized()
+    {
+        if (_db is null || !_initialized)
+        {
+            throw new InvalidOperationException("DB has not been initialized. Call EnsureInitialized(parameters) from an IPC handler first.");
         }
     }
 

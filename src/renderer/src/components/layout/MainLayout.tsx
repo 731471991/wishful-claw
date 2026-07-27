@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+﻿import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Sparkles,
@@ -244,12 +244,8 @@ export function MainLayout(): React.JSX.Element {
               <ContentArea />
             </div>
 
-            {/* Right panel */}
-            {rightPanelOpen && (
-              <div className="shrink-0" style={{ width: rightPanelWidth }}>
-                <RightPanel />
-              </div>
-            )}
+            {/* Right panel — always mounted so browser webview stays alive */}
+            <RightPanel />
           </div>
         </div>
 

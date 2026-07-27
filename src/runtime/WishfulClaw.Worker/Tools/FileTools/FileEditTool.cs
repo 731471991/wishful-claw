@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WishfulClaw.Core.Tools;
+using WishfulClaw.Worker.Modules.AgentChanges;
 
 namespace WishfulClaw.Worker.Tools.FileTools;
 
@@ -47,7 +48,8 @@ public sealed class FileEditTool : IToolExecutor
 
         try
         {
-            var content = await File.ReadAllTextAsync(path, Encoding.UTF8, context.CancellationToken);
+            var originalContent = await File.ReadAllTextAsync(path, Encoding.UTF8, context.CancellationToken);
+            var content = originalContent;
 
             // Normalize line endings for matching
             var normalizedOld = oldString.Replace("\r\n", "\n").Replace('\r', '\n');
@@ -76,7 +78,19 @@ public sealed class FileEditTool : IToolExecutor
                 updated = updated.Replace("\n", "\r\n");
             }
 
-            await File.WriteAllTextAsync(path, updated, Encoding.UTF8, context.CancellationToken);
+            await WriteAndFlushAsync(path, updated, context.CancellationToken);
+
+            // Record change for tracking/rollback
+            if (!string.IsNullOrEmpty(context.RunId))
+            {
+                AgentChangeTools.RecordChange(
+                    context.RunId,
+                    context.SessionId,
+                    path,
+                    beforeExists: true,
+                    beforeText: originalContent,
+                    afterText: updated);
+            }
 
             return new ToolResult($"{{\"success\":true,\"path\":\"{EscapeJson(path)}\",\"replaceAll\":{replaceAll.ToString().ToLowerInvariant()}}}");
         }

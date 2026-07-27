@@ -1,0 +1,356 @@
+/**
+ * Feishu-specific IPC handlers (media, mention, urgent, bitable, download).
+ *
+ * Extracted from channel-handlers.ts.
+ */
+
+import * as fs from 'fs'
+import * as path from 'path'
+import { FeishuApi, FeishuMediaApi } from '../../channels/providers/feishu/feishu-api'
+import type { FeishuService } from '../../channels/providers/feishu/feishu-service'
+import {
+  activeChannelManager,
+  registerChannelMessagePackHandler,
+  readBinarySource
+} from './channel-handler-utils'
+
+export function registerFeishuHandlers(): void {
+  // Send image
+  registerChannelMessagePackHandler<{ pluginId: string; chatId: string; filePath: string }>(
+    'plugin:feishu:send-image',
+    async (args) => {
+      const service = activeChannelManager?.getService(args.pluginId) as
+        | FeishuService
+        | undefined
+      if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+
+      try {
+        let buf: Buffer
+        const src = args.filePath.trim()
+        if (/^https?:\/\//i.test(src)) {
+          buf = await FeishuMediaApi.downloadUrl(src)
+        } else {
+          if (!fs.existsSync(src)) return { error: `File not found: ${src}` }
+          buf = fs.readFileSync(src)
+        }
+        const fileName = path.basename(src.split('?')[0]) || 'image.png'
+        const imageKey = await service.api.media.uploadImage(buf, fileName)
+        const result = await service.api.media.sendImageMessage(args.chatId, imageKey)
+        return { ok: true, messageId: result.messageId }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
+
+  // Send file
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    chatId: string
+    filePath: string
+    fileType?: string
+  }>('plugin:feishu:send-file', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as
+      | FeishuService
+      | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+
+    try {
+      let buf: Buffer
+      const src = args.filePath.trim()
+      if (/^https?:\/\//i.test(src)) {
+        buf = await FeishuMediaApi.downloadUrl(src)
+      } else {
+        if (!fs.existsSync(src)) return { error: `File not found: ${src}` }
+        buf = fs.readFileSync(src)
+      }
+      const fileName = path.basename(src.split('?')[0]) || 'file'
+      const ext = path.extname(fileName).toLowerCase().replace('.', '')
+      const typeMap: Record<string, 'opus' | 'mp4' | 'pdf' | 'doc' | 'xls' | 'ppt' | 'stream'> = {
+        opus: 'opus', mp4: 'mp4', pdf: 'pdf', doc: 'doc', docx: 'doc',
+        xls: 'xls', xlsx: 'xls', ppt: 'ppt', pptx: 'ppt'
+      }
+      const fileType =
+        (args.fileType as 'opus' | 'mp4' | 'pdf' | 'doc' | 'xls' | 'ppt' | 'stream' | undefined) ??
+        typeMap[ext] ??
+        'stream'
+      const fileKey = await service.api.media.uploadFile(buf, fileName, fileType)
+      const result = await service.api.media.sendFileMessage(args.chatId, fileKey)
+      return { ok: true, messageId: result.messageId }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // Send mention
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    chatId?: string
+    userIds?: string[]
+    atAll?: boolean
+    text?: string
+  }>('plugin:feishu:send-mention', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as
+      | FeishuService
+      | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+
+    try {
+      const chatId = args.chatId?.trim()
+      if (!chatId) return { error: 'Missing chatId' }
+      const info = await service.api.getChatInfo(chatId)
+      if (info?.chatType !== 'group') {
+        return { error: 'FeishuAtMember is only available in group chats.' }
+      }
+
+      const userIds = Array.isArray(args.userIds) ? args.userIds.filter(Boolean) : []
+      const text = args.text?.trim() ?? ''
+      const elements: Array<Record<string, string>> = []
+      if (args.atAll) elements.push({ tag: 'at', user_id: 'all' })
+      for (const uid of userIds) elements.push({ tag: 'at', user_id: uid })
+      if (text) {
+        const textValue = elements.length > 0 ? ` ${text}` : text
+        elements.push({ tag: 'text', text: textValue })
+      }
+      if (elements.length === 0) return { error: 'Message content is empty' }
+
+      const postContent = { zh_cn: { content: [elements] } }
+      const result = await service.api.sendMessage(chatId, JSON.stringify(postContent), 'post')
+      return { ok: true, messageId: result.messageId }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // List members
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    chatId?: string
+    pageToken?: string
+    pageSize?: number
+    memberIdType?: 'open_id' | 'user_id' | 'union_id'
+  }>('plugin:feishu:list-members', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as
+      | FeishuService
+      | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+
+    try {
+      const chatId = args.chatId?.trim()
+      if (!chatId) return { error: 'Missing chatId' }
+      return await service.api.listChatMembers({
+        chatId,
+        pageToken: args.pageToken,
+        pageSize: args.pageSize,
+        memberIdType: args.memberIdType
+      })
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // Send urgent
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    messageId: string
+    userIds: string[]
+    urgentTypes: Array<'app' | 'sms'>
+  }>('plugin:feishu:send-urgent', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as
+      | FeishuService
+      | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+
+    try {
+      const types = Array.isArray(args.urgentTypes)
+        ? args.urgentTypes.filter((t) => t === 'app' || t === 'sms')
+        : []
+      if (!args.messageId || !args.userIds?.length || types.length === 0) {
+        return { error: 'Missing messageId, userIds, or urgentTypes' }
+      }
+      for (const t of types) {
+        await service.api.media.sendUrgent(args.messageId, args.userIds, t, 'user_id')
+      }
+      return { ok: true }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // Download resource
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    messageId: string
+    fileKey: string
+    type?: 'image' | 'file'
+    mediaType?: string
+  }>('plugin:feishu:download-resource', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as
+      | FeishuService
+      | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+
+    try {
+      const buf = await service.api.media.downloadMessageResource(
+        args.messageId,
+        args.fileKey,
+        args.type ?? 'file'
+      )
+      return {
+        ok: true,
+        base64: buf.toString('base64'),
+        mediaType: args.mediaType ?? 'application/octet-stream'
+      }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  // ── Feishu Bitable ──
+
+  registerChannelMessagePackHandler<{ pluginId: string }>(
+    'plugin:feishu:bitable:list-apps',
+    async (args) => {
+      const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+      if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+      try {
+        return { ok: true, data: await service.api.bitable.listApps() }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
+
+  registerChannelMessagePackHandler<{ pluginId: string; appToken: string }>(
+    'plugin:feishu:bitable:list-tables',
+    async (args) => {
+      const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+      if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+      try {
+        return { ok: true, data: await service.api.bitable.listTables(args.appToken) }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
+
+  registerChannelMessagePackHandler<{ pluginId: string; appToken: string; tableId: string }>(
+    'plugin:feishu:bitable:list-fields',
+    async (args) => {
+      const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+      if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+      try {
+        return { ok: true, data: await service.api.bitable.listFields(args.appToken, args.tableId) }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
+
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    appToken: string
+    tableId: string
+    filter?: string
+    pageSize?: number
+    pageToken?: string
+  }>('plugin:feishu:bitable:get-records', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+    try {
+      const data = await service.api.bitable.getRecords(args.appToken, args.tableId, {
+        filter: args.filter,
+        pageSize: args.pageSize,
+        pageToken: args.pageToken
+      })
+      return { ok: true, data }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    appToken: string
+    tableId: string
+    records: unknown[]
+  }>('plugin:feishu:bitable:create-records', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+    try {
+      return { ok: true, data: await service.api.bitable.createRecords(args.appToken, args.tableId, args.records) }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    appToken: string
+    tableId: string
+    records: unknown[]
+  }>('plugin:feishu:bitable:update-records', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+    try {
+      return { ok: true, data: await service.api.bitable.updateRecords(args.appToken, args.tableId, args.records) }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+
+  registerChannelMessagePackHandler<{
+    pluginId: string
+    appToken: string
+    tableId: string
+    recordIds: string[]
+  }>('plugin:feishu:bitable:delete-records', async (args) => {
+    const service = activeChannelManager?.getService(args.pluginId) as FeishuService | undefined
+    if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+    try {
+      return { ok: true, data: await service.api.bitable.deleteRecords(args.appToken, args.tableId, args.recordIds) }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) }
+    }
+  })
+}
+
+// ── Channel-specific tool executor (used by reverse-request dispatch) ──
+
+export async function executeFeishuChannelTool(
+  method: string,
+  args: Record<string, unknown>
+): Promise<unknown> {
+  const pluginId = typeof args.pluginId === 'string' ? args.pluginId : ''
+  if (!pluginId) return { error: 'Missing pluginId' }
+
+  const service = activeChannelManager?.getService(pluginId) as FeishuService | undefined
+
+  switch (method) {
+    case 'plugin:feishu:send-image': {
+      if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+      try {
+        const { buffer } = await readBinarySource(String(args.filePath ?? ''), 'image.png')
+        const fileName = String(args.filePath ?? '').split('?')[0].split(/[\\/]/).pop() || 'image.png'
+        const imageKey = await service.api.media.uploadImage(buffer, fileName)
+        const result = await service.api.media.sendImageMessage(String(args.chatId ?? ''), imageKey)
+        return { ok: true, messageId: result.messageId }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+    case 'plugin:feishu:send-file': {
+      if (!service?.api) return { error: 'Feishu plugin not running or not found' }
+      try {
+        const { buffer, fileName } = await readBinarySource(String(args.filePath ?? ''), 'file')
+        const fileKey = await service.api.media.uploadFile(buffer, fileName, 'stream')
+        const result = await service.api.media.sendFileMessage(String(args.chatId ?? ''), fileKey)
+        return { ok: true, messageId: result.messageId }
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+    default:
+      return { error: `Unknown Feishu method: ${method}` }
+  }
+}

@@ -28,6 +28,8 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/sessions-update", DbSessionTools.Update);
         context.Register("db/sessions-delete", DbSessionTools.Delete);
         context.Register("db/sessions-clear-all", DbSessionTools.ClearAll);
+        context.Register("db/session-reset-conversation", DbSessionTools.ResetConversation);
+        context.Register("db/session-status", DbSessionTools.Status);
 
         // ── Messages ──
         context.Register("db/messages-list", DbMessageTools.List);
@@ -41,6 +43,30 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/messages-count", DbMessageTools.Count);
         context.Register("db/messages-delete-last", DbMessageTools.DeleteLast);
         context.Register("db/messages-truncate-from", DbMessageTools.TruncateFrom);
+        context.Register("db/messages-compact-session", DbMessageCompactTools.CompactSession);
+        context.Register("db/messages-usage-stats", DbMessageCompactTools.UsageStats);
+
+        // ── Sub-Agent Runs ──
+        context.Register("db/sub-agent-read-by-tool-use-id", DbSubAgentTools.ReadByToolUseId);
+        context.Register("db/sub-agent-read-session", DbSubAgentTools.ReadSession);
+        context.Register("db/sub-agent-index", DbSubAgentTools.Index);
+        context.Register("db/sub-agent-apply", DbSubAgentTools.Apply);
+        context.Register("db/sub-agent-replace", DbSubAgentTools.Replace);
+
+        // ── Plugin Sessions ──
+        context.Register("db/plugin-normal-projects", DbPluginSessionTools.ListNormalProjects);
+        context.Register("db/plugin-sync-session-models", DbPluginSessionTools.SyncPluginSessionModels);
+        context.Register("db/plugin-sync-session-project", DbPluginSessionTools.SyncPluginSessionProject);
+        context.Register("db/plugin-remove-data", DbPluginSessionTools.RemovePluginData);
+        context.Register("db/plugin-sessions-list", DbPluginSessionTools.ListPluginSessions);
+        context.Register("db/plugin-sessions-create", DbPluginSessionTools.CreatePluginSession);
+        context.Register("db/plugin-sessions-find-by-chat", DbPluginSessionTools.FindPluginSessionByChat);
+        context.Register("db/plugin-sessions-list-all", DbPluginSessionTools.ListAllPluginSessions);
+        context.Register("db/plugin-session-messages-list", DbPluginSessionTools.ListPluginSessionMessages);
+        context.Register("db/plugin-session-messages-clear", DbPluginSessionTools.ClearPluginSession);
+        context.Register("db/plugin-session-delete", DbPluginSessionTools.DeletePluginSession);
+        context.Register("db/plugin-session-rename", DbPluginSessionTools.RenamePluginSession);
+        context.Register("db/plugin-route-session", DbPluginSessionRouting.RoutePluginSession);
     }
 
     private static WorkerResponse DbInitialize(JsonElement parameters)

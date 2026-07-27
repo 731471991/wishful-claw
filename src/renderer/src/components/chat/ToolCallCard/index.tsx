@@ -87,7 +87,7 @@ function ToolCallCardInner({
   const hasVisualOutput = hasImageBlocks(output)
   const isReadTextTool = name === 'Read' && !hasVisualOutput
   const [open, setOpen] = React.useState(
-    forceOpen || (isActive && !isReadTextTool) || hasVisualOutput
+    forceOpen || isLiveCommandTool || hasVisualOutput
   )
   const [readTextOutputRevealed, setReadTextOutputRevealed] = React.useState(false)
   const prevIsActiveRef = React.useRef(isActive)
@@ -185,7 +185,7 @@ function ToolCallCardInner({
   const displayError = suppressErrorPanel
     ? null
     : error || (status === 'error' ? outputError : null)
-  const shouldRenderOutputPanels = !displayError || !outputIsErrorOnly
+  const shouldRenderOutputPanels = (!displayError || !outputIsErrorOnly) && (!isProcessing || isCommandTool)
   const hideLivePayload =
     isProcessing &&
     (name === 'Write' || name === 'Edit') &&

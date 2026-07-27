@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WishfulClaw.Core.Tools;
+using WishfulClaw.Worker.Modules.AgentChanges;
 
 namespace WishfulClaw.Worker.Tools.FileTools;
 
@@ -12,6 +13,7 @@ using static WishfulClaw.Worker.Tools.ToolHelpers;
 /// <summary>
 /// Write content to a file. Creates the file if it doesn't exist, overwrites if it does.
 /// Adapted from OpenCowork AgentRuntimeNativeToolExecutor.WriteAsync.
+/// Records file changes for AgentChanges tracking.
 /// </summary>
 public sealed class FileWriteTool : IToolExecutor
 {
@@ -43,8 +45,28 @@ public sealed class FileWriteTool : IToolExecutor
                 Directory.CreateDirectory(directory);
             }
 
+            // Capture before state for change tracking
             var existed = File.Exists(path);
-            await File.WriteAllTextAsync(path, content, Encoding.UTF8, context.CancellationToken);
+            string? beforeText = null;
+            if (existed)
+            {
+                try { beforeText = await File.ReadAllTextAsync(path, Encoding.UTF8, context.CancellationToken); }
+                catch { /* file may be locked or binary */ }
+            }
+
+            await WriteAndFlushAsync(path, content, context.CancellationToken);
+
+            // Record change for tracking/rollback
+            if (!string.IsNullOrEmpty(context.RunId))
+            {
+                AgentChangeTools.RecordChange(
+                    context.RunId,
+                    context.SessionId,
+                    path,
+                    existed,
+                    beforeText,
+                    content);
+            }
 
             return new ToolResult($"{{\"success\":true,\"path\":\"{EscapeJson(path)}\",\"op\":\"{(existed ? "modify" : "create")}\"}}");
         }

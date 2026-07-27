@@ -1,3 +1,4 @@
+﻿import type React from 'react'
 import { create } from 'zustand'
 import {
   LEFT_SIDEBAR_DEFAULT_WIDTH,
@@ -6,360 +7,62 @@ import {
   clampRightPanelWidth
 } from '@renderer/components/layout/right-panel-defs'
 import { useChatStore } from '@renderer/stores/chat-store'
+import {
+  type BrowserErrorInfo,
+  type BrowserPanelSessionState,
+  DEFAULT_BROWSER_STATE,
+  getBrowserScopeKey,
+  getBrowserSessionKey,
+  getBrowserStateFromMap,
+  isActiveBrowserScope,
+  resolvePanelScope,
+  updateBrowserStateForSession
+} from './browser-session-helpers'
+import {
+  type PreviewPanelState,
+  type PreviewPanelTab,
+  buildFilePreviewState,
+  previewTabTitle,
+  withPreviewTab,
+  withPreviewScope,
+  activatePreviewTab,
+  rightPanelPreviewTabId
+} from './preview-panel-helpers'
+import { createPreviewPanelSlice } from './preview-panel-slice'
+import type { UIStore } from './ui-store-interface'
+import {
+  CHAT_SURFACE_NAV_RESET,
+  closeRightSidePanels,
+  ensureRightPanelTabs,
+  getDefaultRightPanelTabs
+} from './right-panel-tab-factories'
 
-// ─── Types ───
-
-export type AppMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
-
-export type NavItem =
-  | 'chat'
-  | 'channels'
-  | 'resources'
-  | 'skills'
-  | 'souls'
-  | 'sync'
-  | 'draw'
-  | 'translate'
-  | 'tasks'
-  | 'codegraph'
-
-
-export type AutoModelRoute = 'main' | 'fast'
-export type AutoModelTaskType = string
-export type AutoModelConfidence = string
-export type AutoModelDecisionSource = string
-export type AutoModelRoutingComplexity = string
-export type AutoModelRoutingRisk = string
-
-export interface AutoModelSelectionStatus {
-  source: 'auto'
-  mode?: string
-  target: AutoModelRoute
-  providerId?: string
-  modelId?: string
-  providerName?: string
-  modelName?: string
-  taskType?: AutoModelTaskType
-  confidence?: AutoModelConfidence
-  decisionSource?: AutoModelDecisionSource
-  toolsAllowed?: boolean
-  complexity?: AutoModelRoutingComplexity
-  risk?: AutoModelRoutingRisk
-  reasons?: string[]
-  classifierRoute?: AutoModelRoute
-  heuristicRoute?: AutoModelRoute
-  fallbackReason?: string
-  routingDurationMs?: number
-  selectedAt: number
-}
-
-export type AutoModelRoutingState = 'idle' | 'routing'
-
-export type ChatView = 'home' | 'project' | 'archive' | 'channels' | 'git' | 'session' | 'persona'
-
-export type RightPanelSection = 'execution' | 'resources' | 'collaboration' | 'monitoring'
-export type AgentFilesTab = 'files' | 'changes'
-export type AgentFilesChangeSource = 'all' | 'agent' | 'git'
-export type RightPanelTabKind =
-  | 'context'
-  | 'review'
-  | 'files'
-  | 'preview'
-  | 'browser'
-  | 'subagent'
-  | 'terminal'
-
-export interface RightPanelTabInstance {
-  id: string
-  kind: RightPanelTabKind
-  title: string
-  closable: boolean
-  sessionId?: string | null
-  toolUseId?: string | null
-  inlineText?: string | null
-  processId?: string
-  terminalSource?: 'local' | 'ssh'
-  localTabId?: string
-  sshTabId?: string
-  previewTabId?: string
-  projectId?: string | null
-  initialChangeId?: string | null
-  selectionRequestId?: number
-  modified?: boolean
-  createdAt: number
-}
-
-export type SettingsTab =
-  | 'provider'
-  | 'modelManagement'
-  | 'general'
-  | 'persona'
-  | 'about'
-  | 'permission'
-  | 'channel'
-  | 'plugin'
-  | 'extension'
-  | 'mcp'
-
-export type DetailPanelContent =
-  | { type: 'team' }
-  | { type: 'subagent'; toolUseId?: string; text?: string }
-  | { type: 'terminal'; processId: string }
-  | { type: 'change-review'; runId: string; initialChangeId?: string | null }
-  | { type: 'document'; title: string; content: string }
-  | { type: 'report'; title: string; data: unknown }
-
-interface MessageListViewState {
-  scrollOffset: number
-  messageCount: number
-  loadedRangeStart: number
-  loadedRangeEnd: number
-}
-
-
-const RIGHT_PANEL_REVIEW_TAB_ID = 'review'
-
-function createReviewTab(): RightPanelTabInstance {
-  return { id: RIGHT_PANEL_REVIEW_TAB_ID, kind: 'review', title: 'Review', closable: true, createdAt: 0 }
-}
-
-function getDefaultRightPanelTabs(): RightPanelTabInstance[] {
-  return [createReviewTab()]
-}
-
-function closeRightSidePanels(): { rightPanelOpen: false } {
-  return { rightPanelOpen: false }
-}
-
-const CHAT_SURFACE_NAV_RESET = {
-  settingsPageOpen: false,
-  skillsPageOpen: false,
-  soulsPageOpen: false,
-  syncPageOpen: false,
-  resourcesPageOpen: false,
-  translatePageOpen: false,
-  drawPageOpen: false,
-  tasksPageOpen: false,
-  codeGraphPageOpen: false,
-  ...closeRightSidePanels()
-} as const
-
-// ─── Store Interface ───
-
-interface UIStore {
-  // Top-level view (splash / main / settings)
-  view: 'splash' | 'main' | 'settings'
-  setView: (view: 'splash' | 'main' | 'settings') => void
-  enterMain: () => void
-  openSettings: (tab?: SettingsTab) => void
-  closeSettings: () => void
-
-  // Selected provider (for ModelSwitcher)
-  selectedProvider: Record<string, unknown> | null
-  setSelectedProvider: (provider: Record<string, unknown> | null) => void
-
-  // Mode
-  mode: AppMode
-  setMode: (mode: AppMode) => void
-
-  // Navigation rail
-  activeNavItem: NavItem
-  setActiveNavItem: (item: NavItem) => void
-
-  // Left sidebar
-  leftSidebarOpen: boolean
-  leftSidebarWidth: number
-  toggleLeftSidebar: () => void
-  setLeftSidebarOpen: (open: boolean) => void
-  setLeftSidebarWidth: (width: number) => void
-
-  // Conversation panel
-  conversationPanelFullWidth: boolean
-  setConversationPanelFullWidth: (fullWidth: boolean) => void
-
-  // Right panel
-  rightPanelOpen: boolean
-  toggleRightPanel: () => void
-  setRightPanelOpen: (open: boolean) => void
-  rightPanelWidth: number
-  setRightPanelWidth: (width: number) => void
-  rightPanelTab: string
-  setRightPanelTab: (tab: string) => void
-  rightPanelSection: RightPanelSection
-  setRightPanelSection: (section: RightPanelSection) => void
-  rightPanelTabs: RightPanelTabInstance[]
-  rightPanelActiveTabId: string
-  setRightPanelActiveTab: (tabId: string) => void
-  closeRightPanelTab: (tabId: string) => void
-  rightPanelRailWidth: number
-
-  // Runtime status panel
-  runtimeStatusPanelOpen: boolean
-  toggleRuntimeStatusPanel: () => void
-  setRuntimeStatusPanelOpen: (open: boolean) => void
-
-  // Auto model selection (from OpenCowork)
-  autoModelSelectionsBySession: Record<string, AutoModelSelectionStatus | null>
-  autoModelRoutingStatesBySession: Record<string, AutoModelRoutingState>
-  setAutoModelSelection: (sessionId: string, status: AutoModelSelectionStatus | null) => void
-  setAutoModelRoutingState: (sessionId: string, status: AutoModelRoutingState) => void
-
-  // Settings page
-  settingsPageOpen: boolean
-  settingsTab: SettingsTab
-  setSettingsTab: (tab: SettingsTab) => void
-  openSettingsPage: (tab?: SettingsTab) => void
-  closeSettingsPage: () => void
-
-  // Feature page toggles (all preserved as entry points)
-  skillsPageOpen: boolean
-  openSkillsPage: () => void
-  closeSkillsPage: () => void
-  soulsPageOpen: boolean
-  openSoulsPage: () => void
-  closeSoulsPage: () => void
-  syncPageOpen: boolean
-  openSyncPage: () => void
-  closeSyncPage: () => void
-  resourcesPageOpen: boolean
-  openResourcesPage: () => void
-  closeResourcesPage: () => void
-  translatePageOpen: boolean
-  openTranslatePage: () => void
-  closeTranslatePage: () => void
-  drawPageOpen: boolean
-  openDrawPage: () => void
-  closeDrawPage: () => void
-  tasksPageOpen: boolean
-  openTasksPage: () => void
-  closeTasksPage: () => void
-  codeGraphPageOpen: boolean
-  openCodeGraphPage: () => void
-  closeCodeGraphPage: () => void
-
-  // Dialogs
-  shortcutsOpen: boolean
-  setShortcutsOpen: (open: boolean) => void
-  conversationGuideOpen: boolean
-  setConversationGuideOpen: (open: boolean) => void
-  changelogDialogOpen: boolean
-  setChangelogDialogOpen: (open: boolean) => void
-  pendingInsertText: string | null
-  setPendingInsertText: (text: string | null) => void
-
-  // Detail panel
-  detailPanelOpen: boolean
-  detailPanelContent: DetailPanelContent | null
-  openDetailPanel: (content: DetailPanelContent) => void
-  closeDetailPanel: () => void
-
-  // Agent files
-  agentFilesActiveTab: AgentFilesTab
-  setAgentFilesActiveTab: (tab: AgentFilesTab) => void
-  agentFilesSelectedChangeKey: string | null
-  setAgentFilesSelectedChangeKey: (key: string | null) => void
-  agentFilesChangeSource: AgentFilesChangeSource
-  setAgentFilesChangeSource: (source: AgentFilesChangeSource) => void
-
-  // Bottom terminal dock
-  bottomTerminalDockOpenByProjectId: Record<string, boolean>
-  setBottomTerminalDockOpen: (projectId: string, open: boolean) => void
-  toggleBottomTerminalDock: (projectId: string) => void
-  isBottomTerminalDockOpen: (projectId?: string | null) => boolean
-  bottomTerminalDockHeight: number
-  setBottomTerminalDockHeight: (height: number) => void
-
-  // SubAgent execution detail
-  subAgentExecutionDetailOpen: boolean
-  subAgentExecutionDetailToolUseId: string | null
-  subAgentExecutionDetailInlineText: string | null
-  openSubAgentExecutionDetail: (toolUseId: string, inlineText?: string | null, name?: string, sessionId?: string) => void
-  closeSubAgentExecutionDetail: () => void
-  selectedSubAgentToolUseId: string | null
-  setSelectedSubAgentToolUseId: (toolUseId: string | null) => void
-
-  // Orchestration console
-  selectedOrchestrationRunId: string | null
-  setSelectedOrchestrationRunId: (runId: string | null) => void
-  selectedOrchestrationMemberId: string | null
-  setSelectedOrchestrationMemberId: (memberId: string | null) => void
-  orchestrationConsoleOpen: boolean
-  orchestrationConsoleView: 'overview' | 'member' | 'tasks'
-  openOrchestrationPanel: (runId?: string | null, memberId?: string | null) => void
-  openOrchestrationMember: (runId: string, memberId: string) => void
-  openMarkdownPreview: (title: string, content: string, sessionId?: string | null) => void
-  closeOrchestrationPanel: () => void
-
-  // Plan mode
-  planMode: boolean
-  enterPlanMode: (sessionId?: string | null) => void
-  exitPlanMode: (sessionId?: string | null) => void
-  planModesBySession: Record<string, boolean>
-  isPlanModeEnabled: (sessionId?: string | null) => boolean
-
-  // Browser panel (placeholder state)
-  browserUrl: string
-  setBrowserUrl: (url: string) => void
-  browserLoading: boolean
-  setBrowserLoading: (loading: boolean) => void
-  browserPageTitle: string
-  setBrowserPageTitle: (title: string) => void
-
-  // Selected files
-  selectedFiles: string[]
-  setSelectedFiles: (files: string[]) => void
-  toggleFileSelection: (filePath: string) => void
-  clearSelectedFiles: () => void
-
-  // File preview
-  openFilePreview: (
-    filePath: string,
-    viewMode?: 'split' | 'inline' | 'preview' | 'code',
-    sshConnectionId?: string | null,
-    sessionId?: string | null,
-    targetLine?: number,
-    targetColumn?: number
-  ) => void
-
-  // Hovering state
-  isHoveringRightPanel: boolean
-  setIsHoveringRightPanel: (hovering: boolean) => void
-  runtimeStatusPanelTriggerHovered: boolean
-  setRuntimeStatusPanelTriggerHovered: (hovering: boolean) => void
-
-  // Session-scoped state
-  activeScopedSessionId: string | null
-  activeScopedProjectId: string | null
-  syncSessionScopedState: (sessionId: string | null, projectId?: string | null) => void
-  messageListViewStatesBySession: Record<string, MessageListViewState | undefined>
-  setMessageListViewState: (sessionId: string, state: MessageListViewState | null) => void
-  getMessageListViewState: (sessionId?: string | null) => MessageListViewState | null
-  releaseDormantSessionUiState: (sessionId?: string | null) => void
-
-  // Chat view navigation
-  chatView: ChatView
-  navigateToHome: () => void
-  navigateToProject: (projectId?: string | null) => void
-  navigateToArchive: (projectId?: string | null) => void
-  navigateToChannels: (projectId?: string | null) => void
-  navigateToGit: (projectId?: string | null) => void
-  navigateToPersona: (projectId?: string | null) => void
-  navigateToSession: (sessionId?: string | null) => void
-  applyRouteFromLocation: () => void
-  applyChatRouteFromLocation: () => void
-
-  // Browser webview management (stub - for browser-native-ui tools)
-  getBrowserWebviewRef: (sessionId?: string | null) => { current: Electron.WebviewTag | null } | undefined
-  getBrowserState: (sessionId?: string | null) => { url: string; pageTitle: string }
-  openBrowserTab: (
-    url: string,
-    sessionId?: string | null,
-    title?: string | null,
-    options?: { background?: boolean }
-  ) => void
-}
+// Re-export types for backward compatibility
+export type {
+  AppMode,
+  AutoModelRoute,
+  AutoModelTaskType,
+  AutoModelConfidence,
+  AutoModelDecisionSource,
+  AutoModelRoutingComplexity,
+  AutoModelRoutingRisk,
+  AutoModelSelectionStatus,
+  AutoModelRoutingState,
+  ChatView,
+  RightPanelSection,
+  AgentFilesTab,
+  AgentFilesChangeSource,
+  RightPanelTabKind,
+  RightPanelTabInstance,
+  SettingsTab,
+  DetailPanelContent
+} from './ui-types'
+import { RightPanelTabInstance } from './ui-types'
+export type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './preview-panel-helpers'
 
 // ─── Store Implementation ───
+
+
 
 export const useUIStore = create<UIStore>((set, get) => ({
   // Top-level view
@@ -404,11 +107,11 @@ export const useUIStore = create<UIStore>((set, get) => ({
   rightPanelSection: 'execution',
   setRightPanelSection: (section) => set({ rightPanelSection: section }),
   rightPanelTabs: getDefaultRightPanelTabs(),
-  rightPanelActiveTabId: RIGHT_PANEL_REVIEW_TAB_ID,
+  rightPanelActiveTabId: '',
   setRightPanelActiveTab: (tabId) => set({ rightPanelActiveTabId: tabId }),
   closeRightPanelTab: (tabId) => {
     const tabs = get().rightPanelTabs.filter((t) => t.id !== tabId)
-    const nextActive = tabs.length > 0 ? tabs[Math.max(0, tabs.length - 1)].id : RIGHT_PANEL_REVIEW_TAB_ID
+    const nextActive = tabs.length > 0 ? tabs[Math.max(0, tabs.length - 1)].id : ''
     set({ rightPanelTabs: tabs.length > 0 ? tabs : getDefaultRightPanelTabs(), rightPanelActiveTabId: nextActive })
   },
   rightPanelRailWidth: 48,
@@ -509,8 +212,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   subAgentExecutionDetailOpen: false,
   subAgentExecutionDetailToolUseId: null,
   subAgentExecutionDetailInlineText: null,
-  openSubAgentExecutionDetail: (toolUseId, inlineText) =>
-    set({ subAgentExecutionDetailOpen: true, subAgentExecutionDetailToolUseId: toolUseId, subAgentExecutionDetailInlineText: inlineText ?? null }),
+  openSubAgentExecutionDetail: (toolUseId, inlineText, _title, sessionId) =>
+    get().ensureSubAgentTab(toolUseId, inlineText ?? null, _title ?? null, sessionId),
   closeSubAgentExecutionDetail: () =>
     set({ subAgentExecutionDetailOpen: false, subAgentExecutionDetailToolUseId: null, subAgentExecutionDetailInlineText: null }),
   selectedSubAgentToolUseId: null,
@@ -538,13 +241,28 @@ export const useUIStore = create<UIStore>((set, get) => ({
     return get().planModesBySession[sessionId] ?? false
   },
 
-  // Browser panel (placeholder)
+  // Browser panel (session-scoped)
+  browserStatesBySession: {},
+  browserWebviewRefsBySession: {},
   browserUrl: '',
-  setBrowserUrl: (url) => set({ browserUrl: url }),
+  setBrowserUrl: (url, sessionId, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, { url }, projectId)),
   browserLoading: false,
-  setBrowserLoading: (loading) => set({ browserLoading: loading }),
+  setBrowserLoading: (loading, sessionId, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, { loading }, projectId)),
   browserPageTitle: '',
-  setBrowserPageTitle: (title) => set({ browserPageTitle: title }),
+  setBrowserPageTitle: (pageTitle, sessionId, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, { pageTitle }, projectId)),
+  browserCanGoBack: false,
+  setBrowserCanGoBack: (canGoBack, sessionId, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, { canGoBack }, projectId)),
+  browserCanGoForward: false,
+  setBrowserCanGoForward: (canGoForward, sessionId, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, { canGoForward }, projectId)),
+  browserErrorInfo: null,
+  setBrowserErrorInfo: (errorInfo, sessionId, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, { errorInfo }, projectId)),
+  browserWebviewRef: null,
 
   // Selected files
   selectedFiles: [],
@@ -557,14 +275,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
     })),
   clearSelectedFiles: () => set({ selectedFiles: [] }),
 
-  // File preview (stub — opens file via shell)
-  openFilePreview: (filePath) => {
-    // Stub: will be implemented with proper preview panel later
-    console.log('[UIStore] openFilePreview stub:', filePath)
-  },
-  openMarkdownPreview: (_title, _content, _sessionId) => {
-    // Stub: will be implemented with proper preview panel later
-  },
+  // Preview panel (extracted to preview-panel-slice.ts)
+  ...createPreviewPanelSlice(set, get),
 
   // Hovering state
   isHoveringRightPanel: false,
@@ -646,10 +358,175 @@ export const useUIStore = create<UIStore>((set, get) => ({
     // Placeholder - will be implemented when routing is migrated
   },
 
-  // Browser webview management stubs
-  getBrowserWebviewRef: (_sessionId?: string | null) => undefined,
-  getBrowserState: (_sessionId?: string | null) => ({ url: '', pageTitle: '' }),
-  openBrowserTab: (_url: string, _sessionId?: string | null, _title?: string | null, _options?: { background?: boolean }) => {
-    // Stub - will be implemented when browser panel is migrated
+  // Browser tab management
+  ensureBrowserTab: (url, sessionId, projectId, options) =>
+    set((state) => {
+      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'browser')
+      const tab: RightPanelTabInstance = existing ?? {
+        id: 'browser',
+        kind: 'browser',
+        title: 'Browser',
+        closable: true,
+        createdAt: Date.now()
+      }
+      const rightPanelTabs = existing
+        ? ensureRightPanelTabs(state.rightPanelTabs)
+        : ensureRightPanelTabs([...state.rightPanelTabs, tab])
+      const browserStatePatch = updateBrowserStateForSession(
+        state,
+        sessionId,
+        {
+          errorInfo: null,
+          ...(url !== undefined ? { url } : {})
+        },
+        projectId
+      )
+      if (options?.background) {
+        return {
+          rightPanelTabs,
+          ...browserStatePatch
+        }
+      }
+      return {
+        rightPanelTabs,
+        rightPanelActiveTabId: tab.id,
+        rightPanelOpen: true,
+        ...browserStatePatch
+      }
+    }),
+
+  ensureSubAgentTab: (toolUseId, inlineText, _title, requestedSessionId) =>
+    set((state) => {
+      const sessionId =
+        normalizeScopeId(requestedSessionId) ??
+        state.activeScopedSessionId ??
+        useChatStore.getState().activeSessionId ??
+        null
+      const tabScopeId = sessionId ?? 'global'
+      const tabId = `subagent:${tabScopeId}:overview`
+      const existing = state.rightPanelTabs.find(
+        (tab) => tab.kind === 'subagent' && (tab.sessionId ?? null) === sessionId
+      )
+      const tab: RightPanelTabInstance = existing
+        ? {
+            ...existing,
+            id: tabId,
+            sessionId: sessionId ?? existing.sessionId ?? null,
+            title: 'SubAgents',
+            toolUseId: toolUseId ?? null,
+            inlineText: inlineText?.trim() ? inlineText : null
+          }
+        : {
+            id: tabId,
+            kind: 'subagent',
+            title: 'SubAgents',
+            closable: true,
+            sessionId,
+            toolUseId: toolUseId ?? null,
+            inlineText: inlineText?.trim() ? inlineText : null,
+            createdAt: Date.now()
+          }
+      const tabsWithoutScopedDuplicates = state.rightPanelTabs.filter(
+        (item) =>
+          item.kind !== 'subagent' ||
+          item === existing ||
+          (item.sessionId ?? null) !== sessionId
+      )
+      const rightPanelTabs = ensureRightPanelTabs(
+        existing
+          ? tabsWithoutScopedDuplicates.map((item) => (item === existing ? tab : item))
+          : [...tabsWithoutScopedDuplicates, tab]
+      )
+      return {
+        selectedSubAgentToolUseId: toolUseId ?? null,
+        subAgentExecutionDetailOpen: false,
+        subAgentExecutionDetailToolUseId: toolUseId ?? null,
+        subAgentExecutionDetailInlineText: inlineText?.trim() ? inlineText : null,
+        rightPanelTabs,
+        rightPanelActiveTabId: tabId,
+        rightPanelOpen: true
+      }
+    }),
+
+  openSubAgentsPanel: (toolUseId, sessionId) =>
+    get().ensureSubAgentTab(toolUseId ?? null, null, null, sessionId),
+
+  ensureTerminalTab: () =>
+    set((state) => {
+      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'terminal')
+      if (existing) {
+        return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
+      }
+      const tab: RightPanelTabInstance = {
+        id: 'terminal',
+        kind: 'terminal',
+        title: 'Terminal',
+        closable: true,
+        createdAt: Date.now()
+      }
+      return {
+        rightPanelTabs: ensureRightPanelTabs([...state.rightPanelTabs, tab]),
+        rightPanelActiveTabId: tab.id,
+        rightPanelOpen: true
+      }
+    }),
+
+  ensureFilesTab: (sessionId) =>
+    set((state) => {
+      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'files')
+      if (existing) {
+        return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
+      }
+      const tab: RightPanelTabInstance = {
+        id: 'files',
+        kind: 'files',
+        title: 'Files',
+        closable: true,
+        createdAt: Date.now(),
+        sessionId: sessionId ?? null
+      }
+      return {
+        rightPanelTabs: ensureRightPanelTabs([...state.rightPanelTabs, tab]),
+        rightPanelActiveTabId: tab.id,
+        rightPanelOpen: true
+      }
+    }),
+
+  getBrowserState: (sessionId, projectId) => {
+    const state = get()
+    const scope = resolvePanelScope(state, sessionId, projectId)
+    return getBrowserStateFromMap(
+      state.browserStatesBySession,
+      scope.sessionId,
+      scope.projectId
+    )
   },
+
+  patchBrowserState: (sessionId, patch, projectId) =>
+    set((state) => updateBrowserStateForSession(state, sessionId, patch, projectId)),
+
+  openBrowserTab: (url, sessionId, projectId, options) =>
+    get().ensureBrowserTab(url, sessionId, projectId, options),
+
+  getBrowserWebviewRef: (sessionId, projectId) => {
+    const state = get()
+    const scope = resolvePanelScope(state, sessionId, projectId)
+    return state.browserWebviewRefsBySession[getBrowserScopeKey(scope)] ?? null
+  },
+
+  setBrowserWebviewRef: (ref, sessionId, projectId) =>
+    set((state) => {
+      const scope = resolvePanelScope(state, sessionId, projectId)
+      const key = getBrowserScopeKey(scope)
+      const browserWebviewRefsBySession = { ...state.browserWebviewRefsBySession }
+      if (ref) {
+        browserWebviewRefsBySession[key] = ref
+      } else {
+        delete browserWebviewRefsBySession[key]
+      }
+      return {
+        browserWebviewRefsBySession,
+        ...(isActiveBrowserScope(state, scope) ? { browserWebviewRef: ref } : {})
+      }
+    }),
 }))

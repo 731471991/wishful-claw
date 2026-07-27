@@ -18,7 +18,6 @@ import { xiaomiPreset, xiaomiCodingPreset } from '@renderer/stores/providers/xia
 import { bigmodelPreset, bigmodelCodingPreset } from '@renderer/stores/providers/bigmodel'
 import { volcenginePreset } from '@renderer/stores/providers/volcengine'
 import { xaiPreset } from '@renderer/stores/providers/x-ai'
-import { routinAiPreset, routinAiPlanPreset } from '@renderer/stores/providers/routin-ai'
 import { codexOAuthPreset } from '@renderer/stores/providers/codex-oauth'
 import { copilotOAuthPreset } from '@renderer/stores/providers/copilot-oauth'
 import type { BuiltinProviderPreset } from '@renderer/stores/providers/types'
@@ -48,8 +47,6 @@ export const builtinProviderPresets: BuiltinProviderPreset[] = [
   bigmodelPreset,
   volcenginePreset,
   xaiPreset,
-  routinAiPreset,
-  routinAiPlanPreset,
   codexOAuthPreset,
   copilotOAuthPreset
 ]

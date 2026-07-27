@@ -113,3 +113,5 @@ public sealed class SessionRow
 public sealed record SessionFindResult(bool Success, SessionRow? Session, string? Error);
 public sealed record SessionMutationResult(bool Success, int Changed, string? Error);
 public sealed record SessionClearAllResult(bool Success, List<string> SessionIds, int DeletedMessages, int DeletedSessions, string? Error);
+public sealed record SessionResetResult(bool Success, int DeletedMessages, long UpdatedAt, string? Error);
+public sealed record SessionStatusResult(bool Success, bool Found, string? Title, long? CreatedAt, long? UpdatedAt, int MessageCount, string? Error);

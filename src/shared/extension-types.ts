@@ -113,7 +113,7 @@ export interface ExtensionInstance {
 }
 
 export interface ExtensionToolResult {
-  __openCoworkExtensionResult: true
+  __wishfulClawExtensionResult: true
   extensionId: string
   toolName?: string
   text?: string

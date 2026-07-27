@@ -1,5 +1,6 @@
 import type { ThinkingConfig } from '../../../../shared/types/provider'
 import type { BuiltinProviderPreset } from './types'
+import { cn } from '@renderer/lib/utils'
 
 const glmThinkingConfig = (): ThinkingConfig => ({
   bodyParams: { thinking: { type: 'enabled' } },

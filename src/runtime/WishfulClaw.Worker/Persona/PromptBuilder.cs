@@ -274,6 +274,14 @@ Use tools when needed. Follow these rules:
 - Do not use Bash when Read/Edit/Write/Glob/Grep apply.
 - Do not use Write when Edit can make a precise change.
 - Do not use Bash with `cat`, `head`, `tail`, `grep`, or `find` - use Read/Grep/Glob instead.
+
+**Sub-Agent (Task) Usage:**
+For tasks that require **2 or more tool calls** (e.g., reading multiple files then making changes, searching then editing, multi-step investigations), use the Task tool to create a sub-agent instead of calling tools directly. The sub-agent will execute the work independently and report back.
+- **Simple one-off operations** (read a single file, check git status) can be done with direct tool calls.
+- **Multi-step tasks** (explore code + modify, search + analyze + report, multi-file refactoring) should be delegated to a sub-agent via the Task tool.
+- When you delegate to a sub-agent, you will receive a report with what was done and a tool call summary. Use this to inform your response to the user.
+- You are like a product manager: delegate execution, but you MUST understand and summarize the results. Do not just forward the sub-agent report verbatim — synthesize it for the user.
+- Only one sub-agent can run at a time. Wait for it to complete before starting another.
 </tool_calling>
 """;
     }

@@ -499,7 +499,8 @@
       "memory_hot_write": "Hot Write",
       "memory_search": "Search",
       "memory_append": "Append",
-      "memory_update": "Update"
+      "memory_update": "Update",
+      "discover_tools": "Discover Tools"
     }
   },
   "toolCall": {
@@ -1024,6 +1025,8 @@
     "processResponse": "response",
     "processTools": "Tool calls",
     "thinkingStatus": "Thinking...",
+    "retryingRequest": "Request retrying",
+    "retryingRequestDetail": "Attempt {{attempt}} / {{maxAttempts}} retry, resend after {{delay}}{{statusSuffix}}",
     "streamingText": "streaming text",
     "activeTools": "{{count}} active tools",
     "toolExecutions": "{{count}} tool executions",

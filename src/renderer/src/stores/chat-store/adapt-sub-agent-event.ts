@@ -1,5 +1,5 @@
 import type { SubAgentEvent } from '@renderer/lib/agent/sub-agents/types'
-import type { UnifiedMessage } from '@renderer/lib/api/types'
+import type { UnifiedMessage, ToolUseBlock, TokenUsage } from '@renderer/lib/api/types'
 import type { ToolCallState } from '@renderer/lib/agent/types'
 
 /**
@@ -37,6 +37,8 @@ export function adaptSubAgentEvent(
       const output = String(rawResult.output ?? '')
       const success = rawResult.success === true
       const stopReason = String(rawResult.stopReason ?? 'completed')
+      const toolCallCount = Number(rawResult.toolCallCount ?? 0)
+      const iterations = Number(rawResult.iterations ?? 0)
       return {
         type: 'sub_agent_end',
         subAgentName,
@@ -45,8 +47,8 @@ export function adaptSubAgentEvent(
           success,
           output,
           reportSubmitted: output.length > 0,
-          toolCallCount: 0,
-          iterations: 0,
+          toolCallCount,
+          iterations,
           endReason: stopReason === 'completed' ? 'completed' : stopReason === 'max_iterations' ? 'max_iterations' : 'error',
           usage: {
             inputTokens: 0,
@@ -70,7 +72,20 @@ export function adaptSubAgentEvent(
         subAgentName,
         toolUseId,
         iteration: Number(event.iteration ?? 0),
-        assistantMessage: event.assistantMessage as unknown as UnifiedMessage
+        assistantMessage: (event.assistantMessage as unknown as UnifiedMessage) ?? {
+          id: `subagent_iter_${toolUseId}_${Number(event.iteration ?? 0)}`,
+          role: 'assistant' as const,
+          content: [],
+          createdAt: Date.now()
+        }
+      }
+    }
+    case 'sub_agent_thinking_delta': {
+      return {
+        type: 'sub_agent_thinking_delta',
+        subAgentName,
+        toolUseId,
+        thinking: String(event.thinking ?? '')
       }
     }
     case 'sub_agent_tool_call': {
@@ -88,6 +103,40 @@ export function adaptSubAgentEvent(
         toolUseId,
         report: String(event.report ?? ''),
         status: (event.status as 'pending' | 'submitted' | 'missing') ?? 'pending'
+      }
+    }
+    case 'sub_agent_tool_use_streaming_start': {
+      return {
+        type: 'sub_agent_tool_use_streaming_start',
+        subAgentName,
+        toolUseId,
+        toolCallId: String(event.toolCallId ?? ''),
+        toolName: String(event.toolName ?? '')
+      }
+    }
+    case 'sub_agent_tool_use_args_delta': {
+      return {
+        type: 'sub_agent_tool_use_args_delta',
+        subAgentName,
+        toolUseId,
+        toolCallId: String(event.toolCallId ?? ''),
+        partialInput: (event.partialInput as Record<string, unknown>) ?? {}
+      }
+    }
+    case 'sub_agent_tool_use_generated': {
+      return {
+        type: 'sub_agent_tool_use_generated',
+        subAgentName,
+        toolUseId,
+        toolUseBlock: event.toolUseBlock as unknown as ToolUseBlock
+      }
+    }
+    case 'sub_agent_message_end': {
+      return {
+        type: 'sub_agent_message_end',
+        subAgentName,
+        toolUseId,
+        usage: event.usage as unknown as TokenUsage | undefined
       }
     }
     default:

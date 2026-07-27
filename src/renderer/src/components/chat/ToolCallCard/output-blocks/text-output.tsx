@@ -15,9 +15,10 @@ import {
 } from '../shared'
 import { getImageBlockPreviewSrc } from '../utils'
 import {
-  stripReadLineNumbers,
   detectLang
 } from '../utils'
+import { useUIStore } from '@renderer/stores/ui-store'
+import { stripReadLineNumbers } from '../utils'
 
 // ── ImageOutputBlock ──
 

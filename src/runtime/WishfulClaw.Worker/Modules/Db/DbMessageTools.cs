@@ -262,7 +262,8 @@ internal static class DbMessageTools
         }
     }
 
-    // ─── Private helpers ───
+
+    // NOTE: CompactSession and UsageStats are in DbMessageCompactTools.cs
 
     private static WorkerResponse ReadRows(JsonElement parameters, string? role, bool paged)
     {

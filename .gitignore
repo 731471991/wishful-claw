@@ -44,3 +44,4 @@ logs/
 *.log
 out/
 package-lock.json
+.reasonix/

@@ -2,6 +2,13 @@ using WishfulClaw.Contracts;
 using WishfulClaw.Worker.AgentRuntime;
 using WishfulClaw.Worker.Modules;
 using WishfulClaw.Worker.Modules.Db;
+using WishfulClaw.Worker.Modules.AgentChanges;
+using WishfulClaw.Worker.Modules.Git;
+using WishfulClaw.Worker.Modules.Channels;
+using WishfulClaw.Worker.Modules.Media;
+using WishfulClaw.Worker.Modules.OpenAIAudio;
+using WishfulClaw.Worker.Modules.Extensions;
+using WishfulClaw.Worker.Modules.Video;
 using WishfulClaw.Worker.Persona;
 using WishfulClaw.Worker.Tools;
 
@@ -19,6 +26,14 @@ public static class WorkerModuleCatalog
         new ToolModule(),
         new DbModule(),
         new PersonaModule(),
-        new MemoryModule()
+        new MemoryModule(),
+        new GitModule(),
+        new MediaFileModule(),
+        new AgentChangeModule(),
+        new OpenAIAudioModule(),
+        new ChannelConfigModule(),
+        new SeedanceVideoModule(),
+        new XaiVideoModule(),
+        new ExtensionModule()
     ];
 }

@@ -255,6 +255,13 @@ fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [�
 - 从 OpenCowork / KodaClaw / OpenClaw.net 搬代码时，必须适配项目命名空间和分层约定
 - 新建文件必须符合 AGENTS.md 中的目录结构
 
+**搬入代码必须遵守两个拆分原则**：
+
+1. **大文件拆分**：参考项目单文件过大（如 OpenCowork 的 `OpenAIChatRuntime.cs` 3828 行）时，搬入时必须按职责拆分为多个文件，每个文件 200~500 行为宜。拆分后保持逻辑等价，不改变行为，只改组织结构。不要为了拆而拆导致过度碎片化。
+2. **耦合文件拆分**：参考项目有些文件本身不大，但塞了多个逻辑不相关的东西。判断标准：如果两个类/方法之间没有调用关系或数据依赖，只是参考方随手放在一起，就必须拆开，分到各自的文件中，放入 AGENTS.md 项目结构中对应的目录。
+
+示例：OpenCowork 某个文件里同时放了 Provider 配置模型 + Provider 服务逻辑 + Provider API 客户端 → 搬入时拆为 `ProviderConfig.cs`（模型）+ `ProviderService.cs`（逻辑）+ `ProviderApiClient.cs`（客户端），分别放入 Contracts 和 Core。
+
 **Git 操作（每步一个 commit）**：
 ```bash
 # 执行前确认工作区干净
