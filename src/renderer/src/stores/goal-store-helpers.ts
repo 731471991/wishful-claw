@@ -208,16 +208,17 @@ export function mutationError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-let goalEventsIpcUnavailable = false
+let _goalEventsIpcUnavailable = false
 let goalEventsIpcUnavailableWarned = false
 
+export function isGoalEventsIpcUnavailable(): boolean { return _goalEventsIpcUnavailable }
 export function markGoalEventsIpcUnavailable(error: unknown): boolean {
   const message = mutationError(error)
   if (!message.includes('No handler registered') || !message.includes('db:goal-events')) {
     return false
   }
 
-  goalEventsIpcUnavailable = true
+  _goalEventsIpcUnavailable = true
   if (!goalEventsIpcUnavailableWarned) {
     goalEventsIpcUnavailableWarned = true
     console.warn(

@@ -1,7 +1,18 @@
 import { create } from 'zustand'
 import { ipcClient } from '../lib/ipc/ipc-client'
 import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
-import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, isGoalRow, EMPTY_SESSION_GOAL_EVENTS } from './goal-store-helpers'
+import {
+  DB_GOALS_LIST_MSGPACK_CHANNEL,
+  DB_GOALS_GET_MSGPACK_CHANNEL,
+  DB_GOAL_EVENTS_LIST_MSGPACK_CHANNEL,
+  DB_GOALS_CREATE_MSGPACK_CHANNEL,
+  DB_GOALS_SET_MSGPACK_CHANNEL,
+  DB_GOALS_UPDATE_MSGPACK_CHANNEL,
+  DB_GOALS_CLEAR_MSGPACK_CHANNEL,
+  DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
+  DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
+} from '../../../shared/messagepack/binary-ipc'
+import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, isGoalRow, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable } from './goal-store-helpers'
 export { EMPTY_SESSION_GOAL_EVENTS }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
@@ -57,7 +68,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   loadGoalEventsForSession: async (sessionId, options = {}) => {
     const cached = get().goalEventsBySession[sessionId]
     if (cached && !options.force) return cached
-    if (goalEventsIpcUnavailable) return cached ?? EMPTY_SESSION_GOAL_EVENTS
+    if (isGoalEventsIpcUnavailable()) return cached ?? EMPTY_SESSION_GOAL_EVENTS
 
     try {
       const rows = await invokeMessagePackBinary<SessionGoalEventRow[]>(
@@ -181,7 +192,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   },
 
   addGoalEvent: async (args) => {
-    if (goalEventsIpcUnavailable) {
+    if (isGoalEventsIpcUnavailable()) {
       return { success: false, error: 'Goal event IPC is unavailable until Electron restarts' }
     }
 

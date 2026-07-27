@@ -72,7 +72,7 @@ interface UserMessageProps {
   onEdit?: (messageId: string, draft: EditableUserMessageDraft) => void
   onDelete?: (messageId: string) => void
 }
-import { ActionIconButton, UserSkillBadge } from './user-message-helpers'
+import { ActionIconButton, UserSkillBadge, parseUserSkillDirective, USER_MESSAGE_WIDTH_CLASS, USER_MESSAGE_BUBBLE_CLASS, serializeUserSkillDirective } from './user-message-helpers'
 import { UserSelectedFileReadsView, UserSkillEditControl, UserImageAttachmentView } from './user-message-views'
 
 export function UserMessage({

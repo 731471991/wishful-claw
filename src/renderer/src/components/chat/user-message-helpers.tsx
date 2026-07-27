@@ -102,8 +102,8 @@ export function ActionIconButton({
   )
 }
 
-const USER_MESSAGE_WIDTH_CLASS = 'w-full max-w-[min(82%,42rem)]'
-const USER_MESSAGE_BUBBLE_CLASS =
+export const USER_MESSAGE_WIDTH_CLASS = 'w-full max-w-[min(82%,42rem)]'
+export const USER_MESSAGE_BUBBLE_CLASS =
   'rounded-[18px] border border-border/60 bg-muted/35 px-4 py-3 text-sm text-foreground shadow-sm dark:bg-muted/70'
 const SKILL_DIRECTIVE_RE = /^\s*\[Skill:\s*([^\]\n]+?)\s*\]\s*(?:\r?\n)?([\s\S]*)$/
 
@@ -112,7 +112,7 @@ interface UserSkillDirective {
   body: string
 }
 
-function parseUserSkillDirective(text: string): UserSkillDirective | null {
+export function parseUserSkillDirective(text: string): UserSkillDirective | null {
   const match = SKILL_DIRECTIVE_RE.exec(text)
   if (!match) return null
   const name = match[1]?.trim()
@@ -123,7 +123,7 @@ function parseUserSkillDirective(text: string): UserSkillDirective | null {
   }
 }
 
-function serializeUserSkillDirective(name: string, body: string): string {
+export function serializeUserSkillDirective(name: string, body: string): string {
   const trimmedBody = body.trim()
   return trimmedBody ? `[Skill: ${name}]\n${trimmedBody}` : `[Skill: ${name}]`
 }
