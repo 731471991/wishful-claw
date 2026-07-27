@@ -102,7 +102,7 @@ export async function handleStats(ctx: CommandContext, args: string): Promise<Co
 
 // ── /init Agent Prompt Builder ──
 
-function buildInitAgentPrompt(options: {
+export function buildInitAgentPrompt(options: {
   workDir: string
   agentsPath: string
   hasExistingAgents: boolean
