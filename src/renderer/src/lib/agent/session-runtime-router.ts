@@ -1,4 +1,3 @@
-import type {
 import { stripThinkTagMarkers, upsertBufferedToolUse, _explicitVisibleSessionIds, invalidateVisibleSessionCache, setSessionForegroundVisibility, debouncedMarkSessionUpdate, cancelDebouncedMarkSessionUpdate } from './session-runtime-utils'
 
 function resolveChatStoreSeed(sessionId: string, messageId: string): UnifiedMessage | undefined {

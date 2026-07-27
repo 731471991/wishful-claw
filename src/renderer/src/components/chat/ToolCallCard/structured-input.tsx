@@ -4,7 +4,6 @@ import { cn } from '@renderer/lib/utils'
 import { MONO_FONT } from '@renderer/lib/constants'
 import { FileCode, Folder, Search, Clock, Bot } from 'lucide-react'
 import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
-import {
 export function StructuredInput({
   name,
   input

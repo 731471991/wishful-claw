@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
 import { ExtensionComponentRenderer, SchemaRenderer } from './extension-tool-components'
 
 export function ExtensionToolResultCard({

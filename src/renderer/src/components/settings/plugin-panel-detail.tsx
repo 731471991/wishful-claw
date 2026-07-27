@@ -19,6 +19,11 @@ import { Separator } from '@renderer/components/ui/separator'
 import { Badge } from '@renderer/components/ui/badge'
 import { Spinner } from '@renderer/components/ui/spinner'
 import {
+  useChannelStore,
+  type PluginInstance,
+  type ChannelProviderDescriptor
+} from '@renderer/stores/channel-store'
+import { cn } from '@renderer/lib/utils'
 function CredentialsPanel({
   channel,
   descriptor

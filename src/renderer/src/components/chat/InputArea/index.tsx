@@ -110,7 +110,6 @@ export function InputArea({
     setSelectedSkill, setAttachedImages, setPreviewImage
   })
 
-────
   const toggleWebSearch = React.useCallback(() => {
     const newEnabled = !useSettingsStore.getState().webSearchEnabled
     useSettingsStore.getState().updateSettings({ webSearchEnabled: newEnabled })

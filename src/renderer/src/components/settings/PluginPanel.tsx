@@ -18,7 +18,8 @@ import { Switch } from '@renderer/components/ui/switch'
 import { Separator } from '@renderer/components/ui/separator'
 import { Badge } from '@renderer/components/ui/badge'
 import { Spinner } from '@renderer/components/ui/spinner'
-import {
+import { useChannelStore } from '@renderer/stores/channel-store'
+import { cn } from '@renderer/lib/utils'
 import { QrLoginPanel } from './plugin-panel-qr'
 import { CredentialsPanel, FeaturesPanel, ChannelDetailPanel } from './plugin-panel-detail'
 

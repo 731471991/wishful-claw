@@ -9,7 +9,6 @@ import { cn } from '@renderer/lib/utils'
 import type { AgentRunChangeSet } from '@renderer/stores/agent-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { CodeDiffViewer } from './CodeDiffViewer'
-import {
 import { ActionLabel, CopyIconButton, CodeFrame, EmptyState, ChangeDetail, ChangeRow } from './change-review-helpers'
 
 export function ChangeReviewPanelContent({

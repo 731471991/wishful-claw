@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
 import { isRecord, readStringProp, readArrayProp, readString, readStringArray, safeHttpUrl, formatFieldValue, stringifyData } from './extension-tool-helpers'
 
 function ComponentShell({

@@ -1,6 +1,5 @@
 import type { ToolCallState } from '../types'
 
-import type {
 import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initializeTeamCursor, clearTeamCursor, parseToolCall, parsePermissionUpdate, parsePlanApprovalRequest, registerPendingApproval } from './inbox-parsers'
 
 

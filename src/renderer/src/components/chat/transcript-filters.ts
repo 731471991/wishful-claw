@@ -1,4 +1,14 @@
 import type {
+  ContentBlock,
+  ToolResultContent,
+  ToolUseBlock,
+  UnifiedMessage
+} from '@renderer/lib/api/types'
+import { isEditableUserMessage } from '@renderer/lib/image-attachments'
+import {
+  isCompactBoundaryMessage,
+  isCompactSummaryLikeMessage
+} from '@renderer/lib/agent/context-compression'
 
 export function isToolResultOnlyUserMessage(message: UnifiedMessage): boolean {
   return (

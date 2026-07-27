@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
 
 const HTML_RENDERER_SOURCE = 'open_cowork_extension_renderer'
 

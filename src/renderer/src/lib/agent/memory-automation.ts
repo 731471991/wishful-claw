@@ -6,8 +6,6 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import type { ProviderConfig } from '@renderer/lib/api/types'
 import {
-import {
-  runningSessionAutomations,
   recordEntry,
   recordSyntheticEntry,
   pipelineRun,

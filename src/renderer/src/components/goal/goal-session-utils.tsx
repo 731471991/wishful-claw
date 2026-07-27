@@ -55,17 +55,17 @@ const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
 ])
 
 
-function eventMetadataNumber(event: SessionGoalEvent, key: string): number | null {
+export function eventMetadataNumber(event: SessionGoalEvent, key: string): number | null {
   const value = event.metadata?.[key]
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function eventMetadataString(event: SessionGoalEvent, key: string): string | null {
+export function eventMetadataString(event: SessionGoalEvent, key: string): string | null {
   const value = event.metadata?.[key]
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
-function useGoalSession(sessionId?: string | null): {
+export function useGoalSession(sessionId?: string | null): {
   goal: SessionGoal | undefined
   events: SessionGoalEvent[]
 } {
@@ -91,7 +91,7 @@ function useGoalSession(sessionId?: string | null): {
   return { goal, events }
 }
 
-function statusTone(status?: SessionGoal['status']): string {
+export function statusTone(status?: SessionGoal['status']): string {
   switch (status) {
     case 'active':
       return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
@@ -110,7 +110,7 @@ function statusTone(status?: SessionGoal['status']): string {
   }
 }
 
-function GoalStatusBadge({ status }: { status?: SessionGoal['status'] }): React.JSX.Element {
+export function GoalStatusBadge({ status }: { status?: SessionGoal['status'] }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const fallback = status ? goalStatusLabel(status) : 'not set'
   return (
@@ -120,7 +120,7 @@ function GoalStatusBadge({ status }: { status?: SessionGoal['status'] }): React.
   )
 }
 
-function GoalUsageLine({
+export function GoalUsageLine({
   goal,
   timeUsedSeconds
 }: {
@@ -147,7 +147,7 @@ function GoalUsageLine({
   )
 }
 
-function useLiveGoalElapsedSeconds(goal?: SessionGoal, activeRunStartedAt?: number | null): number {
+export function useLiveGoalElapsedSeconds(goal?: SessionGoal, activeRunStartedAt?: number | null): number {
   const [now, setNow] = React.useState(() => Date.now())
 
   React.useEffect(() => {

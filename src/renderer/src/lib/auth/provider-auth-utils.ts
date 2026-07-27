@@ -207,3 +207,41 @@ function findAccountById(
  * Returns {account, accountsChanged, nextAccounts} so callers can persist the swept state.
  */
 export function pickUsableAccount(provider: AIProvider): {
+  account: ProviderOAuthAccount | null
+  nextAccounts: ProviderOAuthAccount[]
+  changed: boolean
+} {
+  const accounts = getAccountsArray(provider)
+  if (accounts.length === 0) {
+    return { account: null, nextAccounts: accounts, changed: false }
+  }
+
+  const now = Date.now()
+  let changed = false
+  const swept: ProviderOAuthAccount[] = accounts.map((acc) => {
+    if (acc.rateLimit && acc.rateLimit.resetAt <= now) {
+      changed = true
+      const { rateLimit: _rl, ...rest } = acc
+      return rest as ProviderOAuthAccount
+    }
+    return acc
+  })
+
+  const activeId = provider.activeAccountId
+  if (activeId) {
+    const active = swept.find((a) => a.id === activeId)
+    if (active && !isAccountRateLimited(active)) {
+      return { account: active, nextAccounts: swept, changed }
+    }
+  }
+
+  const firstUsable = swept.find((a) => !isAccountRateLimited(a))
+  if (firstUsable) {
+    return { account: firstUsable, nextAccounts: swept, changed }
+  }
+
+  const earliest = [...swept].sort(
+    (a, b) => (a.rateLimit?.resetAt ?? 0) - (b.rateLimit?.resetAt ?? 0)
+  )[0]
+  return { account: earliest ?? null, nextAccounts: swept, changed }
+}

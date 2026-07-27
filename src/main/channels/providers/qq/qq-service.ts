@@ -1,6 +1,5 @@
 import WebSocket from 'ws'
 import { markQqWakeupSent, resolveQqWakeupEligibility } from '../../../db/qq-wakeup-dao'
-import type {
 import { INTENTS, INTENT_LEVELS, RECONNECT_DELAYS, INVALID_SESSION_RECONNECT_DELAY, parseBooleanConfig } from './qq-config'
 
 export class QQService implements MessagingChannelService {

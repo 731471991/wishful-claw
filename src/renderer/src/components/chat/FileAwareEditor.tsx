@@ -1,8 +1,6 @@
 import * as React from 'react'
 import { cn } from '@renderer/lib/utils'
 import {
-import {
-  type EditorSelectionOffsets,
   type FileAwareEditorHandle,
   type FileAwareEditorProps,
   appendTextContent,

@@ -53,108 +53,19 @@ const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'stall_paused',
   'auto_continue_blocked'
 ])
-import { useGoalSession, useLiveGoalElapsedSeconds, GoalStatusBadge, GoalUsageLine } from './goal-session-utils'
-import { GoalEventTimeline, LatestGoalNotice, useGoalActions, formatGoalEvent } from './goal-session-views'
 
-      return { tokenBudget: null, error: t('goal.errors.invalidBudget') }
-    }
-    return { tokenBudget }
-  }, [tokenBudgetDraft, t])
-
-  const setGoalStatus = React.useCallback(
-    async (status: 'active' | 'paused'): Promise<void> => {
-      if (!sessionId) return
-      const result = await useGoalStore.getState().updateGoal(sessionId, { status })
-      if (!result.success) {
-        toast.error(t('goal.toasts.updateFailed'), { description: result.error })
-        return
-      }
-      if (status === 'active' && result.goal?.status === 'budget_limited') {
-        toast.info(t('goal.toasts.budgetStillExhausted'), {
-          description: t('goal.toasts.increaseBudget')
-        })
-      }
-      if (status === 'active' && result.goal?.status === 'active') {
-        dispatchNextQueuedMessageForSession(sessionId)
-      }
-      if (status === 'paused' && result.goal?.status === 'paused') {
-        abortSession(sessionId)
-      }
-    },
-    [sessionId, t]
-  )
-
-  const clearGoal = React.useCallback(async (): Promise<void> => {
-    if (!sessionId || !goal) return
-    const confirmed = await confirm({
-      title: t('goal.clearConfirmTitle'),
-      description: t('goal.clearConfirmDesc'),
-      confirmLabel: tCommon('action.clear'),
-      variant: 'destructive'
-    })
-    if (!confirmed) return
-    setClearing(true)
-    const result = await useGoalStore.getState().clearGoal(sessionId)
-    setClearing(false)
-    if (!result.success) {
-      toast.error(t('goal.toasts.clearFailed'), { description: result.error })
-      return
-    }
-    setOpen(false)
-    setObjectiveDraft('')
-    setTokenBudgetDraft('')
-  }, [goal, sessionId, t, tCommon])
-
-  const saveGoal = React.useCallback(async (): Promise<void> => {
-    if (!sessionId) return
-    const objective = objectiveDraft.trim()
-    const validation = validateGoalObjective(objective)
-    if (validation) {
-      toast.error(t('goal.toasts.objectiveInvalid'), { description: validation })
-      return
-    }
-    const budget = parseGoalTokenBudget()
-    if (budget.error) {
-      toast.error(t('goal.toasts.budgetInvalid'), { description: budget.error })
-      return
-    }
-
-    setSaving(true)
-    const result = goal
-      ? await useGoalStore.getState().updateGoal(sessionId, {
-          objective,
-          tokenBudget: budget.tokenBudget
-        })
-      : await useGoalStore.getState().setGoal({
-          sessionId,
-          objective,
-          tokenBudget: budget.tokenBudget
-        })
-    setSaving(false)
-    if (!result.success) {
-      toast.error(goal ? t('goal.toasts.updateFailed') : t('goal.toasts.createFailed'), {
-        description: result.error
-      })
-      return
-    }
-    setOpen(false)
-  }, [goal, objectiveDraft, parseGoalTokenBudget, sessionId, t])
-
-  return {
-    open,
-    objectiveDraft,
-    tokenBudgetDraft,
-    saving,
-    clearing,
-    setOpen,
-    setObjectiveDraft,
-    setTokenBudgetDraft,
-    openManager,
-    saveGoal,
-    clearGoal,
-    setGoalStatus
-  }
-}
+import {
+  useGoalSession,
+  useLiveGoalElapsedSeconds,
+  GoalStatusBadge,
+  GoalUsageLine
+} from './goal-session-utils'
+import {
+  GoalEventTimeline,
+  LatestGoalNotice,
+  useGoalActions,
+  formatGoalEvent
+} from './goal-session-views'
 
 function GoalManagerDialog({
   goal,

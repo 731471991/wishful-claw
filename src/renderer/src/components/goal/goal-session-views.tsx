@@ -1,49 +1,25 @@
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
 import {
   AlertTriangle,
-  ChevronDown,
-  ChevronRight,
   CheckCircle2,
   Pause,
-  Pencil,
   Play,
-  Plus,
-  Save,
-  Target,
-  Trash2,
   Zap
 } from 'lucide-react'
-import { Button } from '@renderer/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@renderer/components/ui/dialog'
-import { Input } from '@renderer/components/ui/input'
-import { Textarea } from '@renderer/components/ui/textarea'
-import { confirm } from '@renderer/components/ui/confirm-dialog'
-import { CollapsibleHeightPanel } from '@renderer/components/chat/CollapsibleHeightPanel'
 import { cn } from '@renderer/lib/utils'
-import { useSettingsStore } from '@renderer/stores/settings-store'
 import {
-  formatGoalElapsedSeconds,
-  formatGoalTokens,
-  goalStatusLabel,
-  validateGoalObjective
-} from '@renderer/lib/agent/goal-context'
-import {
-  EMPTY_SESSION_GOAL_EVENTS,
   useGoalStore,
   type SessionGoal,
   type SessionGoalEvent,
   type SessionGoalEventType
 } from '@renderer/stores/goal-store'
 import { abortSession, dispatchNextQueuedMessageForSession } from '@renderer/hooks/use-chat-actions'
+import {
+  eventMetadataNumber,
+  eventMetadataString
+} from './goal-session-utils'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',
@@ -53,7 +29,8 @@ const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'stall_paused',
   'auto_continue_blocked'
 ])
-function formatGoalEvent(
+
+export function formatGoalEvent(
   event: SessionGoalEvent,
   t: TFunction
 ): {
@@ -96,7 +73,7 @@ function formatGoalEvent(
   }
 }
 
-function GoalEventTimeline({ events }: { events: SessionGoalEvent[] }): React.JSX.Element {
+export function GoalEventTimeline({ events }: { events: SessionGoalEvent[] }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const visibleEvents = events.slice(0, 8)
   if (visibleEvents.length === 0) {
@@ -129,7 +106,7 @@ function GoalEventTimeline({ events }: { events: SessionGoalEvent[] }): React.JS
   )
 }
 
-function LatestGoalNotice({ events }: { events: SessionGoalEvent[] }): React.JSX.Element | null {
+export function LatestGoalNotice({ events }: { events: SessionGoalEvent[] }): React.JSX.Element | null {
   const { t } = useTranslation('chat')
   const latest = events.find((event) => BLOCKER_EVENT_TYPES.has(event.eventType))
   if (!latest) return null
@@ -142,7 +119,7 @@ function LatestGoalNotice({ events }: { events: SessionGoalEvent[] }): React.JSX
   )
 }
 
-function useGoalActions(
+export function useGoalActions(
   sessionId?: string | null,
   goal?: SessionGoal
 ): {
@@ -186,3 +163,103 @@ function useGoalActions(
     }
     const tokenBudget = Number(raw)
     if (!Number.isSafeInteger(tokenBudget) || tokenBudget <= 0) {
+      return { tokenBudget: null, error: t('goal.errors.invalidBudget') }
+    }
+    return { tokenBudget }
+  }, [tokenBudgetDraft, t])
+
+  const setGoalStatus = React.useCallback(
+    async (status: 'active' | 'paused'): Promise<void> => {
+      if (!sessionId) return
+      const result = await useGoalStore.getState().updateGoal(sessionId, { status })
+      if (!result.success) {
+        toast.error(t('goal.toasts.updateFailed'), { description: result.error })
+        return
+      }
+      if (status === 'active' && result.goal?.status === 'budget_limited') {
+        toast.info(t('goal.toasts.budgetStillExhausted'), {
+          description: t('goal.toasts.increaseBudget')
+        })
+      }
+      if (status === 'active' && result.goal?.status === 'active') {
+        dispatchNextQueuedMessageForSession(sessionId)
+      }
+      if (status === 'paused' && result.goal?.status === 'paused') {
+        abortSession(sessionId)
+      }
+    },
+    [sessionId, t]
+  )
+
+  const clearGoal = React.useCallback(async (): Promise<void> => {
+    if (!sessionId || !goal) return
+    const confirmed = await confirm({
+      title: t('goal.clearConfirmTitle'),
+      description: t('goal.clearConfirmDesc'),
+      confirmLabel: tCommon('action.clear'),
+      variant: 'destructive'
+    })
+    if (!confirmed) return
+    setClearing(true)
+    const result = await useGoalStore.getState().clearGoal(sessionId)
+    setClearing(false)
+    if (!result.success) {
+      toast.error(t('goal.toasts.clearFailed'), { description: result.error })
+      return
+    }
+    setOpen(false)
+    setObjectiveDraft('')
+    setTokenBudgetDraft('')
+  }, [goal, sessionId, t, tCommon])
+
+  const saveGoal = React.useCallback(async (): Promise<void> => {
+    if (!sessionId) return
+    const objective = objectiveDraft.trim()
+    const validation = validateGoalObjective(objective)
+    if (validation) {
+      toast.error(t('goal.toasts.objectiveInvalid'), { description: validation })
+      return
+    }
+    const budget = parseGoalTokenBudget()
+    if (budget.error) {
+      toast.error(t('goal.toasts.budgetInvalid'), { description: budget.error })
+      return
+    }
+
+    setSaving(true)
+    const result = goal
+      ? await useGoalStore.getState().updateGoal(sessionId, {
+          objective,
+          tokenBudget: budget.tokenBudget
+        })
+      : await useGoalStore.getState().setGoal({
+          sessionId,
+          objective,
+          tokenBudget: budget.tokenBudget
+        })
+    setSaving(false)
+    if (!result.success) {
+      toast.error(goal ? t('goal.toasts.updateFailed') : t('goal.toasts.createFailed'), {
+        description: result.error
+      })
+      return
+    }
+    setOpen(false)
+  }, [goal, objectiveDraft, parseGoalTokenBudget, sessionId, t])
+
+  return {
+    open,
+    objectiveDraft,
+    tokenBudgetDraft,
+    saving,
+    clearing,
+    setOpen,
+    setObjectiveDraft,
+    setTokenBudgetDraft,
+    openManager,
+    saveGoal,
+    clearGoal,
+    setGoalStatus
+  }
+}
+
