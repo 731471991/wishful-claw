@@ -53,6 +53,13 @@ internal sealed class DbModule : IWorkerModule
         context.Register("db/sub-agent-apply", DbSubAgentTools.Apply);
         context.Register("db/sub-agent-replace", DbSubAgentTools.Replace);
 
+        // ── SSH Connections ──
+        context.Register("db/ssh-connections-list", DbSshTools.List);
+        context.Register("db/ssh-connections-get", DbSshTools.Get);
+        context.Register("db/ssh-connections-create", DbSshTools.Create);
+        context.Register("db/ssh-connections-update", DbSshTools.Update);
+        context.Register("db/ssh-connections-delete", DbSshTools.Delete);
+
         // ── Plugin Sessions ──
         context.Register("db/plugin-normal-projects", DbPluginSessionTools.ListNormalProjects);
         context.Register("db/plugin-sync-session-models", DbPluginSessionTools.SyncPluginSessionModels);
