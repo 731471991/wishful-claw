@@ -60,6 +60,9 @@ export const IPC = {
   TERMINAL_OUTPUT: 'terminal:output',
   TERMINAL_EXIT: 'terminal:exit',
 
+  // SSH Agent Output (real-time exec output for terminal旁观)
+  SSH_EXEC_OUTPUT: 'ssh:exec-output',
+
   // Agent Changes
   AGENT_CHANGES_LIST_SESSION: 'agent:changes:list-session',
   AGENT_CHANGES_DIFF_CONTENT: 'agent:changes:diff-content',

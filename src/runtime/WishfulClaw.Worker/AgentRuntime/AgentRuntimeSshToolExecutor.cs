@@ -121,6 +121,9 @@ internal static class AgentRuntimeSshToolExecutor
             writer.WriteString("connectionId", connectionId);
             writer.WriteString("command", remoteCommand);
             writer.WriteNumber("timeoutMs", timeoutMs);
+            // execId lets the frontend correlate real-time output chunks
+            // (ssh:exec-output events) with this specific tool call.
+            writer.WriteString("execId", call.Id);
         });
 
         JsonElement response;

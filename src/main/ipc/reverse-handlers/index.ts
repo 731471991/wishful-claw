@@ -16,6 +16,7 @@ import {
   isPluginToolEnabled
 } from '../channel-handlers'
 import { execSshCommand } from '../ssh/connection-manager'
+import { safeSendMessagePackToAllWindows } from '../../window-ipc'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
 
@@ -25,11 +26,23 @@ const directHandlers = new Map<string, ReverseHandler>([
   ['mcp:call-tool', (p) => executeMcpToolFromMain(p as { serverId: string; toolName: string; args: Record<string, unknown> })],
   ['mcp:read-resource', (p) => readMcpResourceFromMain(p as { serverId: string; uri?: string; resourceName?: string })],
   ['ssh:exec', async (p) => {
-    const { connectionId, command, timeoutMs } = p as { connectionId: string; command: string; timeoutMs?: number }
+    const { connectionId, command, timeoutMs, execId } = p as {
+      connectionId: string
+      command: string
+      timeoutMs?: number
+      execId?: string
+    }
     if (!connectionId || !command) {
       return { success: false, exitCode: 1, stdout: '', stderr: 'connectionId and command are required', error: 'connectionId and command are required' }
     }
-    return await execSshCommand(connectionId, command, timeoutMs ?? 60_000)
+    return await execSshCommand(connectionId, command, timeoutMs ?? 60_000, (chunk) => {
+      // Broadcast output chunk to renderer for real-time terminal display
+      safeSendMessagePackToAllWindows('ssh:exec-output', {
+        execId: execId ?? connectionId,
+        stream: chunk.stream,
+        data: chunk.data
+      })
+    })
   }],
 ])
 

@@ -261,7 +261,8 @@ const MAX_EXEC_OUTPUT_BYTES = 1024 * 1024 // 1MB
 export async function execSshCommand(
   connectionId: string,
   command: string,
-  timeoutMs = 60_000
+  timeoutMs = 60_000,
+  onOutput?: (chunk: { stream: 'stdout' | 'stderr'; data: string }) => void
 ): Promise<SshExecResult> {
   const startedAt = Date.now()
   try {
@@ -284,8 +285,14 @@ export async function execSshCommand(
             if (target === 'out') stdout += text
             else stderr += text
           }
-          stream.on('data', (data: Buffer) => append('out', data))
-          stream.stderr.on('data', (data: Buffer) => append('err', data))
+          stream.on('data', (data: Buffer) => {
+            append('out', data)
+            onOutput?.({ stream: 'stdout', data: data.toString('utf-8') })
+          })
+          stream.stderr.on('data', (data: Buffer) => {
+            append('err', data)
+            onOutput?.({ stream: 'stderr', data: data.toString('utf-8') })
+          })
           stream.on('close', (code: number | null) => {
             clearTimeout(timer)
             resolve({
