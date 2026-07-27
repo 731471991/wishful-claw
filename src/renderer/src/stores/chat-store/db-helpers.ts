@@ -77,7 +77,6 @@ function serializeMessage(msg: ChatMessage, sortOrder: number): {
   const meta: Record<string, unknown> = {}
   if (msg.thinking) meta.thinking = msg.thinking
   if (msg.toolCalls && msg.toolCalls.length > 0) meta.toolCalls = msg.toolCalls
-  if (msg.isStreaming) meta.isStreaming = msg.isStreaming
   if (msg.segments && msg.segments.length > 0) meta.segments = msg.segments
   if (msg.error) meta.error = msg.error
   if (msg.preToolPhase) meta.preToolPhase = msg.preToolPhase
@@ -111,7 +110,6 @@ function deserializeMessage(row: MessageRow): ChatMessage {
       if (meta.thinking) msg.thinking = meta.thinking as string
       if (meta.toolCalls) msg.toolCalls = meta.toolCalls as ChatMessage['toolCalls']
       if (meta.segments) msg.segments = meta.segments as ChatMessage["segments"]
-      if (meta.isStreaming) msg.isStreaming = meta.isStreaming as boolean
       if (meta.error) msg.error = meta.error as string
       if (meta.preToolPhase) msg.preToolPhase = meta.preToolPhase as boolean
     } catch {
