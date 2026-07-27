@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAgentStore } from '@renderer/stores/agent-store'
@@ -16,14 +16,16 @@ interface RetryBannerProps {
 
 /**
  * Fixed-position retry banner shown above the composer.
- * Unlike the per-message retry indicator in action-bar.tsx,
- * this always renders at the bottom of the chat (above the input),
- * so the user always sees retry status without scrolling.
  *
- * No exit animation — when retry succeeds (text_delta arrives) the banner
- * disappears instantly. This avoids a "flash" where the banner fades out
- * (looking like success) and then fades back in (another 429) during
- * consecutive retry attempts.
+ * Key design: the banner element is always mounted as long as retryState
+ * exists. When retryState changes (e.g. attempt 1→2), React reconciles
+ * the same DOM node — only the text updates, no remount, no animation
+ * replay. When retryState becomes null (retry succeeded or failed), the
+ * element is removed from the DOM instantly (no exit animation, no
+ * "flash" that looks like false success).
+ *
+ * The enter animation only plays on the very first mount (first 429),
+ * not on subsequent retry attempts within the same retry sequence.
  */
 export function RetryBanner({ sessionId }: RetryBannerProps) {
   const { t } = useTranslation('chat')
@@ -36,14 +38,13 @@ export function RetryBanner({ sessionId }: RetryBannerProps) {
 
   return (
     <motion.div
-      key="retry-banner"
-      initial={animationsEnabled ? { opacity: 0, y: 4 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={animationsEnabled ? { duration: 0.15, ease: 'easeOut' } : { duration: 0 }}
       className={cn(
         'mx-1 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8',
         'px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300'
       )}
+      initial={animationsEnabled ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={animationsEnabled ? { duration: 0.15, ease: 'easeOut' } : { duration: 0 }}
     >
       <RotateCcw className="mt-0.5 size-3.5 shrink-0 animate-spin" />
       <div className="min-w-0">
