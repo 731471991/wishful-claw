@@ -12,6 +12,10 @@ import {
   getStepStatusColor,
   getStepStatusIcon
 } from '@renderer/lib/agent/sub-agents/step-descriptions'
+import {
+  getPendingApproval,
+  resolveSubAgentApproval
+} from '@renderer/lib/tools/sub-agent-approval'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
@@ -71,6 +75,8 @@ function SubAgentStepList({
   toolCalls: ToolCallState[]
   isRunning: boolean
 }): React.JSX.Element {
+  const [, forceUpdate] = React.useReducer((x: number) => x + 1, 0)
+
   if (toolCalls.length === 0) {
     return (
       <div className="px-3 py-1.5 text-[11px] text-muted-foreground/50">
@@ -85,6 +91,7 @@ function SubAgentStepList({
         const desc = generateStepDescription(tc)
         const statusIcon = getStepStatusIcon(tc.status)
         const statusColor = getStepStatusColor(tc.status)
+        const pendingApproval = tc.status === 'pending_approval' ? getPendingApproval(tc.id) : null
         return (
           <div
             key={tc.id ?? idx}
@@ -94,6 +101,32 @@ function SubAgentStepList({
               {statusIcon}
             </span>
             <span className="min-w-0 truncate text-foreground/70">{desc}</span>
+            {pendingApproval ? (
+              <span className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    resolveSubAgentApproval(tc.id, true)
+                    forceUpdate()
+                  }}
+                >
+                  同意
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    resolveSubAgentApproval(tc.id, false)
+                    forceUpdate()
+                  }}
+                >
+                  拒绝
+                </button>
+              </span>
+            ) : null}
           </div>
         )
       })}

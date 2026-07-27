@@ -157,7 +157,8 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
   const rendererMethods = new Set([
     'browser/tool-request',
     'ask-user/request',
-    'plan/ui-update'
+    'plan/ui-update',
+    'sub-agent:approve-tool'
   ])
   if (rendererMethods.has(method)) {
     const requestId = `sidecar-renderer-tool-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`

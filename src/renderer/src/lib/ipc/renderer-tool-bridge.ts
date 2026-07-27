@@ -1,5 +1,6 @@
 import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-native-ui'
 import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
+import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
   SIDECAR_RENDERER_TOOL_REQUEST_MSGPACK_CHANNEL,
@@ -73,6 +74,17 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
       // ask-user may wait for explicit user interaction — no extra timeout
       // here; the Main process 60s fallback covers the worst case.
       const result = await handleNativeAskUserRequest(payload.params)
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'sub-agent:approve-tool') {
+      // Sub-agent tool approval — waits for user to click approve/reject
+      // in the SubAgentCard UI. 5 min auto-reject fallback in the handler.
+      const result = await handleSubAgentApprovalRequest(payload.params)
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result

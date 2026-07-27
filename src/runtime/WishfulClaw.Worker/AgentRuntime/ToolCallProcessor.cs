@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
@@ -162,6 +163,100 @@ internal static class ToolCallProcessor
                         startedAt,
                         null)));
 
+            // Sub-agent approval check: when running inside a sub-agent
+            // (SuppressTransportEvents = true), certain tools require user
+            // approval before execution. The approval request is sent via
+            // reverse-request to the renderer.
+            if (state.SuppressTransportEvents && RequiresSubAgentApproval(toolCall.Name))
+            {
+                // Update status to pending_approval
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_call_start",
+                        ToolCall: new AgentRuntimeToolCallState(
+                            toolCall.Id,
+                            toolCall.Name,
+                            toolCall.Input,
+                            "pending_approval",
+                            null,
+                            null,
+                            true, // RequiresApproval
+                            startedAt,
+                            null)));
+
+                WorkerLog.Info(
+                    $"sub-agent tool approval requested runId={state.RunId} " +
+                    $"tool={toolCall.Name} id={toolCall.Id}");
+
+                // Send reverse-request to renderer and wait for response
+                var approvalParams = new ArrayBufferWriter<byte>();
+                using (var aw = new Utf8JsonWriter(approvalParams, WriteOptions))
+                {
+                    aw.WriteStartObject();
+                    aw.WriteString("toolCallId", toolCall.Id);
+                    aw.WriteString("toolName", toolCall.Name);
+                    aw.WritePropertyName("input");
+                    toolCall.Input.WriteTo(aw);
+                    aw.WriteEndObject();
+                }
+                using var approvalDoc = JsonDocument.Parse(approvalParams.WrittenMemory);
+                var approvalResult = await AgentRuntimeReverseRequests.RequestAsync(
+                    context, "sub-agent:approve-tool", approvalDoc.RootElement.Clone(),
+                    state.CancellationToken);
+
+                var approved = false;
+                if (approvalResult.ValueKind == JsonValueKind.Object &&
+                    approvalResult.TryGetProperty("approved", out var approvedVal) &&
+                    approvedVal.ValueKind == JsonValueKind.True)
+                {
+                    approved = true;
+                }
+
+                if (!approved)
+                {
+                    var rejectMsg = $"Tool call rejected by user: {toolCall.Name}";
+                    var rejectAt = AgentLoop.NowMs();
+                    await AgentRuntimeTools.EmitAsync(
+                        state, context,
+                        new AgentRuntimeStreamEvent(
+                            "tool_call_result",
+                            ToolCallId: toolCall.Id,
+                            ToolName: toolCall.Name,
+                            ToolCall: new AgentRuntimeToolCallState(
+                                toolCall.Id,
+                                toolCall.Name,
+                                toolCall.Input,
+                                "rejected",
+                                AgentRuntimeProviderSupport.CreateStringElement(rejectMsg),
+                                rejectMsg,
+                                false,
+                                startedAt,
+                                rejectAt)));
+
+                    return new AgentRuntimeToolResult(
+                        toolCall.Id,
+                        AgentRuntimeProviderSupport.CreateStringElement(rejectMsg),
+                        true);
+                }
+
+                // Approved — update status back to running
+                await AgentRuntimeTools.EmitAsync(
+                    state, context,
+                    new AgentRuntimeStreamEvent(
+                        "tool_call_start",
+                        ToolCall: new AgentRuntimeToolCallState(
+                            toolCall.Id,
+                            toolCall.Name,
+                            toolCall.Input,
+                            "running",
+                            null,
+                            null,
+                            false,
+                            startedAt,
+                            null)));
+            }
+
             // Dispatch to the appropriate executor
             var (toolOutput, isToolError) = await ToolDispatchRouter.DispatchAsync(
                 toolCall, state, context, registry, workingFolder);
@@ -199,5 +294,24 @@ internal static class ToolCallProcessor
             semaphore.Release();
         }
     }
+
+    /// <summary>
+    /// Tools that require user approval when executed inside a sub-agent.
+    /// These are tools that modify files or execute commands.
+    /// </summary>
+    private static readonly HashSet<string> SubAgentApprovalTools = new(StringComparer.Ordinal)
+    {
+        "Write", "WriteFile", "CreateFile", "Edit", "Bash", "ShellExec", "DeleteFile"
+    };
+
+    private static bool RequiresSubAgentApproval(string toolName)
+    {
+        return SubAgentApprovalTools.Contains(toolName);
+    }
+
+    private static readonly JsonWriterOptions WriteOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 }
 
