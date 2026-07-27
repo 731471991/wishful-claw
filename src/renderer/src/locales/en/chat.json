@@ -1025,6 +1025,8 @@
     "processResponse": "response",
     "processTools": "Tool calls",
     "thinkingStatus": "Thinking...",
+    "retryingRequest": "Request retrying",
+    "retryingRequestDetail": "Attempt {{attempt}} / {{maxAttempts}} retry, resend after {{delay}}{{statusSuffix}}",
     "streamingText": "streaming text",
     "activeTools": "{{count}} active tools",
     "toolExecutions": "{{count}} tool executions",
