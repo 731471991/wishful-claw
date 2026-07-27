@@ -153,7 +153,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
               state.rightPanelActiveTabId === rpTabId
                 ? (nextRightPanelTabs.length > 0
                     ? nextRightPanelTabs[nextRightPanelTabs.length - 1].id
-                    : 'activity')
+                    : '')
                 : state.rightPanelActiveTabId
           }
         }),

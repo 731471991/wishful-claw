@@ -107,11 +107,11 @@ export const useUIStore = create<UIStore>((set, get) => ({
   rightPanelSection: 'execution',
   setRightPanelSection: (section) => set({ rightPanelSection: section }),
   rightPanelTabs: getDefaultRightPanelTabs(),
-  rightPanelActiveTabId: 'activity',
+  rightPanelActiveTabId: '',
   setRightPanelActiveTab: (tabId) => set({ rightPanelActiveTabId: tabId }),
   closeRightPanelTab: (tabId) => {
     const tabs = get().rightPanelTabs.filter((t) => t.id !== tabId)
-    const nextActive = tabs.length > 0 ? tabs[Math.max(0, tabs.length - 1)].id : 'activity'
+    const nextActive = tabs.length > 0 ? tabs[Math.max(0, tabs.length - 1)].id : ''
     set({ rightPanelTabs: tabs.length > 0 ? tabs : getDefaultRightPanelTabs(), rightPanelActiveTabId: nextActive })
   },
   rightPanelRailWidth: 48,

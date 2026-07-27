@@ -68,9 +68,7 @@ export function RightPanel(): React.JSX.Element {
   }, [rightPanelOpen, rightPanelTabs, t])
 
   const selectedTab =
-    tabs.find((tab) => tab.id === activeTabId) ??
-    tabs.find((tab) => tab.kind === 'activity') ??
-    tabs[0]
+    tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
 
   // The browser webview stays mounted whenever a browser tab exists and the plugin
   // is enabled — independent of whether the panel is open. This lets agent-driven
@@ -169,7 +167,7 @@ export function RightPanel(): React.JSX.Element {
           <>
             <RightPanelHeader
               tabs={tabs}
-              activeTabId={activeTab?.id ?? 'activity'}
+              activeTabId={activeTab?.id ?? ''}
               browserEnabled={browserPluginEnabled}
               onSelectTab={setRightPanelActiveTab}
               onCloseTab={closeRightPanelTab}

@@ -23,7 +23,7 @@ export function ensureRightPanelTabs(
 }
 
 export function getDefaultRightPanelTabs(): RightPanelTabInstance[] {
-  return [createActivityTab(), createMemoryTab()]
+  return []
 }
 
 export function closeRightSidePanels(): { rightPanelOpen: false } {
