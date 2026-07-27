@@ -216,6 +216,13 @@ export const useChatStore = create<ChatStore>()(
 
         if (!isChatStreamEvent(event)) continue
 
+        // Clear retry state when real content arrives (retry succeeded)
+        if (event.type !== 'request_retry' && event.type !== 'error') {
+          if (useAgentStore.getState().sessionRequestRetryState[targetSessionId]) {
+            useAgentStore.getState().setSessionRequestRetryState(targetSessionId, null)
+          }
+        }
+
         switch (event.type) {
           case 'text_delta': {
             // Queue delta for rAF batch flush instead of immediate set()
