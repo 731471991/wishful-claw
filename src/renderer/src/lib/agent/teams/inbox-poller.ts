@@ -1,6 +1,7 @@
 import type { ToolCallState } from '../types'
 
-import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initializeTeamCursor, clearTeamCursor, parseToolCall, parsePermissionUpdate, parsePlanApprovalRequest, registerPendingApproval, pollerTimer, pollerStartedAt, activePollTeamKey } from './inbox-parsers'
+import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initializeTeamCursor, clearTeamCursor, parseToolCall, parsePermissionUpdate, parsePlanApprovalRequest, registerPendingApproval } from './inbox-parsers'
+import { inboxPollerState } from './inbox-poller-state'
 
 
 export async function sendApprovalResponse(params: {
@@ -233,11 +234,11 @@ async function handleLeadMessage(message: TeamMessage, sessionId?: string): Prom
 
 export function startTeamInboxPoller(): void {
 
-  if (pollerTimer) return
+  if (inboxPollerState.pollerTimer) return
 
 
 
-  pollerStartedAt = Date.now()
+  inboxPollerState.pollerStartedAt = Date.now()
 
   const initialTeam = useTeamStore.getState().activeTeam
 
@@ -253,13 +254,13 @@ export function startTeamInboxPoller(): void {
 
 
 
-  pollerTimer = setInterval(() => {
+  inboxPollerState.pollerTimer = setInterval(() => {
 
     const team = useTeamStore.getState().activeTeam
 
     if (!team?.name) {
 
-      if (activePollTeamKey) clearTeamCursor()
+      if (inboxPollerState.activePollTeamKey) clearTeamCursor()
 
       return
 
@@ -269,7 +270,7 @@ export function startTeamInboxPoller(): void {
 
     const teamKey = getTeamPollKey(team)
 
-    if (activePollTeamKey !== teamKey) {
+    if (inboxPollerState.activePollTeamKey !== teamKey) {
 
       // A team created after the poller started is live. Do not seed from its
 
@@ -277,7 +278,7 @@ export function startTeamInboxPoller(): void {
 
       // first interval and its report still needs to wake the main agent.
 
-      initializeTeamCursor(team, team.createdAt < pollerStartedAt)
+      initializeTeamCursor(team, team.createdAt < inboxPollerState.pollerStartedAt)
 
     }
 
@@ -357,17 +358,17 @@ export function startTeamInboxPoller(): void {
 
 export function stopTeamInboxPoller(): void {
 
-  if (pollerTimer) {
+  if (inboxPollerState.pollerTimer) {
 
-    clearInterval(pollerTimer)
+    clearInterval(inboxPollerState.pollerTimer)
 
-    pollerTimer = null
+    inboxPollerState.pollerTimer = null
 
   }
 
   clearTeamCursor()
 
-  pollerStartedAt = 0
+  inboxPollerState.pollerStartedAt = 0
 
 }
 

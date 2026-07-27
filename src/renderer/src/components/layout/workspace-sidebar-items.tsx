@@ -49,7 +49,7 @@ import { MoreHorizontal } from 'lucide-react'
 // ─── Helpers ───
 
 
-function formatRelativeTime(timestamp: number): string {
+export function formatRelativeTime(timestamp: number): string {
   const now = Date.now()
   const diff = now - timestamp
   const minute = 60_000
@@ -64,7 +64,7 @@ function formatRelativeTime(timestamp: number): string {
   return date.toLocaleDateString()
 }
 
-function sortSessions(sessions: Session[]): Session[] {
+export function sortSessions(sessions: Session[]): Session[] {
   return [...sessions].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1
     if (!a.pinned && b.pinned) return 1

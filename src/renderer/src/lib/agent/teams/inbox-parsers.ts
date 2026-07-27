@@ -22,11 +22,9 @@ import { appendTeamRuntimeMessage, consumeTeamRuntimeMessages } from './runtime-
 
 
 
-export let pollerTimer: ReturnType<typeof setInterval> | null = null
+import { inboxPollerState } from './inbox-poller-state'
 
-export let pollerStartedAt = 0
 
-export let activePollTeamKey: string | null = null
 
 let lastLeadMessageTimestamp = 0
 
@@ -58,7 +56,7 @@ export function getTeamPollKey(team: ActiveTeam): string {
 
 export function initializeTeamCursor(team: ActiveTeam, seedExistingMessages: boolean): void {
 
-  activePollTeamKey = getTeamPollKey(team)
+  inboxPollerState.activePollTeamKey = getTeamPollKey(team)
 
   seenMessageIds.clear()
 
@@ -88,7 +86,7 @@ export function initializeTeamCursor(team: ActiveTeam, seedExistingMessages: boo
 
 export function clearTeamCursor(): void {
 
-  activePollTeamKey = null
+  inboxPollerState.activePollTeamKey = null
 
   lastLeadMessageTimestamp = 0
 
