@@ -96,7 +96,7 @@ const V18_DEFAULT_THEME_MODE = 'dark' as const
 const V18_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'graphite'
 const V18_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'graphite'
 
-export const DEFAULT_MAX_PARALLEL_TOOL_CALLS = 8
+export const DEFAULT_MAX_PARALLEL_TOOL_CALLS = 3
 export const MIN_MAX_PARALLEL_TOOL_CALLS = 1
 export const MAX_MAX_PARALLEL_TOOL_CALLS = 16
 

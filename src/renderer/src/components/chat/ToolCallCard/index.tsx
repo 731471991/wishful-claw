@@ -87,7 +87,7 @@ function ToolCallCardInner({
   const hasVisualOutput = hasImageBlocks(output)
   const isReadTextTool = name === 'Read' && !hasVisualOutput
   const [open, setOpen] = React.useState(
-    forceOpen || (isActive && !isReadTextTool) || hasVisualOutput
+    forceOpen || isLiveCommandTool || hasVisualOutput
   )
   const [readTextOutputRevealed, setReadTextOutputRevealed] = React.useState(false)
   const prevIsActiveRef = React.useRef(isActive)
