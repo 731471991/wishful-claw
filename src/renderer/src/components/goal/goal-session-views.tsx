@@ -16,8 +16,8 @@ import {
   type SessionGoalEventType
 } from '@renderer/stores/goal-store'
 import { abortSession, dispatchNextQueuedMessageForSession } from '@renderer/hooks/use-chat-actions'
-import {
 import { useTranslation } from 'react-i18next'
+import {
   eventMetadataNumber,
   eventMetadataString
 } from './goal-session-utils'
