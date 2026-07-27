@@ -75,12 +75,12 @@ export function DesktopActionToolCard({
       : null
   const parsedError = error || parseErrorMessage(output) || canceledMessage
   const isRunning = status === 'streaming' || status === 'pending_approval' || status === 'running'
-  const [collapsed, setCollapsed] = useState(!(forceOpen || isRunning))
+  const [collapsed, setCollapsed] = useState(!forceOpen)
   const hasError = status === 'error' || status === 'canceled' || Boolean(parsedError)
   const jsonOutput = parseStructuredOutput(output)
 
   useEffect(() => {
-    if (forceOpen || isRunning) setCollapsed(false)
+    if (forceOpen) setCollapsed(false)
   }, [forceOpen, isRunning])
 
   const { images, notes } = useMemo(() => {

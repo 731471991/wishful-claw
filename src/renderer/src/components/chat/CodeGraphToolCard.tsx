@@ -251,9 +251,9 @@ export function CodeGraphToolCard({
   const autoOpenKey = isRunning ? 'active' : 'idle'
   const [openState, setOpenState] = useState<{ key: string; open: boolean }>(() => ({
     key: autoOpenKey,
-    open: forceOpen || isRunning
+    open: forceOpen
   }))
-  const open = forceOpen || (openState.key === autoOpenKey ? openState.open : isRunning)
+  const open = forceOpen || (openState.key === autoOpenKey ? openState.open : false)
   const [bodyExpanded, setBodyExpanded] = useState(false)
   const isLongBody = markdown.length > 800 || markdown.split('\n').length > 16
 

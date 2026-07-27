@@ -61,7 +61,7 @@ export function FileChangeCard({
     (name === 'Write' || name === 'Edit') && (status === 'streaming' || status === 'running')
   const isRealtimeWrite =
     name === 'Write' && !trackedChange && (status === 'streaming' || status === 'running')
-  const [collapsed, setCollapsed] = React.useState(!(forceOpen || isActive))
+  const [collapsed, setCollapsed] = React.useState(!forceOpen)
   const wasLiveFileMutationRef = React.useRef(isLiveFileMutation)
   const undoFileChange = useAgentStore((state) => state.undoFileChange)
   const [isUndoingFile, setIsUndoingFile] = React.useState(false)
@@ -219,19 +219,8 @@ export function FileChangeCard({
   React.useEffect(() => {
     if (forceOpen) {
       setCollapsed(false)
-      wasLiveFileMutationRef.current = isLiveFileMutation
-      return
     }
-    if (isLiveFileMutation) {
-      setCollapsed(false)
-      wasLiveFileMutationRef.current = true
-      return
-    }
-    if (wasLiveFileMutationRef.current) {
-      setCollapsed(true)
-    }
-    wasLiveFileMutationRef.current = false
-  }, [forceOpen, isLiveFileMutation])
+  }, [forceOpen])
 
   return (
     <div
@@ -247,7 +236,7 @@ export function FileChangeCard({
     >
       <button
         onClick={() => {
-          if (forceOpen || isLiveFileMutation) return
+          if (forceOpen) return
           setCollapsed((v) => !v)
         }}
         className={cn(

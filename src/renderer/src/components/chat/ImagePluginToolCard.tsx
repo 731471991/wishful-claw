@@ -151,10 +151,10 @@ export function ImagePluginToolCard({
   const hasError =
     !isAwaitingRetry &&
     (status === 'error' || status === 'canceled' || (!!parsedError && images.length === 0))
-  const [collapsed, setCollapsed] = useState(!(forceOpen || isRunning))
+  const [collapsed, setCollapsed] = useState(!forceOpen)
 
   useEffect(() => {
-    if (forceOpen || isRunning) setCollapsed(false)
+    if (forceOpen) setCollapsed(false)
   }, [forceOpen, isRunning])
 
   const statusLabel = isAwaitingRetry

@@ -310,10 +310,10 @@ export function BrowserToolCard({
   const autoOpenKey = `${isRunning ? 'active' : 'idle'}:${images.length}`
   const [openState, setOpenState] = useState<{ key: string; open: boolean }>(() => ({
     key: autoOpenKey,
-    open: forceOpen || isRunning || images.length > 0
+    open: forceOpen || images.length > 0
   }))
   const open =
-    forceOpen || (openState.key === autoOpenKey ? openState.open : isRunning || images.length > 0)
+    forceOpen || (openState.key === autoOpenKey ? openState.open : images.length > 0)
 
   const summary = buildSummary(name, input, jsonOutput, notes, t)
   const mainPreview = getMainPreview(name, jsonOutput)
