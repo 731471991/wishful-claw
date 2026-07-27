@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import {
   Check,
   Search,
-  MonitorSmartphone,
   Loader2,
   Globe2
 } from 'lucide-react'
@@ -22,7 +21,6 @@ import { useUIStore } from '@renderer/stores/ui-store'
 
 import { useTranslation } from 'react-i18next'
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 
 import {
@@ -44,6 +42,7 @@ import {
 } from './ModelSwitcher/utils'
 import { ModelCapabilityTags, ModelHoverDetails } from './ModelSwitcher/model-info'
 import { ModelSettingsPopover } from './ModelSwitcher/ModelSettingsPopover'
+import { CodexQuotaIndicator, CopilotQuotaIndicator } from './ModelSwitcher/QuotaIndicators'
 
 export function ModelSwitcher({
   modelRoute = 'main',
@@ -227,22 +226,6 @@ export function ModelSwitcher({
       null
     return quota?.type === 'copilot' ? quota : null
   }, [displayProvider, quotaByKey])
-
-  const formatPercent = (value?: number): string => {
-    if (value === undefined || Number.isNaN(value)) return '0%'
-    return `${Math.round(value)}%`
-  }
-
-  const formatResetAt = (value?: string): string => {
-    if (!value) return ''
-    const trimmed = value.trim()
-    if (!trimmed) return ''
-    if (['invalid date', 'null', 'undefined', 'nan'].includes(trimmed.toLowerCase())) return ''
-
-    const tryParse = (input: string | number): Date | null => {
-      const candidate = new Date(input)
-      return Number.isNaN(candidate.getTime()) ? null : candidate
-    }
 
     let parsed: Date | null = null
 
@@ -680,119 +663,9 @@ export function ModelSwitcher({
         </PopoverContent>
       </Popover>
 
-      {/* Quota Indicator */}
-      {codexQuota && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/30 border border-border/10 cursor-help hover:bg-muted/50 transition-colors mx-1">
-              <MonitorSmartphone className="size-3 text-emerald-500" />
-              <div className="flex flex-col leading-none gap-0.5">
-                <div className="h-1 w-10 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 transition-all"
-                    style={{ width: `${Math.min(100, codexQuota.primary?.usedPercent ?? 0)}%` }}
-                  />
-                </div>
-                <span className="text-[9px] text-muted-foreground/60 font-medium">
-                  {formatPercent(codexQuota.primary?.usedPercent)}
-                </span>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="p-3 w-48 space-y-2">
-            <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                {tSettings('provider.codexQuotaPrimary')}
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold">
-                  {formatPercent(codexQuota.primary?.usedPercent)}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {formatResetAt(codexQuota.primary?.resetAt)}
-                </span>
-              </div>
-              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500"
-                  style={{ width: `${Math.min(100, codexQuota.primary?.usedPercent ?? 0)}%` }}
-                />
-              </div>
-            </div>
-            {codexQuota.secondary && (
-              <div className="space-y-1 pt-1 border-t">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  {tSettings('provider.codexQuotaSecondary')}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold">
-                    {formatPercent(codexQuota.secondary.usedPercent)}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-500"
-                    style={{ width: `${Math.min(100, codexQuota.secondary.usedPercent ?? 0)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      )}
-      {copilotQuota && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/30 border border-border/10 cursor-help hover:bg-muted/50 transition-colors mx-1">
-              <MonitorSmartphone className="size-3 text-sky-500" />
-              <div className="flex flex-col leading-none gap-0.5">
-                <span className="text-[9px] text-muted-foreground/70 font-medium">
-                  {copilotQuota.sku || 'copilot'}
-                </span>
-                <span className="text-[9px] text-muted-foreground/50">
-                  {copilotQuota.chatEnabled
-                    ? tSettings('provider.copilotChatEnabled')
-                    : tSettings('provider.copilotChatDisabled')}
-                </span>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="p-3 w-56 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                {tSettings('provider.copilotQuotaSku')}
-              </span>
-              <span className="text-xs font-bold">{copilotQuota.sku || '-'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                {tSettings('provider.copilotQuotaChat')}
-              </span>
-              <span className="text-xs font-bold">
-                {copilotQuota.chatEnabled
-                  ? tSettings('provider.copilotChatEnabled')
-                  : tSettings('provider.copilotChatDisabled')}
-              </span>
-            </div>
-            {copilotQuota.tokenExpiresAt && (
-              <div className="flex items-center justify-between gap-2 border-t pt-2">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                  {tSettings('provider.copilotQuotaTokenExpires')}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {new Date(copilotQuota.tokenExpiresAt).toLocaleString([], {
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
-              </div>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      )}
-
+      {/* Quota Indicators */}
+      {codexQuota && <CodexQuotaIndicator quota={codexQuota} tSettings={tSettings} />}
+      {copilotQuota && <CopilotQuotaIndicator quota={copilotQuota} tSettings={tSettings} />}
       {/* Settings icon — model config popover */}
       <ModelSettingsPopover
         model={settingsModel}
