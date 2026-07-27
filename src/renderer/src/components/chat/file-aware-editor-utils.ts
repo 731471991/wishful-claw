@@ -511,3 +511,5 @@ export function setSelectionOffsets(root: HTMLDivElement, start: number, end: nu
   selection.addRange(range)
 }
 
+
+export { editorDocumentToPlainText } from '@renderer/lib/select-file-editor'

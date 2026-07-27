@@ -16,6 +16,7 @@ import { PreviewPanel } from '@renderer/components/layout/PreviewPanel'
 import { AgentFilesPanel } from '@renderer/components/layout/AgentFilesPanel'
 import { SessionChangeReviewPanel } from '@renderer/components/layout/SessionChangeReviewPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
+import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 export function RightPanel(): React.JSX.Element {
   const { t } = useTranslation('layout')

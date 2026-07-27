@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import type { AIProvider, AIModelConfig, BuiltinProviderPreset, ProviderType, ReasoningEffortLevel } from '../../../shared/types/provider'
 import { builtinProviderPresets } from '@renderer/stores/providers'
 import { aiProviderStorage } from '@renderer/lib/ipc/ai-provider-storage'
+import { useProviderStore } from '@renderer/stores/provider-store'
 
 export const STORAGE_KEY = 'wishful-claw-providers'
 

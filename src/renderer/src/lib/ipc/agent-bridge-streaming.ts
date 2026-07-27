@@ -1,4 +1,5 @@
 import { agentBridge } from './agent-bridge'
+import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 const DEBUG_BODY_READ_TIMEOUT_MS = 15_000
 

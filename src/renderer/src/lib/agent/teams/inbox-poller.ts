@@ -2,6 +2,8 @@ import type { ToolCallState } from '../types'
 
 import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initializeTeamCursor, clearTeamCursor, parseToolCall, parsePermissionUpdate, parsePlanApprovalRequest, registerPendingApproval } from './inbox-parsers'
 import { inboxPollerState } from './inbox-poller-state'
+import { useAgentStore } from '@renderer/stores/agent-store'
+import { useTeamStore } from '@renderer/stores/team-store'
 
 
 export async function sendApprovalResponse(params: {

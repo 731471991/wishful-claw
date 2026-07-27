@@ -1,4 +1,5 @@
 import { stripThinkTagMarkers, upsertBufferedToolUse, _explicitVisibleSessionIds, invalidateVisibleSessionCache, setSessionForegroundVisibility, debouncedMarkSessionUpdate, cancelDebouncedMarkSessionUpdate } from './session-runtime-utils'
+import { useChatStore } from '@renderer/stores/chat-store'
 
 function resolveChatStoreSeed(sessionId: string, messageId: string): UnifiedMessage | undefined {
   return useChatStore

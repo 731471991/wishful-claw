@@ -13,6 +13,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/compone
 import { cn } from '@renderer/lib/utils'
 import type { ToolResultContent } from '@renderer/lib/api/types'
 import {
+import { motion } from 'motion/react'
   findSubAgentInSelection,
   selectSessionScopedAgentState
 } from '@renderer/lib/agent/session-scoped-agent-state'

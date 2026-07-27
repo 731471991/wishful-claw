@@ -1,4 +1,5 @@
 import type { BuiltinProviderPreset } from './types'
+import { cn } from '@renderer/lib/utils'
 
 export const volcenginePreset: BuiltinProviderPreset = {
   builtinId: 'volcengine',

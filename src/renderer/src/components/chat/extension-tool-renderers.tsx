@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildHtmlRendererDocument, isRecord, readStringProp, readArrayProp, readString, readStringArray, safeHttpUrl, formatFieldValue, stringifyData, HTML_RENDERER_SOURCE } from './extension-tool-helpers'
+import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 function ExtensionAssetHtmlRenderer({
   extensionId,

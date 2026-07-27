@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { OrchestrationMember } from '@renderer/lib/orchestration/types'
 import { cn } from '@renderer/lib/utils'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
+import { motion } from 'motion/react'
 
 function getMemberIcon(): React.JSX.Element {
   return <UserRound className="size-[17px]" strokeWidth={1.8} aria-hidden="true" />

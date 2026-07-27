@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { emitAgentRuntimeSync, isAgentRuntimeSyncSuppressed } from '../lib/agent-runtime-sync'
 import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
 import { dbCreateTask, dbUpdateTask, dbDeleteTask, dbDeleteTasksBySession, rowToTask, buildDbPatch } from './task-store-helpers'
+import { useChatStore } from '@renderer/stores/chat-store'
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],

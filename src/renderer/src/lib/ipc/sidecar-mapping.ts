@@ -1,5 +1,7 @@
 
 import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig } from './sidecar-protocol'
+import { useProviderStore } from '@renderer/stores/provider-store'
+import { useSettingsStore } from '@renderer/stores/settings-store'
 
 export function mapSidecarContentBlock(block: ContentBlock): SidecarContentBlock | null {
   switch (block.type) {

@@ -5,6 +5,9 @@ import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import type { AggregatedFileChange } from '@renderer/components/chat/file-change-utils'
 import { statusLabelKey, statusTone, actionLabel } from './session-change-utils'
+import {  AnimatePresence, motion } from 'motion/react'
+import { useAgentStore } from '@renderer/stores/agent-store'
+import { useSettingsStore } from '@renderer/stores/settings-store'
 
 export function ChangeRow({
   change,

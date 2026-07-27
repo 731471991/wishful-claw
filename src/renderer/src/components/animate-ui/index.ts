@@ -1,4 +1,5 @@
 export {
+import { AnimatePresence } from 'motion/react'
   AnimatePresence,
   FadeIn,
   SlideIn,

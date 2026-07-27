@@ -494,6 +494,5 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     loadOlderMessages,
     requestAssistantRailSync,
     applySuggestedPrompt,
-    bumpAssistantRailMeasure,
   }
 }

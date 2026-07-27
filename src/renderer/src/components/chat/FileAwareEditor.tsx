@@ -13,7 +13,8 @@ import {
   parseDomToDocument,
   getSelectionOffsets,
   setSelectionFromPoint,
-  setSelectionOffsets
+  setSelectionOffsets,
+  editorDocumentToPlainText,
 } from './file-aware-editor-utils'
 
 export const FileAwareEditor = React.forwardRef<FileAwareEditorHandle, FileAwareEditorProps>(

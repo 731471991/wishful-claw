@@ -15,6 +15,7 @@ import {
 } from '../shared'
 import { getImageBlockPreviewSrc } from '../utils'
 import {
+import { useUIStore } from '@renderer/stores/ui-store'
   stripReadLineNumbers,
   detectLang
 } from '../utils'
