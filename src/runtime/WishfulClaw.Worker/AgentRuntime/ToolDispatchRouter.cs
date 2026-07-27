@@ -353,6 +353,21 @@ internal static class ToolDispatchRouter
                 isToolError = true;
             }
         }
+        // SSH info: list connections via reverse-request to Main process
+        else if (AgentRuntimeSshToolExecutor.IsSshInfoTool(toolCall.Name))
+        {
+            try
+            {
+                (toolOutput, isToolError) = await AgentRuntimeSshToolExecutor.ExecuteListConnectionsAsync(
+                    context, state.CancellationToken);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"SSH info tool execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
         // SSH remote execution: route Bash/Shell to remote server when sshConnectionId is present
         else if (AgentRuntimeSshToolExecutor.ShouldRouteToSsh(
             toolCall.Name, toolCall.Input, state.Parameters))

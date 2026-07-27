@@ -61,6 +61,13 @@ internal static class PromptBuilder
         // ── Tool Capability ──
         parts.Add(BuildToolCapability(parameters));
 
+        // ── SSH Context ──
+        var sshContext = BuildSshContext(parameters);
+        if (!string.IsNullOrWhiteSpace(sshContext))
+        {
+            parts.Add(sshContext);
+        }
+
         // ── Project Context ──
         if (!string.IsNullOrWhiteSpace(workingFolder))
         {
@@ -283,6 +290,39 @@ For tasks that require **2 or more tool calls** (e.g., reading multiple files th
 - You are like a product manager: delegate execution, but you MUST understand and summarize the results. Do not just forward the sub-agent report verbatim — synthesize it for the user.
 - Only one sub-agent can run at a time. Wait for it to complete before starting another.
 </tool_calling>
+""";
+    }
+
+    private static string BuildSshContext(JsonElement parameters)
+    {
+        var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+
+        if (string.IsNullOrWhiteSpace(sshConnectionId))
+        {
+            // No SSH connection bound — still inform the Agent about the capability
+            return """
+<ssh_capability>
+**SSH Remote Execution:**
+- The Bash tool supports an optional `sshConnectionId` parameter to execute commands on a remote SSH server.
+- Use `SshListConnections` to discover available SSH connection IDs.
+- When `sshConnectionId` is provided, the command runs remotely via a persistent SSH connection and returns structured stdout, stderr, and exitCode.
+- Real-time output is displayed in the terminal panel for the user to observe.
+</ssh_capability>
+""";
+        }
+
+        return $"""
+<ssh_capability>
+**SSH Remote Execution:**
+- The Bash tool supports an optional `sshConnectionId` parameter to execute commands on a remote SSH server.
+- Use `SshListConnections` to discover available SSH connection IDs.
+- When `sshConnectionId` is provided, the command runs remotely via a persistent SSH connection and returns structured stdout, stderr, and exitCode.
+- Real-time output is displayed in the terminal panel for the user to observe.
+
+**Current SSH Binding:**
+- This session has a bound SSH connection: `{sshConnectionId}`
+- All Bash commands will automatically use this connection unless you explicitly pass a different `sshConnectionId` or omit it for local execution.
+</ssh_capability>
 """;
     }
 

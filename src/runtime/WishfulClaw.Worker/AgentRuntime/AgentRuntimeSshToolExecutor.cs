@@ -30,6 +30,11 @@ internal static class AgentRuntimeSshToolExecutor
         "Bash", "Shell", "ShellExec"
     };
 
+    private static readonly HashSet<string> SshInfoToolNames = new(StringComparer.Ordinal)
+    {
+        "SshListConnections"
+    };
+
     private static readonly JsonWriterOptions WriterOptions = new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -43,6 +48,14 @@ internal static class AgentRuntimeSshToolExecutor
     public static bool IsSshCapableTool(string toolName)
     {
         return SshToolNames.Contains(toolName);
+    }
+
+    /// <summary>
+    /// Checks if the tool name is an SSH info tool (e.g. list connections).
+    /// </summary>
+    public static bool IsSshInfoTool(string toolName)
+    {
+        return SshInfoToolNames.Contains(toolName);
     }
 
     /// <summary>
@@ -173,6 +186,82 @@ internal static class AgentRuntimeSshToolExecutor
         // Error if exit code is non-zero and no stdout/stderr
         var isError = !success || (exitCode != 0 && string.IsNullOrWhiteSpace(stdout) && string.IsNullOrWhiteSpace(stderr));
         return (output, isError);
+    }
+
+    // ── SSH Info Tools ──
+
+    /// <summary>
+    /// Lists all available SSH connections by reverse-requesting the Main process.
+    /// Returns a JSON array of connection metadata (id, name, host, port, username, authType).
+    /// </summary>
+    public static async Task<(string Output, bool IsError)> ExecuteListConnectionsAsync(
+        IWorkerRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        WorkerLog.Debug("agent ssh list-connections start");
+
+        JsonElement response;
+        try
+        {
+            // SshListConnections takes no parameters — send an empty JSON object
+            var emptyRequest = CreateJsonObject(writer => { });
+            response = await AgentRuntimeReverseRequests.RequestAsync(
+                context, "ssh:connection:list", emptyRequest, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"agent ssh list-connections failed: {ex.GetType().Name}: {ex.Message}");
+            return (EncodeError($"Failed to list SSH connections: {ex.Message}"), true);
+        }
+
+        // Build a compact summary for the Agent
+        var connections = new List<(string Id, string Name, string Host, int Port, string Username, string AuthType)>();
+
+        if (response.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var conn in response.EnumerateArray())
+            {
+                var id = JsonHelpers.GetString(conn, "id") ?? "";
+                var name = JsonHelpers.GetString(conn, "name") ?? "";
+                var host = JsonHelpers.GetString(conn, "host") ?? "";
+                var port = JsonHelpers.GetInt(conn, "port", 22);
+                var username = JsonHelpers.GetString(conn, "username") ?? "";
+                var authType = JsonHelpers.GetString(conn, "authType") ?? "";
+                connections.Add((id, name, host, port, username, authType));
+            }
+        }
+
+        WorkerLog.Debug($"agent ssh list-connections done count={connections.Count}");
+
+        if (connections.Count == 0)
+        {
+            return (EncodeJsonObject(writer =>
+            {
+                writer.WriteString("message", "No SSH connections configured. Ask the user to set up SSH connections in Settings > SSH.");
+                writer.WriteStartArray("connections");
+                writer.WriteEndArray();
+            }), false);
+        }
+
+        var output = EncodeJsonObject(writer =>
+        {
+            writer.WriteStartArray("connections");
+            foreach (var c in connections)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", c.Id);
+                writer.WriteString("name", c.Name);
+                writer.WriteString("host", c.Host);
+                writer.WriteNumber("port", c.Port);
+                writer.WriteString("username", c.Username);
+                writer.WriteString("authType", c.AuthType);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+            writer.WriteString("hint", "Use the 'id' value as the sshConnectionId parameter in the Bash tool to execute commands on the remote server.");
+        });
+
+        return (output, false);
     }
 
     // ── Helpers ──

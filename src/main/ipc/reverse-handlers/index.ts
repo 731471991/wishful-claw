@@ -16,6 +16,7 @@ import {
   isPluginToolEnabled
 } from '../channel-handlers'
 import { execSshCommand } from '../ssh/ssh-exec'
+import { listConnections, initializeSshRepository } from '../ssh/repository'
 import { safeSendMessagePackToAllWindows } from '../../window-ipc'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
@@ -43,6 +44,17 @@ const directHandlers = new Map<string, ReverseHandler>([
         data: chunk.data
       })
     })
+  }],
+  ['ssh:connection:list', async () => {
+    await initializeSshRepository()
+    return listConnections().map((meta) => ({
+      id: meta.id,
+      name: meta.name,
+      host: meta.host,
+      port: meta.port,
+      username: meta.username,
+      authType: meta.authType
+    }))
   }],
 ])
 

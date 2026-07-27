@@ -26,11 +26,12 @@ public sealed class ShellExecuteTool : IToolExecutor
 
     public string Description =>
         "Execute a shell command and return stdout, stderr, exit code, and timing. " +
-"Execute a shell command and return stdout, stderr, exit code, and timing. " +
         "On Windows, PowerShell is the default and recommended shell for reliable Unicode support. " +
         "Avoid cmd.exe unless specifically needed — its UTF-8 piping is unreliable for non-ASCII text. " +
         "Supports choosing the shell (PowerShell, cmd, bash, zsh), setting a working directory, " +
-        "and environment variables. Use for running tests, building, git, file inspection, etc.";
+        "and environment variables. Use for running tests, building, git, file inspection, etc. " +
+        "When sshConnectionId is provided, the command executes on the remote SSH server instead of locally. " +
+        "Use SshListConnections to discover available connection IDs.";
 
     public JsonElement InputSchema => ParseSchema(
         """
@@ -58,6 +59,10 @@ public sealed class ShellExecuteTool : IToolExecutor
               "type": "object",
               "description": "Additional environment variables (key-value pairs).",
               "additionalProperties": { "type": "string" }
+            },
+            "sshConnectionId": {
+              "type": "string",
+              "description": "SSH connection ID. When provided, the command executes on the remote server via SSH instead of locally. Use SshListConnections to get available IDs. If the project has a bound SSH connection, this parameter is auto-filled."
             }
           },
           "required": ["command"]
