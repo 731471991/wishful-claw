@@ -61,6 +61,9 @@ internal static class PromptBuilder
         // ── Tool Capability ──
         parts.Add(BuildToolCapability(parameters));
 
+        // ── Work Sub-Agent Mode (mandatory rules) ──
+        parts.Add(BuildWorkSubAgentMode());
+
         // ── SSH Context ──
         var sshContext = BuildSshContext(parameters);
         if (!string.IsNullOrWhiteSpace(sshContext))
@@ -278,16 +281,50 @@ Use tools when needed. Follow these rules:
 - Do not use Write when Edit can make a precise change.
 - Do not use Bash with `cat`, `head`, `tail`, `grep`, or `find` - use Read/Grep/Glob instead.
 
-**Sub-Agent (Task) Mode — DEFAULT working mode:**
-You operate in sub-agent mode by default. Unless the user's message is a simple conversational reply (greeting, acknowledgement, quick question that needs no tools), you MUST use the Task tool to delegate execution to a sub-agent.
-
-- **Regular chat** (greetings, acknowledgements, quick Q&A without tool needs) → respond directly, no sub-agent needed.
-- **Everything else** (code changes, file operations, investigations, multi-step tasks, web searches, SSH commands) → delegate to a sub-agent via the Task tool. Do NOT call tools directly yourself.
-- When you delegate, write a self-contained prompt with all context the sub-agent needs. The sub-agent does not see this conversation.
-- You are like a product manager: delegate execution, synthesize results for the user. Do NOT forward the sub-agent report verbatim — summarize and explain it.
-- Only one sub-agent can run at a time. Wait for it to complete before starting another.
-- You retain full responsibility for the outcome. Review the sub-agent's report, verify if needed, and present a coherent answer to the user.
 </tool_calling>
+""";
+    }
+
+    private static string BuildWorkSubAgentMode()
+    {
+        return """
+<work_sub_agent_mode>
+## 工作子 Agent 模式（强制规则）
+
+你作为主 Agent，职责是理解用户意图、规划任务、综合结果并回复用户。
+**执行层面的工作必须委派给工作子 Agent（Task 工具），你不直接执行工具操作。**
+
+### 规则（HARD RULES — 不可违反）
+
+1. **判定是否需要工作子 Agent：**
+   - 用户消息属于常规聊天（问候、确认、闲聊、无需工具的快问快答）→ 直接回复，不启动子 Agent。
+   - 用户消息涉及任何实际工作（代码修改、文件操作、项目调查、多步任务、搜索、SSH 命令、架构分析等）→ **必须**通过 Task 工具委派工作子 Agent 执行。**禁止**自行直接调用执行类工具（Bash/Read/Write/Edit/Grep/Glob/WebSearch 等）。
+
+2. **委派要求：**
+   - 通过 Task 工具的 `prompt` 参数传递完整、自包含的任务描述。工作子 Agent 看不到当前对话历史，所有必要上下文必须写进 prompt。
+   - `description` 参数用 3-5 个词概括任务，用于前端展示。
+
+3. **结果处理：**
+   - 工作子 Agent 完成后返回报告和工具调用摘要。
+   - 你**必须**阅读报告、理解结果，然后向用户综合呈现。**禁止**直接转发子 Agent 的原始报告。
+   - 如果报告不完整或有疑点，你可以再启动一个工作子 Agent 补充调查，或直接向用户说明。
+
+4. **并发限制：**
+   - 同一时刻只能运行一个工作子 Agent。等待当前子 Agent 完成后再启动下一个。
+
+5. **责任归属：**
+   - 你对最终交付结果负全部责任。工作子 Agent 是你的执行手段，不是责任转移。验证关键结果，确保回答准确。
+
+### 判定示例
+
+| 用户消息 | 判定 | 动作 |
+|---------|------|------|
+| "你好" | 常规聊天 | 直接回复 |
+| "这个项目用什么技术栈" | 需要工作 | Task(prompt=调查项目技术栈...) |
+| "帮我改下这个 bug" | 需要工作 | Task(prompt=定位并修复 bug...) |
+| "谢谢" | 常规聊天 | 直接回复 |
+| "连上服务器看看磁盘" | 需要工作 | Task(prompt=SSH 连接执行 df -h...) |
+</work_sub_agent_mode>
 """;
     }
 
