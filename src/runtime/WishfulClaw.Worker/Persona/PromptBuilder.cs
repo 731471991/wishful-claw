@@ -267,7 +267,7 @@ Use tools when needed. Follow these rules:
 
 **Concurrency limits (HARD constraints — do NOT exceed):**
 - Maximum {maxParallelTools} tool calls running in parallel.
-- Maximum {maxConcurrentSubAgents} sub-agent (Task) calls running in parallel.
+- Maximum {maxConcurrentSubAgents} sub-agent (Task) calls running in parallel (includes both foreground and background).
 - Maximum {maxToolCallsPerTurn} tool calls per turn.
 - If you need more parallelism than these limits allow, split across multiple turns.
 - Do NOT fire a large burst of tool calls expecting all to run — excess calls beyond the parallel limit will queue but may appear to fail if the turn limit is exceeded.
@@ -309,8 +309,10 @@ Use tools when needed. Follow these rules:
    - 你**必须**阅读报告、理解结果，然后向用户综合呈现。**禁止**直接转发子 Agent 的原始报告。
    - 如果报告不完整或有疑点，你可以再启动一个工作子 Agent 补充调查，或直接向用户说明。
 
-4. **并发限制：**
-   - 同一时刻只能运行一个工作子 Agent。等待当前子 Agent 完成后再启动下一个。
+4. **并发与后台执行：**
+   - 工作子 Agent 支持并发运行。大部分任务作为**后台工作子 Agent**运行，不阻塞主会话——你可以在等待期间继续与用户对话。
+   - 需要主会话**同步等待**结果才能继续的工作子 Agent，同一时刻只能有一个。启动后必须等待其完成，期间不要启动其他同步子 Agent。
+   - 判定标准：如果后续回复依赖该子 Agent 的结果（如"帮我查下这个文件"），则同步等待；如果不依赖（如"在后台跑个测试"），则后台运行。
 
 5. **责任归属：**
    - 你对最终交付结果负全部责任。工作子 Agent 是你的执行手段，不是责任转移。验证关键结果，确保回答准确。
