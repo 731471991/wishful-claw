@@ -27,7 +27,7 @@ export interface UseAgentFilesOptions {
 export function useAgentFiles(options: UseAgentFilesOptions = {}) {
   const { sessionId = null } = options
   const { t, i18n } = useTranslation('layout')
-  const activeTab = useUIStore((state) => state.agentFilesActiveTabBySurface[surface] ?? initialTab)
+  const activeTab = useUIStore((state) => state.agentFilesActiveTab)
   const panelVisible = true
   const setActiveTab = useUIStore((state) => state.setAgentFilesActiveTab)
   const selectedChangeKey = useUIStore((state) => state.agentFilesSelectedChangeKey)
@@ -335,7 +335,8 @@ export function useAgentFiles(options: UseAgentFilesOptions = {}) {
     [latestChangeSet, sessionChangeSets]
   )
   return {
-    t, i18n, sessionView, workingFolder, sshConnectionId,
+    t, i18n, sessionView, workingFolder: sessionView.workingFolder, sshConnectionId: sessionView.sshConnectionId,
+    panelVisible,
     activeTab, setActiveTab, selectedChangeKey, setSelectedChangeKey,
     changeSource, setChangeSource,
     runChangesByRunId, refreshSessionRunChanges, undoFileChange, undoRunChanges,
@@ -352,8 +353,7 @@ export function useAgentFiles(options: UseAgentFilesOptions = {}) {
     selectedRepo, repoDetails, status, diffByKey,
     gitRowsBase, gitRows, agentRows, allRows, visibleRows,
     visibleGitRows, visibleStagePaths, totals, undoableRunIds,
-    loadGitDiff, branchOptions, canUseCommitComposer, canCommitInline,
-    agentSurface, compactSheetSurface
+    selectedRow
   }
 }
 

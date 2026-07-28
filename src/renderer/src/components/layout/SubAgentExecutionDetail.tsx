@@ -246,9 +246,6 @@ export function SubAgentExecutionDetail({
   )
   const executedToolCalls = useAgentStore((s) => s.executedToolCalls)
   const agent = agentDetail.agent
-  const hasRenderableAgentTranscript = effectiveAgent?.transcript.length
-    ? buildRenderableMessageMeta(effectiveAgent.transcript, effectiveAgent.currentAssistantMessageId).length > 0
-    : false
 
   // On-demand load: if agent exists but has no transcript (built from message summary),
   // fetch the full persisted state by toolUseId from SQLite
@@ -257,6 +254,10 @@ export function SubAgentExecutionDetail({
 
   // Use loaded agent if available, otherwise fall back to store agent
   const effectiveAgent = loadedAgent ?? agent
+
+  const hasRenderableAgentTranscript = effectiveAgent?.transcript.length
+    ? buildRenderableMessageMeta(effectiveAgent.transcript, effectiveAgent.currentAssistantMessageId).length > 0
+    : false
 
   React.useEffect(() => {
     if (!toolUseId) return

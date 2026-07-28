@@ -398,7 +398,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   ensureSubAgentTab: (toolUseId, inlineText, _title, requestedSessionId) =>
     set((state) => {
       const sessionId =
-        normalizeScopeId(requestedSessionId) ??
+        (requestedSessionId?.trim() || null) ??
         state.activeScopedSessionId ??
         useChatStore.getState().activeSessionId ??
         null

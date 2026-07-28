@@ -61,6 +61,9 @@ internal static class SubAgentExecutor
             return ErrorResult("Task requires a non-empty prompt.");
         }
 
+        // Background mode: fire-and-forget, return immediately
+        var isBackground = JsonHelpers.GetBool(input, "background", false);
+
         // Emit sub_agent_start event to parent's stream
         await AgentRuntimeTools.EmitAsync(
             parentState, context,
@@ -70,40 +73,48 @@ internal static class SubAgentExecutor
                 ToolUseId: toolCallId,
                 Input: input.Clone()));
 
-        WorkerLog.Info(
-            $"sub-agent start parentRunId={parentState.RunId} toolUseId={toolCallId} " +
-            $"agent={definition.Name} depth={currentDepth + 1}");
+        if (isBackground)
+        {
+            return await ExecuteBackgroundAsync(
+                input, parameters, definition, prompt,
+                currentDepth, parentState, context, toolCallId);
+        }
 
-        // Build child parameters
+        return await ExecuteForegroundAsync(
+            input, parameters, definition, prompt,
+            currentDepth, parentState, context, toolCallId);
+    }
+
+    // ── Foreground execution (main conversation waits) ──
+
+    private static async Task<ToolResult> ExecuteForegroundAsync(
+        JsonElement input,
+        JsonElement parameters,
+        SubAgentDefinition definition,
+        string prompt,
+        int currentDepth,
+        AgentRuntimeRunState parentState,
+        IWorkerRequestContext context,
+        string toolCallId)
+    {
+        var description = JsonHelpers.GetString(input, "description") ?? definition.Name;
+
+        // Register in the registry so SubAgentStatus/SubAgentDetail can query it
+        BackgroundSubAgentRegistry.Register(
+            toolUseId: toolCallId, agentName: definition.Name,
+            description: description, prompt: prompt, isBackground: false);
+
         var childParameters = BuildChildParameters(
             parameters, definition, prompt, currentDepth + 1);
 
-        // Create child run state with event suppression
         var childRunId = $"subagent-{toolCallId}-{Guid.NewGuid():N}";
         var childState = new AgentRuntimeRunState(childRunId, parentState.SessionId);
         childState.SuppressTransportEvents = true;
 
-        // Collector captures text events from the child loop and forwards
-        // key events to the parent's stream with sub_agent_ prefix wrapping.
-        var collector = new SubAgentRunCollector
-        {
-            ForwardEvent = async (evt) =>
-            {
-                // Wrap the event with sub-agent identification fields and
-                // emit to the parent's stream (which is NOT suppressed).
-                var wrappedEvent = evt with
-                {
-                    SubAgentName = definition.Name,
-                    ToolUseId = toolCallId
-                };
-                await AgentRuntimeTools.EmitAsync(parentState, context, wrappedEvent);
-            }
-        };
+        var collector = CreateCollector(parentState, context, definition.Name, toolCallId);
         childState.EventObserver = collector.ObserveAsync;
-
         childState.ReplaceParameters(childParameters);
 
-        // Register parent cancellation → child cancellation
         using var parentCancellationRegistration = parentState.CancellationToken.Register(
             static state => ((AgentRuntimeRunState)state!).Cancel("parent"),
             childState);
@@ -113,10 +124,7 @@ internal static class SubAgentExecutor
 
         try
         {
-            // Run the child agent loop
             await AgentLoop.ExecuteLoopAsync(childParameters, childState, context);
-
-            // Extract the final assistant message from collected events
             subAgentOutput = collector.GetFinalOutput();
 
             if (string.IsNullOrWhiteSpace(subAgentOutput))
@@ -143,13 +151,29 @@ internal static class SubAgentExecutor
             childState.Dispose();
         }
 
-        // Build tool call summary for main agent context (Phase 2)
+        // Update registry with final state
+        if (subAgentError && childState.IsCancellationRequested)
+        {
+            BackgroundSubAgentRegistry.Cancel(toolCallId);
+        }
+        else if (subAgentError)
+        {
+            BackgroundSubAgentRegistry.Fail(
+                toolCallId, subAgentOutput, collector.ToolCallCount,
+                collector.Iterations, BuildToolCallEntries(collector.ToolCallSummaries));
+        }
+        else
+        {
+            BackgroundSubAgentRegistry.Complete(
+                toolCallId, subAgentOutput, collector.ToolCallCount,
+                collector.Iterations, BuildToolCallEntries(collector.ToolCallSummaries));
+        }
+
         var toolCallSummary = BuildToolCallSummary(collector.ToolCallSummaries);
         var toolResultText = string.IsNullOrEmpty(toolCallSummary)
             ? subAgentOutput
             : subAgentOutput + "\n\n" + toolCallSummary;
 
-        // Emit sub_agent_end event to parent's stream
         var resultJson = BuildResultJson(
             definition.Name, toolCallId, subAgentOutput, !subAgentError, childState.StopReason,
             collector.ToolCallCount, collector.Iterations);
@@ -166,10 +190,211 @@ internal static class SubAgentExecutor
             $"sub-agent end parentRunId={parentState.RunId} toolUseId={toolCallId} " +
             $"agent={definition.Name} success={!subAgentError} " +
             $"outputLen={subAgentOutput.Length} toolCalls={collector.ToolCallCount} " +
-            $"iterations={collector.Iterations}");
+            $"iterations={collector.Iterations} background=false");
 
-        // Return the enriched text (report + tool call summary) to the main agent
         return new ToolResult(toolResultText, subAgentError);
+    }
+
+    // ── Background execution (fire-and-forget, non-blocking) ──
+
+    private static Task<ToolResult> ExecuteBackgroundAsync(
+        JsonElement input,
+        JsonElement parameters,
+        SubAgentDefinition definition,
+        string prompt,
+        int currentDepth,
+        AgentRuntimeRunState parentState,
+        IWorkerRequestContext context,
+        string toolCallId)
+    {
+        var description = JsonHelpers.GetString(input, "description") ?? definition.Name;
+
+        // Register in the background registry so SubAgentStatus can query it
+        BackgroundSubAgentRegistry.Register(toolUseId: toolCallId, agentName: definition.Name, description: description, prompt: prompt, isBackground: true);
+
+        var childParameters = BuildChildParameters(
+            parameters, definition, prompt, currentDepth + 1);
+
+        var childRunId = $"subagent-bg-{toolCallId}-{Guid.NewGuid():N}";
+        var childState = new AgentRuntimeRunState(childRunId, parentState.SessionId);
+        childState.SuppressTransportEvents = true;
+
+        var collector = CreateCollector(parentState, context, definition.Name, toolCallId);
+        childState.EventObserver = collector.ObserveAsync;
+        childState.ReplaceParameters(childParameters);
+
+        // Register parent cancellation → child cancellation
+        parentState.CancellationToken.Register(
+            static state => ((AgentRuntimeRunState)state!).Cancel("parent"),
+            childState);
+
+        // Fire-and-forget: run the child loop on a background task
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await AgentLoop.ExecuteLoopAsync(childParameters, childState, context);
+
+                // Update progress before completing
+                BackgroundSubAgentRegistry.UpdateProgress(
+                    toolCallId, collector.ToolCallCount, collector.Iterations,
+                    BuildToolCallEntries(collector.ToolCallSummaries));
+
+                var output = collector.GetFinalOutput();
+                if (string.IsNullOrWhiteSpace(output))
+                    output = "Sub-agent completed but produced no output.";
+
+                BackgroundSubAgentRegistry.Complete(
+                    toolCallId, output, collector.ToolCallCount, collector.Iterations,
+                    BuildToolCallEntries(collector.ToolCallSummaries));
+
+                // Emit sub_agent_end so the frontend updates the card
+                var resultJson = BuildResultJson(
+                    definition.Name, toolCallId, output, true, childState.StopReason,
+                    collector.ToolCallCount, collector.Iterations);
+
+                await AgentRuntimeTools.EmitAsync(
+                    parentState, context,
+                    new AgentRuntimeStreamEvent(
+                        "sub_agent_end",
+                        SubAgentName: definition.Name,
+                        ToolUseId: toolCallId,
+                        Result: resultJson));
+
+                // Inject completion notification into parent's message queue
+                // so the main agent gets informed in its next iteration
+                var notificationMsg = BuildSubAgentCompletionMessage(
+                    toolCallId, definition.Name, description, output, collector);
+
+                parentState.EnqueueMessages(notificationMsg);
+
+                WorkerLog.Info(
+                    $"background sub-agent completed parentRunId={parentState.RunId} " +
+                    $"toolUseId={toolCallId} agent={definition.Name} " +
+                    $"outputLen={output.Length} toolCalls={collector.ToolCallCount} " +
+                    $"iterations={collector.Iterations}");
+            }
+            catch (OperationCanceledException) when (childState.IsCancellationRequested)
+            {
+                BackgroundSubAgentRegistry.Cancel(toolCallId);
+
+                await AgentRuntimeTools.EmitAsync(
+                    parentState, context,
+                    new AgentRuntimeStreamEvent(
+                        "sub_agent_end",
+                        SubAgentName: definition.Name,
+                        ToolUseId: toolCallId,
+                        Result: BuildResultJson(
+                            definition.Name, toolCallId, "Sub-agent was cancelled.",
+                            false, "cancelled", collector.ToolCallCount, collector.Iterations)));
+
+                WorkerLog.Info(
+                    $"background sub-agent cancelled parentRunId={parentState.RunId} " +
+                    $"toolUseId={toolCallId}");
+            }
+            catch (Exception ex)
+            {
+                BackgroundSubAgentRegistry.Fail(
+                    toolCallId, ex.Message, collector.ToolCallCount, collector.Iterations,
+                    BuildToolCallEntries(collector.ToolCallSummaries));
+
+                await AgentRuntimeTools.EmitAsync(
+                    parentState, context,
+                    new AgentRuntimeStreamEvent(
+                        "sub_agent_end",
+                        SubAgentName: definition.Name,
+                        ToolUseId: toolCallId,
+                        Result: BuildResultJson(
+                            definition.Name, toolCallId, $"Sub-agent failed: {ex.Message}",
+                            false, "error", collector.ToolCallCount, collector.Iterations)));
+
+                WorkerLog.Warn(
+                    $"background sub-agent failed parentRunId={parentState.RunId} " +
+                    $"toolUseId={toolCallId} error={ex.GetType().Name}: {ex.Message}");
+            }
+            finally
+            {
+                childState.Dispose();
+            }
+        }, parentState.CancellationToken);
+
+        // Return immediately with a placeholder result
+        var placeholder =
+            $"Background sub-agent started.\n" +
+            $"  ID: {toolCallId}\n" +
+            $"  Agent: {definition.Name}\n" +
+            $"  Description: {description}\n" +
+            $"The sub-agent is running in the background. You can continue working.\n" +
+            $"Use SubAgentStatus to check its progress. When it completes, you will be notified automatically.";
+
+        return Task.FromResult(new ToolResult(placeholder));
+    }
+
+    // ── Shared helpers ──
+
+    private static SubAgentRunCollector CreateCollector(
+        AgentRuntimeRunState parentState,
+        IWorkerRequestContext context,
+        string agentName,
+        string toolCallId)
+    {
+        return new SubAgentRunCollector
+        {
+            ForwardEvent = async (evt) =>
+            {
+                var wrappedEvent = evt with
+                {
+                    SubAgentName = agentName,
+                    ToolUseId = toolCallId
+                };
+                await AgentRuntimeTools.EmitAsync(parentState, context, wrappedEvent);
+            }
+        };
+    }
+
+    /// <summary>
+    /// Builds a user message that gets injected into the parent conversation
+    /// when a background sub-agent completes.
+    /// </summary>
+    private static JsonElement BuildSubAgentCompletionMessage(
+        string toolUseId,
+        string agentName,
+        string description,
+        string output,
+        SubAgentRunCollector collector)
+    {
+        var toolCallSummary = BuildToolCallSummary(collector.ToolCallSummaries);
+        var fullReport = string.IsNullOrEmpty(toolCallSummary)
+            ? output
+            : output + "\n\n" + toolCallSummary;
+
+        var notificationText =
+            $"[Background Sub-Agent Completed]\n" +
+            $"  ID: {toolUseId}\n" +
+            $"  Agent: {agentName}\n" +
+            $"  Description: {description}\n" +
+            $"  Tool calls: {collector.ToolCallCount}\n" +
+            $"  Iterations: {collector.Iterations}\n\n" +
+            $"Report:\n{fullReport}";
+
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer, WriteOptions))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("id", $"wc_bg_complete_{toolUseId}");
+            writer.WriteString("role", "user");
+            writer.WritePropertyName("content");
+            writer.WriteStartArray();
+            writer.WriteStartObject();
+            writer.WriteString("type", "text");
+            writer.WriteString("text", notificationText);
+            writer.WriteEndObject();
+            writer.WriteEndArray();
+            writer.WriteNumber("createdAt", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            writer.WriteEndObject();
+        }
+        using var doc = JsonDocument.Parse(buffer.WrittenMemory);
+        return doc.RootElement.Clone();
     }
 
     // ── Definition resolution ──
@@ -179,21 +404,14 @@ internal static class SubAgentExecutor
         JsonElement parameters,
         JsonElement input)
     {
-        if (string.Equals(subAgentType, CustomSubAgentType, StringComparison.Ordinal))
+        if (string.Equals(subAgentType, CustomSubAgentType, StringComparison.OrdinalIgnoreCase))
         {
             var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
             return SubAgentDefinitionLoader.CreateCustomDefinition(workingFolder);
         }
 
-        foreach (var agent in SubAgentDefinitionLoader.LoadAll())
-        {
-            if (string.Equals(agent.Name, subAgentType, StringComparison.OrdinalIgnoreCase))
-            {
-                return agent;
-            }
-        }
-
-        return null;
+        // Look up in the in-memory registry (populated at startup)
+        return SubAgentRegistry.Get(subAgentType);
     }
 
     // ── Child parameter building ──
@@ -432,6 +650,25 @@ internal static class SubAgentExecutor
 
         // Max 40 chars
         return value.Length > 40 ? value[..40] + "..." : value;
+    }
+
+    // ── Registry Helpers ──
+
+    /// <summary>
+    /// Converts the collector's tool call summaries into registry entries
+    /// for the SubAgentDetail tool.
+    /// </summary>
+    private static List<BackgroundSubAgentRegistry.SubAgentToolCallEntry> BuildToolCallEntries(
+        IReadOnlyList<ToolCallSummary> summaries)
+    {
+        var entries = new List<BackgroundSubAgentRegistry.SubAgentToolCallEntry>();
+        foreach (var s in summaries)
+        {
+            var keyParam = ExtractKeyParam(s.Name, s.Input);
+            entries.Add(new BackgroundSubAgentRegistry.SubAgentToolCallEntry(
+                s.Id, s.Name, keyParam, s.Status));
+        }
+        return entries;
     }
 
     // ── Helpers ──

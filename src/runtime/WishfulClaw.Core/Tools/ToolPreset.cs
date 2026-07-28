@@ -52,6 +52,10 @@ public sealed class ToolPreset
                 "file", "search", "shell", "web", "browser", "memory", "ask-user",
                 "plan", "goal", "notify", "image-generate", "skill", "ssh"
             },
+            AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "Task", "SubAgentStatus", "SubAgentDetail"
+            },
         },
 
         ["coding"] = new ToolPreset
@@ -65,7 +69,7 @@ public sealed class ToolPreset
             },
             AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "Bash", "PowerShell", "Monitor"
+                "Bash", "PowerShell", "Monitor", "Task", "SubAgentStatus", "SubAgentDetail"
             },
         },
 

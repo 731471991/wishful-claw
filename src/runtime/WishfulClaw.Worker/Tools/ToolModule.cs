@@ -7,6 +7,7 @@ using WishfulClaw.Worker.Tools.MemoryTools;
 using WishfulClaw.Worker.Tools.SearchTools;
 using WishfulClaw.Worker.Tools.ShellTools;
 using WishfulClaw.Workspace.Memory;
+using WishfulClaw.Worker.AgentRuntime;
 
 namespace WishfulClaw.Worker.Tools;
 
@@ -106,20 +107,24 @@ public sealed class ToolModule : IWorkerModule
         // Shell tools
         registry.Register(new ShellExecuteTool());
 
-        // Sub-agent Task tool (definition only — execution intercepted by ToolCallProcessor)
+        // Sub-agent Task tool — load agent definitions from disk into registry first,
+        // then construct TaskTool so its description/schema reflect available agent types.
+        AgentRuntime.SubAgentRegistry.LoadFromDisk();
         registry.Register(new TaskTool());
 
-        // Memory tools — shared store + search instances
-        var memoryStore = new MemoryStore();
+        // Sub-agent status and detail query tools
+        registry.Register(new SubAgentStatusTool());
+        registry.Register(new SubAgentDetailTool());
+
+        // Memory tools — hot memory uses direct file I/O, SQLite for search
         var memorySearch = new Memory.MemoryFtsService();
-        registry.Register(new MemoryHotReadTool(memoryStore));
-        registry.Register(new MemoryHotWriteTool(memoryStore));
+        registry.Register(new MemoryHotReadTool());
+        registry.Register(new MemoryHotWriteTool());
         registry.Register(new MemoryAppendTool());
         registry.Register(new MemoryUpdateTool());
         registry.Register(new MemorySearchTool(memorySearch));
 
         // Expose shared instances for AgentLoop
-        ToolModuleState.MemoryStore = memoryStore;
         ToolModuleState.MemorySearch = memorySearch;
     }
 }

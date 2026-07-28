@@ -12,12 +12,37 @@ public static class MemoryMarkdownParser
         @"^##\s+(.+)$",
         RegexOptions.Compiled | RegexOptions.Multiline);
 
+    // Regex to detect ## headings that are glued to preceding content on the same line,
+    // e.g. "# Long-Term Memory## 兄弟身份" — the ## is not at the start of a line.
+    // We insert a newline before such ## to normalize the content before parsing.
+    // Negative lookbehind (?<!#) ensures we don't split ### (h3) headings.
+    // Negative lookahead (?!#) ensures we don't match ## that is part of ### or deeper.
+    private static readonly Regex GluedHeadingRegex = new(
+        @"([^\r\n#])##(?!#)\s",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Normalize MEMORY.md content to fix common formatting issues:
+    /// - Insert a newline before ## headings that are glued to preceding content
+    ///   (e.g. "# Long-Term Memory## Section" → "# Long-Term Memory\n## Section")
+    /// This ensures the section regex can correctly detect all headings.
+    /// </summary>
+    public static string NormalizeContent(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return content;
+
+        return GluedHeadingRegex.Replace(content, "$1\n## ");
+    }
+
     /// <summary>
     /// Parse MEMORY.md into a list of (title, body) sections.
     /// Each section starts with a ## heading.
     /// </summary>
     public static IReadOnlyList<MemorySection> ParseSections(string content)
     {
+        content = NormalizeContent(content);
+
         var sections = new List<MemorySection>();
         var matches = SectionHeadingRegex.Matches(content);
 
@@ -52,10 +77,13 @@ public static class MemoryMarkdownParser
 
     /// <summary>
     /// Replace or insert a section in MEMORY.md content.
-    /// If the section exists, replace its body. Otherwise append a new section.
+    /// If the section exists, replace its body in place (no delete+recreate).
+    /// Otherwise append a new section at the end.
     /// </summary>
     public static string UpsertSection(string content, string title, string body)
     {
+        content = NormalizeContent(content);
+
         var matches = SectionHeadingRegex.Matches(content);
         var sectionIndex = -1;
 
@@ -70,7 +98,7 @@ public static class MemoryMarkdownParser
 
         if (sectionIndex >= 0)
         {
-            // Replace existing section body
+            // Replace existing section body in place
             var match = matches[sectionIndex];
             var bodyStart = match.Index + match.Length;
             var bodyEnd = sectionIndex + 1 < matches.Count
@@ -87,10 +115,12 @@ public static class MemoryMarkdownParser
 
     /// <summary>
     /// Delete a section from MEMORY.md content by title.
-    /// Returns the original content if the section is not found.
+    /// Returns the original content (normalized) if the section is not found.
     /// </summary>
     public static string DeleteSection(string content, string title)
     {
+        content = NormalizeContent(content);
+
         var matches = SectionHeadingRegex.Matches(content);
         for (var i = 0; i < matches.Count; i++)
         {

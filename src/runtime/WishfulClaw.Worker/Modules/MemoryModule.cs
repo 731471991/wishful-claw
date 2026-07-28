@@ -1,3 +1,5 @@
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Workspace.Memory;
@@ -28,42 +30,56 @@ internal sealed class MemoryModule : IWorkerModule
     private static Task<WorkerResponse> MemoryStats(JsonElement parameters)
     {
         var scope = GetScope(parameters);
-        var store = GetStore();
-        return RunAsync(async () =>
+        return RunAsync(() =>
         {
-            await store.EnsureMemoryLayoutAsync(scope);
-            var stats = await store.GetStatsAsync(scope);
-            return WorkerResponse.Json(stats);
+            var path = MemoryPathResolver.GetMemoryFilePath(scope);
+            var hotCount = 0;
+            if (File.Exists(path))
+            {
+                var content = File.ReadAllText(path);
+                // Count "## " headings at line start
+                hotCount = content.Split('\n').Count(l => l.StartsWith("## "));
+            }
+            return Task.FromResult(WorkerResponse.Json(new MemoryStats
+            {
+                HotCount = hotCount,
+                WarmCount = 0,
+                ColdCount = 0,
+                TopicsCount = 0,
+                DailyCount = 0
+            }));
         });
     }
 
     private static Task<WorkerResponse> MemoryRead(JsonElement parameters)
     {
         var scope = GetScope(parameters);
-        var store = GetStore();
         return RunAsync(async () =>
         {
-            await store.EnsureMemoryLayoutAsync(scope);
-            var sections = await store.ReadMemoryAsync(scope);
-            return WorkerResponse.Json(new { sections });
+            var path = MemoryPathResolver.GetMemoryFilePath(scope);
+            if (!File.Exists(path))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
+            }
+            var content = await File.ReadAllTextAsync(path);
+            return WorkerResponse.Json(new { content });
         });
     }
 
     private static Task<WorkerResponse> MemoryWrite(JsonElement parameters)
     {
         var scope = GetScope(parameters);
-        var section = GetString(parameters, "section") ?? "";
         var content = GetString(parameters, "content") ?? "";
-        var store = GetStore();
         return RunAsync(async () =>
         {
-            await store.EnsureMemoryLayoutAsync(scope);
-            if (string.IsNullOrWhiteSpace(content))
+            var path = MemoryPathResolver.GetMemoryFilePath(scope);
+            if (!File.Exists(path))
             {
-                var deleted = await store.DeleteSectionAsync(scope, section);
-                return WorkerResponse.Json(new { ok = deleted });
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
             }
-            await store.UpsertSectionAsync(scope, section, content);
+            await File.WriteAllTextAsync(path, content);
             return WorkerResponse.Json(new { ok = true });
         });
     }
@@ -131,10 +147,7 @@ internal sealed class MemoryModule : IWorkerModule
 
     // ── Helpers ──
 
-    private static IMemoryStore GetStore() =>
-        ToolModuleState.MemoryStore ?? new MemoryStore();
-
-    private static IMemorySearch GetSearch() =>
+private static IMemorySearch GetSearch() =>
         ToolModuleState.MemorySearch ?? throw new InvalidOperationException("Memory search service not initialized");
 
     private static string GetScope(JsonElement parameters, bool allowNull = false)

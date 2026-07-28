@@ -1,11 +1,10 @@
-import { Client } from 'ssh2'
+import { Client, type SFTPWrapper } from 'ssh2'
 import { getConnectionWithSecrets, updateConnection } from './repository'
 import { buildConnectConfig } from './auth'
 
 // Connection pool: one authenticated ssh2 Client per saved connection.
 // Handles keepalive-detected drops with exponential-backoff reconnect.
-// Only supports exec (non-interactive command execution).
-// Terminal shells and SFTP are NOT included in this simplified version.
+// Supports exec (non-interactive command execution) and SFTP file operations.
 
 type HandleState = 'connecting' | 'ready' | 'reconnecting' | 'failed' | 'closed'
 
@@ -242,6 +241,30 @@ export async function withSshConnection<T>(
     handle.busyCount -= 1
     scheduleLingerIfIdle(handle)
   }
+}
+
+/**
+ * Borrow a connected SSH client's SFTP session.
+ * Reuses the underlying SSH connection from the pool.
+ */
+export async function withSftp<T>(
+  connectionId: string,
+  fn: (sftp: SFTPWrapper) => Promise<T>
+): Promise<T> {
+  return withSshConnection(connectionId, async (client) => {
+    const sftp = await new Promise<SFTPWrapper>((resolve, reject) => {
+      client.sftp((err, s) => {
+        if (err) reject(err)
+        else resolve(s)
+      })
+    })
+    try {
+      return await fn(sftp)
+    } finally {
+      // SFTP sessions are lightweight wrappers; no explicit close needed.
+      // The underlying SSH connection is managed by the pool.
+    }
+  })
 }
 
 /**

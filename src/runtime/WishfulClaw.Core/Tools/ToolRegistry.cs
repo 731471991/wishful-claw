@@ -95,8 +95,34 @@ public sealed class ToolRegistry
         var list = new List<ToolDefinition>(_tools.Count);
         foreach (var executor in _tools.Values)
         {
-            var canonSchema = CanonicalizeSchema(executor.InputSchema);
-            list.Add(new ToolDefinition(executor.Name, executor.Description, canonSchema));
+            ToolDefinition def;
+            // Read InputSchema once — the property may re-parse on every access,
+            // so caching avoids double-throw if the schema JSON is malformed.
+            JsonElement rawSchema;
+            try
+            {
+                rawSchema = executor.InputSchema;
+            }
+            catch (Exception ex)
+            {
+                System.Console.Error.WriteLine(
+                    $"[ToolRegistry] InputSchema parse failed for tool '{executor.Name}': {ex.Message}");
+                // Skip this tool entirely — a malformed schema would break the entire tool/list response.
+                continue;
+            }
+            try
+            {
+                var canonSchema = CanonicalizeSchema(rawSchema);
+                def = new ToolDefinition(executor.Name, executor.Description, canonSchema);
+            }
+            catch (Exception ex)
+            {
+                System.Console.Error.WriteLine(
+                    $"[ToolRegistry] CanonicalizeSchema failed for tool '{executor.Name}': {ex.Message}");
+                // Fallback: use the raw schema without canonicalization
+                def = new ToolDefinition(executor.Name, executor.Description, rawSchema);
+            }
+            list.Add(def);
         }
 
         // Sort by name for stable ordering

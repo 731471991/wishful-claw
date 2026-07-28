@@ -1,5 +1,5 @@
+﻿using System.Text;
 using System.Text.Json;
-using System.Text;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Workspace.Memory;
 
@@ -8,19 +8,17 @@ namespace WishfulClaw.Worker.Tools.MemoryTools;
 using static WishfulClaw.Worker.Tools.ToolHelpers;
 
 /// <summary>
-/// Read hot memory (MEMORY.md) — full content, all sections.
+/// Read hot memory (MEMORY.md) — full content as plain text.
+/// The file path is resolved internally; the agent does not need to know it.
 /// </summary>
 public sealed class MemoryHotReadTool : IToolExecutor
 {
-    private readonly IMemoryStore _store;
-
-    public MemoryHotReadTool(IMemoryStore store) => _store = store;
-
     public string Name => "memory_hot_read";
 
     public string Description =>
-        "Read the full hot memory (MEMORY.md). Returns all sections with their content. " +
-        "Hot memory contains the most important, always-loaded context. Call this when you need to refresh your understanding of key facts.";
+        "Read the full hot memory (MEMORY.md). Returns the raw file content. " +
+        "Hot memory contains the most important, always-loaded context. " +
+        "Call this when you need to refresh your understanding of key facts.";
 
     public JsonElement InputSchema => ParseSchema(
         """{"type":"object","properties":{},"required":[]}""");
@@ -28,18 +26,19 @@ public sealed class MemoryHotReadTool : IToolExecutor
     public async Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
     {
         var scope = MemoryToolHelpers.ResolveScope(context);
-        await _store.EnsureMemoryLayoutAsync(scope, context.CancellationToken);
-        var sections = await _store.ReadMemoryAsync(scope, context.CancellationToken);
-        if (sections.Count == 0)
-            return new ToolResult("MEMORY.md is empty or does not exist.");
+        var path = MemoryPathResolver.GetMemoryFilePath(scope);
 
-        var sb = new StringBuilder();
-        sb.AppendLine($"MEMORY.md ({scope}) — {sections.Count} sections:");
-        foreach (var s in sections)
+        // Ensure file exists
+        if (!File.Exists(path))
         {
-            sb.AppendLine($"\n## {s.Title}");
-            sb.AppendLine(s.Body);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            await File.WriteAllTextAsync(path, "# Long-Term Memory\n", Encoding.UTF8, context.CancellationToken);
         }
-        return new ToolResult(sb.ToString().TrimEnd());
+
+        var content = await File.ReadAllTextAsync(path, Encoding.UTF8, context.CancellationToken);
+        if (string.IsNullOrWhiteSpace(content))
+            return new ToolResult("MEMORY.md is empty.");
+
+        return new ToolResult(content);
     }
 }

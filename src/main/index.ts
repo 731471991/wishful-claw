@@ -18,6 +18,7 @@ import { registerVideoHandlers } from './ipc/video-handlers'
 import { registerExtensionHandlers } from './ipc/extension-handlers'
 import { registerWebSearchHandlers } from './ipc/web-search-handlers'
 import { registerSshHandlers, cleanupSshHandlers } from './ipc/ssh-handlers'
+import { registerSshFsHandlers } from './ipc/ssh-fs-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -228,6 +229,7 @@ registerWebSearchHandlers()
   )
   // ── SSH handlers ──
   registerSshHandlers()
+  registerSshFsHandlers()
 
   // ── Skills stub handlers ──
   registerMessagePackHandler<unknown, unknown[]>(

@@ -165,7 +165,7 @@ export function ToolBlockRenderer({
             output={result?.content}
             isLive={!!isStreaming}
             sessionId={sessionId}
-            isBackground={block.input.run_in_background === true}
+            isBackground={block.input.background === true || block.input.run_in_background === true}
           />
         </ScaleIn>
       </React.Fragment>

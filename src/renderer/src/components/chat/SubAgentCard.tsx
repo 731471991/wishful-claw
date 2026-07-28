@@ -286,8 +286,10 @@ function SubAgentCardInner({
     return () => clearInterval(timer)
   }, [tracked?.isRunning, tracked?.startedAt])
 
-  // Expand/collapse: collapsed by default, user clicks to expand
-  const [isExpanded, setIsExpanded] = React.useState(false)
+
+
+    // Work sub-agents (foreground) expand by default; background stay collapsed.
+  const [isExpanded, setIsExpanded] = React.useState(!isBackground)
 
   const elapsed = tracked
     ? (tracked.completedAt ?? (tracked.isRunning ? now : tracked.startedAt)) - tracked.startedAt
@@ -354,13 +356,15 @@ function SubAgentCardInner({
       {/* Header row — click toggles expand/collapse */}
       <button
         type="button"
-        onClick={() => hasSteps && setIsExpanded((v) => !v)}
+        onClick={() => {
+          if (hasSteps) setIsExpanded((v) => !v)
+          handleOpenPanel()
+        }}
         title={metaText}
         className={cn(
           'flex w-full min-w-0 items-center gap-2 px-1.5 py-1.5 text-left text-[12px] transition-colors duration-200',
           'hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/45 dark:hover:bg-white/[0.035]',
           isError && 'hover:bg-destructive/[0.035]',
-          !hasSteps && 'cursor-default'
         )}
       >
         {/* Expand/collapse chevron */}
@@ -438,14 +442,6 @@ function SubAgentCardInner({
               toolCalls={tracked!.toolCalls}
               isRunning={isRunning}
             />
-            {/* View details link */}
-            <button
-              type="button"
-              onClick={handleOpenPanel}
-              className="block w-full px-3 py-1 text-left text-[10px] text-muted-foreground/50 transition-colors hover:text-foreground/70"
-            >
-              {t('subAgent.viewDetails', { defaultValue: 'View details →' })}
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
