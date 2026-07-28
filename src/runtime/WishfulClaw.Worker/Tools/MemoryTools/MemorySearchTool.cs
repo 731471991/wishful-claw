@@ -21,12 +21,10 @@ public sealed class MemorySearchTool : IToolExecutor
     public string Description =>
         "Search memory entries in the database by keyword. " +
         "Uses fast FTS index first; falls back to LIKE scan if no results. " +
-        "Results include entry id — use memory_update to modify entries. " +
-        "When scope is omitted, searches BOTH project-scoped and global memories. " +
-        "Pass scope=\"global\" to search only global, or scope=\"project\" to search only project-scoped.";
+        "Results include entry id — use memory_update to modify entries.";
 
     public JsonElement InputSchema => ParseSchema(
-        """{"type":"object","properties":{"query":{"type":"string","description":"Search query"},"scope":{"type":"string","description":"Scope filter: 'global', 'project', or omit to search all"},"include_deprecated":{"type":"boolean","default":false,"description":"Include deprecated entries in results"},"limit":{"type":"integer","default":10,"minimum":1,"maximum":50}},"required":["query"]}""");
+        """{"type":"object","properties":{"query":{"type":"string","description":"Search query"},"include_deprecated":{"type":"boolean","default":false,"description":"Include deprecated entries in results"},"limit":{"type":"integer","default":10,"minimum":1,"maximum":50}},"required":["query"]}""");
 
     public async Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
     {
@@ -35,8 +33,7 @@ public sealed class MemorySearchTool : IToolExecutor
             return new ToolResult("memory_search requires a non-empty 'query' parameter", true);
 
         var limit = GetInt(input, "limit", 10);
-        var scopeInput = GetString(input, "scope");
-        var scope = ResolveSearchScope(scopeInput, context);
+        var scope = MemoryToolHelpers.ResolveScope(context);
         var includeDeprecated = GetBool(input, "include_deprecated", false);
 
         var hits = await _search.SearchAsync(query!, scope, limit, includeDeprecated, context.CancellationToken);
@@ -57,14 +54,4 @@ public sealed class MemorySearchTool : IToolExecutor
         return new ToolResult(sb.ToString().TrimEnd());
     }
 
-    private static string? ResolveSearchScope(string? scopeInput, ToolExecutionContext context)
-    {
-        if (string.IsNullOrWhiteSpace(scopeInput))
-            return null;
-        if (scopeInput == "project" && !string.IsNullOrWhiteSpace(context.WorkingFolder))
-            return $"project:{context.WorkingFolder}";
-        if (scopeInput == "global")
-            return "global";
-        return scopeInput;
-    }
 }

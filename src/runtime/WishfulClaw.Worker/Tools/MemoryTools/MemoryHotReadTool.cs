@@ -20,15 +20,14 @@ public sealed class MemoryHotReadTool : IToolExecutor
 
     public string Description =>
         "Read the full hot memory (MEMORY.md). Returns all sections with their content. " +
-        "Hot memory contains the most important, always-loaded context. Call this when you need to refresh your understanding of key facts. " +
-        "Pass scope=\"global\" to read global memory or scope=\"project\" to read project memory. Defaults to current project.";
+        "Hot memory contains the most important, always-loaded context. Call this when you need to refresh your understanding of key facts.";
 
     public JsonElement InputSchema => ParseSchema(
-        """{"type":"object","properties":{"scope":{"type":"string","description":"Scope: 'global' or 'project'. Defaults to current project."}},"required":[]}""");
+        """{"type":"object","properties":{},"required":[]}""");
 
     public async Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
     {
-        var scope = MemoryToolHelpers.ResolveScope(input, context);
+        var scope = MemoryToolHelpers.ResolveScope(context);
         await _store.EnsureMemoryLayoutAsync(scope, context.CancellationToken);
         var sections = await _store.ReadMemoryAsync(scope, context.CancellationToken);
         if (sections.Count == 0)

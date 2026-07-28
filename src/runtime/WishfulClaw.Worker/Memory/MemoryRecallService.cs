@@ -29,29 +29,10 @@ public sealed class MemoryRecallService : IMemoryRecall
 
         var budget = _budgetPlanner.PlanBudget(maxTokens: maxChars / 4, maxChars: maxChars);
 
-        // Search both project-scoped and global memories, then merge results.
-        // This ensures global context (e.g. user identity) is always considered
-        // alongside project-specific memories.
-        var allHits = new List<MemorySearchResult>();
-
-        if (!string.IsNullOrWhiteSpace(scope) && scope != "global")
-        {
-            // Project scope first
-            var projectHits = await _search.SearchAsync(userMessage, scope, limit: 5, ct: ct);
-            allHits.AddRange(projectHits);
-        }
-
-        // Always also search global scope
-        var globalHits = await _search.SearchAsync(userMessage, "global", limit: 5, ct: ct);
-        // Merge, deduplicate by Id
-        var seenIds = new HashSet<long>(allHits.Select(h => h.Id));
-        foreach (var hit in globalHits)
-        {
-            if (seenIds.Add(hit.Id))
-                allHits.Add(hit);
-        }
-
-        var hits = (IReadOnlyList<MemorySearchResult>)allHits;
+        // Search only the current scope — no cross-scope merging.
+        // Global session searches global only; project session searches project only.
+        var resolvedScope = string.IsNullOrWhiteSpace(scope) ? "global" : scope;
+        var hits = await _search.SearchAsync(userMessage, resolvedScope, limit: 5, ct: ct);
 
         if (hits.Count == 0)
             return null;

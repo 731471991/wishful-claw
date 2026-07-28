@@ -19,11 +19,10 @@ public sealed class MemoryAppendTool : IToolExecutor
         "Use this to record facts, decisions, or insights worth remembering across sessions. " +
         "Specify priority: permanent (core identity, never demote), lasting (important decisions), " +
         "standard (general, default), ephemeral (transient info). " +
-        "Pass scope=\"global\" for cross-project memory or scope=\"project\" for project-specific memory. Defaults to current project. " +
         "Returns the entry id for future updates.";
 
     public JsonElement InputSchema => ParseSchema(
-        """{"type":"object","properties":{"content":{"type":"string","description":"The memory entry to append. Markdown text describing a fact, decision, or insight worth remembering."},"title":{"type":"string","description":"Short title for the memory entry. Auto-generated from content if omitted."},"priority":{"type":"string","enum":["permanent","lasting","standard","ephemeral"],"default":"standard","description":"Memory priority level"},"scope":{"type":"string","description":"Memory scope: 'global' or 'project'. Defaults to current project if available."}},"required":["content"]}""");
+        """{"type":"object","properties":{"content":{"type":"string","description":"The memory entry to append. Markdown text describing a fact, decision, or insight worth remembering."},"title":{"type":"string","description":"Short title for the memory entry. Auto-generated from content if omitted."},"priority":{"type":"string","enum":["permanent","lasting","standard","ephemeral"],"default":"standard","description":"Memory priority level"}}},"required":["content"]}""");
 
     public Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
     {
@@ -34,7 +33,7 @@ public sealed class MemoryAppendTool : IToolExecutor
         var title = GetString(input, "title") ?? GenerateTitle(content!);
         var priorityStr = GetString(input, "priority") ?? "standard";
         var priority = MemoryToolHelpers.NormalizePriority(priorityStr);
-        var scope = MemoryToolHelpers.ResolveScope(input, context);
+        var scope = MemoryToolHelpers.ResolveScope(context);
 
         var db = DbClient.GetClient();
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

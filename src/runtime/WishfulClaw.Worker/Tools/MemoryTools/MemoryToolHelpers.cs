@@ -1,4 +1,3 @@
-using System.Text.Json;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Workspace.Memory;
 
@@ -11,22 +10,12 @@ namespace WishfulClaw.Worker.Tools.MemoryTools;
 internal static class MemoryToolHelpers
 {
     /// <summary>
-    /// Resolves the memory scope from tool input and execution context.
-    /// Priority: explicit scope param → workingFolder from context → global.
+    /// Resolves the memory scope from execution context only.
+    /// The Agent cannot choose scope — it is determined by the working folder.
+    /// Project scope when workingFolder is set, global otherwise.
     /// </summary>
-    public static string ResolveScope(JsonElement input, ToolExecutionContext context)
+    public static string ResolveScope(ToolExecutionContext context)
     {
-        var scope = GetString(input, "scope");
-        if (!string.IsNullOrWhiteSpace(scope))
-        {
-            if (scope == "project" && !string.IsNullOrWhiteSpace(context.WorkingFolder))
-                return $"project:{context.WorkingFolder}";
-            if (scope == "global")
-                return "global";
-            return scope;
-        }
-
-        // Default: project scope if workingFolder available, otherwise global
         return !string.IsNullOrWhiteSpace(context.WorkingFolder)
             ? $"project:{context.WorkingFolder}"
             : "global";
@@ -51,14 +40,4 @@ internal static class MemoryToolHelpers
         };
     }
 
-    private static string? GetString(JsonElement element, string name)
-    {
-        if (element.ValueKind == JsonValueKind.Object &&
-            element.TryGetProperty(name, out var prop) &&
-            prop.ValueKind == JsonValueKind.String)
-        {
-            return prop.GetString();
-        }
-        return null;
-    }
 }
