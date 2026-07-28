@@ -22,7 +22,8 @@ public sealed class MemorySearchTool : IToolExecutor
         "Search memory entries in the database by keyword. " +
         "Uses fast FTS index first; falls back to LIKE scan if no results. " +
         "Results include entry id — use memory_update to modify entries. " +
-        "Searches both project-scoped and global memories.";
+        "When scope is omitted, searches BOTH project-scoped and global memories. " +
+        "Pass scope=\"global\" to search only global, or scope=\"project\" to search only project-scoped.";
 
     public JsonElement InputSchema => ParseSchema(
         """{"type":"object","properties":{"query":{"type":"string","description":"Search query"},"scope":{"type":"string","description":"Scope filter: 'global', 'project', or omit to search all"},"include_deprecated":{"type":"boolean","default":false,"description":"Include deprecated entries in results"},"limit":{"type":"integer","default":10,"minimum":1,"maximum":50}},"required":["query"]}""");

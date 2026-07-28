@@ -19,6 +19,7 @@ public sealed class MemoryAppendTool : IToolExecutor
         "Use this to record facts, decisions, or insights worth remembering across sessions. " +
         "Specify priority: permanent (core identity, never demote), lasting (important decisions), " +
         "standard (general, default), ephemeral (transient info). " +
+        "Pass scope=\"global\" for cross-project memory or scope=\"project\" for project-specific memory. Defaults to current project. " +
         "Returns the entry id for future updates.";
 
     public JsonElement InputSchema => ParseSchema(

@@ -20,7 +20,8 @@ public sealed class MemoryHotReadTool : IToolExecutor
 
     public string Description =>
         "Read the full hot memory (MEMORY.md). Returns all sections with their content. " +
-        "Hot memory contains the most important, always-loaded context. Call this when you need to refresh your understanding of key facts.";
+        "Hot memory contains the most important, always-loaded context. Call this when you need to refresh your understanding of key facts. " +
+        "Pass scope=\"global\" to read global memory or scope=\"project\" to read project memory. Defaults to current project.";
 
     public JsonElement InputSchema => ParseSchema(
         """{"type":"object","properties":{"scope":{"type":"string","description":"Scope: 'global' or 'project'. Defaults to current project."}},"required":[]}""");
