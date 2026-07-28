@@ -286,14 +286,8 @@ function SubAgentCardInner({
     return () => clearInterval(timer)
   }, [tracked?.isRunning, tracked?.startedAt])
 
-  // Expand/collapse: expanded by default when running, collapsed when done
-  const [isExpanded, setIsExpanded] = React.useState(isRunning)
-  React.useEffect(() => {
-    if (!isRunning && isExpanded) {
-      // Auto-collapse when execution ends
-      setIsExpanded(false)
-    }
-  }, [isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Expand/collapse: collapsed by default, user clicks to expand
+  const [isExpanded, setIsExpanded] = React.useState(false)
 
   const elapsed = tracked
     ? (tracked.completedAt ?? (tracked.isRunning ? now : tracked.startedAt)) - tracked.startedAt
