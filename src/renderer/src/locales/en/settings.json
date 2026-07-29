@@ -822,6 +822,46 @@
     "importJsonFailed": "Import failed",
     "importJsonPlaceholder": "{\n  \"mcpServers\": {\n    \"server-name\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"some-package\"]\n    }\n  }\n}",
     "importJsonHint": "Paste Claude Code / .mcp.json format",
-    "importJsonAction": "Import"
+    "importJsonAction": "Import",
+    "tabs": {
+      "installed": "Installed",
+      "market": "Market"
+    },
+    "browseMarket": "Browse Market",
+    "market": {
+      "searchPlaceholder": "Search MCP servers...",
+      "searching": "Searching...",
+      "searchFailed": "Search failed",
+      "noResults": "No servers found",
+      "noResultsHint": "Try a different keyword",
+      "searchHint": "Search the official MCP Registry",
+      "searchHintDesc": "registry.modelcontextprotocol.io",
+      "noDescription": "No description",
+      "configRequired": "config required",
+      "install": "Install",
+      "installed": "Installed \"{{name}}\"",
+      "installFailed": "Install failed",
+      "noInstallablePackage": "No installable package",
+      "cannotAutoInstall": "Cannot auto-install this server",
+      "requiresEnvVars": "This server requires configuration"
+    },
+    "detail": {
+      "repository": "Repository",
+      "website": "Website",
+      "package": "Package",
+      "registry": "Registry",
+      "identifier": "Identifier",
+      "transport": "Transport",
+      "runtime": "Runtime",
+      "remoteEndpoint": "Remote Endpoint",
+      "environmentVariables": "Environment Variables",
+      "previewCommand": "Preview Command",
+      "install": "Install",
+      "installing": "Installing...",
+      "installed": "Installed \"{{name}}\"",
+      "installFailed": "Install failed",
+      "fillRequired": "Please fill required fields",
+      "cannotInstall": "Cannot install this server"
+    }
   }
 }
