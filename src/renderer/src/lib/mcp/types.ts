@@ -1,38 +1,54 @@
-// Stub: MCP types
+// ── MCP Types for Renderer ──
+// Mirrored from main process types (src/main/mcp/mcp-types.ts)
 
-export type McpServerStatus = 'connected' | 'connecting' | 'disconnected' | 'error'
+/** Transport type for MCP server connections */
+export type McpTransportType = 'stdio' | 'sse' | 'streamable-http'
 
+/** MCP server configuration */
 export interface McpServerConfig {
   id: string
-  createdAt: number
-  enabled?: boolean
-  projectId?: string
-  name?: string
+  name: string
+  enabled: boolean
+  /** Bound project ID (null = unbound) */
+  projectId?: string | null
+  transport: McpTransportType
   command?: string
   args?: string[]
   env?: Record<string, string>
-  [key: string]: unknown
+  cwd?: string
+  url?: string
+  headers?: Record<string, string>
+  autoFallback?: boolean
+  createdAt: number
+  description?: string
 }
 
-export interface McpServer { [key: string]: unknown }
+/** MCP server runtime status */
+export type McpServerStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
-export interface McpTool { [key: string]: unknown }
+/** MCP Tool */
+export interface McpTool {
+  name: string
+  description?: string
+  inputSchema: Record<string, unknown>
+}
 
+/** MCP Resource */
 export interface McpResource {
-  uri?: string
-  name?: string
+  uri: string
+  name: string
   description?: string
   mimeType?: string
-  [key: string]: unknown
 }
 
+/** MCP Prompt */
 export interface McpPrompt {
-  name?: string
+  name: string
   description?: string
-  arguments?: unknown[]
-  [key: string]: unknown
+  arguments?: Array<{ name: string; description?: string; required?: boolean }>
 }
 
+/** Full MCP server info */
 export interface McpServerInfo {
   config: McpServerConfig
   status: McpServerStatus
