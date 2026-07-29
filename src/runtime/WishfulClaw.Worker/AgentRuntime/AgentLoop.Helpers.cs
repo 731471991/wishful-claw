@@ -153,4 +153,27 @@ internal static partial class AgentLoop
             model.StartsWith("o3", StringComparison.OrdinalIgnoreCase) ||
             model.StartsWith("o4", StringComparison.OrdinalIgnoreCase);
     }
+
+    // ── Transient injection helpers ──
+
+    /// <summary>
+    /// Injects current timestamp as a transient prefix to the last user message.
+    /// This stays OUT of the system prompt to preserve prefix cache stability.
+    /// The agent gets fresh time context every turn without churning the cached prefix.
+    /// Design follows Reasonix's transient turn-injection pattern.
+    /// </summary>
+    internal static void InjectTimestampPrefix(List<AgentRuntimeChatMessage> conversation)
+    {
+        // Find the last user message (the current turn's input)
+        for (var i = conversation.Count - 1; i >= 0; i--)
+        {
+            if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
+            {
+                var now = DateTimeOffset.Now;
+                var timestampBlock = $"<current_time>\n{now:yyyy-MM-dd HH:mm:ss zzz} ({now:dddd})\n</current_time>\n\n";
+                conversation[i] = conversation[i] with { Text = timestampBlock + conversation[i].Text };
+                break;
+            }
+        }
+    }
 }

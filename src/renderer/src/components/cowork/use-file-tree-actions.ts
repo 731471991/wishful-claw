@@ -351,6 +351,7 @@ export function useFileTreeActions(state: FileTreeState, options: UseFileTreeAct
 
   const handlePreview = useCallback(
     (filePath: string) => {
+      if (!filePath) return
       useUIStore.getState().openFilePreview(filePath, undefined, undefined, sessionView.sessionId)
     },
     [sessionView.sessionId]

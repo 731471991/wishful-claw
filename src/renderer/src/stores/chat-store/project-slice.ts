@@ -78,7 +78,6 @@ export const createProjectSlice: StateCreator<
   setActiveProjectHome: (id) => {
     set((state) => {
       state.activeProjectId = id
-      state.activeSessionId = null
     })
   },
 

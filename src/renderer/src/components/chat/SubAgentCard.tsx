@@ -20,7 +20,8 @@ import { useAgentStore } from '@renderer/stores/agent-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { cn } from '@renderer/lib/utils'
-import type { ToolCallState, ToolResultContent } from '@renderer/lib/api/types'
+import type { ToolResultContent } from '@renderer/lib/api/types'
+import type { ToolCallState } from '@renderer/lib/agent/types'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   findSubAgentInSelection,
@@ -338,12 +339,29 @@ function SubAgentCardInner({
     .join(' · ')
 
   const handleOpenPanel = (): void => {
+    // Use task description as panel title (same as the card shows)
+    const panelTitle = descriptionText || promptText.replace(/\s+/g, ' ').trim().slice(0, 50) || displayName
     useUIStore
       .getState()
-      .openSubAgentExecutionDetail(toolUseId, histText ?? undefined, displayName, sessionId ?? undefined)
+      .openSubAgentExecutionDetail(toolUseId, histText ?? undefined, panelTitle, sessionId ?? undefined)
   }
 
-  const hasSteps = (tracked?.toolCalls?.length ?? 0) > 0
+  const hasSteps = (tracked?.toolCalls?.length ?? 0) > 0 || (histMeta?.toolCalls?.length ?? 0) > 0
+
+  // Build tool calls list: prefer live tracked data, fall back to historical meta
+  const effectiveToolCalls = tracked?.toolCalls?.length
+    ? tracked.toolCalls
+    : (histMeta?.toolCalls ?? []).map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        input: tc.input,
+        status: (['streaming','pending_approval','running','completed','error','canceled'].includes(tc.status) ? tc.status : 'completed') as ToolCallState['status'],
+        output: tc.output,
+        error: tc.error,
+        requiresApproval: false,
+        startedAt: tc.startedAt,
+        completedAt: tc.completedAt
+      }))
 
   const card = (
     <div
@@ -439,7 +457,7 @@ function SubAgentCardInner({
             className="overflow-hidden border-t border-border/20"
           >
             <SubAgentStepList
-              toolCalls={tracked!.toolCalls}
+              toolCalls={effectiveToolCalls}
               isRunning={isRunning}
             />
           </motion.div>

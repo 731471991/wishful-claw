@@ -51,11 +51,17 @@ internal static partial class AgentLoop
             var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
             var language = JsonHelpers.GetString(parameters, "language");
             var userRules = JsonHelpers.GetString(parameters, "userRules");
-            var builtPrompt = PromptBuilder.Build(
-                PromptProfile.Main, provider, parameters, personaId, workingFolder, language, userRules);
+            var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+            var cacheKey = SystemPromptCache.ComputeKey(personaId, workingFolder, language, userRules, sshConnectionId);
+            var builtPrompt = SystemPromptCache.GetOrBuild(cacheKey, () =>
+                PromptBuilder.Build(
+                    PromptProfile.Main, provider, parameters, personaId, workingFolder, language, userRules));
             provider = InjectSystemPrompt(provider, builtPrompt);
-            WorkerLog.Info($"persona system prompt built id={personaId} length={builtPrompt.Length}");
+            WorkerLog.Info($"persona system prompt (cached) id={personaId} length={builtPrompt.Length}");
         }
+
+        // Inject current timestamp as transient user-message prefix (cache-safe)
+        InjectTimestampPrefix(conversation);
 
         var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 0); // 0 = unlimited
         var hasIterationLimit = requestedMaxIterations > 0;

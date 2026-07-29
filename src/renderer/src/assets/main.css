@@ -132,6 +132,25 @@
   --composer-drop-bg: #e8e9ed;
   --composer-placeholder: color-mix(in srgb, var(--muted-foreground) 82%, transparent);
   --composer-suggestion: color-mix(in srgb, var(--muted-foreground) 54%, transparent);
+
+  /* File Tree + Agent Files — Reasonix style */
+  --tree-row-height: 30px;
+  --tree-row-radius: 7px;
+  --tree-row-hover-bg: #edf2f7;
+  --tree-row-current-bg: color-mix(in srgb, var(--accent) 18%, transparent);
+  --tree-row-current-fg: var(--foreground);
+  --tree-row-current-icon: var(--muted-foreground);
+  --tree-row-marker: var(--accent);
+  --tree-guide-color: color-mix(in srgb, var(--border) 50%, transparent);
+  --workspace-filetree-bg: var(--background);
+  --workspace-filetree-divider: color-mix(in srgb, var(--border) 60%, transparent);
+  --workspace-filetree-empty-bg: color-mix(in srgb, var(--muted) 30%, transparent);
+  --agent-files-panel: #ffffff;
+  --agent-files-fg: #1f1f1f;
+  --agent-files-muted: #6f6f6f;
+  --agent-files-border: color-mix(in srgb, var(--border) 60%, transparent);
+  --agent-files-hover: #edf2f7;
+  --agent-files-icon: var(--muted-foreground);
 }
 
 .dark {
@@ -204,6 +223,25 @@
   --composer-drop-bg: color-mix(in srgb, var(--accent) 78%, black 22%);
   --composer-placeholder: color-mix(in srgb, var(--muted-foreground) 72%, transparent);
   --composer-suggestion: color-mix(in srgb, var(--muted-foreground) 46%, transparent);
+
+  /* File Tree + Agent Files (dark) — Reasonix style */
+  --tree-row-height: 30px;
+  --tree-row-radius: 7px;
+  --tree-row-hover-bg: #1c2030;
+  --tree-row-current-bg: color-mix(in srgb, var(--accent) 22%, transparent);
+  --tree-row-current-fg: var(--foreground);
+  --tree-row-current-icon: var(--muted-foreground);
+  --tree-row-marker: var(--accent);
+  --tree-guide-color: color-mix(in srgb, var(--border) 40%, transparent);
+  --workspace-filetree-bg: var(--background);
+  --workspace-filetree-divider: color-mix(in srgb, var(--border) 50%, transparent);
+  --workspace-filetree-empty-bg: color-mix(in srgb, var(--muted) 35%, transparent);
+  --agent-files-panel: #181818;
+  --agent-files-fg: #cccccc;
+  --agent-files-muted: #8f8f8f;
+  --agent-files-border: color-mix(in srgb, var(--border) 50%, transparent);
+  --agent-files-hover: #1c2030;
+  --agent-files-icon: var(--muted-foreground);
 }
 
 @layer base {
@@ -597,4 +635,134 @@ textarea.composer-aux-textarea {
   transition: all 0.15s ease;
 }
 
-} /* end @layer components */
+
+  /* ── File Tree — Reasonix style ── */
+
+  .workspace-filetree-surface {
+    background: var(--workspace-filetree-bg);
+    color: var(--foreground);
+  }
+  .workspace-filetree-surface--card { border: none; box-shadow: none; }
+  .workspace-filetree-surface--sheet { background: transparent; box-shadow: none; }
+  .workspace-filetree-surface--agent {
+    background: var(--agent-files-panel);
+    color: var(--agent-files-fg);
+  }
+
+  .workspace-filetree-header {
+    border-bottom: 1px solid var(--workspace-filetree-divider);
+    background: transparent;
+  }
+  .workspace-filetree-footer {
+    border-top: 1px solid var(--workspace-filetree-divider);
+  }
+
+  /* Row — flat, no border, hover/active background only */
+  .workspace-filetree-row {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    height: var(--tree-row-height);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    border-radius: var(--tree-row-radius);
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: 12.5px;
+    text-align: left;
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+
+  .workspace-filetree-row--interactive {
+    cursor: pointer;
+  }
+  .workspace-filetree-row--interactive:hover {
+    background: var(--tree-row-hover-bg);
+    color: var(--foreground);
+  }
+
+  .workspace-filetree-row--active {
+    background: var(--tree-row-current-bg);
+    color: var(--tree-row-current-fg);
+  }
+  .workspace-filetree-row--active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 5px;
+    bottom: 5px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--tree-row-marker);
+  }
+
+  .workspace-filetree-row--expanded {
+    background: transparent;
+  }
+
+  /* Agent surface variant — transparent bg, subtle hover */
+  .workspace-filetree-row--agent {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--agent-files-fg);
+    height: var(--tree-row-height);
+  }
+  .workspace-filetree-row--agent:hover {
+    background: var(--agent-files-hover);
+  }
+  .workspace-filetree-row--active.workspace-filetree-row--agent {
+    background: var(--agent-files-hover);
+  }
+  .workspace-filetree-row--active.workspace-filetree-row--agent::before {
+    background: var(--accent);
+  }
+
+  .workspace-filetree-chevron {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+    color: var(--agent-files-icon);
+    transition: transform 0.15s ease;
+  }
+
+  .workspace-filetree-action {
+    color: var(--muted-foreground);
+  }
+  .workspace-filetree-action:hover {
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  }
+
+  .workspace-filetree-input {
+    background: var(--background);
+    border-color: var(--workspace-filetree-divider);
+  }
+
+  .workspace-filetree-guide {
+    background: var(--tree-guide-color);
+  }
+
+  .workspace-filetree-empty {
+    border: 1px dashed var(--workspace-filetree-divider);
+    background: var(--workspace-filetree-empty-bg);
+    color: var(--muted-foreground);
+  }
+
+  /* Agent files explorer */
+  .agent-files-explorer {
+    background: var(--agent-files-panel);
+    color: var(--agent-files-fg);
+  }
+  .agent-files-explorer-header {
+    border-bottom-color: var(--agent-files-border);
+  }
+  .agent-files-explorer-title {
+    color: var(--agent-files-muted);
+  }
+
+}
+
+ /* end @layer components */

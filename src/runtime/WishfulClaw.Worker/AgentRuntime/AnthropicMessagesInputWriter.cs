@@ -8,7 +8,8 @@ namespace WishfulClaw.Worker.AgentRuntime;
 
 /// <summary>
 /// Anthropic Messages request body builder.
-/// Simplified: no cache_control, no sanitizer, no validation stats.
+/// System prompt and tools carry cache_control breakpoints for prefix caching.
+    /// No sanitizer, no validation stats.
 /// </summary>
 internal static partial class AnthropicMessagesProvider
 {
@@ -31,7 +32,7 @@ internal static partial class AnthropicMessagesProvider
                 writer.WriteNumber("max_tokens", ResolveMaxTokens(provider));
             }
 
-            // System prompt
+            // System prompt (with cache_control breakpoint for prefix caching)
             if (JsonHelpers.GetString(provider, "systemPrompt") is { Length: > 0 } systemPrompt)
             {
                 writer.WritePropertyName("system");
@@ -39,6 +40,11 @@ internal static partial class AnthropicMessagesProvider
                 writer.WriteStartObject();
                 writer.WriteString("type", "text");
                 writer.WriteString("text", systemPrompt);
+                // cache_control: ephemeral — marks this as a cache breakpoint
+                writer.WritePropertyName("cache_control");
+                writer.WriteStartObject();
+                writer.WriteString("type", "ephemeral");
+                writer.WriteEndObject();
                 writer.WriteEndObject();
                 writer.WriteEndArray();
             }
@@ -182,27 +188,56 @@ internal static partial class AnthropicMessagesProvider
             return;
         }
 
-        writer.WritePropertyName("tools");
-        writer.WriteStartArray();
+        // Collect and sort tools by name for stable byte ordering (prefix cache stability)
+        var toolList = new List<(string name, JsonElement tool)>();
         foreach (var tool in tools.EnumerateArray())
         {
-            if (tool.ValueKind != JsonValueKind.Object)
-                continue;
+            if (tool.ValueKind != JsonValueKind.Object) continue;
+            var name = tool.TryGetProperty("name", out var nameProp)
+                ? nameProp.GetString() ?? ""
+                : "";
+            toolList.Add((name, tool));
+        }
+        toolList.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+
+        writer.WritePropertyName("tools");
+        writer.WriteStartArray();
+
+        for (var i = 0; i < toolList.Count; i++)
+        {
+            var (name, tool) = toolList[i];
+            var isLast = i == toolList.Count - 1;
 
             // Anthropic format: { name, description, input_schema }
             // Transform inputSchema -> input_schema if needed
             if (tool.TryGetProperty("input_schema", out _))
             {
-                // Already in Anthropic format
-                tool.WriteTo(writer);
+                // Already in Anthropic format — write with cache_control on last
+                if (isLast)
+                {
+                    writer.WriteStartObject();
+                    foreach (var prop in tool.EnumerateObject())
+                    {
+                        prop.WriteTo(writer);
+                    }
+                    writer.WritePropertyName("cache_control");
+                    writer.WriteStartObject();
+                    writer.WriteString("type", "ephemeral");
+                    writer.WriteEndObject();
+                    writer.WriteEndObject();
+                }
+                else
+                {
+                    tool.WriteTo(writer);
+                }
                 continue;
             }
 
             writer.WriteStartObject();
-            if (tool.TryGetProperty("name", out var name))
+            if (tool.TryGetProperty("name", out var nameVal))
             {
                 writer.WritePropertyName("name");
-                name.WriteTo(writer);
+                nameVal.WriteTo(writer);
             }
             if (tool.TryGetProperty("description", out var desc))
             {
@@ -213,6 +248,14 @@ internal static partial class AnthropicMessagesProvider
             {
                 writer.WritePropertyName("input_schema");
                 inputSchema.WriteTo(writer);
+            }
+            // Add cache_control breakpoint on the last tool
+            if (isLast)
+            {
+                writer.WritePropertyName("cache_control");
+                writer.WriteStartObject();
+                writer.WriteString("type", "ephemeral");
+                writer.WriteEndObject();
             }
             writer.WriteEndObject();
         }

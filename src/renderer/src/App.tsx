@@ -14,6 +14,7 @@ import { SettingsPage } from '@renderer/components/settings/SettingsPage'
 import { attachRendererToolBridge } from '@renderer/lib/ipc/renderer-tool-bridge'
 import { registerAllTools } from '@renderer/lib/tools'
 import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
+import { registerAllViewers } from '@renderer/lib/preview/register-viewers'
 
 // Initialize provider store — ensures builtin presets exist
 initProviderStore()
@@ -36,6 +37,9 @@ function App(): React.JSX.Element | null {
     // Register frontend tool handlers (browser tools, etc.)
     attachRendererToolBridge()
     registerBrowserTool()
+
+    // Register preview viewers (image, markdown, code, etc.)
+    registerAllViewers()
 
     // Register all tools (fs, search, bash, memory, etc.) for the frontend tool registry
     registerAllTools().catch((err) => {

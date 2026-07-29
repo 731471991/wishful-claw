@@ -80,5 +80,10 @@
     "showMore": "Show more",
     "showLess": "Show less",
     "more": "More"
+  },
+  "unit": {
+    "folders": "folders",
+    "files": "files",
+    "matches": "matches"
   }
 }

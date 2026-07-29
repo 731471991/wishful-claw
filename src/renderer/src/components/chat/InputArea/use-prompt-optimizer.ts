@@ -41,24 +41,12 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
     try {
       const { optimizePrompt } = await import('@renderer/lib/prompt-optimizer/optimizer')
 
+      // Reuse the active provider config (same as normal chat) to avoid
+      // baseUrl/model mismatches that cause 404s.
       const providerStore = useProviderStore.getState()
-      const { providers } = providerStore
+      const activeProvider = providerStore.getActiveProvider()
 
-      let fastProvider = providers.find(
-        (p) =>
-          p.enabled &&
-          p.models.some(
-            (m) =>
-              m.enabled &&
-              (m.id.includes('haiku') || m.id.includes('4o-mini') || m.id.includes('gpt-4o-mini'))
-          )
-      )
-
-      if (!fastProvider) {
-        fastProvider = providers.find((p) => p.enabled && p.models.some((m) => m.enabled))
-      }
-
-      if (!fastProvider) {
+      if (!activeProvider) {
         toast.error('No AI provider available', {
           description: 'Please configure an AI provider in Settings'
         })
@@ -66,25 +54,25 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
         return
       }
 
-      const fastModel =
-        fastProvider.models.find(
-          (m) =>
-            m.enabled &&
-            (m.id.includes('haiku') || m.id.includes('4o-mini') || m.id.includes('gpt-4o-mini'))
-        ) || fastProvider.models.find((m) => m.enabled)
+      // Use the same model resolution as normal chat: activeModelId first,
+      // then defaultModel, then first enabled model.
+      const modelId =
+        providerStore.activeModelId ||
+        activeProvider.defaultModel ||
+        activeProvider.models.find((m: { enabled: boolean }) => m.enabled)?.id
 
-      if (!fastModel) {
+      if (!modelId) {
         toast.error('No AI model available', { description: 'Please enable a model in Settings' })
         setIsOptimizing(false)
         return
       }
 
       const providerConfig = {
-        type: fastProvider.type,
-        apiKey: fastProvider.apiKey,
-        baseUrl: fastProvider.baseUrl,
-        model: fastModel.id,
-        providerId: fastProvider.id,
+        type: activeProvider.type,
+        apiKey: activeProvider.apiKey,
+        baseUrl: activeProvider.baseUrl,
+        model: modelId,
+        providerId: activeProvider.id,
         maxTokens: 4096,
         temperature: 0.7,
         systemPrompt: ''

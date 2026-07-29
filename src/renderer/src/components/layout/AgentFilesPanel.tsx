@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FileTreePanel } from '@renderer/components/cowork/FileTreePanel'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { FileCode } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 
 export interface AgentFilesPanelProps {
   sessionId?: string | null
@@ -11,19 +12,21 @@ export interface AgentFilesPanelProps {
 export function AgentFilesPanel(props: AgentFilesPanelProps) {
   const { t } = useTranslation('layout')
 
-  const sessionView = useChatStore((state) => {
-    const resolvedSessionId = props.sessionId ?? state.activeSessionId
-    const currentSession = resolvedSessionId
-      ? state.sessions.find((item) => item.id === resolvedSessionId)
-      : undefined
-    const currentProject = currentSession?.projectId
-      ? state.projects.find((item) => item.id === currentSession.projectId)
-      : undefined
-    return {
-      sessionId: resolvedSessionId,
-      workingFolder: currentSession?.workingFolder ?? currentProject?.workingFolder ?? null
-    }
-  })
+  const sessionView = useChatStore(
+    useShallow((state) => {
+      const resolvedSessionId = props.sessionId ?? state.activeSessionId
+      const currentSession = resolvedSessionId
+        ? state.sessions.find((item) => item.id === resolvedSessionId)
+        : undefined
+      const currentProject = currentSession?.projectId
+        ? state.projects.find((item) => item.id === currentSession.projectId)
+        : undefined
+      return {
+        sessionId: resolvedSessionId,
+        workingFolder: currentSession?.workingFolder ?? currentProject?.workingFolder ?? null
+      }
+    })
+  )
 
   if (!sessionView.workingFolder) {
     return (

@@ -26,7 +26,13 @@ export function TitleBar({
   // Only show file/terminal buttons in project-level sessions (has workingFolder)
   const hasProject = useChatStore((s) => {
     const session = s.sessions.find((item) => item.id === s.activeSessionId)
-    return Boolean(session?.workingFolder)
+    if (session?.workingFolder) return true
+    // Inherit from project if session doesn't have its own workingFolder
+    if (session?.projectId) {
+      const project = s.projects.find((p) => p.id === session.projectId)
+      return Boolean(project?.workingFolder)
+    }
+    return false
   })
 
   return (

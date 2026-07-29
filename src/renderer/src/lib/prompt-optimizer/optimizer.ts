@@ -165,6 +165,14 @@ Begin with Step 1 now.`,
         provider: { ...providerConfig, systemPrompt: OPTIMIZER_SYSTEM_PROMPT },
         signal
       })) {
+        if (event.type === 'error') {
+          const errMsg = (event as { error?: { message?: string } }).error?.message || 'Unknown provider error'
+          console.error('Optimizer provider error:', errMsg)
+          yield { type: 'text', content: `
+
+[Error: ${errMsg}]` }
+          break
+        }
         if (event.type === 'text_delta' && event.text) {
           yield { type: 'text', content: event.text }
         } else if (event.type === 'thinking_delta' && event.thinking) {

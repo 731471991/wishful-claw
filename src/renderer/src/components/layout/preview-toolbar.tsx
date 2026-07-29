@@ -66,7 +66,7 @@ export function PreviewToolbar({
               variant={activeTab.viewMode === 'preview' ? 'secondary' : 'ghost'}
               size="sm"
               className="h-5 gap-1 px-2 text-[10px]"
-              onClick={() => setViewMode('preview')}
+              onClick={() => onSetViewMode('preview')}
             >
               <Eye className="size-3" />
               {t('preview.preview')}
@@ -75,7 +75,7 @@ export function PreviewToolbar({
               variant={activeTab.viewMode === 'code' ? 'secondary' : 'ghost'}
               size="sm"
               className="h-5 gap-1 px-2 text-[10px]"
-              onClick={() => setViewMode('code')}
+              onClick={() => onSetViewMode('code')}
             >
               <Code2 className="size-3" />
               {t('preview.code')}
@@ -147,7 +147,7 @@ export function PreviewToolbar({
               variant="ghost"
               size="icon"
               className="size-7 shrink-0"
-              onClick={handleReload}
+              onClick={onReload}
               title={t('action.refresh', { ns: 'common', defaultValue: 'Refresh' })}
             >
               <RefreshCw className="size-3.5" />

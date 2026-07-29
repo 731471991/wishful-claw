@@ -80,5 +80,10 @@
     "showMore": "显示更多",
     "showLess": "收起",
     "more": "更多"
+  },
+  "unit": {
+    "folders": "个文件夹",
+    "files": "个文件",
+    "matches": "条匹配"
   }
 }

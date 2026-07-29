@@ -1,4 +1,4 @@
-import { agentBridge } from './agent-bridge'
+import { agentBridge, canSidecarHandle } from './agent-bridge'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { CompressionResult } from '../agent/context-compression-config'
 import { toAgentEvent } from '../agent/stream-event-adapter'

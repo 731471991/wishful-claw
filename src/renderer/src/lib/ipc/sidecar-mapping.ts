@@ -1,5 +1,6 @@
 
 import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig } from './sidecar-protocol'
+import { toPermissionPolicySnapshot } from '../../../../shared/permission-policy'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { clampMaxConcurrentSubAgents } from '../../stores/settings-store'

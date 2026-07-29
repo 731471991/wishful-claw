@@ -96,17 +96,19 @@ export function registerFsHandlers(): void {
       }
     )
 
-    registerMessagePackHandler<{ path: string }, { name: string; isDirectory: boolean; isFile: boolean; size: number }[]>(
+    registerMessagePackHandler<{ path: string }, { name: string; type: 'file' | 'directory'; path: string }[]>(
       'fs:list-dir',
       async (args) => {
         try {
           const entries = await fs.promises.readdir(args.path, { withFileTypes: true })
-          return entries.map((entry) => ({
-            name: entry.name,
-            isDirectory: entry.isDirectory(),
-            isFile: entry.isFile(),
-            size: 0
-          }))
+          const sep = args.path.includes('/') && !args.path.includes('\\') ? '/' : '\\'
+          return entries
+            .filter((entry) => !entry.name.startsWith('.'))
+            .map((entry) => ({
+              name: entry.name,
+              type: entry.isDirectory() ? ('directory' as const) : ('file' as const),
+              path: args.path.replace(/[\\/]+$/, '') + sep + entry.name
+            }))
         } catch {
           return []
         }
@@ -157,9 +159,9 @@ export function registerFsHandlers(): void {
       async (args) => {
         try {
           const buffer = await fs.promises.readFile(args.path)
-          return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
-        } catch {
-          return null
+          return { data: buffer.toString('base64') }
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) }
         }
       }
     )
@@ -336,5 +338,41 @@ export function registerFsHandlers(): void {
       }
     )
 
+
+
+    // ── Directory watching ──
+    const watchedDirs = new Map<string, fs.FSWatcher>()
+
+    registerMessagePackHandler<{ path: string; recursive?: boolean }, void>(
+      'fs:watch-dir',
+      async (args) => {
+        const key = `${args.path}:${args.recursive ?? false}`
+        if (watchedDirs.has(key)) return
+        try {
+          const watcher = fs.watch(args.path, { recursive: args.recursive ?? false }, (_eventType, filename) => {
+            const { BrowserWindow } = require('electron')
+            const win = BrowserWindow.getAllWindows()[0]
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('fs:dir-changed:msgpack', { path: args.path, changedPath: filename })
+            }
+          })
+          watchedDirs.set(key, watcher)
+        } catch {
+          // Ignore — path may not exist or not be watchable
+        }
+      }
+    )
+
+    registerMessagePackHandler<{ path: string; recursive?: boolean }, void>(
+      'fs:unwatch-dir',
+      async (args) => {
+        const key = `${args.path}:${args.recursive ?? false}`
+        const watcher = watchedDirs.get(key)
+        if (watcher) {
+          watcher.close()
+          watchedDirs.delete(key)
+        }
+      }
+    )
 
 }

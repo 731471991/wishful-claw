@@ -4,6 +4,7 @@ using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Workspace.Memory;
 using WishfulClaw.Worker.Tools;
+using WishfulClaw.Worker.AgentRuntime;
 using WishfulClaw.Worker.Modules.Db;
 
 namespace WishfulClaw.Worker.Modules;
@@ -80,6 +81,7 @@ internal sealed class MemoryModule : IWorkerModule
                 await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
             }
             await File.WriteAllTextAsync(path, content);
+            SystemPromptCache.Clear(); // Invalidate cached system prompt — memory content changed
             return WorkerResponse.Json(new { ok = true });
         });
     }

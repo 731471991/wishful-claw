@@ -83,13 +83,13 @@ export const useUIStore = create<UIStore>((set, get) => ({
   // Navigation rail
   activeNavItem: 'chat',
   setActiveNavItem: (item) =>
-    set({ activeNavItem: item, leftSidebarOpen: true, ...closeRightSidePanels() }),
+    set({ activeNavItem: item, leftSidebarOpen: true }),
 
   // Left sidebar
   leftSidebarOpen: true,
   leftSidebarWidth: LEFT_SIDEBAR_DEFAULT_WIDTH,
-  toggleLeftSidebar: () => set((state) => ({ leftSidebarOpen: !state.leftSidebarOpen, ...closeRightSidePanels() })),
-  setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open, ...(open ? closeRightSidePanels() : {}) }),
+  toggleLeftSidebar: () => set((state) => ({ leftSidebarOpen: !state.leftSidebarOpen })),
+  setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
   setLeftSidebarWidth: (width) => set({ leftSidebarWidth: clampLeftSidebarWidth(width) }),
 
   // Conversation panel
@@ -111,8 +111,13 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setRightPanelActiveTab: (tabId) => set({ rightPanelActiveTabId: tabId }),
   closeRightPanelTab: (tabId) => {
     const tabs = get().rightPanelTabs.filter((t) => t.id !== tabId)
-    const nextActive = tabs.length > 0 ? tabs[Math.max(0, tabs.length - 1)].id : ''
-    set({ rightPanelTabs: tabs.length > 0 ? tabs : getDefaultRightPanelTabs(), rightPanelActiveTabId: nextActive })
+    if (tabs.length === 0) {
+      // Last tab closed — collapse the right panel
+      set({ rightPanelTabs: [], rightPanelActiveTabId: '', rightPanelOpen: false })
+      return
+    }
+    const nextActive = tabs[Math.max(0, tabs.length - 1)].id
+    set({ rightPanelTabs: tabs, rightPanelActiveTabId: nextActive })
   },
   rightPanelRailWidth: 48,
 
@@ -395,7 +400,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       }
     }),
 
-  ensureSubAgentTab: (toolUseId, inlineText, _title, requestedSessionId) =>
+  ensureSubAgentTab: (toolUseId, inlineText, title, requestedSessionId) =>
     set((state) => {
       const sessionId =
         (requestedSessionId?.trim() || null) ??
@@ -412,14 +417,14 @@ export const useUIStore = create<UIStore>((set, get) => ({
             ...existing,
             id: tabId,
             sessionId: sessionId ?? existing.sessionId ?? null,
-            title: 'SubAgents',
+            title: title?.trim() || 'SubAgents',
             toolUseId: toolUseId ?? null,
             inlineText: inlineText?.trim() ? inlineText : null
           }
         : {
             id: tabId,
             kind: 'subagent',
-            title: 'SubAgents',
+            title: title?.trim() || 'SubAgents',
             closable: true,
             sessionId,
             toolUseId: toolUseId ?? null,

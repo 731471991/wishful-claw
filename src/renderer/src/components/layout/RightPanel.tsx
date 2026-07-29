@@ -17,7 +17,7 @@ import { AgentFilesPanel } from '@renderer/components/layout/AgentFilesPanel'
 import { TerminalPanel } from '@renderer/components/terminal/TerminalPanel'
 import { SessionChangeReviewPanel } from '@renderer/components/layout/SessionChangeReviewPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
-import { ipcClient } from '@renderer/lib/ipc/ipc-client'
+
 
 export function RightPanel(): React.JSX.Element {
   const { t } = useTranslation('layout')
@@ -63,9 +63,8 @@ export function RightPanel(): React.JSX.Element {
       if (tab.kind === 'browser') {
         return { ...tab, title: t('rightPanel.browser', { defaultValue: 'Browser' }) }
       }
-      if (tab.kind !== 'subagent') return tab
-      const title = t('subAgentsPanel.title', { defaultValue: 'SubAgents' })
-      return title === tab.title ? tab : { ...tab, title }
+      // subagent tabs keep their own title (set from task description)
+      return tab
     })
   }, [rightPanelOpen, rightPanelTabs, t])
 
