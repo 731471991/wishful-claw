@@ -12,7 +12,7 @@ import { SplashPage } from '@renderer/components/SplashPage'
 import { MainLayout } from '@renderer/components/layout/MainLayout'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
 import { attachRendererToolBridge } from '@renderer/lib/ipc/renderer-tool-bridge'
-import { registerAllTools } from '@renderer/lib/tools'
+import { registerAllTools, refreshDynamicToolCatalog } from '@renderer/lib/tools'
 import { fetchToolDefinitions } from '@renderer/hooks/use-chat-actions'
 import { useMcpStore } from '@renderer/stores/mcp-store'
 import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
@@ -47,10 +47,15 @@ function App(): React.JSX.Element | null {
     registerAllTools().catch((err) => {
       console.warn('registerAllTools failed (some tools may not be available):', err)
     })
-    // Initialize MCP servers at startup so they're ready before first message
-    useMcpStore.getState().ensureConversationReady(null).catch((err) => {
-      console.warn('MCP initialization failed:', err)
-    })
+    // Initialize MCP servers at startup, then refresh the tool catalog
+    // so MCP tools (mcp__*__*) get registered in the tool registry.
+    // registerAllTools() runs refreshMcpTools() too early — servers aren't
+    // connected yet at that point. This chain fills the gap.
+    useMcpStore.getState().ensureConversationReady(null)
+      .then(() => refreshDynamicToolCatalog())
+      .catch((err) => {
+        console.warn('MCP initialization failed:', err)
+      })
     // Pre-fetch tool definitions in background so first message doesn't wait
     fetchToolDefinitions('chat')
   }, [])
