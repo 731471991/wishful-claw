@@ -36,73 +36,118 @@ const ENGINE_CONFIG: Record<SearchEngine, { url: string; label: string }> = {
   }
 }
 
-// ── Extraction scripts ──
-// Each script runs in the page context and returns a JSON string of SearchResultItem[].
+// ── Extraction script ──
+// Unified script that tries multiple selector strategies per engine.
+// Returns JSON string: { results: [...], diagnostics: { title, url, bodySnippet, rawItemCount } }
 
-const BING_EXTRACT = `
+const EXTRACT_SCRIPT = `
 (function() {
   var results = [];
-  var items = document.querySelectorAll('#b_results > li.b_algo');
-  items.forEach(function(item) {
-    var titleEl = item.querySelector('h2 a');
-    if (!titleEl) return;
-    var url = titleEl.href;
-    var title = titleEl.textContent.trim();
-    var snippetEl = item.querySelector('.b_caption p, .b_lineclamp2, .b_lineclamp3, .b_lineclamp4');
-    var snippet = snippetEl ? snippetEl.textContent.trim() : '';
-    if (title && url) {
-      results.push({ title: title, url: url, snippet: snippet });
+  var diagnostics = {
+    title: document.title,
+    url: location.href,
+    bodySnippet: (document.body ? document.body.innerText : '').slice(0, 500),
+    allLinks: 0
+  };
+
+  // Count all links for diagnostics
+  diagnostics.allLinks = document.querySelectorAll('a').length;
+
+  // ── Strategy 1: Engine-specific selectors ──
+
+  var engine = arguments[0] || 'bing';
+
+  if (engine === 'bing') {
+    // Standard Bing: #b_results > li.b_algo
+    var items = document.querySelectorAll('#b_results > li.b_algo, #b_results .b_algo');
+    items.forEach(function(item) {
+      var titleEl = item.querySelector('h2 a, h2 a[href]');
+      if (!titleEl) return;
+      var url = titleEl.href;
+      var title = titleEl.textContent.trim();
+      var snippetEl = item.querySelector('.b_caption p, .b_lineclamp2, .b_lineclamp3, .b_lineclamp4, p');
+      var snippet = snippetEl ? snippetEl.textContent.trim() : '';
+      if (title && url) results.push({ title: title, url: url, snippet: snippet });
+    });
+
+    // Fallback: any h2 > a inside #b_results
+    if (results.length === 0) {
+      document.querySelectorAll('#b_results h2 a[href]').forEach(function(a) {
+        results.push({ title: a.textContent.trim(), url: a.href, snippet: '' });
+      });
     }
+  }
+
+  if (engine === 'baidu') {
+    var items = document.querySelectorAll('.result.c-container, .c-container, .result');
+    items.forEach(function(item) {
+      var titleEl = item.querySelector('h3 a, .t a');
+      if (!titleEl) return;
+      var url = titleEl.href;
+      var title = titleEl.textContent.trim();
+      var snippetEl = item.querySelector('.c-abstract, [class*="content-right"], [class*="abstract"], span.content-right_8Zs40');
+      var snippet = snippetEl ? snippetEl.textContent.trim() : '';
+      if (title && url) results.push({ title: title, url: url, snippet: snippet });
+    });
+
+    // Fallback: any h3 > a
+    if (results.length === 0) {
+      document.querySelectorAll('h3 a[href]').forEach(function(a) {
+        results.push({ title: a.textContent.trim(), url: a.href, snippet: '' });
+      });
+    }
+  }
+
+  if (engine === 'google') {
+    var items = document.querySelectorAll('div.g, div[data-sokoban-container] div.g, .Gx5Zad');
+    items.forEach(function(item) {
+      var titleEl = item.querySelector('h3');
+      var linkEl = item.querySelector('a[href]');
+      if (!titleEl || !linkEl) return;
+      var url = linkEl.href;
+      var title = titleEl.textContent.trim();
+      if (url.indexOf('google.com/search') > -1) return;
+      var snippetEl = item.querySelector('[data-sncf], [style*="-webkit-line-clamp"], .VwiC3b, span.aCOpRe, .IsZvec');
+      var snippet = snippetEl ? snippetEl.textContent.trim() : '';
+      if (title && url) results.push({ title: title, url: url, snippet: snippet });
+    });
+  }
+
+  // ── Strategy 2: Generic fallback for any engine ──
+  // If engine-specific selectors found nothing, try a generic approach:
+  // look for <a> tags inside <h2> or <h3> that point to external URLs
+  if (results.length === 0) {
+    document.querySelectorAll('h2 a[href], h3 a[href]').forEach(function(a) {
+      var href = a.href;
+      // Skip internal navigation links
+      if (href.indexOf('bing.com') > -1 && href.indexOf('search') > -1) return;
+      if (href.indexOf('baidu.com') > -1 && href.indexOf('s?') > -1) return;
+      if (href.indexOf('google.com') > -1) return;
+      if (href.indexOf('go.microsoft.com') > -1) return;
+      var title = a.textContent.trim();
+      if (title.length < 5) return;
+      // Try to find snippet in parent or sibling
+      var parent = a.closest('li, div.g, div.result, [class*="result"]');
+      var snippet = '';
+      if (parent) {
+        var p = parent.querySelector('p, span, [class*="snippet"], [class*="abstract"], [class*="caption"]');
+        snippet = p ? p.textContent.trim() : '';
+      }
+      results.push({ title: title, url: href, snippet: snippet });
+    });
+  }
+
+  // Deduplicate by URL
+  var seen = {};
+  results = results.filter(function(r) {
+    if (seen[r.url]) return false;
+    seen[r.url] = true;
+    return true;
   });
-  return JSON.stringify(results);
+
+  return JSON.stringify({ results: results, diagnostics: diagnostics });
 })()
 `
-
-const BAIDU_EXTRACT = `
-(function() {
-  var results = [];
-  var items = document.querySelectorAll('.result.c-container, .c-container');
-  items.forEach(function(item) {
-    var titleEl = item.querySelector('h3 a');
-    if (!titleEl) return;
-    var url = titleEl.href;
-    var title = titleEl.textContent.trim();
-    var snippetEl = item.querySelector('.c-abstract, [class*="content-right"]');
-    var snippet = snippetEl ? snippetEl.textContent.trim() : '';
-    if (title && url) {
-      results.push({ title: title, url: url, snippet: snippet });
-    }
-  });
-  return JSON.stringify(results);
-})()
-`
-
-const GOOGLE_EXTRACT = `
-(function() {
-  var results = [];
-  var items = document.querySelectorAll('div.g, div[data-sokoban-container] div.g');
-  items.forEach(function(item) {
-    var titleEl = item.querySelector('h3');
-    var linkEl = item.querySelector('a[href]');
-    if (!titleEl || !linkEl) return;
-    var url = linkEl.href;
-    var title = titleEl.textContent.trim();
-    if (url.startsWith('https://www.google.com/search')) return;
-    var snippetEl = item.querySelector('[data-sncf], [style*="-webkit-line-clamp"], .VwiC3b, span.aCOpRe');
-    var snippet = snippetEl ? snippetEl.textContent.trim() : '';
-    if (title && url) {
-      results.push({ title: title, url: url, snippet: snippet });
-    }
-  });
-  return JSON.stringify(results);
-})()
-`
-
-const EXTRACT_SCRIPTS: Record<SearchEngine, string> = {
-  bing: BING_EXTRACT,
-  baidu: BAIDU_EXTRACT,
-  google: GOOGLE_EXTRACT
-}
 
 // ── Helpers ──
 
@@ -118,7 +163,6 @@ function selectEngine(inputEngine?: string): SearchEngine {
   const normalized = (inputEngine ?? '').toLowerCase().trim()
   if (normalized === 'baidu') return 'baidu'
   if (normalized === 'google') return 'google'
-  // Default to Bing — best balance of coverage and scrape-friendliness
   return 'bing'
 }
 
@@ -129,7 +173,7 @@ async function navigateToSearch(
   const { normalizeBrowserUrl } = await import('../app-plugin/browser-access')
   const normalizedUrl = normalizeBrowserUrl(url)
 
-  // Open the browser panel so the user can see the search happening
+  // Open the browser panel
   useUIStore.getState().openBrowserTab(normalizedUrl, ctx.sessionId)
 
   const webview = await waitForWebview(ctx, 10000)
@@ -143,23 +187,35 @@ async function navigateToSearch(
   })
   await loadPromise
 
-  // Brief delay for dynamic content rendering (Bing/Google inject results via JS)
-  await new Promise((resolve) => setTimeout(resolve, 800))
+  // Wait for dynamic content rendering — search engines inject results via JS
+  await new Promise((resolve) => setTimeout(resolve, 1500))
 
   return webview
+}
+
+interface ExtractOutput {
+  results: SearchResultItem[]
+  diagnostics: {
+    title: string
+    url: string
+    bodySnippet: string
+    allLinks: number
+  }
 }
 
 async function extractResults(
   webview: Electron.WebviewTag,
   engine: SearchEngine,
   maxResults: number
-): Promise<SearchResultItem[]> {
-  const script = EXTRACT_SCRIPTS[engine]
+): Promise<ExtractOutput> {
   const raw = await runWebviewCommand(webview, 'extract search results', (target) =>
-    target.executeJavaScript(script)
+    target.executeJavaScript(`${EXTRACT_SCRIPT}(${JSON.stringify(engine)})`)
   )
-  const parsed = parseWebviewJson<SearchResultItem[]>(raw)
-  return parsed.slice(0, maxResults)
+  const parsed = parseWebviewJson<ExtractOutput>(raw)
+  return {
+    results: (parsed.results ?? []).slice(0, maxResults),
+    diagnostics: parsed.diagnostics ?? { title: '', url: '', bodySnippet: '', allLinks: 0 }
+  }
 }
 
 // ── Tool handler ──
@@ -215,29 +271,51 @@ const browserSearchHandler: ToolHandler = {
       return encodeToolError('query is required')
     }
 
-    const engine = selectEngine(input.engine as string)
+    const requestedEngine = selectEngine(input.engine as string)
     const maxResults = Math.min((input.maxResults as number) ?? 10, 50)
 
+    // Try the requested engine first, then fall back to others if no results
+    const engineOrder: SearchEngine[] = [requestedEngine]
+    for (const e of ['bing', 'baidu', 'google'] as SearchEngine[]) {
+      if (!engineOrder.includes(e)) engineOrder.push(e)
+    }
+
+    let lastDiagnostics: ExtractOutput['diagnostics'] | null = null
+
     try {
-      const searchUrl = buildSearchUrl(engine, query, maxResults)
-      const webview = await navigateToSearch(searchUrl, ctx)
-      const results = await extractResults(webview, engine, maxResults)
+      for (const engine of engineOrder) {
+        const searchUrl = buildSearchUrl(engine, query, maxResults)
+        const webview = await navigateToSearch(searchUrl, ctx)
+        const { results, diagnostics } = await extractResults(webview, engine, maxResults)
+        lastDiagnostics = diagnostics
 
-      const response = {
-        engine: ENGINE_CONFIG[engine].label,
+        if (results.length > 0) {
+          return encodeStructuredToolResult({
+            engine: ENGINE_CONFIG[engine].label,
+            query,
+            results,
+            count: results.length
+          })
+        }
+
+        // No results from this engine, try next (unless it was the last one)
+        console.warn(`[BrowserSearch] ${engine} returned 0 results. Diagnostics:`, diagnostics)
+      }
+
+      // All engines returned 0 results
+      return encodeStructuredToolResult({
+        engine: ENGINE_CONFIG[requestedEngine].label,
         query,
-        results,
-        count: results.length
-      }
-
-      if (results.length === 0) {
-        return encodeStructuredToolResult({
-          ...response,
-          message: 'No organic results extracted. The search engine may have returned a CAPTCHA or the page structure changed. Try a different engine.'
-        })
-      }
-
-      return encodeStructuredToolResult(response)
+        results: [],
+        count: 0,
+        message: 'No organic results extracted from any search engine.',
+        diagnostics: lastDiagnostics ? {
+          pageTitle: lastDiagnostics.title,
+          pageUrl: lastDiagnostics.url,
+          linkCount: lastDiagnostics.allLinks,
+          bodyPreview: lastDiagnostics.bodySnippet.slice(0, 300)
+        } : null
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       return encodeToolError(`Browser search failed: ${message}`)
