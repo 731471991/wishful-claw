@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, Loader2, Package, Globe, Download } from 'lucide-react'
 import { Input } from '@renderer/components/ui/input'
@@ -16,14 +16,15 @@ export function McpMarketTab(): React.JSX.Element {
   const [results, setResults] = useState<RegistrySearchResult[]>([])
   const [selected, setSelected] = useState<RegistryServer | null>(null)
   const [searched, setSearched] = useState(false)
+  const loadedRef = useRef(false)
 
   const addServer = useMcpStore((s) => s.addServer)
 
-  const handleSearch = useCallback(async () => {
+  const handleSearch = useCallback(async (searchQuery?: string) => {
     setLoading(true)
     setSearched(true)
     try {
-      const servers = await searchMcpServers(query, 30)
+      const servers = await searchMcpServers(searchQuery ?? query, 30)
       setResults(servers)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -32,6 +33,13 @@ export function McpMarketTab(): React.JSX.Element {
       setLoading(false)
     }
   }, [query, t])
+
+  // Auto-load popular servers on mount
+  useEffect(() => {
+    if (loadedRef.current) return
+    loadedRef.current = true
+    handleSearch('')
+  }, [handleSearch])
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter') handleSearch()
