@@ -31,7 +31,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
     /// </summary>
     private static readonly HashSet<string> ProxiedCategories = new(StringComparer.OrdinalIgnoreCase)
     {
-        "desktop", "cron", "notify", "image-generate",
+        "desktop", "cron", "image-generate",
         "notebook", "widget", "team",
         "channel-plugin", "plugin", "ssh"
     };

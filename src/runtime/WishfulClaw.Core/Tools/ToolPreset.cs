@@ -50,7 +50,7 @@ public sealed class ToolPreset
             AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "file", "search", "shell", "web", "browser", "memory", "ask-user",
-                "plan", "goal", "capability"
+                "plan", "goal", "notify", "capability"
             },
             AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -65,7 +65,7 @@ public sealed class ToolPreset
             AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "file", "search", "shell", "web", "browser", "memory", "ask-user",
-                "plan", "goal", "capability"
+                "plan", "goal", "notify", "capability"
             },
             AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {

@@ -236,7 +236,9 @@ internal static partial class AgentLoop
     }
 
     /// <summary>
-    /// Emits the loop_end event.
+    /// Emits the loop_end event and triggers a desktop notification
+    /// to alert the user that the agent has finished working.
+    /// Skipped for sub-agents (SuppressTransportEvents = true).
     /// </summary>
     internal static async Task EmitLoopEndAsync(
         AgentRuntimeRunState state,
@@ -246,6 +248,47 @@ internal static partial class AgentLoop
         await AgentRuntimeTools.EmitAsync(
             state, context,
             new AgentRuntimeStreamEvent("loop_end", Reason: reason));
+
+        // Auto-notify on completion (top-level runs only, not sub-agents)
+        if (!state.SuppressTransportEvents)
+        {
+            try
+            {
+                await AgentRuntimeNotifyExecutor.ExecuteAsync(
+                    new AgentRuntimeNativeToolCall(
+                        $"auto-notify-{state.RunId}",
+                        "Notify",
+                        CreateAutoNotifyInput(reason)),
+                    context,
+                    state.CancellationToken);
+            }
+            catch
+            {
+                // Notification failure should never break the loop
+            }
+        }
+    }
+
+    private static JsonElement CreateAutoNotifyInput(string reason)
+    {
+        var title = reason switch
+        {
+            "completed" => "Agent completed",
+            "max_iterations" => "Agent reached iteration limit",
+            "cancelled" => "Agent cancelled",
+            _ => $"Agent stopped: {reason}"
+        };
+        var body = reason == "completed"
+            ? "The agent has finished its work."
+            : $"The agent stopped ({reason}).";
+        var json = $"{{\"title\":\"{EscapeJson(title)}\",\"body\":\"{EscapeJson(body)}\",\"type\":\"info\"}}";
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.Clone();
+    }
+
+    private static string EscapeJson(string value)
+    {
+        return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 
     // ── Provider dispatch ──
