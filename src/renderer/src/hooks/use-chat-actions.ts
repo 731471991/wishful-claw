@@ -5,6 +5,7 @@ import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { ensureRequestToolCatalogFresh } from '@renderer/lib/tools'
 import { useMcpStore } from '@renderer/stores/mcp-store'
+import { toolRegistry } from '@renderer/lib/agent/tool-registry'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -122,7 +123,14 @@ export function useChatActions() {
       // Fetch tool definitions from the C# Worker.
       // Preset selection: workingFolder present = coding, otherwise chat.
       const toolPreset = workingFolder ? 'coding' : 'chat'
-      const tools = await getToolDefinitions(toolPreset)
+      const workerTools = await getToolDefinitions(toolPreset)
+      // Merge renderer-registered tools (MCP, Skills, Extensions) into the tool list
+      // so the LLM can discover and call them. The Worker's tool/list only contains
+      // built-in tools; renderer-side tools are registered in toolRegistry.
+      const rendererDefs = toolRegistry.getStableDefinitions()
+      const workerNames = new Set((workerTools ?? []).map((t) => t.name))
+      const rendererOnly = rendererDefs.filter((d) => !workerNames.has(d.name))
+      const tools = [...(workerTools ?? []), ...rendererOnly]
 
       // System prompt is now built by the backend PromptBuilder
       // using personaId + workingFolder + language + userRules.
