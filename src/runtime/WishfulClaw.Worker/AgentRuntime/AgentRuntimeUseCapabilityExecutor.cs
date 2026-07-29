@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Worker.AgentRuntime;
 
@@ -8,19 +9,32 @@ namespace WishfulClaw.Worker.AgentRuntime;
 /// Unified capability executor — handles use_capability tool calls.
 ///
 /// Actions:
-///   list    — returns all available MCP servers, their tools, and Skills
+///   list    — returns all available MCP servers, their tools, Skills, and proxied built-in tools
 ///   inspect — returns the input schema for a specific capability
-///   call    — executes an MCP tool or Skill by capability_id
+///   call    — executes an MCP tool, Skill, or built-in tool by capability_id
 ///
-/// MCP list/inspect require a reverse-request to the renderer (which owns
-/// MCP connection state). MCP call delegates to AgentRuntimeMcpExecutor.
-/// Skill call delegates to AgentRuntimeSkillExecutor (reads SKILL.md locally).
+/// Capability ID formats:
+///   mcp-server:name      — MCP server (inspect only)
+///   mcp-tool:server/tool — MCP tool (inspect, call)
+///   skill:name           — Skill (inspect, call)
+///   builtin:ToolName     — Built-in Worker tool in a proxied category (inspect, call)
 ///
 /// Inspired by Reasonix's UseCapabilityTool.
 /// </summary>
 internal static class AgentRuntimeUseCapabilityExecutor
 {
     private const string ToolName = "use_capability";
+
+    /// <summary>
+    /// Tool categories that are NOT directly registered in chat/coding presets.
+    /// Tools in these categories are accessible only via use_capability.
+    /// </summary>
+    private static readonly HashSet<string> ProxiedCategories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "desktop", "cron", "notify", "image-generate",
+        "notebook", "widget", "team",
+        "channel-plugin", "plugin", "ssh"
+    };
 
     public static bool IsUseCapabilityTool(string toolName)
     {
@@ -29,7 +43,10 @@ internal static class AgentRuntimeUseCapabilityExecutor
 
     public static async Task<string> ExecuteAsync(
         AgentRuntimeNativeToolCall call,
+        AgentRuntimeRunState state,
         IWorkerRequestContext context,
+        ToolRegistry? registry,
+        string? workingFolder,
         CancellationToken cancellationToken)
     {
         var action = (JsonHelpers.GetString(call.Input, "action") ?? "list").Trim().ToLowerInvariant();
@@ -37,9 +54,9 @@ internal static class AgentRuntimeUseCapabilityExecutor
 
         return action switch
         {
-            "list" => await ListCapabilitiesAsync(context, cancellationToken),
-            "inspect" => await InspectCapabilityAsync(context, capabilityId, cancellationToken),
-            "call" => await CallCapabilityAsync(call, context, capabilityId, cancellationToken),
+            "list" => await ListCapabilitiesAsync(context, registry, cancellationToken),
+            "inspect" => await InspectCapabilityAsync(context, registry, capabilityId, cancellationToken),
+            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, capabilityId, cancellationToken),
             _ => EncodeError($"Unknown action: {action}. Use list, inspect, or call.")
         };
     }
@@ -48,6 +65,7 @@ internal static class AgentRuntimeUseCapabilityExecutor
 
     private static async Task<string> ListCapabilitiesAsync(
         IWorkerRequestContext context,
+        ToolRegistry? registry,
         CancellationToken cancellationToken)
     {
         try
@@ -59,7 +77,7 @@ internal static class AgentRuntimeUseCapabilityExecutor
                 CreateEmptyObject(),
                 cancellationToken);
 
-            return EncodeListResponse(mcpResult);
+            return EncodeListResponse(mcpResult, registry);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -71,6 +89,7 @@ internal static class AgentRuntimeUseCapabilityExecutor
 
     private static async Task<string> InspectCapabilityAsync(
         IWorkerRequestContext context,
+        ToolRegistry? registry,
         string capabilityId,
         CancellationToken cancellationToken)
     {
@@ -136,6 +155,13 @@ internal static class AgentRuntimeUseCapabilityExecutor
             return EncodeSkillInspectResponse(skillName);
         }
 
+        // Built-in tool: builtin:ToolName
+        if (capabilityId.StartsWith("builtin:", StringComparison.Ordinal))
+        {
+            var toolName = capabilityId["builtin:".Length..];
+            return EncodeBuiltinInspectResponse(registry, toolName);
+        }
+
         return EncodeError($"Unknown capability_id format: {capabilityId}");
     }
 
@@ -143,7 +169,10 @@ internal static class AgentRuntimeUseCapabilityExecutor
 
     private static async Task<string> CallCapabilityAsync(
         AgentRuntimeNativeToolCall call,
+        AgentRuntimeRunState state,
         IWorkerRequestContext context,
+        ToolRegistry? registry,
+        string? workingFolder,
         string capabilityId,
         CancellationToken cancellationToken)
     {
@@ -184,6 +213,33 @@ internal static class AgentRuntimeUseCapabilityExecutor
                 CreateSkillInput(skillName));
 
             return await AgentRuntimeSkillExecutor.ExecuteAsync(skillCall, cancellationToken);
+        }
+
+        // Built-in tool: builtin:ToolName → dispatch via ToolDispatchRouter
+        if (capabilityId.StartsWith("builtin:", StringComparison.Ordinal))
+        {
+            var toolName = capabilityId["builtin:".Length..];
+            if (registry is null || !registry.IsRegistered(toolName))
+            {
+                return EncodeError($"Built-in tool not found: {toolName}");
+            }
+
+            // Verify the tool is in a proxied category (not a core tool that should be called directly)
+            var category = registry.GetCategory(toolName);
+            if (category is null || !ProxiedCategories.Contains(category))
+            {
+                return EncodeError($"Tool '{toolName}' is not a proxied capability. Call it directly.");
+            }
+
+            var builtinCall = new AgentRuntimeNativeToolCall(
+                call.Id,
+                toolName,
+                arguments);
+
+            var (output, isError) = await ToolDispatchRouter.DispatchAsync(
+                builtinCall, state, context, registry, workingFolder);
+
+            return isError && IsJsonError(output) ? output : output;
         }
 
         return EncodeError($"Unknown capability_id format for call: {capabilityId}");
@@ -239,9 +295,47 @@ internal static class AgentRuntimeUseCapabilityExecutor
         return null;
     }
 
+    private static bool IsJsonError(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("error", out _);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Collect built-in tools from the registry that belong to proxied categories.
+    /// </summary>
+    private static List<(string Name, string Description, string Category)> GetProxiedBuiltinTools(ToolRegistry? registry)
+    {
+        var result = new List<(string, string, string)>();
+        if (registry is null) return result;
+
+        foreach (var name in registry.GetToolNames())
+        {
+            var category = registry.GetCategory(name);
+            if (category is null) continue;
+            if (!ProxiedCategories.Contains(category)) continue;
+
+            // Get description from the tool definition
+            if (registry.TryGetExecutor(name, out var executor) && executor is not null)
+            {
+                result.Add((name, executor.Description, category));
+            }
+        }
+
+        result.Sort((a, b) => string.Compare(a.Item1, b.Item1, StringComparison.Ordinal));
+        return result;
+    }
+
     // ── encoding ──
 
-    private static string EncodeListResponse(JsonElement listResult)
+    private static string EncodeListResponse(JsonElement listResult, ToolRegistry? registry)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -307,6 +401,33 @@ internal static class AgentRuntimeUseCapabilityExecutor
                 }
             }
 
+            // Built-in proxied tools
+            var builtinTools = GetProxiedBuiltinTools(registry);
+            if (builtinTools.Count > 0)
+            {
+                // Group by category for readability
+                foreach (var group in builtinTools.GroupBy(t => t.Category))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("capability_id", $"builtin-group:{group.Key}");
+                    writer.WriteString("type", "builtin-group");
+                    writer.WriteString("name", group.Key);
+                    writer.WriteString("description", $"Built-in tools: {group.Key}");
+                    writer.WritePropertyName("tools");
+                    writer.WriteStartArray();
+                    foreach (var (name, desc, _) in group)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("capability_id", $"builtin:{name}");
+                        writer.WriteString("name", name);
+                        writer.WriteString("description", desc);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                    writer.WriteEndObject();
+                }
+            }
+
             writer.WriteEndArray();
             writer.WriteEndObject();
         }
@@ -337,6 +458,35 @@ internal static class AgentRuntimeUseCapabilityExecutor
             writer.WriteString("type", "skill");
             writer.WriteString("name", skillName);
             writer.WriteString("description", $"Skill: {skillName}. Use action=call to load the full SKILL.md content.");
+            writer.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static string EncodeBuiltinInspectResponse(ToolRegistry? registry, string toolName)
+    {
+        if (registry is null || !registry.TryGetExecutor(toolName, out var executor) || executor is null)
+        {
+            return EncodeError($"Built-in tool not found: {toolName}");
+        }
+
+        var category = registry.GetCategory(toolName);
+        if (category is null || !ProxiedCategories.Contains(category))
+        {
+            return EncodeError($"Tool '{toolName}' is not a proxied capability.");
+        }
+
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("capability_id", $"builtin:{toolName}");
+            writer.WriteString("type", "builtin");
+            writer.WriteString("name", toolName);
+            writer.WriteString("category", category);
+            writer.WriteString("description", executor.Description);
+            writer.WritePropertyName("input_schema");
+            executor.InputSchema.WriteTo(writer);
             writer.WriteEndObject();
         }
         return System.Text.Encoding.UTF8.GetString(stream.ToArray());

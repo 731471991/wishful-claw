@@ -75,7 +75,7 @@ internal static class ToolDispatchRouter
             try
             {
                 toolOutput = await AgentRuntimeUseCapabilityExecutor.ExecuteAsync(
-                    toolCall, context, state.CancellationToken);
+                    toolCall, state, context, registry, workingFolder, state.CancellationToken);
                 isToolError = IsJsonError(toolOutput);
             }
             catch (OperationCanceledException) { throw; }

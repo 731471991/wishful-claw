@@ -125,10 +125,11 @@ export function buildMemoryContext(
 }
 
 /**
- * Build a capability route text block listing available MCP servers/tools
- * and Skills. This text is injected into the system prompt so the agent
- * knows what it can call via use_capability — without registering each
- * tool individually (which would bloat the LLM request and cause HTTP 413).
+ * Build a capability route text block listing available MCP servers/tools,
+ * Skills, and proxied built-in tools. This text is injected into the system
+ * prompt so the agent knows what it can call via use_capability — without
+ * registering each tool individually (which would bloat the LLM request and
+ * cause HTTP 413).
  *
  * Inspired by Reasonix's RenderTransientBlock.
  */
@@ -154,7 +155,12 @@ function buildCapabilityRoute(): string | null {
     lines.push(`- Skill ${skill.name}: ${skill.description}`)
   }
 
-  if (lines.length === 0) return null
+  // Built-in proxied tools (low-frequency, not in preset)
+  lines.push(
+    '- Built-in extended tools (desktop automation, cron scheduling, notify,',
+    '  image generation, notebook editing, widgets, team management,',
+    '  channel plugins, plugin management, SSH info)'
+  )
 
   return [
     '- Capabilities (use use_capability tool to call):',
