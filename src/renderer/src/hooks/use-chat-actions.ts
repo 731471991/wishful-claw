@@ -130,16 +130,20 @@ export function useChatActions() {
       // initialization; if tools aren't ready yet, send without them —
       // the agent can still respond, just without tool-calling capability.
       const toolPreset = workingFolder ? 'coding' : 'chat'
+      const settings = useSettingsStore.getState()
       const workerTools = getCachedTools()
       fetchToolDefinitions(toolPreset) // fire-and-forget background fetch
+      // Filter out WebSearch/WebFetch when web search is not enabled.
+      // The Worker registers them unconditionally via WebToolProvider,
+      // but they require configuration (provider + API key) to work.
+      const webSearchEnabled = settings.webSearchEnabled
+      const filteredWorkerTools = (workerTools ?? []).filter(
+        (t) => webSearchEnabled || (t.name !== 'WebSearch' && t.name !== 'WebFetch')
+      )
       const rendererDefs = toolRegistry.getStableDefinitions()
-      const workerNames = new Set((workerTools ?? []).map((t) => t.name))
+      const workerNames = new Set(filteredWorkerTools.map((t) => t.name))
       const rendererOnly = rendererDefs.filter((d) => !workerNames.has(d.name))
-      const tools = [...(workerTools ?? []), ...rendererOnly]
-
-      // System prompt is now built by the backend PromptBuilder
-      // using personaId + workingFolder + language + userRules.
-      const settings = useSettingsStore.getState()
+      const tools = [...filteredWorkerTools, ...rendererOnly]
 
       const provider = {
         id: activeProvider.id,
