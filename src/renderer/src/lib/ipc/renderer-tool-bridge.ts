@@ -60,7 +60,7 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
       // loads but prevents infinite hangs if the webview never attaches.
       const result = await withTimeout(
         handleNativeBrowserToolRequest(payload.params),
-        20_000,
+        60_000,
         'browser/tool-request'
       )
       await sendRendererToolResponse({
