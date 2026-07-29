@@ -96,6 +96,7 @@ export const COMPACT_BUILTIN_TOOL_NAMES = new Set([
   'BrowserClick',
   'BrowserGetContent',
   'BrowserNavigate',
+  'BrowserSearch',
   'BrowserScreenshot',
   'BrowserScroll',
   'BrowserSnapshot',

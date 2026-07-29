@@ -125,9 +125,14 @@ export function buildMemoryContext(
 function buildSessionStateContext(sessionId: string): string | null {
   const parts: string[] = ['Session State:']
 
+  // BrowserSearch is always available (uses built-in browser, no API key)
+  parts.push(
+    '- Browser Search: available. Use the BrowserSearch tool to search the web via the built-in browser when you need current external information.'
+  )
+
   if (useSettingsStore.getState().webSearchEnabled) {
     parts.push(
-      '- Web Search: enabled. Use the WebSearch tool for current external information when useful.'
+      '- API Web Search: enabled. Use the WebSearch tool for AI-powered search (requires API key). Prefer WebSearch over BrowserSearch when available for higher quality results.'
     )
   }
 

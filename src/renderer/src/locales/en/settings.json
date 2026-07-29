@@ -727,7 +727,12 @@
     "disabledError": "Web search is disabled. Please enable it in settings.",
     "apiKeyRequired": "API key is required for this provider.",
     "testSuccess": "Web search test successful! Found {{count}} results.",
-    "testFailed": "Web search test failed: {{error}}"
+    "testFailed": "Web search test failed: {{error}}",
+    "browserSearchTitle": "Built-in Browser Search",
+    "browserSearchDesc": "Searches directly via the built-in Chromium browser. No API key required, always available. Supports Bing, Baidu, and Google.",
+    "browserSearchHint": "The Agent can use the BrowserSearch tool directly. Search results are visible in the browser panel on the right.",
+    "apiSearchTitle": "API Search (Optional)",
+    "apiSearchDesc": "AI-enhanced search via API providers. Higher quality results but requires an API key."
   },
   "skills": {
     "tabs": {

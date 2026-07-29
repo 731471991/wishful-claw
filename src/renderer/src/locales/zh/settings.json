@@ -837,7 +837,12 @@
     "disabledError": "联网搜索已禁用。请在设置中启用。",
     "apiKeyRequired": "此提供商需要 API 密钥。",
     "testSuccess": "联网搜索测试成功！找到 {{count}} 条结果。",
-    "testFailed": "联网搜索测试失败：{{error}}"
+    "testFailed": "联网搜索测试失败：{{error}}",
+    "browserSearchTitle": "内置浏览器搜索",
+    "browserSearchDesc": "基于内置 Chromium 浏览器直接搜索，无需 API 密钥，始终可用。支持 Bing、Baidu、Google 三个引擎。",
+    "browserSearchHint": "Agent 可直接使用 BrowserSearch 工具进行搜索，搜索结果会显示在右侧浏览器面板中。",
+    "apiSearchTitle": "API 搜索（可选）",
+    "apiSearchDesc": "通过 API 提供商进行 AI 增强搜索，结果质量更高但需要配置 API 密钥。"
   },
   "skills": {
     "tabs": {

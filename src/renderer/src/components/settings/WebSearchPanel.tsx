@@ -84,8 +84,24 @@ export function WebSearchPanel(): React.JSX.Element {
         <p className="text-sm text-muted-foreground">{t('websearch.subtitle')}</p>
       </div>
 
-      {/* Enable Web Search */}
+      {/* Built-in Browser Search (always available, no config needed) */}
+      <section className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+        <div className="flex items-center gap-2">
+          <Search className="size-4 text-primary" />
+          <h3 className="text-sm font-medium">{t('websearch.browserSearchTitle')}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">{t('websearch.browserSearchDesc')}</p>
+        <p className="text-xs text-muted-foreground/70">{t('websearch.browserSearchHint')}</p>
+      </section>
+
+      <Separator />
+
+      {/* API Search (optional, requires config) */}
       <section className="space-y-3">
+        <div>
+          <label className="text-sm font-medium">{t('websearch.apiSearchTitle')}</label>
+          <p className="text-xs text-muted-foreground">{t('websearch.apiSearchDesc')}</p>
+        </div>
         <div className="flex items-center justify-between max-w-lg">
           <div>
             <label className="text-sm font-medium">{t('websearch.enable')}</label>
