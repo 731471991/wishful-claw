@@ -13,6 +13,7 @@ import { MainLayout } from '@renderer/components/layout/MainLayout'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
 import { attachRendererToolBridge } from '@renderer/lib/ipc/renderer-tool-bridge'
 import { registerAllTools } from '@renderer/lib/tools'
+import { useMcpStore } from '@renderer/stores/mcp-store'
 import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
 import { registerAllViewers } from '@renderer/lib/preview/register-viewers'
 
@@ -44,6 +45,10 @@ function App(): React.JSX.Element | null {
     // Register all tools (fs, search, bash, memory, etc.) for the frontend tool registry
     registerAllTools().catch((err) => {
       console.warn('registerAllTools failed (some tools may not be available):', err)
+    })
+    // Initialize MCP servers at startup so they're ready before first message
+    useMcpStore.getState().ensureConversationReady(null).catch((err) => {
+      console.warn('MCP initialization failed:', err)
     })
   }, [])
 

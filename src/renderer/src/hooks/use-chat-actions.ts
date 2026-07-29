@@ -115,13 +115,13 @@ export function useChatActions() {
         }
       }
 
-      // Ensure MCP servers are connected before refreshing tool catalog
-      await useMcpStore.getState().ensureConversationReady(projectId ?? null)
-      // Refresh dynamic tool catalog (skills, sub-agents, extensions, MCP)
-      await ensureRequestToolCatalogFresh()
+      // MCP connection and tool catalog refresh are handled at app startup
+      // (registerAllTools in App.tsx). Fire-and-forget here only as a safety net
+      // — don't block message rendering on them.
+      void useMcpStore.getState().ensureConversationReady(projectId ?? null)
+      void ensureRequestToolCatalogFresh()
 
-      // Fetch tool definitions from the C# Worker.
-      // Preset selection: workingFolder present = coding, otherwise chat.
+      // Fetch tool definitions from the C# Worker (cached after first call).
       const toolPreset = workingFolder ? 'coding' : 'chat'
       const workerTools = await getToolDefinitions(toolPreset)
       // Merge renderer-registered tools (MCP, Skills, Extensions) into the tool list
