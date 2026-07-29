@@ -873,7 +873,7 @@
     },
     "installer": {
       "title": "Skill 安装助手",
-      "emptyHint2": "从市场复制安装提示词，粘贴到这里发送给 Agent 执行安装"
+      "emptyHint2": "告诉 Agent 你想安装的技能名称，例如：\n“帮我安装 web-composite-search”\nAgent 会自动搜索市场并完成安装"
     }
   },
   "mcp": {

@@ -763,7 +763,7 @@
     },
     "installer": {
       "title": "Skill Installer",
-      "emptyHint2": "Copy an install prompt from the market, paste it here and send to the Agent"
+      "emptyHint2": "Tell the Agent which skill you want to install, e.g.:\n“Install web-composite-search”\nThe Agent will search the marketplace and install it automatically"
     }
   },
   "mcp": {
