@@ -4,6 +4,7 @@ import { Search, Loader2, Package, Globe, Download } from 'lucide-react'
 import { Input } from '@renderer/components/ui/input'
 import { Button } from '@renderer/components/ui/button'
 import { toast } from 'sonner'
+import { cn } from '@renderer/lib/utils'
 import { searchMcpServers, isOneClickInstallable } from '@renderer/lib/mcp/mcp-registry'
 import type { RegistrySearchResult, RegistryServer } from '@renderer/lib/mcp/mcp-registry'
 import { useMcpStore } from '@renderer/stores/mcp-store'
@@ -105,6 +106,22 @@ export function McpMarketTab(): React.JSX.Element {
     )
   }
 
+  // Quick filter tags — click to search common categories
+  const quickTags = [
+    { label: t('mcp.market.tagAll', { defaultValue: '全部' }), query: '' },
+    { label: t('mcp.market.tagFile', { defaultValue: '文件' }), query: 'filesystem' },
+    { label: t('mcp.market.tagSearch', { defaultValue: '搜索' }), query: 'search' },
+    { label: t('mcp.market.tagDatabase', { defaultValue: '数据库' }), query: 'database' },
+    { label: t('mcp.market.tagBrowser', { defaultValue: '浏览器' }), query: 'browser puppeteer' },
+    { label: t('mcp.market.tagGit', { defaultValue: 'Git' }), query: 'github git' },
+    { label: t('mcp.market.tagMemory', { defaultValue: '记忆' }), query: 'memory' }
+  ]
+
+  const handleTagClick = (tagQuery: string): void => {
+    setQuery(tagQuery)
+    handleSearch(tagQuery)
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Search bar */}
@@ -117,6 +134,27 @@ export function McpMarketTab(): React.JSX.Element {
           placeholder={t('mcp.market.searchPlaceholder', { defaultValue: 'Search MCP servers...' })}
           className="h-8 pl-8 text-xs"
         />
+      </div>
+
+      {/* Quick filter tags */}
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b shrink-0 overflow-x-auto">
+        {quickTags.map((tag) => {
+          const active = query === tag.query
+          return (
+            <button
+              key={tag.label}
+              onClick={() => handleTagClick(tag.query)}
+              className={cn(
+                'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] transition-colors',
+                active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+              )}
+            >
+              {tag.label}
+            </button>
+          )
+        })}
       </div>
 
       {/* Results */}
