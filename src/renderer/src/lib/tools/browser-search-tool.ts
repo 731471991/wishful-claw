@@ -493,7 +493,6 @@ const browserSearchHandler: ToolHandler = {
       '',
       'Results include title, URL, snippet, and source engine.',
       'Summarize the aggregated results for the user directly.',
-      'Use WebFetch to read full content of any result page if needed.'
     ].join('\n'),
     inputSchema: {
       type: 'object',

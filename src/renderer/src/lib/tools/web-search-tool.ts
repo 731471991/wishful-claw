@@ -99,14 +99,12 @@ export function registerWebSearchTool(): void {
   if (_registered) return
   _registered = true
   toolRegistry.register(webSearchHandler)
-  toolRegistry.register(webFetchHandler)
 }
 
 export function unregisterWebSearchTool(): void {
   if (!_registered) return
   _registered = false
   toolRegistry.unregister(webSearchHandler.definition.name)
-  toolRegistry.unregister(webFetchHandler.definition.name)
 }
 
 export function isWebSearchToolRegistered(): boolean {
