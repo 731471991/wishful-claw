@@ -17,6 +17,8 @@ interface EngineConfig {
   searchUrl: string
   type: string
   timeout: number
+  /** Base URL for resolving relative links in search results */
+  baseUrl?: string
 }
 
 interface IntentConfig {
@@ -25,27 +27,15 @@ interface IntentConfig {
 }
 
 // ── Engine configurations ──
-// Adapted from web-composite-search skill — engines that work with plain HTTP
-// (no Playwright/browser rendering required). We use web:fetch IPC which sends
-// a proper HTTP request with browser User-Agent from the .NET Worker.
+// Engines that work with plain HTTP fetch (no JS rendering required).
+// Baidu is excluded: it returns a CAPTCHA page for non-browser requests.
+// 360 Search is excluded: its results are JS-rendered with no HTML content.
 
 const ENGINES: Record<string, EngineConfig> = {
   // ── Chinese general ──
-  baidu: {
-    name: '百度',
-    searchUrl: 'https://www.baidu.com/s?wd={query}&rn=10',
-    type: 'general',
-    timeout: 10000
-  },
   bing_cn: {
     name: '必应中文',
     searchUrl: 'https://cn.bing.com/search?q={query}&ensearch=0',
-    type: 'general',
-    timeout: 10000
-  },
-  bing_intl: {
-    name: '必应国际',
-    searchUrl: 'https://www.bing.com/search?q={query}',
     type: 'general',
     timeout: 10000
   },
@@ -53,16 +43,17 @@ const ENGINES: Record<string, EngineConfig> = {
     name: '搜狗',
     searchUrl: 'https://www.sogou.com/web?query={query}',
     type: 'general',
-    timeout: 10000
-  },
-  so_360: {
-    name: '360搜索',
-    searchUrl: 'https://m.so.com/s?q={query}',
-    type: 'general',
-    timeout: 10000
+    timeout: 10000,
+    baseUrl: 'https://www.sogou.com'
   },
 
   // ── International ──
+  bing_intl: {
+    name: '必应国际',
+    searchUrl: 'https://www.bing.com/search?q={query}',
+    type: 'general',
+    timeout: 10000
+  },
   duckduckgo: {
     name: 'DuckDuckGo',
     searchUrl: 'https://lite.duckduckgo.com/lite/?q={query}',
@@ -111,7 +102,7 @@ const ENGINES: Record<string, EngineConfig> = {
 
 const INTENT_CONFIG: Record<string, IntentConfig> = {
   general: {
-    engines: ['baidu', 'bing_cn', 'bing_intl', 'sogou', 'so_360', 'duckduckgo'],
+    engines: ['bing_cn', 'bing_intl', 'sogou', 'duckduckgo'],
     maxConcurrent: 4
   },
   tech: {
@@ -123,11 +114,11 @@ const INTENT_CONFIG: Record<string, IntentConfig> = {
     maxConcurrent: 3
   },
   finance: {
-    engines: ['baidu', 'bing_cn', 'sogou'],
+    engines: ['bing_cn', 'sogou', 'bing_intl'],
     maxConcurrent: 3
   },
   social: {
-    engines: ['sogou', 'baidu', 'bing_cn'],
+    engines: ['sogou', 'bing_cn', 'bing_intl'],
     maxConcurrent: 2
   },
   knowledge: {
@@ -163,10 +154,18 @@ function detectIntent(query: string): string {
 // ── HTML extraction per engine ──
 
 function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
+  const engine = ENGINES[engineId]
+  const engineName = engine?.name ?? engineId
+
+  // Inject <base> tag so relative URLs (e.g. /link?url=...) resolve correctly
+  const baseUrl = engine?.baseUrl
+  const htmlWithBase = baseUrl
+    ? html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseUrl}">`)
+    : html
+
   const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
+  const doc = parser.parseFromString(htmlWithBase, 'text/html')
   const results: SearchResultItem[] = []
-  const engineName = ENGINES[engineId]?.name ?? engineId
 
   const addResult = (title: string, url: string, snippet: string): void => {
     if (title && url && title.length >= 5) {
@@ -180,16 +179,6 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
   }
 
   switch (engineId) {
-    case 'baidu':
-      doc.querySelectorAll('.result.c-container, .c-container, .result').forEach((item) => {
-        const titleEl = item.querySelector('h3 a, .t a')
-        if (!titleEl) return
-        const anchor = titleEl as HTMLAnchorElement
-        const snippetEl = item.querySelector('.c-abstract, [class*="content-right"], [class*="abstract"]')
-        addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
-      })
-      break
-
     case 'bing_cn':
     case 'bing_intl':
       doc.querySelectorAll('#b_results > li.b_algo, #b_results .b_algo').forEach((item) => {
@@ -209,33 +198,35 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
       break
 
     case 'sogou':
-      doc.querySelectorAll('.result, .vrwrap, .rb').forEach((item) => {
-        const titleEl = item.querySelector('h3 a, .vr-title a, a[href]')
+      // Sogou uses .vrwrap containers with h3.vr-title > a for title
+      // and .space-txt / .fz-mid for snippet
+      doc.querySelectorAll('.vrwrap, .result, .rb').forEach((item) => {
+        const titleEl = item.querySelector('h3.vr-title a, h3 a, .vr-title a')
         if (!titleEl) return
         const anchor = titleEl as HTMLAnchorElement
-        const snippetEl = item.querySelector('.space-txt, .str-text-info, p, .ft')
-        addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
-      })
-      break
-
-    case 'so_360':
-      doc.querySelectorAll('.result, .g-card').forEach((item) => {
-        const titleEl = item.querySelector('a[href]')
-        if (!titleEl) return
-        const anchor = titleEl as HTMLAnchorElement
-        const snippetEl = item.querySelector('p, .res-desc')
+        const snippetEl = item.querySelector('.space-txt, .str-text-info, .fz-mid, p')
         addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
       })
       break
 
     case 'duckduckgo':
-      doc.querySelectorAll('.result-link, .links_main, .result, tr.result').forEach((item) => {
+      // DuckDuckGo lite uses table rows
+      doc.querySelectorAll('tr.result, .result, .links_main').forEach((item) => {
         const linkEl = item.querySelector('a.result-link, a[href]')
         if (!linkEl) return
         const anchor = linkEl as HTMLAnchorElement
         const snippetEl = item.querySelector('.snippet, .snippet-text, td.snippet')
         addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
       })
+      // Fallback: any link that looks like a result
+      if (results.length === 0) {
+        doc.querySelectorAll('a.result-link, .links_main a[href]').forEach((a) => {
+          const anchor = a as HTMLAnchorElement
+          if (anchor.href && !anchor.href.includes('duckduckgo.com')) {
+            addResult(anchor.textContent?.trim() ?? '', anchor.href, '')
+          }
+        })
+      }
       break
 
     case 'brave':
@@ -260,7 +251,7 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
       break
 
     case 'arxiv':
-      // ArXiv returns Atom XML, parse with DOMParser as XML
+      // ArXiv returns Atom XML, parse with DOMParser
       doc.querySelectorAll('entry').forEach((entry) => {
         const titleEl = entry.querySelector('title')
         const idEl = entry.querySelector('id')
@@ -300,7 +291,9 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
       const href = anchor.href
       // Skip internal links
       if (href.includes('bing.com') && href.includes('search')) return
-      if (href.includes('baidu.com') && href.includes('s?')) return
+      if (href.includes('sogou.com') && href.includes('link?')) {
+        // Sogou redirect links are OK — they're search results
+      }
       if (href.includes('google.com')) return
       addResult(anchor.textContent?.trim() ?? '', href, '')
     })
@@ -487,15 +480,15 @@ const browserSearchHandler: ToolHandler = {
       'combination. Queries multiple search engines in parallel, then',
       'deduplicates and ranks results.',
       '',
-      'Supported engines: Baidu, Bing (CN/Intl), Sogou, 360, DuckDuckGo,',
+      'Supported engines: Bing (CN/Intl), Sogou, DuckDuckGo,',
       'Brave, GitHub, ArXiv, Wikipedia (zh/en).',
       '',
       'Intent routing:',
-      '- general (default): Baidu + Bing + Sogou + 360 + DuckDuckGo',
+      '- general (default): Bing CN + Bing Intl + Sogou + DuckDuckGo',
       '- tech: GitHub + Bing Intl + DuckDuckGo',
       '- academic: ArXiv + Bing Intl + Wikipedia',
-      '- finance: Baidu + Bing CN + Sogou',
-      '- social: Sogou + Baidu + Bing CN',
+      '- finance: Bing CN + Sogou + Bing Intl',
+      '- social: Sogou + Bing CN + Bing Intl',
       '- knowledge: Wikipedia (zh/en) + Bing Intl',
       '',
       'Results include title, URL, snippet, and source engine.',
