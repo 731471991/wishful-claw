@@ -4,6 +4,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { toolRegistry } from '@renderer/lib/agent/tool-registry'
+import { getCachedTools, fetchToolDefinitions } from '@renderer/lib/tools/tool-cache'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -12,33 +13,6 @@ export interface SendMessageOptions {
   goalObjective?: string
   imageEdit?: unknown
   [key: string]: unknown
-}
-
-// Tool definitions fetched from the C# Worker at startup.
-// getCachedTools() returns synchronously — whatever is ready, or null.
-// fetchToolDefinitions() updates the cache in the background.
-let cachedTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null
-let cachedPreset: string | null = null
-let fetchInFlight: Promise<void> | null = null
-
-function getCachedTools(): typeof cachedTools {
-  return cachedTools
-}
-
-export function fetchToolDefinitions(preset = 'chat'): void {
-  if (cachedTools && cachedPreset === preset) return
-  if (fetchInFlight) return
-  fetchInFlight = (async () => {
-    try {
-      const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', { preset })
-      cachedTools = result.tools
-      cachedPreset = preset
-    } catch {
-      // Worker not ready yet; will retry on next call
-    } finally {
-      fetchInFlight = null
-    }
-  })()
 }
 
 
