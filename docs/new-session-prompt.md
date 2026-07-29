@@ -14,13 +14,12 @@
 
 1. `AGENTS.md` — 项目结构、分层约定、参考源码路径、Git 提交规范、大文件拆分规则
 2. `docs/dev-workflow.md` — 六阶段开发工作流 SOP
-3. `docs/plans/iter-12/plan.md` — 迭代十二计划文档
+3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五）
 4. `docs/smoke-test-checklist.md` — 冒烟测试清单（含本轮修复记录）
-5. `docs/sub-agent-architecture.md` — 子 Agent 架构设计方案
 
 ## 参考源码位置（笔记本实际路径）
 
-- OpenCowork：`D:\claw\OpenCowork`（Agent Loop / 工具链 / Provider / 前端 UI）
+- OpenCowork：`D:\claw\OpenCowork`（Agent Loop / 工具链 / Provider / 前端 UI / Skill / MCP）
 - KodaClaw：`D:\claw\koda-claw`（记忆 / 人格设计思路）
 - OpenClaw.net：`D:\claw\openclaw.net`（记忆主动回忆 / 上下文预算）
 - DeepSeek-Reasonix：`D:\claw\DeepSeek-Reasonix`（prefix cache / 重试策略参考）
@@ -29,16 +28,17 @@
 
 - 迭代一~八已完成，代码已合并到 `main`（main 最新 commit: `e04aa28`）
 - 当前分支 `dev/iter-12`，已 push 到 origin
-- 最新 commit: `61f6ff3`（feat: prefix cache optimization, retry strategy, sub-agent panel fixes, prompt optimizer fix）
+- 最新 commit: `c9ad608`（docs: update new-session-prompt for iter-12 current state）
 
 ## 迭代十二已完成的工作
 
-### SSH SFTP + 远程执行基础设施
+### SSH SFTP + 远程执行基础设施（后延测试）
 - SSH 连接管理（connection-manager / auth / repository）
 - DB 建表 `ssh_connections` + CRUD
 - Main 进程 SSH IPC 注册（ssh:connection:list/create/update/delete + ssh:exec）
 - AgentRuntimeSshToolExecutor 精简版
 - 密码用 safeStorage 加密存储
+- **SSH + 终端面板冒烟测试后延**，不阻塞后续迭代
 
 ### 提示词系统重构
 - PromptBuilder 重构：personaId + workingFolder + language + userRules + sshConnectionId
@@ -85,14 +85,45 @@
 - 取消后消息丢失修复（cancelStream 持久化）
 - 会话时间显示优化（跨天"昨天 HH:MM"、中文化、常驻显示）
 
-## 迭代十二尚未完成的事项
+## 本次任务：迭代十四 + 十五（Skill 市场 + MCP 管理）
 
-1. **SSH + 终端面板测试**（Plan 12-2 ~ 12-4 的验证）：SSH 远程执行、终端旁观模式、SSH 连接管理 UI 尚未冒烟测试
-2. **冒烟测试剩余项**：子 Agent（34-37）、记忆系统（25-29）、稳定性观察（49-52）尚未测试
-3. **代码拆分继续**：仍有 30+ 个文件超 500 行
-4. **agent:changes 后端记录**：Plan 11-5 中 Agent 变更审查的后端持久化
-5. **迭代验证 + 合并 main**：dev/iter-12 尚未合并 main，需用户确认后合并、打 tag v0.12.0
-6. **后续迭代 13~15**（聊天窗渲染 / Skill 市场 / MCP 管理）冻结，优先稳定性
+SSH 相关测试后延，迭代十三（聊天窗渲染调整）放到下个 MVP 版本。本次会话推进迭代十四和十五，两者相互独立可并行。
+
+### 迭代十四：Skill 市场
+
+**目标**：实现 Skill 的安装/卸载/列表管理和在线市场。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | SKILL.md 解析和工具注册 — 读取 Skill 目录下的 SKILL.md，解析工具定义并注册到 ToolRegistry |
+| 2 | Skill 安装/卸载/列表管理 — 复用已有 `SkillsMenu` 组件和 `skills-store` |
+| 3 | 在线 Skill 市场浏览和安装 — 对接 Skill 仓库 API，浏览/搜索/安装 |
+
+**已有基础设施**：前端已有 `SkillsMenu` 组件骨架、`skills-store`。参考 OpenCowork 的 Skill 实现。
+
+**验证标准**：从 Skill 市场安装一个 Skill → Agent 对话中能使用该 Skill 提供的工具 → 卸载后工具不可用。
+
+### 迭代十五：MCP 管理
+
+**目标**：实现 MCP Server 的配置管理和工具调用。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | MCP Server 配置管理 — 复用已有 `mcp-store`，实现增删改查 |
+| 2 | MCP 工具动态注册和调用 — MCP Server 启动后自动发现工具并注册 |
+| 3 | MCP 状态监控 — 连接状态、工具列表、调用日志 |
+
+**已有基础设施**：前端已有 `mcp-store` 骨架。参考 OpenCowork 的 MCP 客户端实现。
+
+**验证标准**：配置一个 MCP Server → 启动后自动发现其工具 → Agent 对话中能调用 MCP 工具 → 停止后工具不可用。
+
+## 迭代十二遗留事项（不阻塞本次迭代）
+
+1. SSH + 终端面板冒烟测试（后延）
+2. 冒烟测试剩余项：子 Agent（34-37）、记忆系统（25-29）、稳定性观察（49-52）
+3. 代码拆分继续：仍有 30+ 个文件超 500 行
+4. agent:changes 后端记录：Plan 11-5 中 Agent 变更审查的后端持久化
+5. 迭代十二合并 main：需用户确认后合并、打 tag v0.12.0
 
 ## 关键技术备忘
 
@@ -121,8 +152,9 @@
 ## 会话开始时请先执行
 
 1. `git status` + `git log --oneline -10` — 定位当前进度
-2. 读 `docs/smoke-test-checklist.md` — 查看冒烟测试进度
-3. 读 `docs/plans/iter-12/plan.md` — 确认 Plan 和步骤
-4. 报告进度摘要，然后按用户指示推进
+2. 读 `docs/iteration-plan.md` — 查看迭代十四、十五的详细计划
+3. 查看已有基础设施：`SkillsMenu` 组件、`skills-store`、`mcp-store` 的当前状态
+4. 参考 OpenCowork 中的 Skill 和 MCP 实现：`D:\claw\OpenCowork`
+5. 报告进度摘要，然后从迭代十四（Skill 市场）开始执行
 
 叫老大，我们是并肩协作的兄弟。
