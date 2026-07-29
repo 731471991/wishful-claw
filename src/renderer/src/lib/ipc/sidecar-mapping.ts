@@ -6,6 +6,7 @@ import { useSettingsStore } from '@renderer/stores/settings-store'
 import { clampMaxConcurrentSubAgents } from '../../stores/settings-store'
 import { CompressionConfig } from '../agent/context-compression-config'
 import { toolRegistry } from '../agent/tool-registry'
+import { trimToolDefinitionsForSize } from '../tools/tool-size-budget'
 import { resolveProviderUserAgent } from '../api/api-user-agent'
 import { ContentBlock, MessageMeta, ProviderConfig, ToolDefinition, UnifiedMessage } from '../api/types'
 import { SidecarAgentRunRequest, SidecarApprovalRequest, SidecarContentBlock, SidecarContextSource, SidecarPlanExecutionContext, SidecarPlanRevisionContext, SidecarPluginChannelContext, SidecarProviderConfig, SidecarSlashCommandContext, SidecarSystemCommandContext, SidecarToolDefinition, SidecarTranslationContext, SidecarUnifiedMessage, SidecarWebSearchConfig } from './sidecar-protocol-types'
@@ -257,14 +258,15 @@ export function buildSidecarAgentRunRequest(args: {
 
   const maxParallelTools = normalizeMaxParallelTools(args.maxParallelTools)
   const webSearch = mapSidecarWebSearchConfig(args.tools)
-  // Merge renderer-registered tools (MCP, Skills, Extensions) into the main tool list
-  // so the LLM can discover and call them. Without this merge, renderer-only tools
-  // would only appear in subAgentToolCatalog and be invisible to the main agent.
+  // Merge renderer-registered tools (MCP, Skills, Extensions) into the main tool list.
+  // handleSendMessage already merges these, but buildSidecarAgentRunRequest may be
+  // called from other paths (sub-agents, channel plugins) that don't pre-merge.
+  // The filter prevents duplicates when tools are already merged.
   const parentToolNames = new Set(args.tools.map((tool) => tool.name))
   const rendererOnlyDefs = toolRegistry
     .getStableDefinitions()
     .filter((tool) => !parentToolNames.has(tool.name))
-  const mergedTools = [...args.tools, ...rendererOnlyDefs]
+  const mergedTools = trimToolDefinitionsForSize([...args.tools, ...rendererOnlyDefs])
   const subAgentToolCatalog: SidecarToolDefinition[] = []
   // Global settings snapshot, applied to every run this module builds (incl. sub-agents,
   // which inherit the parent's parameters in the native worker).

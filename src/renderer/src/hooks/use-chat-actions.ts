@@ -5,6 +5,7 @@ import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { toolRegistry } from '@renderer/lib/agent/tool-registry'
 import { getCachedTools, fetchToolDefinitions } from '@renderer/lib/tools/tool-cache'
+import { trimToolDefinitionsForSize } from '@renderer/lib/tools/tool-size-budget'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -117,7 +118,7 @@ export function useChatActions() {
       const rendererDefs = toolRegistry.getStableDefinitions()
       const workerNames = new Set(filteredWorkerTools.map((t) => t.name))
       const rendererOnly = rendererDefs.filter((d) => !workerNames.has(d.name))
-      const tools = [...filteredWorkerTools, ...rendererOnly]
+      const tools = trimToolDefinitionsForSize([...filteredWorkerTools, ...rendererOnly])
 
       const provider = {
         id: activeProvider.id,
