@@ -3,8 +3,6 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import { ensureRequestToolCatalogFresh } from '@renderer/lib/tools'
-import { useMcpStore } from '@renderer/stores/mcp-store'
 import { toolRegistry } from '@renderer/lib/agent/tool-registry'
 
 export interface SendMessageOptions {
@@ -16,21 +14,33 @@ export interface SendMessageOptions {
   [key: string]: unknown
 }
 
-// Fetch tool definitions from the C# Worker (single source of truth for tool definitions)
+// Tool definitions fetched from the C# Worker at startup.
+// getCachedTools() returns synchronously — whatever is ready, or null.
+// fetchToolDefinitions() updates the cache in the background.
 let cachedTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null
 let cachedPreset: string | null = null
+let fetchInFlight: Promise<void> | null = null
 
-async function getToolDefinitions(preset = 'chat'): Promise<typeof cachedTools> {
-  if (cachedTools && cachedPreset === preset) return cachedTools
-  try {
-    const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', { preset })
-    cachedTools = result.tools
-    cachedPreset = preset
-    return cachedTools
-  } catch {
-    return null
-  }
+function getCachedTools(): typeof cachedTools {
+  return cachedTools
 }
+
+export function fetchToolDefinitions(preset = 'chat'): void {
+  if (cachedTools && cachedPreset === preset) return
+  if (fetchInFlight) return
+  fetchInFlight = (async () => {
+    try {
+      const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', { preset })
+      cachedTools = result.tools
+      cachedPreset = preset
+    } catch {
+      // Worker not ready yet; will retry on next call
+    } finally {
+      fetchInFlight = null
+    }
+  })()
+}
+
 
 export function useChatActions() {
   const sendMessage = useChatStore((s) => s.sendMessage)
@@ -115,18 +125,13 @@ export function useChatActions() {
         }
       }
 
-      // MCP connection and tool catalog refresh are handled at app startup
-      // (registerAllTools in App.tsx). Fire-and-forget here only as a safety net
-      // — don't block message rendering on them.
-      void useMcpStore.getState().ensureConversationReady(projectId ?? null)
-      void ensureRequestToolCatalogFresh()
-
-      // Fetch tool definitions from the C# Worker (cached after first call).
+      // Tool definitions: use whatever is already cached/registered.
+      // App startup (registerAllTools + ensureConversationReady) handles
+      // initialization; if tools aren't ready yet, send without them —
+      // the agent can still respond, just without tool-calling capability.
       const toolPreset = workingFolder ? 'coding' : 'chat'
-      const workerTools = await getToolDefinitions(toolPreset)
-      // Merge renderer-registered tools (MCP, Skills, Extensions) into the tool list
-      // so the LLM can discover and call them. The Worker's tool/list only contains
-      // built-in tools; renderer-side tools are registered in toolRegistry.
+      const workerTools = getCachedTools()
+      fetchToolDefinitions(toolPreset) // fire-and-forget background fetch
       const rendererDefs = toolRegistry.getStableDefinitions()
       const workerNames = new Set((workerTools ?? []).map((t) => t.name))
       const rendererOnly = rendererDefs.filter((d) => !workerNames.has(d.name))

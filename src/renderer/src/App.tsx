@@ -13,6 +13,7 @@ import { MainLayout } from '@renderer/components/layout/MainLayout'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
 import { attachRendererToolBridge } from '@renderer/lib/ipc/renderer-tool-bridge'
 import { registerAllTools } from '@renderer/lib/tools'
+import { fetchToolDefinitions } from '@renderer/hooks/use-chat-actions'
 import { useMcpStore } from '@renderer/stores/mcp-store'
 import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
 import { registerAllViewers } from '@renderer/lib/preview/register-viewers'
@@ -50,6 +51,8 @@ function App(): React.JSX.Element | null {
     useMcpStore.getState().ensureConversationReady(null).catch((err) => {
       console.warn('MCP initialization failed:', err)
     })
+    // Pre-fetch tool definitions in background so first message doesn't wait
+    fetchToolDefinitions('chat')
   }, [])
 
   // Sync language changes
