@@ -19,6 +19,8 @@ interface EngineConfig {
   timeout: number
   /** Base URL for resolving relative links in search results */
   baseUrl?: string
+  /** Special extraction mode for non-DOM engines */
+  extractor?: 'dom' | 'toutiao_ssr' | 'xml'
 }
 
 interface IntentConfig {
@@ -27,9 +29,9 @@ interface IntentConfig {
 }
 
 // ── Engine configurations ──
-// Engines that work with plain HTTP fetch (no JS rendering required).
-// Baidu is excluded: it returns a CAPTCHA page for non-browser requests.
-// DuckDuckGo is excluded: connection timeout in China network.
+// All engines are tested to work with plain HTTP fetch in China network.
+// Baidu: excluded (CAPTCHA for non-browser requests)
+// DuckDuckGo / Brave / GitHub: excluded (connection timeout in China)
 
 const ENGINES: Record<string, EngineConfig> = {
   // ── Chinese general ──
@@ -37,20 +39,31 @@ const ENGINES: Record<string, EngineConfig> = {
     name: '必应中文',
     searchUrl: 'https://cn.bing.com/search?q={query}&ensearch=0',
     type: 'general',
-    timeout: 10000
+    timeout: 10000,
+    extractor: 'dom'
   },
   sogou: {
     name: '搜狗',
     searchUrl: 'https://www.sogou.com/web?query={query}',
     type: 'general',
     timeout: 10000,
-    baseUrl: 'https://www.sogou.com'
+    baseUrl: 'https://www.sogou.com',
+    extractor: 'dom'
   },
   so_360: {
     name: '360搜索',
     searchUrl: 'https://m.so.com/s?q={query}',
     type: 'general',
-    timeout: 10000
+    timeout: 10000,
+    extractor: 'dom'
+  },
+  toutiao: {
+    name: '头条搜索',
+    searchUrl: 'https://so.toutiao.com/search?keyword={query}',
+    type: 'general',
+    timeout: 10000,
+    baseUrl: 'https://so.toutiao.com',
+    extractor: 'toutiao_ssr'
   },
 
   // ── International ──
@@ -58,21 +71,18 @@ const ENGINES: Record<string, EngineConfig> = {
     name: '必应国际',
     searchUrl: 'https://www.bing.com/search?q={query}',
     type: 'general',
-    timeout: 10000
-  },
-  brave: {
-    name: 'Brave',
-    searchUrl: 'https://search.brave.com/search?q={query}',
-    type: 'general',
-    timeout: 12000
+    timeout: 10000,
+    extractor: 'dom'
   },
 
-  // ── Tech ──
-  github: {
-    name: 'GitHub',
-    searchUrl: 'https://github.com/search?q={query}&type=repositories',
-    type: 'tech',
-    timeout: 12000
+  // ── Social / WeChat ──
+  sogou_wechat: {
+    name: '搜狗微信',
+    searchUrl: 'https://weixin.sogou.com/weixin?type=2&query={query}&page=1',
+    type: 'social',
+    timeout: 10000,
+    baseUrl: 'https://weixin.sogou.com',
+    extractor: 'dom'
   },
 
   // ── Academic ──
@@ -80,7 +90,8 @@ const ENGINES: Record<string, EngineConfig> = {
     name: 'ArXiv',
     searchUrl: 'http://export.arxiv.org/api/query?search_query=all:{query}&max_results=10',
     type: 'academic',
-    timeout: 15000
+    timeout: 15000,
+    extractor: 'xml'
   },
 
   // ── Knowledge ──
@@ -88,13 +99,15 @@ const ENGINES: Record<string, EngineConfig> = {
     name: '维基百科(中文)',
     searchUrl: 'https://zh.wikipedia.org/w/index.php?search={query}&title=Special:Search',
     type: 'knowledge',
-    timeout: 10000
+    timeout: 10000,
+    extractor: 'dom'
   },
   wikipedia_en: {
     name: 'Wikipedia(EN)',
     searchUrl: 'https://en.wikipedia.org/w/index.php?search={query}&title=Special:Search',
     type: 'knowledge',
-    timeout: 10000
+    timeout: 10000,
+    extractor: 'dom'
   }
 }
 
@@ -102,24 +115,24 @@ const ENGINES: Record<string, EngineConfig> = {
 
 const INTENT_CONFIG: Record<string, IntentConfig> = {
   general: {
-    engines: ['bing_cn', 'bing_intl', 'sogou', 'so_360'],
-    maxConcurrent: 4
+    engines: ['bing_cn', 'bing_intl', 'sogou', 'so_360', 'toutiao'],
+    maxConcurrent: 5
   },
   tech: {
-    engines: ['github', 'bing_intl', 'sogou', 'so_360'],
-    maxConcurrent: 3
+    engines: ['bing_intl', 'bing_cn', 'sogou', 'toutiao'],
+    maxConcurrent: 4
   },
   academic: {
     engines: ['arxiv', 'bing_intl', 'wikipedia_en'],
     maxConcurrent: 3
   },
   finance: {
-    engines: ['bing_cn', 'sogou', 'bing_intl'],
-    maxConcurrent: 3
+    engines: ['bing_cn', 'sogou', 'bing_intl', 'toutiao'],
+    maxConcurrent: 4
   },
   social: {
-    engines: ['sogou', 'bing_cn', 'bing_intl'],
-    maxConcurrent: 2
+    engines: ['sogou_wechat', 'sogou', 'bing_cn'],
+    maxConcurrent: 3
   },
   knowledge: {
     engines: ['wikipedia_zh', 'wikipedia_en', 'bing_intl'],
@@ -151,11 +164,114 @@ function detectIntent(query: string): string {
   return 'general'
 }
 
+// ── Toutiao SSR extraction ──
+// Toutiao embeds search results in <script> tags as:
+//   window.T && T.flow({ data: {JSON}, src_id: "..." })
+// We parse each JSON object and extract title/url/abstract.
+
+function extractFromToutiaoSsr(html: string, engineName: string): SearchResultItem[] {
+  const results: SearchResultItem[] = []
+  const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi
+  let match: RegExpExecArray | null
+
+  while ((match = scriptRegex.exec(html)) !== null) {
+    const scriptContent = match[1]
+    if (!scriptContent.includes('T.flow') || !scriptContent.includes('window.T')) continue
+
+    // Find "data:" and extract the JSON value that follows
+    const dataIdx = scriptContent.indexOf('data:')
+    if (dataIdx < 0) continue
+    const raw = scriptContent.slice(dataIdx + 5).trim()
+    if (!raw.startsWith('{')) continue
+
+    // Parse JSON with a manual scanner to handle nested objects
+    let jsonStr: string | null = null
+    let depth = 0
+    let inString = false
+    let escape = false
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i]
+      if (escape) { escape = false; continue }
+      if (ch === '\\') { escape = true; continue }
+      if (ch === '"') { inString = !inString; continue }
+      if (inString) continue
+      if (ch === '{') depth++
+      else if (ch === '}') {
+        depth--
+        if (depth === 0) {
+          jsonStr = raw.slice(0, i + 1)
+          break
+        }
+      }
+    }
+
+    if (!jsonStr) continue
+
+    let data: Record<string, unknown>
+    try {
+      data = JSON.parse(jsonStr)
+    } catch {
+      continue
+    }
+
+    // Extract title, url, abstract from various data shapes
+    let title = ''
+    let url = ''
+    let abstract = ''
+
+    const disp = data.display
+    if (disp && typeof disp === 'object' && !Array.isArray(disp)) {
+      const d = disp as Record<string, unknown>
+      const t = d.title
+      if (t && typeof t === 'object') {
+        title = (t as Record<string, unknown>).text as string ?? ''
+      } else if (typeof t === 'string') {
+        title = t
+      }
+      abstract = (d.abstract as string ?? d.summary_text as string ?? '') as string
+    } else if (Array.isArray(disp) && disp.length > 0) {
+      const first = disp[0] as Record<string, unknown>
+      title = (first.title as string) ?? ''
+      abstract = (first.abstract as string) ?? ''
+      url = (first.item_source_url as string) ?? (first.url as string) ?? ''
+    }
+
+    if (!title) title = (data.title as string) ?? ''
+    if (!abstract) abstract = (data.abstract as string) ?? ''
+    if (!url) {
+      url = (data.url as string) ?? (data.share_url as string) ?? (data.article_url as string) ?? ''
+    }
+
+    // Clean HTML tags from title
+    title = title.replace(/<[^>]+>/g, '').trim()
+
+    if (title.length > 5 && url) {
+      // Resolve relative URLs
+      if (url.startsWith('/')) {
+        url = 'https://so.toutiao.com' + url
+      }
+      results.push({
+        title: title.slice(0, 200),
+        url: url.slice(0, 500),
+        snippet: abstract.slice(0, 300),
+        source_engine: engineName
+      })
+    }
+  }
+
+  return results.slice(0, 10)
+}
+
 // ── HTML extraction per engine ──
 
 function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
   const engine = ENGINES[engineId]
   const engineName = engine?.name ?? engineId
+
+  // Toutiao uses SSR data extraction, not DOM parsing
+  if (engine?.extractor === 'toutiao_ssr') {
+    return extractFromToutiaoSsr(html, engineName)
+  }
 
   // Inject <base> tag so relative URLs (e.g. /link?url=...) resolve correctly
   const baseUrl = engine?.baseUrl
@@ -199,7 +315,6 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
 
     case 'sogou':
       // Sogou uses .vrwrap containers with h3.vr-title > a for title
-      // and .space-txt / .fz-mid for snippet
       doc.querySelectorAll('.vrwrap, .result, .rb').forEach((item) => {
         const titleEl = item.querySelector('h3.vr-title a, h3 a, .vr-title a')
         if (!titleEl) return
@@ -219,23 +334,13 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
       })
       break
 
-    case 'brave':
-      doc.querySelectorAll('.snippet, .result, .card').forEach((item) => {
-        const titleEl = item.querySelector('a[href] .snippet-title, a[href], .title')
+    case 'sogou_wechat':
+      // Sogou WeChat: .news-list li > .txt-box > h3 a for title
+      doc.querySelectorAll('.news-list li, .txt-box, .weui_media_box').forEach((item) => {
+        const titleEl = item.querySelector('h3 a, h4 a, a[href]')
         if (!titleEl) return
-        const anchor = (titleEl.closest('a[href]') ?? titleEl) as HTMLAnchorElement
-        if (!anchor.href) return
-        const snippetEl = item.querySelector('.snippet-description, .snippet-text, p')
-        addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
-      })
-      break
-
-    case 'github':
-      doc.querySelectorAll('.repo-list-item, [data-testid="results-list"] > div').forEach((item) => {
-        const linkEl = item.querySelector('a[href]')
-        if (!linkEl) return
-        const anchor = linkEl as HTMLAnchorElement
-        const snippetEl = item.querySelector('p, .repo-list-description')
+        const anchor = titleEl as HTMLAnchorElement
+        const snippetEl = item.querySelector('.txt-info, p, .s-p')
         addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
       })
       break
@@ -281,9 +386,6 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
       const href = anchor.href
       // Skip internal links
       if (href.includes('bing.com') && href.includes('search')) return
-      if (href.includes('sogou.com') && href.includes('link?')) {
-        // Sogou redirect links are OK — they're search results
-      }
       if (href.includes('google.com')) return
       addResult(anchor.textContent?.trim() ?? '', href, '')
     })
@@ -470,15 +572,18 @@ const browserSearchHandler: ToolHandler = {
       'combination. Queries multiple search engines in parallel, then',
       'deduplicates and ranks results.',
       '',
-      'Supported engines: Bing (CN/Intl), Sogou, 360 Search,',
-      'Brave, GitHub, ArXiv, Wikipedia (zh/en).',
+      'Supported engines (9):',
+      '  General: Bing CN, Bing Intl, Sogou, 360 Search, Toutiao',
+      '  Social:  Sogou WeChat (public account articles)',
+      '  Academic: ArXiv',
+      '  Knowledge: Wikipedia (zh/en)',
       '',
       'Intent routing:',
-      '- general (default): Bing CN + Bing Intl + Sogou + 360 Search',
-      '- tech: GitHub + Bing Intl + Sogou + 360 Search',
+      '- general: Bing CN/Intl + Sogou + 360 + Toutiao (5 engines)',
+      '- tech: Bing CN/Intl + Sogou + Toutiao (4 engines)',
       '- academic: ArXiv + Bing Intl + Wikipedia',
-      '- finance: Bing CN + Sogou + Bing Intl',
-      '- social: Sogou + Bing CN + Bing Intl',
+      '- finance: Bing CN/Intl + Sogou + Toutiao (4 engines)',
+      '- social: Sogou WeChat + Sogou + Bing CN',
       '- knowledge: Wikipedia (zh/en) + Bing Intl',
       '',
       'Results include title, URL, snippet, and source engine.',
