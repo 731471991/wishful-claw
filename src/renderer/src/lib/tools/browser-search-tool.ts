@@ -2,6 +2,7 @@ import { toolRegistry } from '../agent/tool-registry'
 import { useUIStore } from '../../stores/ui-store'
 import { encodeStructuredToolResult, encodeToolError } from './tool-result-format'
 import type { ToolHandler, ToolContext } from './tool-types'
+import type { ToolResultContent } from '../api/types'
 import {
   waitForWebview,
   waitForLoad,
@@ -219,6 +220,14 @@ async function extractResults(
 }
 
 // ── Tool handler ──
+
+/** Core search execution — exported for use by browser-native-ui.ts dispatcher */
+export async function executeBrowserSearch(
+  input: Record<string, unknown>,
+  ctx: ToolContext
+): Promise<ToolResultContent> {
+  return browserSearchHandler.execute(input, ctx)
+}
 
 const browserSearchHandler: ToolHandler = {
   definition: {

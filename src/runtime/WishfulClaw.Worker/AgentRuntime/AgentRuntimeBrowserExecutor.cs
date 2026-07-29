@@ -24,7 +24,8 @@ internal static class AgentRuntimeBrowserExecutor
         "BrowserClick",
         "BrowserType",
         "BrowserScroll",
-        "BrowserEvaluate"
+        "BrowserEvaluate",
+        "BrowserSearch"
     };
 
     private static readonly JsonWriterOptions WriterOptions = new()
