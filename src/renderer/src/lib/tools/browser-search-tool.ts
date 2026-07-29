@@ -174,15 +174,18 @@ const browserSearchHandler: ToolHandler = {
       'extracts organic results with title, URL, and snippet.',
       '',
       'No API key required — uses the embedded browser directly.',
-      'Results are visible in the browser panel on the right side.',
+      '',
+      'Returns structured results (title, URL, snippet) that you can',
+      'directly summarize and present to the user. For most queries the',
+      'snippets contain enough information — no need to open each page.',
+      '',
+      'If you need the full content of a specific result page, use',
+      'BrowserNavigate + BrowserGetContent on its URL.',
       '',
       'Engines:',
       '- "bing" (default): Best for general international search',
       '- "baidu": Best for Chinese-language content',
-      '- "google": Most comprehensive, but may show CAPTCHA',
-      '',
-      'After getting results, use BrowserNavigate + BrowserGetContent to read',
-      'the full content of any result page.'
+      '- "google": Most comprehensive, but may show CAPTCHA'
     ].join('\n'),
     inputSchema: {
       type: 'object',
