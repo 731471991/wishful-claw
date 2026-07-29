@@ -25,7 +25,7 @@ export function PreviewSaveDialog({
 }: PreviewSaveDialogProps): React.JSX.Element {
   const { t } = useTranslation('layout')
   return (
-      <AlertDialog open={showSaveDialog} onOpenChange={handleSaveDialogOpenChange}>
+      <AlertDialog open={open} onOpenChange={onOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('preview.unsavedChanges')}</AlertDialogTitle>
@@ -37,7 +37,7 @@ export function PreviewSaveDialog({
             <AlertDialogCancel
               onClick={(event) => {
                 event.preventDefault()
-                handleSaveDialogDiscard()
+                onDiscard()
               }}
             >
               {t('preview.discard')}
@@ -45,7 +45,7 @@ export function PreviewSaveDialog({
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault()
-                void handleSaveDialogConfirm()
+                void onConfirm()
               }}
             >
               {t('action.save', { ns: 'common' })}

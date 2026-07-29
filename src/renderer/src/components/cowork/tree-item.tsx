@@ -12,8 +12,7 @@ import {
 import { cn } from '@renderer/lib/utils'
 import { AnimatePresence, motion } from 'motion/react'
 import type { TreeNode, TreeEditState, TreeActions } from './file-tree-types'
-import { fileIcon, DepthGuides } from './file-tree-utils'
-import { IGNORED_DIRS } from './file-tree-utils'
+import { fileIcon, DepthGuides, IGNORED_DIRS } from './file-tree-utils'
 import { Check } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 
@@ -65,34 +64,6 @@ export function InlineInput({
   )
 }
 
-// --- Edit state passed down the tree ---
-
-interface TreeEditState {
-  renamingPath: string | null
-  newItemParent: string | null
-  newItemType: 'file' | 'directory'
-}
-
-interface TreeActions {
-  localActionsAvailable: boolean
-  onDelete: (nodePath: string, nodeName: string, isDir: boolean) => void
-  onRenameStart: (nodePath: string, nodeName: string) => void
-  onRenameConfirm: (value: string) => void
-  onRenameCancel: () => void
-  onAddToChat: (nodePath: string) => void
-  onCopyPath: (nodePath: string) => void
-  onPreview: (nodePath: string) => void
-  onOpenDefault: (nodePath: string) => void
-  onOpenTerminal: (nodePath: string, isDir: boolean) => void
-  onOpenWithCode: (nodePath: string) => void
-  onReveal: (nodePath: string) => void
-  onNewFile: (dirPath: string) => void
-  onNewFolder: (dirPath: string) => void
-  onNewItemConfirm: (value: string) => void
-  onNewItemCancel: () => void
-  onRefresh: (dirPath: string) => void
-}
-
 export function TreeItem({
   node,
   depth,
@@ -110,7 +81,7 @@ export function TreeItem({
   actions: TreeActions
   agentSurface?: boolean
 }): React.JSX.Element {
-  const { t } = useTranslation('cowork')
+  const { t } = useTranslation('layout')
   const [copied, setCopied] = useState(false)
   const isDir = node.type === 'directory'
   const isIgnored = isDir && IGNORED_DIRS.has(node.name)
@@ -161,45 +132,18 @@ export function TreeItem({
       )}
 
       {isDir ? (
-        node.expanded ? (
-          <ChevronDown
-            className={cn(
-              'shrink-0',
-              agentSurface
-                ? 'workspace-filetree-chevron size-4 text-agent-files-icon'
-                : 'size-3 text-muted-foreground/60'
-            )}
-          />
-        ) : (
-          <ChevronRight
-            className={cn(
-              'shrink-0',
-              agentSurface
-                ? 'workspace-filetree-chevron size-4 text-agent-files-icon'
-                : 'size-3 text-muted-foreground/60'
-            )}
-          />
-        )
+        <ChevronRight
+          className="workspace-filetree-chevron shrink-0"
+          style={{
+            transform: node.expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          }}
+        />
       ) : (
-        <span className={cn('shrink-0', agentSurface ? 'size-4' : 'size-3')} />
+        <span className="w-[13px] h-[13px] shrink-0" />
       )}
 
       {isDir ? (
-        node.expanded ? (
-          <FolderOpen
-            className={cn(
-              'shrink-0',
-              agentSurface ? 'size-4 text-[#dcb67a]' : 'size-3.5 text-amber-400'
-            )}
-          />
-        ) : (
-          <Folder
-            className={cn(
-              'shrink-0',
-              agentSurface ? 'size-4 text-[#dcb67a]' : 'size-3.5 text-amber-400/80'
-            )}
-          />
-        )
+        <Folder className="size-[14px] shrink-0 text-muted-foreground/70" />
       ) : (
         fileIcon(node.name)
       )}

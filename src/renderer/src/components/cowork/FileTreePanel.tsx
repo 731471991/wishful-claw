@@ -34,7 +34,7 @@ export function FileTreePanel({
     t, workingFolder, agentSurface, tree, loading, error,
     searchQuery, setSearchQuery, searchResults, searchLoading,
     agentRootExpanded, setAgentRootExpanded,
-    newItemParent, newItemType, handleToggle, handleCollapseAll,
+    newItemParent, newItemType, handleToggle,
     refreshTree, sshConnectionId
   } = fileTreeState
   const { treeActions, editState, treeStats, activePath } = actions
@@ -98,7 +98,7 @@ export function FileTreePanel({
             t={t}
             handleNewFile={actions.handleNewFile}
             handleNewFolder={actions.handleNewFolder}
-            handleCollapseAll={handleCollapseAll}
+            handleCollapseAll={actions.handleCollapseAll}
             refreshTree={refreshTree}
           />
 

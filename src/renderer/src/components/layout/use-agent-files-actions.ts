@@ -23,8 +23,9 @@ export function useAgentFilesActions(state: AgentFilesState) {
     latestChangeSet, agentChanges, agentSummaries, loadFileDiff,
     scanRepositories, selectedRepo, repoDetails, status, diffByKey,
     gitRowsBase, gitRows, agentRows, allRows, totals, undoableRunIds,
+    visibleStagePaths,
     fileSearchOpen, setFileSearchOpen, preloadingDiffKeysRef,
-    requestedRefreshRef, agentSurface, compactSheetSurface, setActiveTab,
+    requestedRefreshRef, setActiveTab,
     activeTab, changeSource, setChangeSource, selectedChangeKey,
     diffOpen, setDiffOpen
   } = state

@@ -129,9 +129,10 @@ internal static partial class SubAgentDefinitionLoader
             ? string.Empty
             : $"\nWorking directory: {workingFolder}\n";
 
-        return $@"You are a sub-agent invoked by a parent agent to carry out one focused task.
+        return $@"Sub-agent invoked by a parent agent to carry out one focused task.
 Use the provided tools to investigate or act. Return a single final answer that is concise and self-contained — the parent will see only that answer, not your tool calls or reasoning.{folderHint}
-If you need to ask for clarification, fail with a precise question instead of guessing.";
+If you need to ask for clarification, fail with a precise question instead of guessing.
+Before calling tools, briefly state what you are about to do. After results, briefly summarize what you found. Never call tools silently.";
     }
 
     // ── Frontmatter parsing helpers ──

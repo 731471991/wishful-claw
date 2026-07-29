@@ -14,6 +14,7 @@ import {
   Pin,
   Trash2,
   Pencil,
+  Folder,
   FolderOpen,
   Eraser,
   Copy,
@@ -56,10 +57,17 @@ export function formatRelativeTime(timestamp: number): string {
   const hour = 3_600_000
   const day = 86_400_000
 
-  if (diff < minute) return 'just now'
-  if (diff < hour) return `${Math.floor(diff / minute)}m ago`
-  if (diff < day) return `${Math.floor(diff / hour)}h ago`
-  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`
+  if (diff < minute) return '刚刚'
+  if (diff < hour) return `${Math.floor(diff / minute)} 分钟前`
+  if (diff < day) return `${Math.floor(diff / hour)} 小时前`
+  if (diff < 2 * day) {
+    // Cross-day: show yesterday with time
+    const date = new Date(timestamp)
+    const h = date.getHours().toString().padStart(2, '0')
+    const m = date.getMinutes().toString().padStart(2, '0')
+    return `昨天 ${h}:${m}`
+  }
+  if (diff < 7 * day) return `${Math.floor(diff / day)} 天前`
   const date = new Date(timestamp)
   return date.toLocaleDateString()
 }
@@ -170,7 +178,7 @@ export function SessionItem({ session, isActive, onClick }: SessionItemProps): R
         >
           {session.pinned && <Pin className="size-3 shrink-0 text-primary/60" />}
           <span className="flex-1 truncate">{session.title}</span>
-          <span className="shrink-0 text-[10px] text-muted-foreground/40 opacity-0 group-hover:opacity-100">
+          <span className="shrink-0 text-[10px] text-muted-foreground/40">
             {formatRelativeTime(session.updatedAt)}
           </span>
         </button>
@@ -222,7 +230,6 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
   const renameProject = useChatStore((s) => s.renameProject)
   const togglePinProject = useChatStore((s) => s.togglePinProject)
   const updateProjectDirectory = useChatStore((s) => s.updateProjectDirectory)
-  const navigateToProject = useUIStore((s) => s.navigateToProject)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
   const navigateToArchive = useUIStore((s) => s.navigateToArchive)
   const navigateToGit = useUIStore((s) => s.navigateToGit)
@@ -243,8 +250,7 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
 
   const handleClick = useCallback(() => {
     setActiveProjectHome(project.id)
-    navigateToProject(project.id)
-  }, [project.id, setActiveProjectHome, navigateToProject])
+  }, [project.id, setActiveProjectHome])
 
   const handleRename = useCallback(() => {
     setEditName(project.name)
@@ -303,7 +309,14 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            onClick={handleClick}
+            onClick={(e) => {
+              // Two independent actions on click:
+              // 1. Set as active project (highlight + navigate)
+              // 2. Toggle expand/collapse
+              // Neither action affects the other.
+              handleClick()
+              onToggleExpand()
+            }}
             className={cn(
               'group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors',
               isActive && activeSessionId === null
@@ -311,17 +324,8 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
                 : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
             )}
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onToggleExpand()
-              }}
-              className="flex size-4 items-center justify-center shrink-0"
-            >
-              {isExpanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-            </button>
             {project.pinned && <Pin className="size-3 shrink-0 text-primary/60" />}
-            <FolderOpen className="size-3.5 shrink-0" />
+            {isExpanded ? <FolderOpen className="size-3.5 shrink-0" /> : <Folder className="size-3.5 shrink-0" />}
             <span className="flex-1 truncate text-xs font-medium">{project.name}</span>
             
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -438,7 +442,7 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
 
       {/* Sessions under this project */}
       {isExpanded && sortedSessions.length > 0 && (
-        <div className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-border/40 pl-2">
+        <div className="ml-3 mt-0.5 flex flex-col gap-0.5 pl-2">
           {sortedSessions.map((session) => (
             <SessionItem
               key={session.id}

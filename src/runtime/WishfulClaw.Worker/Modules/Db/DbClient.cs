@@ -72,8 +72,9 @@ internal static class DbClient
                 typeof(ProjectEntity),
                 typeof(SessionEntity),
                 typeof(MessageEntity),
-                typeof(SubAgentRunEntity));
-            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (4 entities, MemoryArchiveEntity excluded)");
+                typeof(SubAgentRunEntity),
+                typeof(SshConnectionEntity));
+            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (5 entities, MemoryArchiveEntity excluded)");
 
             // memory_entries 表（手动创建，不通过 CodeFirst）
             WorkerLog.Info("DbClient: creating memory_entries table");

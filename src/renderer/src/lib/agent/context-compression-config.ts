@@ -47,7 +47,7 @@ export const CONTEXT_COMPRESSION_PRE_BUFFER_TOKENS = 20_000
 export const CONTEXT_COMPRESSION_PRE_GAP_TOKENS = 8_000
 
 const DEFAULT_PRECOMPRESS_THRESHOLD = 0.65
-const LEGACY_SUMMARY_PREFIXES = [
+export const LEGACY_SUMMARY_PREFIXES = [
   '[Context Memory Compressed Summary]',
   '[Context Memory Compressed Summary]',
   '[Context Memory Compressed Summary'

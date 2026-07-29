@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { FolderOpen, PanelLeftOpen, PanelRightClose, PanelRightOpen, SquareTerminal } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { useChatStore } from '@renderer/stores/chat-store'
 import { WindowControls } from './WindowControls'
 
 interface TitleBarProps {
@@ -22,10 +23,22 @@ export function TitleBar({
   const ensureFilesTab = useUIStore((s) => s.ensureFilesTab)
   const ensureTerminalTab = useUIStore((s) => s.ensureTerminalTab)
 
+  // Only show file/terminal buttons in project-level sessions (has workingFolder)
+  const hasProject = useChatStore((s) => {
+    const session = s.sessions.find((item) => item.id === s.activeSessionId)
+    if (session?.workingFolder) return true
+    // Inherit from project if session doesn't have its own workingFolder
+    if (session?.projectId) {
+      const project = s.projects.find((p) => p.id === session.projectId)
+      return Boolean(project?.workingFolder)
+    }
+    return false
+  })
+
   return (
     <header className="titlebar-drag flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
+      {/* Left: sidebar toggle only */}
       <div className="flex items-center gap-1 px-2">
-        {/* Only show sidebar toggle when sidebar is collapsed */}
         {showSidebarToggle && !leftSidebarOpen && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -39,35 +52,38 @@ export function TitleBar({
             <TooltipContent side="bottom">{t('topbar.toggleSidebar', { defaultValue: 'Toggle sidebar' })}</TooltipContent>
           </Tooltip>
         )}
-
-        {/* Quick access: File management */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => ensureFilesTab()}
-              className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <FolderOpen className="size-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t('topbar.files', { defaultValue: 'Files' })}</TooltipContent>
-        </Tooltip>
-
-        {/* Quick access: Terminal */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => ensureTerminalTab()}
-              className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <SquareTerminal className="size-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t('topbar.terminal', { defaultValue: 'Terminal' })}</TooltipContent>
-        </Tooltip>
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Right: files, terminal, right panel toggle, window controls */}
+      <div className="flex items-center gap-1 px-2">
+        {hasProject && (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => ensureFilesTab()}
+                  className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <FolderOpen className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{t('topbar.files', { defaultValue: 'Files' })}</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => ensureTerminalTab()}
+                  className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <SquareTerminal className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{t('topbar.terminal', { defaultValue: 'Terminal' })}</TooltipContent>
+            </Tooltip>
+          </>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <button

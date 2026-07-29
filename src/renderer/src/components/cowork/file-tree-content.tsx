@@ -1,5 +1,5 @@
 import type React from 'react'
-import { RefreshCw, Search, Folder, MessageSquarePlus, Copy, ChevronRight, ChevronDown } from 'lucide-react'
+import { RefreshCw, Search, Folder, MessageSquarePlus, Copy, ChevronRight } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { TreeNode, FileSearchItem, TreeEditState, TreeActions } from './file-tree-types'
 import { TreeItem } from './tree-item'
@@ -20,7 +20,7 @@ interface FileTreeContentProps {
   rootNewItemInput: React.ReactNode
   t: TFunction
   handlePreview: (path: string) => void
-  handleToggle: (node: TreeNode) => void
+  handleToggle: (path: string) => void
   handleAddToChat: (path: string) => void
   handleCopyPath: (path: string) => void
   editState: TreeEditState
@@ -32,7 +32,7 @@ export function FileTreeContent(props: FileTreeContentProps): React.JSX.Element 
   const {
     loading, tree, isSearching, searchLoading, searchResults,
     activePath, agentSurface, agentRootExpanded, setAgentRootExpanded,
-    workingFolder, rootNewItemInput, t, fileIcon, toRelativePath,
+    workingFolder, rootNewItemInput, t,
     handlePreview, handleToggle, handleAddToChat, handleCopyPath,
     editState, treeActions
   } = props
@@ -149,11 +149,10 @@ export function FileTreeContent(props: FileTreeContentProps): React.JSX.Element 
             onClick={() => setAgentRootExpanded((value) => !value)}
             title={workingFolder}
           >
-            {agentRootExpanded ? (
-              <ChevronDown className="workspace-filetree-chevron size-4 shrink-0 text-agent-files-icon" />
-            ) : (
-              <ChevronRight className="workspace-filetree-chevron size-4 shrink-0 text-agent-files-icon" />
-            )}
+            <ChevronRight
+              className="workspace-filetree-chevron shrink-0"
+              style={{ transform: agentRootExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+            />
             <span className="min-w-0 flex-1 truncate text-agent-files-fg">
               {workingFolder.split(/[\\/]/).pop()}
             </span>

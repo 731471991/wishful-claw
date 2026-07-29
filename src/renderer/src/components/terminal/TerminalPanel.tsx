@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Loader2, Plus, SquareTerminal, X } from 'lucide-react'
+import { Loader2, Plus, SquareTerminal, Terminal as TerminalIcon, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useTerminalStore } from '@renderer/stores/terminal-store'
@@ -9,6 +9,10 @@ import { cn } from '@renderer/lib/utils'
 
 const LocalTerminal = lazy(() =>
   import('./LocalTerminal').then((m) => ({ default: m.LocalTerminal }))
+)
+
+const AgentSshTerminal = lazy(() =>
+  import('./AgentSshTerminal').then((m) => ({ default: m.AgentSshTerminal }))
 )
 
 function StatusDot({ status }: { status: 'running' | 'exited' | 'error' }): React.JSX.Element {
@@ -173,7 +177,17 @@ export function TerminalPanel(): React.JSX.Element {
               className="absolute inset-0"
               style={{ display: tab.id === activeTab.id ? undefined : 'none' }}
             >
-              {tab.status === 'running' ? (
+              {tab.kind === 'ssh-agent' ? (
+                tab.status === 'running' ? (
+                  <Suspense fallback={null}>
+                    <AgentSshTerminal execId={tab.execId ?? tab.id} />
+                  </Suspense>
+                ) : (
+                  <Suspense fallback={null}>
+                    <AgentSshTerminal execId={tab.execId ?? tab.id} />
+                  </Suspense>
+                )
+              ) : tab.status === 'running' ? (
                 <Suspense fallback={null}>
                   <LocalTerminal terminalId={tab.id} />
                 </Suspense>

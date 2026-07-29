@@ -9,6 +9,5 @@ namespace WishfulClaw.Worker.Tools;
 internal static class ToolModuleState
 {
     public static ToolRegistry? Registry { get; set; }
-    public static IMemoryStore? MemoryStore { get; set; }
     public static IMemorySearch? MemorySearch { get; set; }
 }

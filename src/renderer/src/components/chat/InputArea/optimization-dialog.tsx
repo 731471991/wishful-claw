@@ -30,7 +30,7 @@ export function OptimizationDialog({
   onCancel,
   isOptimizing
 }: OptimizationDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('chat')
   const contentScrollRef = React.useRef<HTMLDivElement>(null)
 
   return (

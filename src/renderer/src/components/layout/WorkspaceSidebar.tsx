@@ -69,13 +69,26 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   const [searchQuery] = useState('')
   const [extensionsOpen, setExtensionsOpen] = useState(false)
 
-  // Auto-expand the active project
+  // Active project ID — used for highlighting only.
+  // Expand/collapse is purely user-controlled via clicking the project title.
+  // No auto-expand on active project change.
   const activeProjectId = useChatStore((s) => s.activeProjectId)
+
+  // On initial mount: if there's an active session, expand its parent project
+  // so the user can see which conversation is focused after restart.
+  // This runs once — subsequent expand/collapse is purely user-controlled.
+  const initialExpandDone = useRef(false)
   useEffect(() => {
-    if (activeProjectId && !expandedProjects.has(activeProjectId)) {
-      setExpandedProjects((prev) => new Set([...prev, activeProjectId]))
+    if (initialExpandDone.current) return
+    if (!activeSessionId || sessions.length === 0) return
+    const session = sessions.find((s) => s.id === activeSessionId)
+    if (session?.projectId) {
+      setExpandedProjects((prev) =>
+        prev.has(session.projectId!) ? prev : new Set(prev).add(session.projectId!)
+      )
     }
-  }, [activeProjectId, expandedProjects])
+    initialExpandDone.current = true
+  }, [activeSessionId, sessions])
 
   // Group sessions by project
   const { projectSessions, unassignedSessions } = useMemo(() => {

@@ -29,19 +29,10 @@ public sealed class MemoryRecallService : IMemoryRecall
 
         var budget = _budgetPlanner.PlanBudget(maxTokens: maxChars / 4, maxChars: maxChars);
 
-        // Search project-scoped first, then global
-        IReadOnlyList<MemorySearchResult> hits;
-
-        if (!string.IsNullOrWhiteSpace(scope) && scope != "global")
-        {
-            hits = await _search.SearchAsync(userMessage, scope, limit: 5, ct: ct);
-            if (hits.Count == 0)
-                hits = await _search.SearchAsync(userMessage, "global", limit: 5, ct: ct);
-        }
-        else
-        {
-            hits = await _search.SearchAsync(userMessage, null, limit: 5, ct: ct);
-        }
+        // Search only the current scope — no cross-scope merging.
+        // Global session searches global only; project session searches project only.
+        var resolvedScope = string.IsNullOrWhiteSpace(scope) ? "global" : scope;
+        var hits = await _search.SearchAsync(userMessage, resolvedScope, limit: 5, ct: ct);
 
         if (hits.Count == 0)
             return null;

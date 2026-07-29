@@ -15,6 +15,9 @@ import {
   executeChannelSpecificPluginTool,
   isPluginToolEnabled
 } from '../channel-handlers'
+import { execSshCommand } from '../../ssh/ssh-exec'
+import { listConnections, initializeSshRepository } from '../../ssh/repository'
+import { safeSendMessagePackToAllWindows } from '../../window-ipc'
 
 type ReverseHandler = (params: Record<string, unknown>) => Promise<unknown>
 
@@ -23,6 +26,36 @@ const directHandlers = new Map<string, ReverseHandler>([
   ['image:generate', (p) => handleImageGenerate(p)],
   ['mcp:call-tool', (p) => executeMcpToolFromMain(p as { serverId: string; toolName: string; args: Record<string, unknown> })],
   ['mcp:read-resource', (p) => readMcpResourceFromMain(p as { serverId: string; uri?: string; resourceName?: string })],
+  ['ssh:exec', async (p) => {
+    const { connectionId, command, timeoutMs, execId } = p as {
+      connectionId: string
+      command: string
+      timeoutMs?: number
+      execId?: string
+    }
+    if (!connectionId || !command) {
+      return { success: false, exitCode: 1, stdout: '', stderr: 'connectionId and command are required', error: 'connectionId and command are required' }
+    }
+    return await execSshCommand(connectionId, command, timeoutMs ?? 60_000, (chunk) => {
+      // Broadcast output chunk to renderer for real-time terminal display
+      safeSendMessagePackToAllWindows('ssh:exec-output', {
+        execId: execId ?? connectionId,
+        stream: chunk.stream,
+        data: chunk.data
+      })
+    })
+  }],
+  ['ssh:connection:list', async () => {
+    await initializeSshRepository()
+    return listConnections().map((meta) => ({
+      id: meta.id,
+      name: meta.name,
+      host: meta.host,
+      port: meta.port,
+      username: meta.username,
+      authType: meta.authType
+    }))
+  }],
 ])
 
 // Channel-specific plugin methods — routed to real channel handlers
@@ -72,7 +105,8 @@ export function isMainProcessMethod(method: string): boolean {
     pluginActionMethods.has(method) ||
     stubMethods.has(method) ||
     method.startsWith(CRON_PREFIX) ||
-    method === 'notify:desktop'
+    method === 'notify:desktop' ||
+    method === 'ssh:exec'
   )
 }
 

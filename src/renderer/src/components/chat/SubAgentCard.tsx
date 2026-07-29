@@ -20,7 +20,8 @@ import { useAgentStore } from '@renderer/stores/agent-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@renderer/components/ui/hover-card'
 import { cn } from '@renderer/lib/utils'
-import type { ToolCallState, ToolResultContent } from '@renderer/lib/api/types'
+import type { ToolResultContent } from '@renderer/lib/api/types'
+import type { ToolCallState } from '@renderer/lib/agent/types'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   findSubAgentInSelection,
@@ -286,14 +287,10 @@ function SubAgentCardInner({
     return () => clearInterval(timer)
   }, [tracked?.isRunning, tracked?.startedAt])
 
-  // Expand/collapse: expanded by default when running, collapsed when done
-  const [isExpanded, setIsExpanded] = React.useState(isRunning)
-  React.useEffect(() => {
-    if (!isRunning && isExpanded) {
-      // Auto-collapse when execution ends
-      setIsExpanded(false)
-    }
-  }, [isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+
+
+    // Work sub-agents (foreground) expand by default; background stay collapsed.
+  const [isExpanded, setIsExpanded] = React.useState(!isBackground)
 
   const elapsed = tracked
     ? (tracked.completedAt ?? (tracked.isRunning ? now : tracked.startedAt)) - tracked.startedAt
@@ -342,12 +339,29 @@ function SubAgentCardInner({
     .join(' · ')
 
   const handleOpenPanel = (): void => {
+    // Use task description as panel title (same as the card shows)
+    const panelTitle = descriptionText || promptText.replace(/\s+/g, ' ').trim().slice(0, 50) || displayName
     useUIStore
       .getState()
-      .openSubAgentExecutionDetail(toolUseId, histText ?? undefined, displayName, sessionId ?? undefined)
+      .openSubAgentExecutionDetail(toolUseId, histText ?? undefined, panelTitle, sessionId ?? undefined)
   }
 
-  const hasSteps = (tracked?.toolCalls?.length ?? 0) > 0
+  const hasSteps = (tracked?.toolCalls?.length ?? 0) > 0 || (histMeta?.toolCalls?.length ?? 0) > 0
+
+  // Build tool calls list: prefer live tracked data, fall back to historical meta
+  const effectiveToolCalls = tracked?.toolCalls?.length
+    ? tracked.toolCalls
+    : (histMeta?.toolCalls ?? []).map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        input: tc.input,
+        status: (['streaming','pending_approval','running','completed','error','canceled'].includes(tc.status) ? tc.status : 'completed') as ToolCallState['status'],
+        output: tc.output,
+        error: tc.error,
+        requiresApproval: false,
+        startedAt: tc.startedAt,
+        completedAt: tc.completedAt
+      }))
 
   const card = (
     <div
@@ -360,13 +374,15 @@ function SubAgentCardInner({
       {/* Header row — click toggles expand/collapse */}
       <button
         type="button"
-        onClick={() => hasSteps && setIsExpanded((v) => !v)}
+        onClick={() => {
+          if (hasSteps) setIsExpanded((v) => !v)
+          handleOpenPanel()
+        }}
         title={metaText}
         className={cn(
           'flex w-full min-w-0 items-center gap-2 px-1.5 py-1.5 text-left text-[12px] transition-colors duration-200',
           'hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/45 dark:hover:bg-white/[0.035]',
           isError && 'hover:bg-destructive/[0.035]',
-          !hasSteps && 'cursor-default'
         )}
       >
         {/* Expand/collapse chevron */}
@@ -441,17 +457,9 @@ function SubAgentCardInner({
             className="overflow-hidden border-t border-border/20"
           >
             <SubAgentStepList
-              toolCalls={tracked!.toolCalls}
+              toolCalls={effectiveToolCalls}
               isRunning={isRunning}
             />
-            {/* View details link */}
-            <button
-              type="button"
-              onClick={handleOpenPanel}
-              className="block w-full px-3 py-1 text-left text-[10px] text-muted-foreground/50 transition-colors hover:text-foreground/70"
-            >
-              {t('subAgent.viewDetails', { defaultValue: 'View details →' })}
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

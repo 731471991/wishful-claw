@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowLeft, Bot, Loader2, Square } from 'lucide-react'
+import { Bot, Loader2, Square } from 'lucide-react'
 import { FadeIn, spring } from '@renderer/components/animate-ui/transitions'
 import { agentBridge } from '@renderer/lib/ipc/agent-bridge'
 import { useAgentStore, type SubAgentState } from '@renderer/stores/agent-store'
@@ -221,72 +221,6 @@ function SubAgentList({
   )
 }
 
-function SubAgentDetailHeader({
-  agent,
-  now,
-  onBack,
-  onStop
-}: {
-  agent: SubAgentState
-  now: number
-  onBack: () => void
-  onStop: (agent: SubAgentState) => void
-}): React.JSX.Element {
-  const { t } = useTranslation('layout')
-  const displayName = agent.displayName ?? agent.name
-  const statusLabel = getStatusLabel(agent, t)
-  const isFailed = agent.success === false || Boolean(agent.errorMessage)
-  const stopLabel = t('subAgentsPanel.stop', { defaultValue: 'Stop this SubAgent' })
-
-  return (
-    <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 px-3">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        title={t('subAgentsPanel.backToList', { defaultValue: 'Back to SubAgents' })}
-        aria-label={t('subAgentsPanel.backToList', { defaultValue: 'Back to SubAgents' })}
-      >
-        <ArrowLeft className="size-4" />
-      </button>
-      <span
-        className={cn(
-          'flex size-5 shrink-0 items-center justify-center',
-          getAgentIconTone(displayName),
-          isFailed && 'text-destructive'
-        )}
-      >
-        {getAgentIcon(displayName)}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground/90">
-        {displayName}
-      </span>
-      <span
-        className={cn(
-          'inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/65',
-          isFailed && 'text-destructive/80'
-        )}
-      >
-        {agent.isRunning ? <Loader2 className="size-3 animate-spin" /> : null}
-        {isActiveAgent(agent)
-          ? statusLabel
-          : formatElapsed((agent.completedAt ?? now) - agent.startedAt, t)}
-      </span>
-      {isActiveAgent(agent) ? (
-        <button
-          type="button"
-          onClick={() => onStop(agent)}
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          title={stopLabel}
-          aria-label={stopLabel}
-        >
-          <Square className="size-3.5 fill-current" />
-        </button>
-      ) : null}
-    </div>
-  )
-}
-
 export function SubAgentsPanel({
   sessionId
 }: {
@@ -306,7 +240,6 @@ export function SubAgentsPanel({
 
   const selectedToolUseId = useUIStore((state) => state.selectedSubAgentToolUseId)
   const inlineText = useUIStore((state) => state.subAgentExecutionDetailInlineText)
-  const openSubAgentsPanel = useUIStore((state) => state.openSubAgentsPanel)
   const openSubAgentExecutionDetail = useUIStore((state) => state.openSubAgentExecutionDetail)
   const [now, setNow] = React.useState(() => Date.now())
 
@@ -349,13 +282,19 @@ export function SubAgentsPanel({
   }, [allAgents])
 
   const openAgent = React.useCallback(
-    (agent: SubAgentState) =>
+    (agent: SubAgentState) => {
+      // Use task description as tab title (same as SubAgentCard)
+      const title = agent.description?.trim()
+        || agent.prompt?.trim().split('\\n')[0]?.slice(0, 50)
+        || agent.displayName
+        || agent.name
       openSubAgentExecutionDetail(
         agent.toolUseId,
         null,
-        agent.displayName ?? agent.name,
+        title,
         activeSessionId
-      ),
+      )
+    },
     [activeSessionId, openSubAgentExecutionDetail]
   )
 
@@ -378,25 +317,35 @@ export function SubAgentsPanel({
       <FadeIn
         key={contentKey}
         duration={0.15}
-        className="flex h-full min-h-0 flex-col bg-background"
+        className="h-full min-h-0 bg-background"
       >
-        <SubAgentDetailHeader
-          agent={selectedAgent}
-          now={now}
-          onBack={() => openSubAgentsPanel(null, activeSessionId)}
-          onStop={stopAgent}
+        <SubAgentExecutionDetail
+          embedded
+          toolUseId={selectedAgent.toolUseId}
+          inlineText={inlineText ?? undefined}
+          sessionId={activeSessionId}
         />
-        <div className="min-h-0 flex-1">
-          <SubAgentExecutionDetail
-            embedded
-            toolUseId={selectedAgent.toolUseId}
-            inlineText={inlineText ?? undefined}
-            sessionId={activeSessionId}
-          />
-        </div>
       </FadeIn>
     )
-  } else if (!activeSessionId || allAgents.length === 0) {
+  } else if (selectedToolUseId) {
+    // ToolUseId is set but agent not found in allAgents (historical session).
+    // SubAgentExecutionDetail has its own fallback (DB load + inlineText).
+    contentKey = `detail-fallback-${selectedToolUseId}`
+    content = (
+      <FadeIn
+        key={contentKey}
+        duration={0.15}
+        className="h-full min-h-0 bg-background"
+      >
+        <SubAgentExecutionDetail
+          embedded
+          toolUseId={selectedToolUseId}
+          inlineText={inlineText ?? undefined}
+          sessionId={activeSessionId}
+        />
+      </FadeIn>
+    )
+    } else if (!activeSessionId || allAgents.length === 0) {
     contentKey = 'empty'
     content = (
       <FadeIn

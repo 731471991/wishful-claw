@@ -83,8 +83,7 @@ internal static class ToolCallProcessor
         if (skippedToolCalls.Count > 0)
         {
             var skipMessage = maxToolCallsPerTurn > 0
-                ? $"Tool call skipped: per-turn limit ({maxToolCallsPerTurn}) exceeded. " +
-                  $"This call was not executed. Please retry in the next turn."
+                ? $"Skipped: {maxToolCallsPerTurn} tool calls per turn max. Retry this call next turn."
                 : "Tool call skipped: per-turn limit exceeded. Please retry in the next turn.";
 
             foreach (var skipped in skippedToolCalls)
@@ -297,11 +296,14 @@ internal static class ToolCallProcessor
 
     /// <summary>
     /// Tools that require user approval when executed inside a sub-agent.
-    /// These are tools that modify files or execute commands.
+    /// Sub-agents run autonomously — routine file operations and commands
+    /// should NOT require approval. Only interactive tools (like AskUserQuestion)
+    /// pause for user input, and those are handled by their own executor, not here.
     /// </summary>
     private static readonly HashSet<string> SubAgentApprovalTools = new(StringComparer.Ordinal)
     {
-        "Write", "WriteFile", "CreateFile", "Edit", "Bash", "ShellExec", "DeleteFile"
+        // Empty — sub-agents execute tools freely without per-call approval.
+        // If specific tools need approval in the future, add them here.
     };
 
     private static bool RequiresSubAgentApproval(string toolName)

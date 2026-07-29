@@ -173,13 +173,22 @@ internal static partial class OpenAIChatProvider
             return;
         }
 
-        writer.WritePropertyName("tools");
-        writer.WriteStartArray();
+        // Sort tools by name for stable byte ordering (prefix cache stability)
+        var toolList = new List<(string name, JsonElement tool)>();
         foreach (var tool in tools.EnumerateArray())
         {
-            if (tool.ValueKind != JsonValueKind.Object)
-                continue;
+            if (tool.ValueKind != JsonValueKind.Object) continue;
+            var name = tool.TryGetProperty("name", out var nameProp)
+                ? nameProp.GetString() ?? ""
+                : "";
+            toolList.Add((name, tool));
+        }
+        toolList.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
 
+        writer.WritePropertyName("tools");
+        writer.WriteStartArray();
+        foreach (var (toolName, tool) in toolList)
+        {
             // Transform from { name, description, inputSchema } to OpenAI format:
             // { type: "function", function: { name, description, parameters: inputSchema } }
             // If the tool already has "type" field, it's already in the correct format.

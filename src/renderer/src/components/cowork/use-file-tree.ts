@@ -300,6 +300,19 @@ export function useFileTree(options: UseFileTreeOptions) {
     },
     [workingFolder]
   )
+
+  return {
+    t, sessionView, workingFolder, sshConnectionId, agentSurface,
+    previewPanelState,
+    tree, setTree, treeRef, loading, error,
+    searchQuery, setSearchQuery, searchResults, searchLoading,
+    agentRootExpanded, setAgentRootExpanded,
+    renamingPath, setRenamingPath,
+    newItemParent, setNewItemParent,
+    newItemType, setNewItemType,
+    loadDir, loadRoot, refreshTree, refreshDir,
+    handleToggle, handleCopyPath, handleAddToChat
+  }
 }
 
 export type FileTreeState = ReturnType<typeof useFileTree>

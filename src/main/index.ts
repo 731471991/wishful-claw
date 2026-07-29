@@ -17,6 +17,8 @@ import { registerMcpHandlers } from './ipc/mcp-handlers'
 import { registerVideoHandlers } from './ipc/video-handlers'
 import { registerExtensionHandlers } from './ipc/extension-handlers'
 import { registerWebSearchHandlers } from './ipc/web-search-handlers'
+import { registerSshHandlers, cleanupSshHandlers } from './ipc/ssh-handlers'
+import { registerSshFsHandlers } from './ipc/ssh-fs-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
@@ -225,11 +227,9 @@ registerWebSearchHandlers()
     'agent-history:replace',
     async (args) => { await getNativeWorker().request('db/sub-agent-replace', args) }
   )
-  // ── SSH stub handlers ──
-  registerMessagePackHandler<unknown, unknown[]>(
-    'ssh:connection:list',
-    async () => []
-  )
+  // ── SSH handlers ──
+  registerSshHandlers()
+  registerSshFsHandlers()
 
   // ── Skills stub handlers ──
   registerMessagePackHandler<unknown, unknown[]>(
@@ -480,4 +480,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  cleanupSshHandlers()
 })
