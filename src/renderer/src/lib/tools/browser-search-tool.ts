@@ -401,14 +401,24 @@ export async function executeBrowserSearch(
         url,
         format: 'html',
         timeout: engine.timeout
-      }) as { content?: string; error?: string }
+      }) as {
+        results?: Array<{ content?: string; error?: string }>
+        error?: string
+      }
 
       if (fetchResult.error) {
         engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: fetchResult.error })
         return
       }
 
-      const html = fetchResult.content ?? ''
+      // web/fetch returns { results: [{ content, ... }] } - extract the first result
+      const firstResult = fetchResult.results?.[0]
+      if (firstResult?.error) {
+        engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: firstResult.error })
+        return
+      }
+
+      const html = firstResult?.content ?? ''
       if (!html) {
         engineStatus.push({ engine: engine.name, status: 'empty', count: 0 })
         return
