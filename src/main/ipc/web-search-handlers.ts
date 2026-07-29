@@ -1,3 +1,4 @@
+import { BrowserWindow } from 'electron'
 import { getNativeWorker } from '../lib/native-worker'
 import { registerMessagePackHandler } from './messagepack-handler'
 
@@ -61,6 +62,34 @@ async function requestNativeWeb<T>(
   }
 }
 
+/**
+ * Fetch a URL using a hidden BrowserWindow so JavaScript can render.
+ * Used for search engines that block plain HTTP (Baidu CAPTCHA) or
+ * require JS rendering (GitHub, Brave, etc.).
+ */
+async function fetchRenderedPage(url: string, waitMs: number): Promise<{ content?: string; error?: string }> {
+  const win = new BrowserWindow({
+    show: false,
+    width: 1280,
+    height: 800,
+    webPreferences: { sandbox: false, contextIsolation: false }
+  })
+
+  try {
+    await win.loadURL(url, {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    })
+    // Give JS time to render results
+    await new Promise((resolve) => setTimeout(resolve, waitMs))
+    const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML')
+    return { content: html }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    if (!win.isDestroyed()) win.destroy()
+  }
+}
+
 export function registerWebSearchHandlers(): void {
   registerMessagePackHandler<WebSearchRequest>('web:search', (args) =>
     requestNativeWeb('web/search', args)
@@ -68,6 +97,12 @@ export function registerWebSearchHandlers(): void {
 
   registerMessagePackHandler<WebFetchRequest>('web:fetch', (args) =>
     requestNativeWeb('web/fetch', args)
+  )
+
+  // Browser-rendered fetch for engines that need JS execution
+  registerMessagePackHandler<{ url: string; waitMs?: number }>(
+    'web:fetch-rendered',
+    async (args) => fetchRenderedPage(args.url, args.waitMs ?? 3000)
   )
 
   registerMessagePackHandler<undefined, { providers: WebSearchProvider[] }>(

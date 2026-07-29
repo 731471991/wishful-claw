@@ -21,6 +21,10 @@ interface EngineConfig {
   baseUrl?: string
   /** Special extraction mode for non-DOM engines */
   extractor?: 'dom' | 'toutiao_ssr' | 'xml'
+  /** Fetch method: 'http' for plain HTTP, 'rendered' for headless browser */
+  renderMode?: 'http' | 'rendered'
+  /** Wait time after page load for rendered mode (ms) */
+  renderWaitMs?: number
 }
 
 interface IntentConfig {
@@ -29,12 +33,20 @@ interface IntentConfig {
 }
 
 // ── Engine configurations ──
-// All engines are tested to work with plain HTTP fetch in China network.
-// Baidu: excluded (CAPTCHA for non-browser requests)
-// DuckDuckGo / Brave / GitHub: excluded (connection timeout in China)
+// Mixed fetch strategy: 'http' for plain HTTP, 'rendered' for headless browser.
+// Engines that block non-browser requests or need JS rendering use 'rendered'.
 
 const ENGINES: Record<string, EngineConfig> = {
   // ── Chinese general ──
+  baidu: {
+    name: '百度',
+    searchUrl: 'https://www.baidu.com/s?wd={query}&rn=10',
+    type: 'general',
+    timeout: 15000,
+    extractor: 'dom',
+    renderMode: 'rendered',
+    renderWaitMs: 3000
+  },
   bing_cn: {
     name: '必应中文',
     searchUrl: 'https://cn.bing.com/search?q={query}&ensearch=0',
@@ -73,6 +85,17 @@ const ENGINES: Record<string, EngineConfig> = {
     type: 'general',
     timeout: 10000,
     extractor: 'dom'
+  },
+
+  // ── Tech (requires browser rendering) ──
+  github: {
+    name: 'GitHub',
+    searchUrl: 'https://github.com/search?q={query}&type=repositories',
+    type: 'tech',
+    timeout: 15000,
+    extractor: 'dom',
+    renderMode: 'rendered',
+    renderWaitMs: 4000
   },
 
   // ── Social / WeChat ──
@@ -115,24 +138,24 @@ const ENGINES: Record<string, EngineConfig> = {
 
 const INTENT_CONFIG: Record<string, IntentConfig> = {
   general: {
-    engines: ['bing_cn', 'bing_intl', 'sogou', 'so_360', 'toutiao'],
-    maxConcurrent: 5
+    engines: ['baidu', 'bing_cn', 'bing_intl', 'sogou', 'so_360', 'toutiao'],
+    maxConcurrent: 6
   },
   tech: {
-    engines: ['bing_intl', 'bing_cn', 'sogou', 'toutiao'],
-    maxConcurrent: 4
+    engines: ['github', 'bing_intl', 'bing_cn', 'sogou', 'toutiao'],
+    maxConcurrent: 5
   },
   academic: {
     engines: ['arxiv', 'bing_intl', 'wikipedia_en'],
     maxConcurrent: 3
   },
   finance: {
-    engines: ['bing_cn', 'sogou', 'bing_intl', 'toutiao'],
-    maxConcurrent: 4
+    engines: ['baidu', 'bing_cn', 'sogou', 'bing_intl', 'toutiao'],
+    maxConcurrent: 5
   },
   social: {
-    engines: ['sogou_wechat', 'sogou', 'bing_cn'],
-    maxConcurrent: 3
+    engines: ['sogou_wechat', 'sogou', 'baidu', 'bing_cn'],
+    maxConcurrent: 4
   },
   knowledge: {
     engines: ['wikipedia_zh', 'wikipedia_en', 'bing_intl'],
@@ -295,6 +318,16 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
   }
 
   switch (engineId) {
+    case 'baidu':
+      doc.querySelectorAll('.result.c-container, .c-container, .result').forEach((item) => {
+        const titleEl = item.querySelector('h3 a, .t a')
+        if (!titleEl) return
+        const anchor = titleEl as HTMLAnchorElement
+        const snippetEl = item.querySelector('.c-abstract, [class*="content-right"], [class*="abstract"]')
+        addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
+      })
+      break
+
     case 'bing_cn':
     case 'bing_intl':
       doc.querySelectorAll('#b_results > li.b_algo, #b_results .b_algo').forEach((item) => {
@@ -341,6 +374,16 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
         if (!titleEl) return
         const anchor = titleEl as HTMLAnchorElement
         const snippetEl = item.querySelector('.txt-info, p, .s-p')
+        addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
+      })
+      break
+
+    case 'github':
+      doc.querySelectorAll('.repo-list-item, [data-testid="results-list"] > div').forEach((item) => {
+        const linkEl = item.querySelector('a[href]')
+        if (!linkEl) return
+        const anchor = linkEl as HTMLAnchorElement
+        const snippetEl = item.querySelector('p, .repo-list-description')
         addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
       })
       break
@@ -482,28 +525,44 @@ export async function executeBrowserSearch(
     const url = engine.searchUrl.replace('{query}', encodeURIComponent(query))
 
     try {
-      const fetchResult = await ctx.ipc.invoke('web:fetch', {
-        url,
-        format: 'html',
-        timeout: engine.timeout
-      }) as {
-        results?: Array<{ content?: string; error?: string }>
-        error?: string
-      }
+      let html: string
 
-      if (fetchResult.error) {
-        engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: fetchResult.error })
-        return
-      }
+      if (engine.renderMode === 'rendered') {
+        // Use hidden BrowserWindow for JS-rendered pages
+        const rendered = await ctx.ipc.invoke('web:fetch-rendered', {
+          url,
+          waitMs: engine.renderWaitMs ?? 3000
+        }) as { content?: string; error?: string }
 
-      // web/fetch returns { results: [{ content, ... }] } - extract the first result
-      const firstResult = fetchResult.results?.[0]
-      if (firstResult?.error) {
-        engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: firstResult.error })
-        return
-      }
+        if (rendered.error) {
+          engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: rendered.error })
+          return
+        }
+        html = rendered.content ?? ''
+      } else {
+        // Plain HTTP fetch via Worker
+        const fetchResult = await ctx.ipc.invoke('web:fetch', {
+          url,
+          format: 'html',
+          timeout: engine.timeout
+        }) as {
+          results?: Array<{ content?: string; error?: string }>
+          error?: string
+        }
 
-      const html = firstResult?.content ?? ''
+        if (fetchResult.error) {
+          engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: fetchResult.error })
+          return
+        }
+
+        // web/fetch returns { results: [{ content, ... }] } - extract the first result
+        const firstResult = fetchResult.results?.[0]
+        if (firstResult?.error) {
+          engineStatus.push({ engine: engine.name, status: 'error', count: 0, error: firstResult.error })
+          return
+        }
+        html = firstResult?.content ?? ''
+      }
       if (!html) {
         engineStatus.push({ engine: engine.name, status: 'empty', count: 0 })
         return
@@ -572,18 +631,19 @@ const browserSearchHandler: ToolHandler = {
       'combination. Queries multiple search engines in parallel, then',
       'deduplicates and ranks results.',
       '',
-      'Supported engines (9):',
-      '  General: Bing CN, Bing Intl, Sogou, 360 Search, Toutiao',
+      'Supported engines (11):',
+      '  General: Baidu, Bing CN/Intl, Sogou, 360, Toutiao',
+      '  Tech:    GitHub (browser-rendered)',
       '  Social:  Sogou WeChat (public account articles)',
       '  Academic: ArXiv',
       '  Knowledge: Wikipedia (zh/en)',
       '',
       'Intent routing:',
-      '- general: Bing CN/Intl + Sogou + 360 + Toutiao (5 engines)',
-      '- tech: Bing CN/Intl + Sogou + Toutiao (4 engines)',
+      '- general: Baidu + Bing CN/Intl + Sogou + 360 + Toutiao (6 engines)',
+      '- tech: GitHub + Bing CN/Intl + Sogou + Toutiao (5 engines)',
       '- academic: ArXiv + Bing Intl + Wikipedia',
-      '- finance: Bing CN/Intl + Sogou + Toutiao (4 engines)',
-      '- social: Sogou WeChat + Sogou + Bing CN',
+      '- finance: Baidu + Bing CN/Intl + Sogou + Toutiao (5 engines)',
+      '- social: Sogou WeChat + Sogou + Baidu + Bing CN',
       '- knowledge: Wikipedia (zh/en) + Bing Intl',
       '',
       'Results include title, URL, snippet, and source engine.',
