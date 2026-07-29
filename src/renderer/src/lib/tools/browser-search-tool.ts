@@ -29,7 +29,7 @@ interface IntentConfig {
 // ── Engine configurations ──
 // Engines that work with plain HTTP fetch (no JS rendering required).
 // Baidu is excluded: it returns a CAPTCHA page for non-browser requests.
-// 360 Search is excluded: its results are JS-rendered with no HTML content.
+// DuckDuckGo is excluded: connection timeout in China network.
 
 const ENGINES: Record<string, EngineConfig> = {
   // ── Chinese general ──
@@ -46,17 +46,17 @@ const ENGINES: Record<string, EngineConfig> = {
     timeout: 10000,
     baseUrl: 'https://www.sogou.com'
   },
+  so_360: {
+    name: '360搜索',
+    searchUrl: 'https://m.so.com/s?q={query}',
+    type: 'general',
+    timeout: 10000
+  },
 
   // ── International ──
   bing_intl: {
     name: '必应国际',
     searchUrl: 'https://www.bing.com/search?q={query}',
-    type: 'general',
-    timeout: 10000
-  },
-  duckduckgo: {
-    name: 'DuckDuckGo',
-    searchUrl: 'https://lite.duckduckgo.com/lite/?q={query}',
     type: 'general',
     timeout: 10000
   },
@@ -102,15 +102,15 @@ const ENGINES: Record<string, EngineConfig> = {
 
 const INTENT_CONFIG: Record<string, IntentConfig> = {
   general: {
-    engines: ['bing_cn', 'bing_intl', 'sogou', 'duckduckgo'],
+    engines: ['bing_cn', 'bing_intl', 'sogou', 'so_360'],
     maxConcurrent: 4
   },
   tech: {
-    engines: ['github', 'bing_intl', 'duckduckgo', 'sogou'],
+    engines: ['github', 'bing_intl', 'sogou', 'so_360'],
     maxConcurrent: 3
   },
   academic: {
-    engines: ['arxiv', 'bing_intl', 'duckduckgo', 'wikipedia_en'],
+    engines: ['arxiv', 'bing_intl', 'wikipedia_en'],
     maxConcurrent: 3
   },
   finance: {
@@ -209,24 +209,14 @@ function extractFromHtml(html: string, engineId: string): SearchResultItem[] {
       })
       break
 
-    case 'duckduckgo':
-      // DuckDuckGo lite uses table rows
-      doc.querySelectorAll('tr.result, .result, .links_main').forEach((item) => {
-        const linkEl = item.querySelector('a.result-link, a[href]')
-        if (!linkEl) return
-        const anchor = linkEl as HTMLAnchorElement
-        const snippetEl = item.querySelector('.snippet, .snippet-text, td.snippet')
+    case 'so_360':
+      doc.querySelectorAll('.result, .g-card').forEach((item) => {
+        const titleEl = item.querySelector('a[href]')
+        if (!titleEl) return
+        const anchor = titleEl as HTMLAnchorElement
+        const snippetEl = item.querySelector('p, .res-desc')
         addResult(anchor.textContent?.trim() ?? '', anchor.href, snippetEl?.textContent?.trim() ?? '')
       })
-      // Fallback: any link that looks like a result
-      if (results.length === 0) {
-        doc.querySelectorAll('a.result-link, .links_main a[href]').forEach((a) => {
-          const anchor = a as HTMLAnchorElement
-          if (anchor.href && !anchor.href.includes('duckduckgo.com')) {
-            addResult(anchor.textContent?.trim() ?? '', anchor.href, '')
-          }
-        })
-      }
       break
 
     case 'brave':
@@ -480,12 +470,12 @@ const browserSearchHandler: ToolHandler = {
       'combination. Queries multiple search engines in parallel, then',
       'deduplicates and ranks results.',
       '',
-      'Supported engines: Bing (CN/Intl), Sogou, DuckDuckGo,',
+      'Supported engines: Bing (CN/Intl), Sogou, 360 Search,',
       'Brave, GitHub, ArXiv, Wikipedia (zh/en).',
       '',
       'Intent routing:',
-      '- general (default): Bing CN + Bing Intl + Sogou + DuckDuckGo',
-      '- tech: GitHub + Bing Intl + DuckDuckGo',
+      '- general (default): Bing CN + Bing Intl + Sogou + 360 Search',
+      '- tech: GitHub + Bing Intl + Sogou + 360 Search',
       '- academic: ArXiv + Bing Intl + Wikipedia',
       '- finance: Bing CN + Sogou + Bing Intl',
       '- social: Sogou + Bing CN + Bing Intl',
