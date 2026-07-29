@@ -1,4 +1,5 @@
 import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-native-ui'
+import { handleMcpCapabilityList, handleMcpCapabilityInspect } from '@renderer/lib/tools/mcp-capability-bridge'
 import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
@@ -74,6 +75,24 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
       // ask-user may wait for explicit user interaction — no extra timeout
       // here; the Main process 60s fallback covers the worst case.
       const result = await handleNativeAskUserRequest(payload.params)
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'mcp:capability-list') {
+      const result = await handleMcpCapabilityList()
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'mcp:capability-inspect') {
+      const result = await handleMcpCapabilityInspect(payload.params as { serverId: string; toolName: string })
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result

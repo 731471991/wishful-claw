@@ -6,7 +6,6 @@ import { useSettingsStore } from '@renderer/stores/settings-store'
 import { clampMaxConcurrentSubAgents } from '../../stores/settings-store'
 import { CompressionConfig } from '../agent/context-compression-config'
 import { toolRegistry } from '../agent/tool-registry'
-import { trimToolDefinitionsForSize } from '../tools/tool-size-budget'
 import { resolveProviderUserAgent } from '../api/api-user-agent'
 import { ContentBlock, MessageMeta, ProviderConfig, ToolDefinition, UnifiedMessage } from '../api/types'
 import { SidecarAgentRunRequest, SidecarApprovalRequest, SidecarContentBlock, SidecarContextSource, SidecarPlanExecutionContext, SidecarPlanRevisionContext, SidecarPluginChannelContext, SidecarProviderConfig, SidecarSlashCommandContext, SidecarSystemCommandContext, SidecarToolDefinition, SidecarTranslationContext, SidecarUnifiedMessage, SidecarWebSearchConfig } from './sidecar-protocol-types'
@@ -266,7 +265,7 @@ export function buildSidecarAgentRunRequest(args: {
   const rendererOnlyDefs = toolRegistry
     .getStableDefinitions()
     .filter((tool) => !parentToolNames.has(tool.name))
-  const mergedTools = trimToolDefinitionsForSize([...args.tools, ...rendererOnlyDefs])
+  const mergedTools = [...args.tools, ...rendererOnlyDefs]
   const subAgentToolCatalog: SidecarToolDefinition[] = []
   // Global settings snapshot, applied to every run this module builds (incl. sub-agents,
   // which inherit the parent's parameters in the native worker).

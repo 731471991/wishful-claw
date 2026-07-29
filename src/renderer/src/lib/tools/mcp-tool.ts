@@ -1,15 +1,15 @@
 import { useMcpStore } from '../../stores/mcp-store'
-import { registerMcpTools, registerMcpResources, unregisterMcpTools } from '../mcp/mcp-tools'
+import { unregisterMcpTools } from '../mcp/mcp-tools'
 
 let _lastSignature = ''
 
 /**
- * Refresh MCP tools in the tool registry based on currently connected servers.
+ * Refresh MCP capability metadata based on currently connected servers.
  *
- * Unlike Skills (which are static metadata), MCP tools are only available
- * after a server is connected and its capabilities are discovered.
- * This function reads the active MCP servers + their tools/resources from
- * mcp-store and registers/unregisters tool handlers accordingly.
+ * MCP tools are no longer registered as individual tools in the toolRegistry.
+ * They are accessed via the unified use_capability proxy tool.
+ * This function tracks metadata changes so the capability route text
+ * and mcp:capability-list reverse-request handler stay up to date.
  */
 export async function refreshMcpTools(): Promise<void> {
   const store = useMcpStore.getState()
@@ -44,8 +44,7 @@ export async function refreshMcpTools(): Promise<void> {
   if (signature === _lastSignature) return
   _lastSignature = signature
 
-  // Unregister old, register new
+  // Clean up any previously registered MCP tools (from older versions
+  // that registered them individually).
   unregisterMcpTools()
-  registerMcpTools(activeServers, activeTools)
-  registerMcpResources(activeServers, activeResources)
 }

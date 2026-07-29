@@ -69,6 +69,22 @@ internal static class ToolDispatchRouter
                 isToolError = true;
             }
         }
+        // use_capability: unified proxy for MCP tools and Skills
+        else if (AgentRuntimeUseCapabilityExecutor.IsUseCapabilityTool(toolCall.Name))
+        {
+            try
+            {
+                toolOutput = await AgentRuntimeUseCapabilityExecutor.ExecuteAsync(
+                    toolCall, context, state.CancellationToken);
+                isToolError = IsJsonError(toolOutput);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"use_capability execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
         // WebSearch: executed directly in Worker (HTTP request)
         else if (AgentRuntimeWebSearchExecutor.IsWebSearchTool(toolCall.Name))
         {

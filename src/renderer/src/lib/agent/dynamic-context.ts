@@ -7,6 +7,8 @@ import { useSettingsStore } from '../../stores/settings-store'
 import { useAppPluginStore } from '../../stores/app-plugin-store'
 import { CODEGRAPH_SYSTEM_GUIDANCE } from '../tools/codegraph-tool'
 import { ipcClient } from '../ipc/ipc-client'
+import { useMcpStore } from '../../stores/mcp-store'
+import { getRegisteredSkills } from '../tools/skill-tool'
 import { estimateTokens } from '../format-tokens'
 import type { AIModelConfig } from '../api/types'
 import type { LayeredMemorySnapshot, SessionMemoryScope } from './memory-files'
@@ -122,6 +124,47 @@ export function buildMemoryContext(
   return parts.length > 0 ? parts.join('\n') : null
 }
 
+/**
+ * Build a capability route text block listing available MCP servers/tools
+ * and Skills. This text is injected into the system prompt so the agent
+ * knows what it can call via use_capability — without registering each
+ * tool individually (which would bloat the LLM request and cause HTTP 413).
+ *
+ * Inspired by Reasonix's RenderTransientBlock.
+ */
+function buildCapabilityRoute(): string | null {
+  const lines: string[] = []
+
+  // MCP servers and their tools
+  const mcpStore = useMcpStore.getState()
+  const activeServers = mcpStore.getActiveMcps()
+  const activeTools = mcpStore.getActiveMcpTools()
+  const statuses = mcpStore.serverStatuses
+
+  for (const server of activeServers) {
+    const status = statuses[server.id] ?? 'configured'
+    const tools = activeTools[server.id] ?? []
+    const toolNames = tools.map((t) => t.name).join(', ') || '(no tools discovered)'
+    lines.push(`- MCP ${server.name} (${status}): ${toolNames}`)
+  }
+
+  // Skills
+  const skills = getRegisteredSkills()
+  for (const skill of skills) {
+    lines.push(`- Skill ${skill.name}: ${skill.description}`)
+  }
+
+  if (lines.length === 0) return null
+
+  return [
+    '- Capabilities (use use_capability tool to call):',
+    ...lines.map((l) => `  ${l}`),
+    '  Use use_capability(action="list") to see all capabilities,',
+    '  action="inspect" with capability_id to see a tool schema,',
+    '  action="call" with capability_id and arguments to execute.'
+  ].join('\n')
+}
+
 function buildSessionStateContext(sessionId: string): string | null {
   const parts: string[] = ['Session State:']
 
@@ -129,6 +172,14 @@ function buildSessionStateContext(sessionId: string): string | null {
   parts.push(
     '- Web Search: available. Use the BrowserSearch tool to search the web when you need current information. It queries multiple search engines in parallel and returns aggregated results. No API key needed. Always prefer BrowserSearch for web searches.'
   )
+
+  // Capability route: list MCP servers/tools and Skills so the agent
+  // knows what it can call via use_capability — without bloating the
+  // tool definitions in the LLM request.
+  const capRoute = buildCapabilityRoute()
+  if (capRoute) {
+    parts.push(capRoute)
+  }
 
   if (useSettingsStore.getState().webSearchEnabled) {
     parts.push(

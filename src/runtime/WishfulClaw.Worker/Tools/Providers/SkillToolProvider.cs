@@ -1,11 +1,11 @@
-using WishfulClaw.Worker.Tools;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Worker.Tools.Providers;
 
 /// <summary>
-/// Registers skill tool definitions.
-/// Execution: ToolDispatchRouter → AgentRuntimeSkillExecutor (reads SKILL.md from disk).
+/// Skill tool registration has moved to the unified use_capability proxy.
+/// AgentRuntimeSkillExecutor is still used by use_capability for skill execution.
+/// This provider is kept as a no-op so reflection discovery doesn't break.
 /// </summary>
 internal sealed class SkillToolProvider : IToolProvider
 {
@@ -13,15 +13,7 @@ internal sealed class SkillToolProvider : IToolProvider
 
     public void RegisterTools(ToolRegistry registry)
     {
-        registry.Register(new ToolDefinitionPlaceholder(
-            "Skill",
-            "Invoke a registered skill (reusable prompt template). Skills are predefined workflows that can be triggered by name.",
-            ToolSchemaBuilder.Object(
-                new()
-                {
-                    ["SkillName"] = ToolSchemaBuilder.String("The name of the skill to invoke."),
-                    ["input"] = ToolSchemaBuilder.String("Optional input parameters for the skill (JSON string).")
-                },
-                ["SkillName"])));
+        // No-op: Skills are now accessed via use_capability(action="call", capability_id="skill:name")
+        // AgentRuntimeSkillExecutor is still called by AgentRuntimeUseCapabilityExecutor.
     }
 }
