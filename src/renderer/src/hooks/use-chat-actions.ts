@@ -4,6 +4,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { ensureRequestToolCatalogFresh } from '@renderer/lib/tools'
+import { useMcpStore } from '@renderer/stores/mcp-store'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -113,7 +114,9 @@ export function useChatActions() {
         }
       }
 
-      // Refresh dynamic tool catalog (skills, sub-agents, extensions)
+      // Ensure MCP servers are connected before refreshing tool catalog
+      await useMcpStore.getState().ensureConversationReady(projectId ?? null)
+      // Refresh dynamic tool catalog (skills, sub-agents, extensions, MCP)
       await ensureRequestToolCatalogFresh()
 
       // Fetch tool definitions from the C# Worker.

@@ -257,11 +257,15 @@ export function buildSidecarAgentRunRequest(args: {
 
   const maxParallelTools = normalizeMaxParallelTools(args.maxParallelTools)
   const webSearch = mapSidecarWebSearchConfig(args.tools)
+  // Merge renderer-registered tools (MCP, Skills, Extensions) into the main tool list
+  // so the LLM can discover and call them. Without this merge, renderer-only tools
+  // would only appear in subAgentToolCatalog and be invisible to the main agent.
   const parentToolNames = new Set(args.tools.map((tool) => tool.name))
-  const subAgentToolCatalog = toolRegistry
+  const rendererOnlyDefs = toolRegistry
     .getStableDefinitions()
     .filter((tool) => !parentToolNames.has(tool.name))
-    .map(mapSidecarTool)
+  const mergedTools = [...args.tools, ...rendererOnlyDefs]
+  const subAgentToolCatalog: SidecarToolDefinition[] = []
   // Global settings snapshot, applied to every run this module builds (incl. sub-agents,
   // which inherit the parent's parameters in the native worker).
   const settings = useSettingsStore.getState()
@@ -301,7 +305,7 @@ export function buildSidecarAgentRunRequest(args: {
     ...(liveOverlayMessages.length > 0 ? { liveOverlayMessages } : {}),
     provider,
     ...(compressionProvider ? { compressionProvider } : {}),
-    tools: args.tools.map(mapSidecarTool),
+    tools: mergedTools.map(mapSidecarTool),
     ...(subAgentToolCatalog.length > 0 ? { subAgentToolCatalog } : {}),
     ...(webSearch ? { webSearch } : {}),
     ...(imagePluginProvider ? { imagePluginProvider } : {}),
