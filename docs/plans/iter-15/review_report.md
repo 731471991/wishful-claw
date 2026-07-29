@@ -83,26 +83,31 @@
 
 ## 文件清单
 
-### 新建（5 个文件）
+### 新建（7 个文件）
 1. `src/renderer/src/lib/tools/mcp-tool.ts` — refreshMcpTools 实现
 2. `src/renderer/src/components/settings/mcp-panel.tsx` — 主面板
-3. `src/renderer/src/components/settings/mcp-server-config.tsx` — 服务器配置面板
-4. `src/renderer/src/components/settings/mcp-add-dialog.tsx` — 添加服务器对话框
+3. `src/renderer/src/components/settings/mcp-server-form.tsx` — 配置表单（拆分自 mcp-server-config）
+4. `src/renderer/src/components/settings/mcp-connection-control.tsx` — 连接控制（拆分自 mcp-server-config）
+5. `src/renderer/src/components/settings/mcp-capabilities.tsx` — 能力展示（拆分自 mcp-server-config）
+6. `src/renderer/src/components/settings/mcp-add-dialog.tsx` — 添加服务器对话框
 
-### 修改（5 个文件）
+### 修改（7 个文件）
 1. `src/renderer/src/lib/mcp/types.ts` — 完善类型定义
 2. `src/renderer/src/lib/mcp/mcp-tools.ts` — 从 stub 改为完整实现
 3. `src/renderer/src/lib/tools/dynamic-tool-catalog.ts` — 添加 MCP 刷新
 4. `src/renderer/src/components/settings/SettingsPage.tsx` — 添加 MCP 菜单和渲染
 5. `src/renderer/src/locales/{zh,en}/settings.json` — mcp.* 翻译
+6. `src/renderer/src/lib/ipc/sidecar-mapping.ts` — 合并 renderer 工具到主 tools 数组
+7. `src/renderer/src/hooks/use-chat-actions.ts` — 添加 ensureConversationReady 调用
 
 ## 潜在问题
 
 | # | 问题 | 严重度 | 说明 |
 |---|------|--------|------|
 | 1 | 运行时 E2E 验证未执行 | 中 | 需启动应用测试完整流程 |
-| 2 | MCP 工具注册时机依赖连接状态 | 低 | 需确保 connectServer 后 refreshMcpTools 被触发 |
+| 2 | ~~MCP 工具注册时机依赖连接状态~~ | ✅ 已修复 | ensureConversationReady 已接入 use-chat-actions |
 | 3 | AssistantMessage isMcpTool 未使用导入 | 低 | Pre-existing，非本次引入 |
+| 4 | MCP 上下文未注入 system prompt | 低 | OpenCowork 有 MCP 信息注入，可后续增强 |
 
 ## Commit 序列
 
@@ -115,6 +120,50 @@
 | `5a3cecf` | feat(mcp): 步骤4 — McpPanel 设置页面 |
 | `470157f` | feat(mcp): 步骤5 — SettingsPage 集成 |
 | `db9c03f` | feat(mcp): 步骤6 — i18n |
+| `9704d51` | docs(review): 审查报告 |
+| `fab3208` | refactor(mcp): 拆分 mcp-server-config.tsx（524→4 文件） |
+| `3a014e0` | fix(mcp): 合并 renderer 工具到主 tool list，打通 Agent 发现链路 |
+
+## 审查后修复
+
+### 文件拆分（commit fab3208）
+
+`mcp-server-config.tsx` 从 524 行拆分为 4 个文件，全部在 AGENTS.md 规定的 200~500 行区间：
+
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| `mcp-server-config.tsx` | 150 | 编排：header + layout + handlers |
+| `mcp-server-form.tsx` | 259 | 配置表单：名称/描述/传输/stdio/HTTP + 防抖保存 |
+| `mcp-connection-control.tsx` | 87 | 连接控制 + 状态指示 + 错误展示 |
+| `mcp-capabilities.tsx` | 105 | 工具/资源/Prompt tab 展示 |
+
+### MCP 工具发现链路修复（commit 3a014e0）
+
+**根因**：MCP 工具注册在 renderer 的 `toolRegistry` 中，但主 Agent 的工具列表只来自 Worker 的 `tool/list`。MCP 工具仅被放入 `subAgentToolCatalog`，对主 Agent 不可见。
+
+**代码审计全链路**：
+
+```
+mcp-store (connectServer)
+  → refreshServerInfo (获取 tools/resources/prompts)
+  → refreshMcpTools (mcp-tool.ts)
+  → registerMcpTools (mcp-tools.ts, 注册到 renderer toolRegistry)
+  → refreshDynamicToolCatalog (dynamic-tool-catalog.ts)
+  → ensureRequestToolCatalogFresh (use-chat-actions.ts 调用)
+  → sidecar-mapping.ts: mergedTools = [...workerTools, ...rendererOnlyDefs]
+  → Worker AgentLoop → LLM 可见 MCP 工具定义
+  → LLM 调用 mcp__{serverId}__{toolName}
+  → ToolDispatchRouter 拦截 (IsMcpTool)
+  → AgentRuntimeMcpExecutor.ExecuteAsync
+  → reverse-request: mcp:call-tool
+  → Main McpManager.callTool
+```
+
+**修复内容**：
+1. `sidecar-mapping.ts`：将 renderer `toolRegistry` 中不在 Worker 工具列表里的定义合并到主 `tools` 数组
+2. `use-chat-actions.ts`：在 `ensureRequestToolCatalogFresh()` 前调用 `ensureConversationReady()` 自动连接已配置的 MCP 服务器
+
+**验证**：tsc 编译 0 新增错误。
 
 ## 结论
 
