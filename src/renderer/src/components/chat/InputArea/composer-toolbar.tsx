@@ -255,10 +255,7 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
           <div className="shrink-0">
             <PersonaSwitcher sessionId={draftSessionId} />
           </div>
-          {webSearchToggleControl}
           {skillsMenuControl}
-          {activeMcpBadge}
-          {activeExtensionBadge}
           {folderControl}
         </div>
 
