@@ -95,6 +95,7 @@ export type SettingsTab =
   | 'mcp'
   | 'websearch'
   | 'ssh'
+  | 'skills'
 
 export type PreviewSource = 'file' | 'dev-server' | 'markdown' | 'diff'
 export type DiffSource = 'git' | 'agent'

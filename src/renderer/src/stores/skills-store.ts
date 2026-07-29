@@ -5,6 +5,7 @@ import { refreshDynamicToolCatalog } from '@renderer/lib/tools/dynamic-tool-cata
 export interface SkillInfo {
   name: string
   description: string
+  enabled: boolean
 }
 
 export interface ScanFileInfo {
@@ -102,6 +103,7 @@ interface SkillsStore {
   setEditing: (editing: boolean) => void
   setEditContent: (content: string | null) => void
   saveSkill: (name: string, content: string) => Promise<boolean>
+  toggleSkillEnabled: (name: string, enabled: boolean) => Promise<boolean>
 
   // Install dialog actions
   openInstallDialog: (sourcePath: string) => void
@@ -148,6 +150,24 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
       set({ skills: [] })
     } finally {
       set({ loading: false })
+    }
+  },
+
+  toggleSkillEnabled: async (name, enabled) => {
+    try {
+      const result = await ipcClient.invoke('skills:set-enabled', { name, enabled }) as { success: boolean }
+      if (result?.success) {
+        set({
+          skills: get().skills.map(s =>
+            s.name === name ? { ...s, enabled } : s
+          )
+        })
+        void refreshDynamicToolCatalog()
+        return true
+      }
+      return false
+    } catch {
+      return false
     }
   },
 

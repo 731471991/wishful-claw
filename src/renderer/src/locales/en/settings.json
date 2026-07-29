@@ -16,7 +16,8 @@
     "groups": {
       "general": "General",
       "aiService": "AI Service",
-      "about": "About"
+      "about": "About",
+      "extensions": "Extensions"
     },
     "persona": {
       "label": "Persona",
@@ -24,6 +25,10 @@
     },
     "websearch": {
       "label": "Web Search"
+    },
+    "skills": {
+      "label": "Skills",
+      "desc": "Manage installed skills and browse the online market"
     }
   },
   "general": {
@@ -720,5 +725,42 @@
     "apiKeyRequired": "API key is required for this provider.",
     "testSuccess": "Web search test successful! Found {{count}} results.",
     "testFailed": "Web search test failed: {{error}}"
+  },
+  "skills": {
+    "tabs": {
+      "installed": "Installed",
+      "market": "Market"
+    },
+    "installed": {
+      "searchPlaceholder": "Search installed skills...",
+      "loading": "Loading...",
+      "empty": "No skills installed",
+      "emptyHint": "Switch to Market tab to browse and install",
+      "refresh": "Refresh",
+      "installFromFolder": "Install from folder",
+      "files": "Files ({{count}}, {{size}})",
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "back": "Back",
+      "editTitle": "Edit: {{name}}",
+      "deleted": "Deleted \"{{name}}\"",
+      "deleteFailed": "Delete failed",
+      "saved": "Saved",
+      "saveFailed": "Save failed",
+      "installedSuccess": "Skill \"{{name}}\" installed",
+      "installFailed": "Installation failed",
+      "toggleFailed": "Failed to toggle skill"
+    },
+    "market": {
+      "title": "Skill Market — skillhub.cn",
+      "openInstaller": "Open Installer",
+      "closeInstaller": "Close Installer"
+    },
+    "installer": {
+      "title": "Skill Installer",
+      "emptyHint2": "Copy an install prompt from the market, paste it here and send to the Agent"
+    }
   }
 }

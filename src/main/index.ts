@@ -18,6 +18,7 @@ import { registerVideoHandlers } from './ipc/video-handlers'
 import { registerExtensionHandlers } from './ipc/extension-handlers'
 import { registerWebSearchHandlers } from './ipc/web-search-handlers'
 import { registerSshHandlers, cleanupSshHandlers } from './ipc/ssh-handlers'
+import { registerSkillHandlers } from './ipc/skill-handlers'
 import { registerSshFsHandlers } from './ipc/ssh-fs-handlers'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
@@ -161,10 +162,11 @@ app.whenReady().then(() => {
     'fs:select-folder',
     async (args, event) => {
       const win = BrowserWindow.fromWebContents(event.sender)
-      const result = await dialog.showOpenDialog(win!, {
-        properties: ['openDirectory'],
-        ...(args.defaultPath ? { defaultPath: args.defaultPath } : {})
-      })
+      const opts: Electron.OpenDialogOptions = { properties: ['openDirectory'] }
+      if (args && typeof args.defaultPath === 'string') {
+        opts.defaultPath = args.defaultPath
+      }
+      const result = await dialog.showOpenDialog(win!, opts)
       return {
         canceled: result.canceled,
         path: result.canceled ? undefined : result.filePaths[0]
@@ -231,11 +233,9 @@ registerWebSearchHandlers()
   registerSshHandlers()
   registerSshFsHandlers()
 
-  // ── Skills stub handlers ──
-  registerMessagePackHandler<unknown, unknown[]>(
-    'skills:list',
-    async () => []
-  )
+  // ── Skills handlers ──
+  registerSkillHandlers()
+
   registerMessagePackHandler<unknown, unknown[]>(
     'agents:list',
     async () => []

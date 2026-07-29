@@ -17,7 +17,8 @@
       "general": "基础",
       "aiService": "AI 服务",
       "about": "关于",
-      "channels": "渠道"
+      "channels": "渠道",
+      "extensions": "扩展"
     },
     "persona": {
       "label": "人格管理",
@@ -29,6 +30,10 @@
     },
     "websearch": {
       "label": "联网搜索"
+    },
+    "skills": {
+      "label": "Skills",
+      "desc": "管理已安装的 Skill 和浏览在线市场"
     }
   },
   "general": {
@@ -830,5 +835,42 @@
     "apiKeyRequired": "此提供商需要 API 密钥。",
     "testSuccess": "联网搜索测试成功！找到 {{count}} 条结果。",
     "testFailed": "联网搜索测试失败：{{error}}"
+  },
+  "skills": {
+    "tabs": {
+      "installed": "已安装",
+      "market": "市场"
+    },
+    "installed": {
+      "searchPlaceholder": "搜索已安装的 Skill...",
+      "loading": "加载中...",
+      "empty": "还未安装任何 Skill",
+      "emptyHint": "切换到市场页签浏览并安装",
+      "refresh": "刷新",
+      "installFromFolder": "从文件夹安装",
+      "files": "文件 ({{count}}, {{size}})",
+      "edit": "编辑",
+      "delete": "删除",
+      "save": "保存",
+      "cancel": "取消",
+      "back": "返回",
+      "editTitle": "编辑：{{name}}",
+      "deleted": "已删除 \"{{name}}\"",
+      "deleteFailed": "删除失败",
+      "saved": "已保存",
+      "saveFailed": "保存失败",
+      "installedSuccess": "Skill \"{{name}}\" 安装成功",
+      "installFailed": "安装失败",
+      "toggleFailed": "切换状态失败"
+    },
+    "market": {
+      "title": "Skill 市场 — skillhub.cn",
+      "openInstaller": "打开安装助手",
+      "closeInstaller": "关闭安装助手"
+    },
+    "installer": {
+      "title": "Skill 安装助手",
+      "emptyHint2": "从市场复制安装提示词，粘贴到这里发送给 Agent 执行安装"
+    }
   }
 }

@@ -57,11 +57,10 @@ export function BrowserPanel({
   const webviewUserAgent = runtimeBrowserUserDataReuseEnabled ? runtimeBrowserUserAgent : undefined
   const webviewSessionProps: Pick<
     React.ComponentProps<'webview'>,
-    'partition' | 'allowpopups' | 'plugins' | 'useragent'
+    'partition' | 'allowpopups' | 'useragent'
   > = {
     ...(runtimeBrowserUserDataReuseEnabled ? {} : { partition: BUILTIN_BROWSER_PARTITION }),
     allowpopups: true,
-    plugins: runtimeBrowserUserDataReuseEnabled,
     ...(webviewUserAgent ? { useragent: webviewUserAgent } : {})
   }
 
@@ -378,6 +377,7 @@ export function BrowserPanel({
             src={committedUrl}
             className="size-full"
             {...webviewSessionProps}
+            {...(runtimeBrowserUserDataReuseEnabled ? { plugins: 'true' as unknown as boolean } : {})}
           />
         )}
         {errorInfo ? (

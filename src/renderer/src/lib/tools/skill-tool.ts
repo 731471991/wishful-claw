@@ -3,7 +3,7 @@ import { toolRegistry } from '../agent/tool-registry'
 import { ipcClient } from '../ipc/ipc-client'
 import { encodeToolError } from './tool-result-format'
 
-type SkillMeta = { name: string; description: string }
+type SkillMeta = { name: string; description: string; enabled?: boolean }
 
 let registeredSkills: SkillMeta[] = []
 let registeredSkillSignature = ''
@@ -29,7 +29,7 @@ function buildSkillSignature(skills: SkillMeta[]): string {
 async function loadRegisteredSkills(): Promise<SkillMeta[] | null> {
   try {
     const result = await ipcClient.invoke('skills:list')
-    return Array.isArray(result) ? (result as SkillMeta[]) : []
+    return Array.isArray(result) ? (result as SkillMeta[]).filter(s => s.enabled !== false) : []
   } catch (err) {
     console.error('[Skills] Failed to load skills from IPC:', err)
     return null

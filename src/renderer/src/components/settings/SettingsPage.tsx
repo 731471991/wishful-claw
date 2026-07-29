@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Search } from 'lucide-react'
+import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Search, Puzzle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
@@ -11,6 +11,7 @@ import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
 import { WebSearchPanel } from '@renderer/components/settings/WebSearchPanel'
 import { SshPanel } from '@renderer/components/settings/SshPanel'
+import { SkillPanel } from '@renderer/components/settings/skill-panel'
 import { Server as ServerIcon } from 'lucide-react'
 
 function SettingsPage(): React.JSX.Element {
@@ -42,6 +43,12 @@ function SettingsPage(): React.JSX.Element {
       label: t('tabs.groups.channels', { defaultValue: '渠道' }),
       items: [
         { id: 'channel', icon: <MessageCircle className="size-4" />, label: t('tabs.channel.label', { defaultValue: '渠道配置' }) }
+      ]
+    },
+    {
+      label: t('tabs.groups.extensions', { defaultValue: '扩展' }),
+      items: [
+        { id: 'skills', icon: <Puzzle className="size-4" />, label: t('tabs.skills.label', { defaultValue: 'Skills' }) }
       ]
     },
     {
@@ -151,6 +158,10 @@ function SettingsPage(): React.JSX.Element {
             ) : settingsTab === 'ssh' ? (
               <div className="flex-1 overflow-y-auto">
                 <SshPanel />
+              </div>
+            ) : settingsTab === 'skills' ? (
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                <SkillPanel />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">
