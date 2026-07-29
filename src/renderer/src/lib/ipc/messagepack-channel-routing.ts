@@ -170,6 +170,7 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'api:request',
   'web:search',
   'web:fetch',
+  'web:fetch-rendered',
   'extension:read-asset',
   'extension:list',
   'extension:install-from-folder',
