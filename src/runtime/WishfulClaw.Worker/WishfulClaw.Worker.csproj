@@ -25,9 +25,4 @@
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.11" NoWarn="NU1903" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- Embedded persona preset markdown files -->
-    <EmbeddedResource Include="Resources\Personas\**\*.md" />
-  </ItemGroup>
-
 </Project>

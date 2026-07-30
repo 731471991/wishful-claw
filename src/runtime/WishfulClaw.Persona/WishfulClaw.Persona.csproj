@@ -12,4 +12,9 @@
     <ProjectReference Include="..\WishfulClaw.Workspace\WishfulClaw.Workspace.csproj" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <!-- Embedded persona preset markdown files -->
+    <EmbeddedResource Include="Resources\Personas\**\*.md" />
+  </ItemGroup>
 </Project>

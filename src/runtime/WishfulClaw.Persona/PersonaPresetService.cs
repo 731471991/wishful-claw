@@ -9,7 +9,7 @@ namespace WishfulClaw.Persona;
 /// </summary>
 public sealed class PersonaPresetService
 {
-    private const string BuiltinResourcePrefix = "WishfulClaw.Worker.Resources.Personas";
+    private const string BuiltinResourcePrefix = "WishfulClaw.Persona.Resources.Personas";
 
     private static readonly Lazy<PersonaPresetService> _default = new(() => new PersonaPresetService());
     public static PersonaPresetService Default => _default.Value;
