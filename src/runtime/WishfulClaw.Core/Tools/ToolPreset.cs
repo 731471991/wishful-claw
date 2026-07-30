@@ -46,10 +46,10 @@ public sealed class ToolPreset
         ["chat"] = new ToolPreset
         {
             Id = "chat",
-            Description = "Everyday chat — file ops, search, web, browser, memory, ask-user, plan, goal.",
+            Description = "Everyday chat — file ops, search, shell, web, memory, ask-user, plan, goal.",
             AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "file", "search", "shell", "web", "memory", "ask-user",
+                "file", "search", "shell", "code-compatible", "web", "memory", "ask-user",
                 "plan", "goal", "notify", "capability"
             },
             AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
