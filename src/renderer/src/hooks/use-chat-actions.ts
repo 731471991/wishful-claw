@@ -4,6 +4,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type CachedToolDef } from '@renderer/lib/tools/tool-cache'
+import { buildRuntimeReminder } from '@renderer/lib/agent/dynamic-context'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -127,6 +128,20 @@ export function useChatActions() {
       // ToolPreset control what the LLM sees.
       const tools = filteredWorkerTools
 
+      // Build runtime reminder (capability route, session state, selected files)
+      // and inject as user message prefix — NOT into system prompt — to keep
+      // the system prompt byte-stable for provider prefix cache hits.
+      // (Inspired by Reasonix's transient block approach.)
+      const userPromptText = typeof text === 'string' ? text : text.text
+      const runtimeReminder = await buildRuntimeReminder({
+        sessionId: targetSessionId,
+        modelConfig: activeProvider,
+        userPrompt: userPromptText
+      })
+      const userContent = runtimeReminder ? `${runtimeReminder}
+
+${text}` : text
+
       const provider = {
         id: activeProvider.id,
         name: activeProvider.name,
@@ -140,7 +155,7 @@ export function useChatActions() {
 
       await sendMessage({
         provider,
-        messages: [...historyMessages, { role: 'user', content: text }],
+        messages: [...historyMessages, { role: 'user', content: userContent }],
         sessionId: targetSessionId,
         tools: tools ?? undefined,
         workingFolder,
