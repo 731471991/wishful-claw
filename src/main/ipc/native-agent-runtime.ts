@@ -1,5 +1,4 @@
 import { BrowserWindow, Notification } from 'electron'
-import { join } from 'path'
 import { getNativeWorker } from '../lib/native-worker'
 import { safeSendMessagePackToWindow } from '../window-ipc'
 import {
@@ -136,14 +135,9 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
         const body = (params?.body as string) ?? ''
         const type = (params?.type as string) ?? 'info'
         if (Notification.isSupported()) {
-          // Resolve icon path: in dev, resources/ is at project root;
-          // in production, it's in the app's resources directory.
-          const { app } = require('electron')
-          const iconPath = join(app.getAppPath(), 'resources', 'icon-256.png')
           const notification = new Notification({
             title,
             body,
-            icon: iconPath,
             urgency: type === 'error' ? 'critical' : 'normal'
           })
           notification.show()
