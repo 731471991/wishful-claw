@@ -37,6 +37,7 @@ function createWindow(): void {
       ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 12, y: 12 } }
       : { frame: false }),
     autoHideMenuBar: true,
+    icon: join(app.getAppPath(), 'resources', 'icon-256.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

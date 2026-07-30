@@ -138,7 +138,8 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
         if (Notification.isSupported()) {
           // Resolve icon path: in dev, resources/ is at project root;
           // in production, it's in the app's resources directory.
-          const iconPath = join(process.env.APP_ROOT || process.cwd(), 'resources', 'icon-256.png')
+          const { app } = require('electron')
+          const iconPath = join(app.getAppPath(), 'resources', 'icon-256.png')
           const notification = new Notification({
             title,
             body,
