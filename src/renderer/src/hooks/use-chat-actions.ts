@@ -3,7 +3,6 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import { toolRegistry } from '@renderer/lib/agent/tool-registry'
 import { getCachedTools, fetchToolDefinitions } from '@renderer/lib/tools/tool-cache'
 
 export interface SendMessageOptions {
@@ -112,10 +111,12 @@ export function useChatActions() {
       const filteredWorkerTools = (workerTools ?? []).filter(
         (t) => webSearchEnabled || (t.name !== 'WebSearch' && t.name !== 'WebFetch')
       )
-      const rendererDefs = toolRegistry.getStableDefinitions()
-      const workerNames = new Set(filteredWorkerTools.map((t) => t.name))
-      const rendererOnly = rendererDefs.filter((d) => !workerNames.has(d.name))
-      const tools = [...filteredWorkerTools, ...rendererOnly]
+      // Use only the Worker's preset-filtered tool list.
+      // Renderer-registered tool handlers are still available for execution
+      // (toolRegistry.get() works by name), but their definitions are NOT
+      // sent to the LLM — this keeps the tool list lean and lets the Worker's
+      // ToolPreset control what the LLM sees.
+      const tools = filteredWorkerTools
 
       const provider = {
         id: activeProvider.id,
