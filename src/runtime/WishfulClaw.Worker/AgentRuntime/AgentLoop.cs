@@ -279,15 +279,15 @@ internal static partial class AgentLoop
     {
         var title = reason switch
         {
-            "completed" => "\xe4\xbb\xbb\xe5\x8a\xa1\xe5\xae\x8c\xe6\x88\x90",
-            "max_iterations" => "\xe8\xbe\xbe\xe5\x88\xb0\xe8\xbf\xad\xe4\xbb\xa3\xe4\xb8\x8a\xe9\x99\x90",
-            "cancelled" => "\xe4\xbb\xbb\xe5\x8a\xa1\xe5\xb7\xb2\xe5\x8f\x96\xe6\xb6\x88",
-            "aborted" => "\xe4\xbb\xbb\xe5\x8a\xa1\xe5\xb7\xb2\xe4\xb8\xad\xe6\x96\xad",
-            _ => $"\xe4\xbb\xbb\xe5\x8a\xa1\xe5\x81\x9c\xe6\xad\xa2: {reason}"
+            "completed" => "任务完成",
+            "max_iterations" => "达到迭代上限",
+            "cancelled" => "任务已取消",
+            "aborted" => "任务已中断",
+            _ => $"任务停止: {reason}"
         };
 
         // Extract last assistant message text for the notification body
-        var body = "\xe5\xb7\xa5\xe4\xbd\x9c\xe5\xb7\xb2\xe5\xae\x8c\xe6\x88\x90\xe3\x80\x82";
+        var body = "工作已完成。";
         if (conversation is not null)
         {
             for (var i = conversation.Count - 1; i >= 0; i--)
