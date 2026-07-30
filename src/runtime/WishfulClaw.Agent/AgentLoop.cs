@@ -37,8 +37,41 @@ internal static partial class AgentLoop
 
         ValidateProvider(provider);
 
-        var wireConversation = ReadWireConversation(parameters);
-        var conversation = ReadConversation(wireConversation);
+        // ── Session conversation state ──
+        // Use SessionConversation for per-session state management.
+        // First call (or messageCount mismatch): full init.
+        // Subsequent calls (messageCount matches): incremental append.
+        var sessionId = state.SessionId ?? "";
+        var sessionConv = SessionConversationManager.GetOrCreate(sessionId);
+        var frontendMessageCount = JsonHelpers.GetInt(parameters, "messageCount", 0);
+
+        List<AgentRuntimeChatMessage> conversation;
+        List<JsonElement> wireConversation;
+
+        if (frontendMessageCount > 0 && frontendMessageCount == sessionConv.MessageCount)
+        {
+            // Incremental mode: parameters contains only new messages.
+            var newWireMessages = ReadWireConversation(parameters);
+            var newConversation = ReadConversation(newWireMessages);
+            sessionConv.Append(newWireMessages, newConversation);
+            WorkerLog.Debug(
+                $"agent loop incremental session={FormatSessionId(sessionId)} " +
+                $"existing={frontendMessageCount} appended={newWireMessages.Count}");
+        }
+        else
+        {
+            // Full mode: initialize from scratch (first turn, session restore, or sync mismatch).
+            wireConversation = ReadWireConversation(parameters);
+            conversation = ReadConversation(wireConversation);
+            sessionConv.Initialize(wireConversation, conversation);
+            WorkerLog.Debug(
+                $"agent loop full init session={FormatSessionId(sessionId)} " +
+                $"messages={wireConversation.Count} frontendCount={frontendMessageCount}");
+        }
+
+        // Get live references from SessionConversation for the loop to use.
+        conversation = sessionConv.GetConversation();
+        wireConversation = sessionConv.GetWireConversation();
         var runtimeParameters = CreateRuntimeParametersWithoutMessages(parameters);
         state.ReplaceParameters(runtimeParameters);
         parameters = runtimeParameters;
@@ -113,8 +146,9 @@ internal static partial class AgentLoop
                         conversation, wireConversation, provider);
                     if (newWireConversation.Count < originalCount)
                     {
-                        conversation = newConversation;
-                        wireConversation = newWireConversation;
+                        sessionConv.Replace(newConversation, newWireConversation);
+                        conversation = sessionConv.GetConversation();
+                        wireConversation = sessionConv.GetWireConversation();
                         await AgentRuntimeTools.EmitAsync(
                             state, context,
                             new AgentRuntimeStreamEvent(

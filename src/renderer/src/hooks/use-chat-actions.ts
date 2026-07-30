@@ -163,7 +163,8 @@ ${text}` : text
         maxConcurrentSubAgents: settings.maxConcurrentSubAgents,
         personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,
         language: settings.language,
-        userRules: settings.systemPrompt || undefined
+        userRules: settings.systemPrompt || undefined,
+        messageCount: historyMessages.length
       })
 
       void opts

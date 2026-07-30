@@ -70,6 +70,7 @@ export interface AgentActions {
     language?: string
 
     userRules?: string
+    messageCount?: number
 
   }) => Promise<void>
 

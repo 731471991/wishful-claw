@@ -154,6 +154,16 @@ internal static partial class AgentLoop
             model.StartsWith("o4", StringComparison.OrdinalIgnoreCase);
     }
 
+    // ── Session helpers ──
+
+    /// <summary>
+    /// Formats a sessionId for logging, masking empty values.
+    /// </summary>
+    internal static string FormatSessionId(string? sessionId)
+    {
+        return string.IsNullOrEmpty(sessionId) ? "<empty>" : sessionId;
+    }
+
     // ── Transient injection helpers ──
 
     /// <summary>
@@ -170,7 +180,7 @@ internal static partial class AgentLoop
             if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
             {
                 var now = DateTimeOffset.Now;
-                var timestampBlock = $"<current_time>\n{now:yyyy-MM-dd HH:mm:ss zzz} ({now:dddd})\n</current_time>\n\n";
+                var timestampBlock = $"<current_time>\n{now:yyyy-MM-dd HH:mm zzz} ({now:dddd})\n</current_time>\n\n";
                 conversation[i] = conversation[i] with { Text = timestampBlock + conversation[i].Text };
                 break;
             }

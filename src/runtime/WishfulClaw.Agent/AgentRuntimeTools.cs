@@ -217,6 +217,27 @@ public static class AgentRuntimeTools
 
     // ── Reverse response (from renderer tool execution) ──
 
+    // ── Session management ──
+
+    /// <summary>
+    /// Clears the SessionConversation state for a given sessionId.
+    /// Called when the user deletes a session or clears session messages.
+    /// </summary>
+    public static WorkerResponse ClearSession(JsonElement parameters)
+    {
+        var sessionId = JsonHelpers.GetString(parameters, "sessionId")?.Trim();
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return WorkerResponse.Error("sessionId is required.");
+        }
+
+        SessionConversationManager.Remove(sessionId);
+        WorkerLog.Info($"agent session cleared sessionId={FormatLogValue(sessionId)}");
+        return WorkerResponse.Json(new { cleared = true, sessionId });
+    }
+
+    // ── Reverse response (from renderer tool execution) ──
+
     public static WorkerResponse ReverseResponse(JsonElement parameters)
     {
         return AgentRuntimeReverseRequests.Complete(parameters);
