@@ -5,8 +5,7 @@ import { MessageRow } from './MessageRow'
 import type {
   MessageListProps,
   RenderableMessage,
-  ToolResultsLookup,
-  ChatStoreSnapshot
+  ToolResultsLookup
 } from './utils'
 import type { OrchestrationRunStore } from '@renderer/lib/orchestration/build-runs'
 import { mergeHiddenToolUseIds } from './utils'
@@ -71,13 +70,13 @@ export function ExportView(props: ExportViewProps): React.JSX.Element {
               isLastAssistantMessage={row.isLastAssistantMessage}
               showContinue={row.showContinue}
               disableAnimation
-              toolResults={toolResultsLookup.get(row.messageId)}
+              toolResults={toolResultsLookup.get(row.messageId) as any}
               inlineCompactSummaries={inlineCompactSummaryState.byAssistantId.get(row.messageId)}
               orchestrationRun={
                 orchestrationState.byMessageId.get(row.messageId)?.primaryRun ?? null
               }
               hiddenToolUseIds={mergeHiddenToolUseIds(
-                orchestrationState.byMessageId.get(row.messageId)?.hiddenToolUseIds,
+                orchestrationState.byMessageId.get(row.messageId)?.hiddenToolUseIds as any,
                 duplicatePlanReviewToolUseIds
               )}
               anchorMessageId={null}

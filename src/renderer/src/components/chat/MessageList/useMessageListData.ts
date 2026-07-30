@@ -420,9 +420,9 @@ export function useMessageListData(input: MessageListDataInput): MessageListData
     messages,
     messagesLoaded: activeSessionLoaded,
     messageCount: activeSessionMessageCount,
-    workingFolder: activeWorkingFolder,
+    workingFolder: activeWorkingFolder ?? null,
     loadedRangeStart,
-    projectId: activeProjectId,
+    projectId: activeProjectId ?? null,
     transcriptAnalysis,
     renderableMessages,
     orchestrationState,
@@ -468,9 +468,9 @@ export function useMessageListData(input: MessageListDataInput): MessageListData
     isMainChatSession,
     isDetachedSessionView,
     activeSessionId,
-    activeProjectId,
+    activeProjectId: activeProjectId ?? null,
     activeProjectName,
-    activeWorkingFolder,
+    activeWorkingFolder: activeWorkingFolder ?? null,
     activeSessionMessageCount,
   }
 }

@@ -61,7 +61,7 @@ export function InputArea({
   const { t } = useTranslation('chat')
   const defaultSessionInputHeight = Math.max(DEFAULT_SESSION_INPUT_HEIGHT, MIN_INPUT_HEIGHT)
 
-  const sel = useInputAreaSelectors({ sessionId, workingFolder, modelRoute })
+  const sel = useInputAreaSelectors({ sessionId: sessionId ?? undefined, workingFolder: workingFolder as any, modelRoute })
   const {
     chatView, isHomeComposer,
     language: currentLanguage, autoApprove,
@@ -152,7 +152,7 @@ export function InputArea({
   const shouldRecommendInit = workspaceReady && !activeSshConnectionId && isWorkspaceAgentsMissing
   const recommendationFallback = shouldRecommendInit
     ? t('input.recommendationInitWorkspace')
-    : t(defaultRecommendationKeys[mode])
+    : t(defaultRecommendationKeys[mode as never])
   const shouldAutoAcceptRecommendation =
     mode === 'clarify' && clarifyAutoAcceptRecommended && !disabled && !isOptimizingLocked && !isStreaming
   const getCaretAtEnd = React.useCallback(() => {
@@ -207,7 +207,7 @@ export function InputArea({
   const goalModeEnabled = hasActiveGoal || hasPendingGoalMode
   const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 
-  (useInputAreaEffects as any)({
+  ;(useInputAreaEffects as any)({
     draftSessionId, hasActiveGoal, workspaceReady, activeSshConnectionId, workingFolder, isHomeComposer,
     shouldAutoAcceptRecommendation, suggestionText, text, acceptSuggestion,
     applyEditorStateFromSerializedText, selectedFiles, focusInputAtEnd, handleRecommendationSelectionChange,
@@ -300,7 +300,7 @@ export function InputArea({
     ? t('input.placeholderPlanReview', { defaultValue: 'Enter suggestions for this plan...' })
     : hasPendingGoalMode
       ? t('input.placeholderPendingGoal', { defaultValue: 'Describe the goal to pursue...' })
-      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode] ?? 'input.placeholder')))
+      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode as never] ?? 'input.placeholder')))
 
   const composerIconControlClass = 'composer-control rounded-xl'
   const debouncedTokens = useDebouncedTokens(finalSerializedText)

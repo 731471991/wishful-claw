@@ -188,7 +188,7 @@ export function useGoalActions(
 
   const clearGoal = React.useCallback(async (): Promise<void> => {
     if (!sessionId || !goal) return
-    const confirmed = await confirm({
+    const confirmed = await (confirm as any)({
       title: t('goal.clearConfirmTitle'),
       description: t('goal.clearConfirmDesc'),
       confirmLabel: tCommon('action.clear'),

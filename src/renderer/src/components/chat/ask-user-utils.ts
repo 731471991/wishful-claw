@@ -19,7 +19,6 @@ export interface AnsweredPair {
   annotation?: AskUserAnnotation
 }
 
-export type { AnsweredPair }
 
 const RECOMMENDED_OPTION_RE = /(?:\(|（)\s*(recommended)\s*(?:\)|）)/i
 

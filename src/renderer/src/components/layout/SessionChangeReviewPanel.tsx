@@ -17,6 +17,7 @@ interface SessionChangeReviewPanelProps {
   sessionId?: string | null
   initialChangeId?: string | null
   onClose?: () => void
+  selectionRequestId?: string | null
 }
 
 const EMPTY_SESSION_MESSAGES: UnifiedMessage[] = []
@@ -98,7 +99,7 @@ export function SessionChangeReviewPanel({
   React.useEffect(() => {
     const nextInitialChangeId = initialChangeId ?? null
     const selectionRequested =
-      selectionRequestId !== undefined && lastSelectionRequestIdRef.current !== selectionRequestId
+      (selectionRequestId as any) !== undefined && lastSelectionRequestIdRef.current !== (selectionRequestId as any)
     setSelectedChangeId((current) => {
       const preferredId =
         nextInitialChangeId &&
@@ -112,7 +113,7 @@ export function SessionChangeReviewPanel({
       return matched?.id ?? null
     })
     lastInitialChangeIdRef.current = nextInitialChangeId
-    lastSelectionRequestIdRef.current = selectionRequestId
+    lastSelectionRequestIdRef.current = selectionRequestId as any
   }, [aggregatedChanges, initialChangeId, selectionRequestId])
 
   const summary = React.useMemo(

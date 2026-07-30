@@ -1,13 +1,11 @@
 src/renderer/src/components/chat/ask-user-utils.ts(22,15): error TS2484: Export declaration conflicts with exported declaration of 'AnsweredPair'.
-src/renderer/src/components/chat/AskUserQuestionCard.tsx(21,4): error TS2304: Cannot find name 'AskUserQuestionCardProps'.
-src/renderer/src/components/chat/ChangeReviewSheet.tsx(197,4): error TS2304: Cannot find name 'ChangeReviewSheetProps'.
-src/renderer/src/components/chat/ChangeReviewSheet.tsx(201,9): error TS2322: Type '{ children: Element; side: string; showCloseButton: false; className: string; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; showCloseButton?: boolean | undefined; }'.
+src/renderer/src/components/chat/ChangeReviewSheet.tsx(208,9): error TS2322: Type '{ children: Element; side: string; showCloseButton: false; className: string; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; showCloseButton?: boolean | undefined; }'.
 src/renderer/src/components/chat/FileChangeCard.tsx(32,9): error TS6133: 'isLiveFileMutation' is declared but its value is never read.
 src/renderer/src/components/chat/GitPage.tsx(324,11): error TS2322: Type '(repoPath: string, paths: string[]) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[]) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(325,11): error TS2322: Type '(repoPath: string, paths: string[]) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[]) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(326,11): error TS2322: Type '(repoPath: string) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(327,11): error TS2322: Type '(repoPath: string) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string) => Promise<void>'.
-src/renderer/src/components/chat/GitPage.tsx(328,11): error TS2322: Type '(repoPath: string, paths: string[], scope: "full" | "untracked" | "worktree") => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[], scope: string) => Promise<{ success: boolean; error?: string | undefined; }>'.
+src/renderer/src/components/chat/GitPage.tsx(328,11): error TS2322: Type '(repoPath: string, paths: string[], scope: "full" | "worktree" | "untracked") => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[], scope: string) => Promise<{ success: boolean; error?: string | undefined; }>'.
 src/renderer/src/components/chat/InputArea/index.tsx(64,39): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
 src/renderer/src/components/chat/InputArea/index.tsx(155,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<AppMode, string>'.
 src/renderer/src/components/chat/InputArea/index.tsx(208,72): error TS2349: This expression is not callable.
@@ -34,18 +32,17 @@ src/renderer/src/components/chat/MessageList.tsx(121,17): error TS2322: Type '{}
 src/renderer/src/components/chat/MessageList.tsx(161,7): error TS2322: Type 'unknown' is not assignable to type 'RequestRetryState | null'.
 src/renderer/src/components/chat/MessageList.tsx(168,7): error TS2322: Type '(item: AssistantReplyRailItem) => Promise<void>' is not assignable to type '(item: { id: string; sortOrder: number; }) => Promise<void>'.
 src/renderer/src/components/chat/MessageList/ExportView.tsx(9,3): error TS6196: 'ChatStoreSnapshot' is declared but never used.
-src/renderer/src/components/chat/MessageList/ExportView.tsx(11,15): error TS2724: '"@renderer/lib/orchestration/build-runs"' has no exported member named 'OrchestrationState'. Did you mean 'OrchestrationRunStore'?
 src/renderer/src/components/chat/MessageList/ExportView.tsx(74,15): error TS2322: Type '{ content: ToolResultContent; isError?: boolean | undefined; } | undefined' is not assignable to type 'ToolResultsLookup | undefined'.
+src/renderer/src/components/chat/MessageList/ExportView.tsx(80,17): error TS2345: Argument of type 'string[] | undefined' is not assignable to parameter of type 'Set<string> | undefined'.
 src/renderer/src/components/chat/MessageList/useMessageListData.ts(423,5): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
 src/renderer/src/components/chat/MessageList/useMessageListData.ts(425,5): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
 src/renderer/src/components/chat/MessageList/useMessageListData.ts(471,5): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
 src/renderer/src/components/chat/MessageList/useMessageListData.ts(473,5): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
-src/renderer/src/components/chat/MessageList/useMessageListScroll.ts(24,48): error TS2307: Cannot find module '../../transcript-utils' or its corresponding type declarations.
 src/renderer/src/components/chat/MessageList/useMessageListScroll.ts(254,7): error TS2322: Type 'ReactVirtualizer<HTMLDivElement, Element>' is not assignable to type '{ scrollToIndex: (index: number, opts?: { align: string; } | undefined) => void; }'.
 src/renderer/src/components/chat/MessageList/useMessageListScroll.ts(487,5): error TS2322: Type 'ReactVirtualizer<HTMLDivElement, Element>' is not assignable to type 'ReactVirtualizer<Element, Element>'.
-src/renderer/src/components/chat/MessageList/VirtualListContent.tsx(17,15): error TS2724: '"@renderer/lib/orchestration/build-runs"' has no exported member named 'OrchestrationState'. Did you mean 'OrchestrationRunStore'?
 src/renderer/src/components/chat/MessageList/VirtualListContent.tsx(24,30): error TS2344: Type 'Function' does not satisfy the constraint '(...args: any) => any'.
 src/renderer/src/components/chat/MessageList/VirtualListContent.tsx(181,25): error TS2322: Type 'unknown' is not assignable to type 'ToolResultsLookup | undefined'.
+src/renderer/src/components/chat/MessageList/VirtualListContent.tsx(189,27): error TS2345: Argument of type 'string[] | undefined' is not assignable to parameter of type 'Set<string> | undefined'.
 src/renderer/src/components/chat/MessageList/VirtualListContent.tsx(214,9): error TS2322: Type '{ id: string; sortOrder: number; }[]' is not assignable to type 'AssistantReplyRailItem[]'.
 src/renderer/src/components/chat/ModelSwitcher.tsx(622,47): error TS2322: Type 'CopilotQuota' is not assignable to type 'CopilotQuotaData'.
 src/renderer/src/components/chat/SkillsMenu.tsx(151,62): error TS2339: Property 'activeChannelIdsByProject' does not exist on type 'ChannelStore'.
@@ -60,11 +57,9 @@ src/renderer/src/components/cowork/FileTreePanel.tsx(162,15): error TS2322: Type
 src/renderer/src/components/editor/CodeEditor.tsx(195,7): error TS2322: Type '(monacoEditor: import("monaco-editor").editor.IStandaloneCodeEditor, monacoInstance: typeof import("monaco-editor")) => void' is not assignable to type 'OnMount'.
 src/renderer/src/components/editor/MonacoDiffEditor.tsx(130,7): error TS2322: Type '(diffEditor: import("monaco-editor").editor.IStandaloneDiffEditor, monacoInstance: typeof import("monaco-editor")) => void' is not assignable to type 'DiffOnMount'.
 src/renderer/src/components/goal/goal-session-views.tsx(191,37): error TS2345: Argument of type '{ title: string; description: string; confirmLabel: string; variant: string; }' is not assignable to parameter of type 'string'.
-src/renderer/src/components/layout/agent-files-titlebar.tsx(12,15): error TS2305: Module '"./agent-files-types"' has no exported member 'AgentFilesTab'.
 src/renderer/src/components/layout/agent-files-titlebar.tsx(26,47): error TS2339: Property 'refreshSessionRunChanges' does not exist on type '{ runGitAction: (key: string, action: () => Promise<{ success: boolean; error?: string | undefined; }>) => Promise<boolean>; loadGitDiff: (row: GitChangeRow) => Promise<...>; ... 10 more ...; canCommitInline: boolean; }'.
 src/renderer/src/components/layout/change-item-row.tsx(53,7): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
 src/renderer/src/components/layout/change-item-row.tsx(53,8): error TS2786: 'File' cannot be used as a JSX component.
-src/renderer/src/components/layout/changes-tab-content.tsx(12,15): error TS2305: Module '"./agent-files-types"' has no exported member 'AgentFilesChangeSource'.
 src/renderer/src/components/layout/changes-tab-content.tsx(40,37): error TS2339: Property 'undoRunChanges' does not exist on type '{ runGitAction: (key: string, action: () => Promise<{ success: boolean; error?: string | undefined; }>) => Promise<boolean>; loadGitDiff: (row: GitChangeRow) => Promise<...>; ... 10 more ...; canCommitInline: boolean; }'.
 src/renderer/src/components/layout/changes-tab-content.tsx(139,53): error TS2345: Argument of type 'ChangeRow[]' is not assignable to parameter of type 'GitChangeRow[]'.
 src/renderer/src/components/layout/preview-toolbar.tsx(33,18): error TS6133: 'onCopyMarkdown' is declared but its value is never read.
@@ -76,14 +71,13 @@ src/renderer/src/components/layout/preview-toolbar.tsx(104,30): error TS2304: Ca
 src/renderer/src/components/layout/preview-toolbar.tsx(113,30): error TS2304: Cannot find name 'updateSettings'.
 src/renderer/src/components/layout/preview-toolbar.tsx(126,33): error TS2304: Cannot find name 'handleSave'.
 src/renderer/src/components/layout/preview-toolbar.tsx(140,35): error TS2304: Cannot find name 'handleSave'.
-src/renderer/src/components/layout/preview-toolbar.tsx(163,33): error TS2304: Cannot find name 'handleOpenInSystem'.
+src/renderer/src/components/layout/preview-toolbar.tsx(163,33): error TS2552: Cannot find name 'handleOpenInSystem'. Did you mean 'canOpenInSystem'?
 src/renderer/src/components/layout/SessionChangeReviewPanel.tsx(26,3): error TS2339: Property 'selectionRequestId' does not exist on type 'SessionChangeReviewPanelProps'.
 src/renderer/src/components/layout/SubAgentsPanel.tsx(249,7): error TS2322: Type 'UnifiedMessage[] | ChatMessage[]' is not assignable to type 'UnifiedMessage[]'.
 src/renderer/src/components/layout/SubAgentsPanel.tsx(295,9): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
-src/renderer/src/components/layout/workspace-sidebar-items.tsx(309,19): error TS2304: Cannot find name 'e'.
 src/renderer/src/components/settings/plugin-panel-qr.tsx(73,37): error TS2339: Property 'token' does not exist on type '{ connected?: boolean | undefined; message?: string | undefined; botToken?: string | undefined; userId?: string | undefined; baseUrl?: string | undefined; }'.
 src/renderer/src/components/settings/plugin-panel-qr.tsx(76,41): error TS2339: Property 'accountId' does not exist on type '{ connected?: boolean | undefined; message?: string | undefined; botToken?: string | undefined; userId?: string | undefined; baseUrl?: string | undefined; }'.
-src/renderer/src/components/settings/SettingsPage.tsx(150,17): error TS2367: This comparison appears to be unintentional because the types '"ssh" | "about" | "skills" | "modelManagement" | "permission" | "channel" | "plugin" | "extension" | "mcp"' and '"websearch"' have no overlap.
+src/renderer/src/components/settings/SettingsPage.tsx(150,17): error TS2367: This comparison appears to be unintentional because the types '"ssh" | "skills" | "modelManagement" | "about" | "permission" | "channel" | "plugin" | "extension" | "mcp"' and '"websearch"' have no overlap.
 src/renderer/src/components/terminal/AgentSshTerminal.tsx(55,20): error TS2345: Argument of type 'FitAddon' is not assignable to parameter of type 'ITerminalAddon'.
 src/renderer/src/components/terminal/AgentSshTerminal.tsx(70,11): error TS18046: 'fitAddon.fit' is of type 'unknown'.
 src/renderer/src/components/terminal/LocalTerminal.tsx(79,20): error TS2345: Argument of type 'FitAddon' is not assignable to parameter of type 'ITerminalAddon'.
@@ -91,19 +85,6 @@ src/renderer/src/components/terminal/LocalTerminal.tsx(98,7): error TS18046: 'fi
 src/renderer/src/lib/agent/context-compression-config.ts(3,3): error TS6196: 'CompactBoundaryMeta' is declared but never used.
 src/renderer/src/lib/agent/context-compression-config.ts(4,3): error TS6196: 'ProviderConfig' is declared but never used.
 src/renderer/src/lib/agent/context-compression-config.ts(5,3): error TS6196: 'UnifiedMessage' is declared but never used.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(27,21): error TS2304: Cannot find name 'MemoryRootInput'.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(46,32): error TS2304: Cannot find name 'MemoryRootDescriptor'.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(115,56): error TS2304: Cannot find name 'MemoryAutomationEntry'.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(127,10): error TS2304: Cannot find name 'MemoryAutomationListResult'.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(135,12): error TS2304: Cannot find name 'MemoryAutomationUndoResult'.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(154,12): error TS2304: Cannot find name 'MemoryAutomationUndoResult'.
-src/renderer/src/lib/agent/memory-automation-rollup.ts(178,10): error TS2304: Cannot find name 'MemoryAutomationUndoResult'.
-src/renderer/src/lib/agent/memory-automation.ts(109,25): error TS2304: Cannot find name 'MemoryStage1OutputInput'.
-src/renderer/src/lib/agent/memory-automation.ts(194,9): error TS2304: Cannot find name 'MemoryRootDescriptor'.
-src/renderer/src/lib/agent/memory-automation.ts(207,10): error TS2304: Cannot find name 'MemoryAutomationRunRollupResult'.
-src/renderer/src/lib/agent/teams/inbox-poller.ts(80,18): error TS2304: Cannot find name 'TeamRuntimePlanApprovalResponsePayload'.
-src/renderer/src/lib/auth/oauth.ts(196,64): error TS2304: Cannot find name 'OAuthDeviceCodeInfo'.
-src/renderer/src/lib/auth/oauth.ts(255,11): error TS2304: Cannot find name 'OAuthDeviceCodeInfo'.
 src/renderer/src/lib/ipc/agent-bridge-streaming.ts(375,41): error TS2558: Expected 0 type arguments, but got 1.
 src/renderer/src/lib/ipc/agent-bridge-streaming.ts(399,3): error TS2322: Type 'unknown' is not assignable to type '{ messages: UnifiedMessage[]; result: CompressionResult; }'.
 src/renderer/src/lib/preview/viewers/docx-viewer.tsx(9,32): error TS2307: Cannot find module 'mammoth' or its corresponding type declarations.
@@ -114,9 +95,6 @@ src/renderer/src/lib/tools/browser-webview-helpers.ts(136,3): error TS2484: Expo
 src/renderer/src/stores/agent-store/slices/sub-agent-slice.ts(115,26): error TS2339: Property 'isBackground' does not exist on type 'SubAgentState'.
 src/renderer/src/stores/agent-store/slices/sub-agent-slice.ts(149,17): error TS2353: Object literal may only specify known properties, and 'isBackground' does not exist in type 'WritableNonArrayDraft<SubAgentState>'.
 src/renderer/src/stores/goal-store.ts(30,44): error TS2552: Cannot find name 'SessionGoal'. Did you mean 'SessionGoalRow'?
-src/renderer/src/stores/task-store.ts(21,9): error TS2304: Cannot find name 'DB_TASKS_LIST_BY_SESSION_MSGPACK_CHANNEL'.
-src/renderer/src/stores/task-store.ts(41,20): error TS2304: Cannot find name 'TaskItem'.
-src/renderer/src/stores/task-store.ts(101,22): error TS2304: Cannot find name 'TaskItem'.
-src/renderer/src/stores/task-store.ts(255,23): error TS2304: Cannot find name 'TaskItem'.
+src/renderer/src/stores/task-store.ts(6,58): error TS2307: Cannot find module '../../../../shared/messagepack/binary-ipc' or its corresponding type declarations.
 src/renderer/src/stores/ui-store-interface.ts(164,3): error TS2300: Duplicate identifier 'openMarkdownPreview'.
 src/renderer/src/stores/ui-store-interface.ts(220,3): error TS2300: Duplicate identifier 'openMarkdownPreview'.

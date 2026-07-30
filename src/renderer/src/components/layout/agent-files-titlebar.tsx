@@ -23,7 +23,7 @@ interface AgentFilesTitlebarProps {
   busyAction: string | null
   runGitAction: AgentFilesActions['runGitAction']
   sessionView: AgentFilesState['sessionView']
-  refreshSessionRunChanges: AgentFilesActions['refreshSessionRunChanges']
+  refreshSessionRunChanges: (sessionId?: string) => void
   setCommitOpen: React.Dispatch<React.SetStateAction<boolean>>
   t: TFunction
 }

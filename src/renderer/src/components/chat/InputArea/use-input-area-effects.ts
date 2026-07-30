@@ -125,7 +125,7 @@ export function useInputAreaEffects(input: InputAreaEffectsInput): void {
     const persistedSelectedFiles = persistedDraft?.selectedFiles ?? []
     const shouldReset = isHomeComposer && !persistedDraft?.skill &&
       (persistedDraft?.images?.length ?? 0) === 0 &&
-      isReferenceOnlyDocument(deserializeEditorState(persistedText, workingFolder, persistedSelectedFiles).document)
+      isReferenceOnlyDocument(deserializeEditorState(persistedText, workingFolder ?? undefined, persistedSelectedFiles as any).document)
     draftReadyKeyRef.current = null
     applyEditorStateFromSerializedText(shouldReset ? '' : persistedText, shouldReset ? [] : persistedSelectedFiles)
     setAttachedImages(persistedDraft?.images ? cloneImageAttachments(persistedDraft.images) : [])
@@ -159,7 +159,7 @@ export function useInputAreaEffects(input: InputAreaEffectsInput): void {
     draftSaveTimerRef.current = setTimeout(() => {
       void savePersistedDraft({
         text: finalSerializedText, images: cloneImageAttachments(attachedImages),
-        skill: selectedSkill, selectedFiles: selectedFiles.map((f) => ({ ...f }))
+        skill: selectedSkill, selectedFiles: selectedFiles.map((f: any) => ({ ...f }))
       })
     }, 400)
     return () => clearTimeout(draftSaveTimerRef.current)

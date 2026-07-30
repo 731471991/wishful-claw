@@ -321,11 +321,11 @@ export function GitPage(): React.JSX.Element {
           runDeleteRemote={runDeleteRemote}
           setBranchNameDialog={setBranchNameDialog}
           setBranchNameInput={setBranchNameInput}
-          stageFiles={stageFiles}
-          unstageFiles={unstageFiles}
-          stageAll={stageAll}
-          unstageAll={unstageAll}
-          discardFiles={discardFiles}
+          stageFiles={stageFiles as any}
+          unstageFiles={unstageFiles as any}
+          stageAll={stageAll as any}
+          unstageAll={unstageAll as any}
+          discardFiles={discardFiles as any}
           confirmDiscard={confirmDiscard}
           isLoadingOlderMessages={false}
           upstreamHint={status?.upstream

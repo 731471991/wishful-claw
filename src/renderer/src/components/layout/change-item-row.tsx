@@ -4,7 +4,7 @@ import { cn } from '@renderer/lib/utils'
 import type { ChangeRow } from './agent-files-types'
 import { dirname, rowOpLabel, rowOpTone } from './agent-files-utils'
 import { fileName } from '../chat/FileChangeCard/utils'
-import { FileCode, RotateCcw } from 'lucide-react'
+import { FileCode, RotateCcw, File as FileIcon } from 'lucide-react'
 import { Trash2 } from 'lucide-react'
 
 export function AgentFilesEmptyState({
@@ -50,7 +50,7 @@ export function ChangeItemRow({
       title={row.filePath}
       onClick={onSelect}
     >
-      <File className="size-3.5 shrink-0 text-agent-files-icon" />
+      <FileIcon className="size-3.5 shrink-0 text-agent-files-icon" />
       <span className="min-w-0 flex-1 truncate">{fileName(row.filePath)}</span>
       {directory ? (
         <span className="max-w-[72px] truncate text-[11px] text-agent-files-muted">

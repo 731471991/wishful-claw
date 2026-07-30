@@ -12,6 +12,7 @@ import { useGoalStore } from '@renderer/stores/goal-store'
 import { usePlanStore } from '@renderer/stores/plan-store'
 import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
 import { isProjectSession, workspaceContextAvailable } from '@renderer/lib/session-scope'
+import type { AppMode } from '@renderer/stores/ui-types'
 
 export interface InputAreaSelectorsInput {
   sessionId?: string
@@ -84,9 +85,9 @@ function getTargetSession(s: ReturnType<typeof useChatStore.getState>, sessionId
   const session = idx !== undefined ? s.sessions[idx] : undefined
   if (!session) return undefined
   return {
-    id: session.id, projectId: session.projectId, pluginId: session.pluginId,
-    providerId: session.providerId, modelId: session.modelId,
-    modelSelectionMode: session.modelSelectionMode,
+    id: session.id, projectId: session.projectId ?? null, pluginId: session.pluginId ?? null,
+    providerId: session.providerId ?? null, modelId: session.modelId ?? null,
+    modelSelectionMode: session.modelSelectionMode ?? null,
     messageCount: session.messageCount, sshConnectionId: session.sshConnectionId ?? null
   }
 }
@@ -95,6 +96,7 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
   const { sessionId, workingFolder, modelRoute } = input
   const chatView = useUIStore((s) => s.chatView)
   const isSessionComposer = chatView === 'session' || Boolean(sessionId)
+
   const isHomeComposer = chatView === 'home' || chatView === 'project'
 
   // ── Settings ────────────────────────────────────────────────────
@@ -127,7 +129,7 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
         : null
       const selection = session
         ? resolveSessionModelSelection({
-            session, providers, activeProviderId, activeModelId,
+            session: session as any, providers, activeProviderId, activeModelId,
             globalMode: mainModelSelectionMode,
             channelProviderId: channel?.providerId, channelModelId: channel?.model
           })
@@ -186,8 +188,8 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
   )
 
   const draftSessionId = sessionId ?? (chatView === 'session' ? activeSessionId : null)
-  const projectScoped = isProjectSession({ chatView, session: targetSession, activeProjectId, workingFolder })
-  const workspaceReady = workspaceContextAvailable({ chatView, session: targetSession, activeProjectId, workingFolder })
+  const projectScoped = isProjectSession({ chatView, session: targetSession as any, activeProjectId, workingFolder })
+  const workspaceReady = workspaceContextAvailable({ chatView, session: targetSession as any, activeProjectId, workingFolder })
   // needsWorkingFolder is computed in the main component (depends onSelectFolder prop)
 
   // ── Plan / goal ─────────────────────────────────────────────────
@@ -216,8 +218,8 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
     language, mainModelSelectionMode, autoApprove, permissionWhitelistEnabled,
     clarifyAutoAcceptRecommended, animationsEnabled,
     webSearchEnabled, webSearchProvider, webSearchApiKey, webSearchRequiresApiKey, canToggleWebSearch,
-    targetSession, channels, autoSelection, activeProvider, supportsVision, composerModelCfg,
-    chatView, mode, openSettings, openFilePreview,
+    targetSession, channels, autoSelection: autoSelection as any, activeProvider: activeProvider as any, supportsVision, composerModelCfg,
+    chatView, isHomeComposer, mode, openSettings: openSettings as any, openFilePreview,
     activeProjectId, activeSshConnectionId, activeSessionId, hasMessages, clearSessionMessages,
     draftSessionId, projectScoped, workspaceReady,
     planMode, activeGoal, hasActiveGoal, pendingReviewPlanId,

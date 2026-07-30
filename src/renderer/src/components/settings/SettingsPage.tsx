@@ -9,7 +9,6 @@ import { PluginPanel } from '@renderer/components/settings/PluginPanel'
 import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
-import { WebSearchPanel } from '@renderer/components/settings/WebSearchPanel'
 import { SshPanel } from '@renderer/components/settings/SshPanel'
 import { SkillPanel } from '@renderer/components/settings/skill-panel'
 import { McpPanel } from '@renderer/components/settings/mcp-panel'
@@ -140,18 +139,6 @@ function SettingsPage(): React.JSX.Element {
             ) : settingsTab === 'persona' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <PersonaPanel />
-              </div>
-            ) : settingsTab === 'websearch' ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
-                  <WebSearchPanel />
-                </div>
-              </div>
-            ) : settingsTab === 'websearch' ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
-                  <WebSearchPanel />
-                </div>
               </div>
             ) : settingsTab === 'channel' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">

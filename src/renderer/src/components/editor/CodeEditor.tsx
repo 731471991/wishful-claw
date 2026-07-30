@@ -192,7 +192,7 @@ export const CodeEditor = React.forwardRef<CodeEditorHandle, CodeEditorProps>(fu
         </div>
       }
       onChange={(value) => onChange?.(value ?? '')}
-      onMount={handleMount}
+      onMount={handleMount as any}
       options={mergedOptions}
       path={path}
       theme={resolvedTheme === 'light' ? 'vs' : 'vs-dark'}

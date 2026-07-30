@@ -28,8 +28,8 @@ export function FileTreePanel({
   agentCommand = null,
   watchEnabled = true
 }: FileTreePanelProps): React.JSX.Element {
-  const fileTreeState = useFileTree({ sessionId, surface, agentSearchOpen, watchEnabled })
-  const actions = useFileTreeActions(fileTreeState, { agentCommand })
+  const fileTreeState = useFileTree({ sessionId, surface, agentSearchOpen, watchEnabled } as any)
+  const actions = useFileTreeActions(fileTreeState, { agentCommand }) as any
   const {
     t, workingFolder, agentSurface, tree, loading, error,
     searchQuery, setSearchQuery, searchResults, searchLoading,
@@ -152,7 +152,7 @@ export function FileTreePanel({
           <ContextMenuContent className="w-52">
             <FileTreeContextMenuItems
               workingFolder={workingFolder}
-              sshConnectionId={sshConnectionId}
+              sshConnectionId={sshConnectionId ?? null}
               t={t}
               handleNewFile={actions.handleNewFile}
               handleNewFolder={actions.handleNewFolder}

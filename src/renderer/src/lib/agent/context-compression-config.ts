@@ -1,8 +1,5 @@
 import type {
   AIModelConfig,
-  CompactBoundaryMeta,
-  ProviderConfig,
-  UnifiedMessage
 } from '../api/types'
 
 export interface CompressionConfig {

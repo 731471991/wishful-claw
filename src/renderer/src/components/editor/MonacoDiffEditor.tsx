@@ -127,7 +127,7 @@ export function MonacoDiffEditor({
         </div>
       }
       modified={modified}
-      onMount={handleMount}
+      onMount={handleMount as any}
       options={mergedOptions}
       original={original}
       theme={resolvedTheme === 'light' ? 'vs' : 'vs-dark'}

@@ -246,7 +246,7 @@ export function SubAgentsPanel({
   const allAgents = React.useMemo(() => {
     const agents = mergeSessionSubAgents({
       sessionId: activeSessionId,
-      messages: sessionMessages,
+      messages: sessionMessages as any,
       activeSubAgents,
       completedSubAgents,
       subAgentHistory
@@ -292,7 +292,7 @@ export function SubAgentsPanel({
         agent.toolUseId,
         null,
         title,
-        activeSessionId
+        activeSessionId ?? undefined
       )
     },
     [activeSessionId, openSubAgentExecutionDetail]

@@ -27,7 +27,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         DB_GOALS_LIST_MSGPACK_CHANNEL,
         {}
       )
-      const goalsBySession: Record<string, SessionGoal> = {}
+      const goalsBySession: Record<string, any> = {}
       for (const row of rows) {
         const goal = rowToGoal(row)
         goalsBySession[goal.sessionId] = goal

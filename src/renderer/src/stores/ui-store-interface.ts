@@ -217,7 +217,6 @@ export interface UIStore {
   ) => void
   openDiff: (params: OpenDiffParams) => void
   openDevServerPreview: (projectDir: string, port: number, sessionId?: string | null) => void
-  openMarkdownPreview: (title: string, content: string, sessionId?: string | null) => void
   closePreviewTab: (tabId: string) => void
   closePreviewPanel: () => void
   setActivePreviewTab: (tabId: string | null) => void

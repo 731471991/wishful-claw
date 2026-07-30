@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FileText, ChevronLeft, ChevronRight } from 'lucide-react'
+// @ts-ignore - react-pdf is an optional dependency
 import { Document, Page, pdfjs } from 'react-pdf'
 import { Button } from '@renderer/components/ui/button'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'

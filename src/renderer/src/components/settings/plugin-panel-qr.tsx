@@ -70,11 +70,11 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
               const patch: Partial<PluginInstance> = {
                 config: {
                   ...channel.config,
-                  token: waitResult.token || channel.config.token,
+                  token: (waitResult as any).token || (channel.config as any).token,
                   userId: waitResult.userId || channel.config.userId,
                   baseUrl: waitResult.baseUrl || channel.config.baseUrl,
-                  accountId: waitResult.accountId || channel.config.accountId
-                },
+                  accountId: (waitResult as any).accountId || (channel.config as any).accountId
+                } as any,
                 enabled: true
               }
               await updateChannel(channel.id, patch)

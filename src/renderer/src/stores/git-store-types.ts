@@ -45,7 +45,7 @@ export interface GitBranchItem {
   isCurrent: boolean
 }
 
-interface GitRepositoryDetails {
+export interface GitRepositoryDetails {
   status: GitStatusDetailed | null
   history: GitCommitHistoryItem[]
   fileHistoryByPath: Record<string, GitCommitHistoryItem[]>
@@ -63,7 +63,7 @@ export interface GitResultBase {
   error?: string
 }
 
-interface RefreshRepositoryOptions {
+export interface RefreshRepositoryOptions {
   force?: boolean
 }
 

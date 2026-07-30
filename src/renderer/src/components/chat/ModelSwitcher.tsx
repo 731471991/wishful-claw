@@ -619,7 +619,7 @@ export function ModelSwitcher({
 
       {/* Quota Indicators */}
       {codexQuota && <CodexQuotaIndicator quota={codexQuota} tSettings={tSettings} />}
-      {copilotQuota && <CopilotQuotaIndicator quota={copilotQuota} tSettings={tSettings} />}
+      {copilotQuota && <CopilotQuotaIndicator quota={copilotQuota as any} tSettings={tSettings} />}
       {/* Settings icon — model config popover */}
       <ModelSettingsPopover
         model={settingsModel}

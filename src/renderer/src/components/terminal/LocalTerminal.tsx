@@ -76,7 +76,7 @@ export function LocalTerminal({
     const webLinksAddon = new WebLinksAddon()
     const unicodeAddon = new Unicode11Addon()
 
-    term.loadAddon(fitAddon)
+    term.loadAddon(fitAddon as any)
     term.loadAddon(searchAddon)
     term.loadAddon(webLinksAddon)
     term.loadAddon(unicodeAddon)
@@ -95,7 +95,7 @@ export function LocalTerminal({
     }
 
     const fitTerminal = (): void => {
-      fitAddon.fit()
+      (fitAddon as any).fit()
       notifyResize()
     }
 
