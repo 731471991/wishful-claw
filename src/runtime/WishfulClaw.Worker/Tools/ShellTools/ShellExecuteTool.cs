@@ -31,7 +31,10 @@ public sealed class ShellExecuteTool : IToolExecutor
         "Supports choosing the shell (PowerShell, cmd, bash, zsh), setting a working directory, " +
         "and environment variables. Use for running tests, building, git, file inspection, etc. " +
         "When sshConnectionId is provided, the command executes on the remote SSH server instead of locally. " +
-        "Use SshListConnections to discover available connection IDs.";
+        "Use SshListConnections to discover available connection IDs." +
+        "IMPORTANT: When using the default PowerShell engine, do NOT use '&&' to chain commands \u2014 " +
+        "PowerShell does not support it. Use ';' to separate commands instead. " +
+        "If you need bash syntax (&&, ||, $()), set shell to 'bash' explicitly.";
 
     public JsonElement InputSchema { get; } = ParseSchema(
         """
