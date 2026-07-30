@@ -284,7 +284,7 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
-            onClick={(e) => {
+            onClick={() => {
               // Two independent actions on click:
               // 1. Set as active project (highlight + navigate)
               // 2. Toggle expand/collapse
@@ -305,7 +305,7 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
             
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               <button
-                onClick={(e) => {
+                onClick={() => {
                   e.stopPropagation()
                   handleNewSessionInProject()
                 }}

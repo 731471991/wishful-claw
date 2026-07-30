@@ -46,7 +46,8 @@ export interface InputAreaSelectorsOutput {
 
   // UI
   chatView: string
-  mode: string
+  isHomeComposer: boolean
+  mode: AppMode
   openSettings: (tab: string) => void
   openFilePreview: (path: string) => void
 

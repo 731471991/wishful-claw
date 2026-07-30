@@ -10,11 +10,10 @@ export function Sheet({ children, open, onOpenChange }: {
   return <Dialog open={open} onOpenChange={onOpenChange}>{children}</Dialog>
 }
 
-export function SheetContent({ children, className, side = 'right' }: {
+export function SheetContent({ children, className }: {
   children: React.ReactNode
   className?: string
   showCloseButton?: boolean
-  side?: 'left' | 'right' | 'top' | 'bottom'
 }) {
   return (
     <DialogContent className={cn('p-0', className)}>

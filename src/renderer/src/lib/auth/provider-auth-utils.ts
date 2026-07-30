@@ -1,6 +1,5 @@
 import { useProviderStore } from '@renderer/stores/provider-store'
 import type {
-  AccountRateLimit,
   AIProvider,
   OAuthConfig,
   OAuthToken,

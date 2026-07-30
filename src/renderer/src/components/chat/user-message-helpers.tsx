@@ -1,15 +1,8 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+﻿import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { Sparkles } from 'lucide-react'
-import type {
-  AIModelConfig,
-  ContentBlock,
-  MessageMeta,
-  SelectedFileReadsMeta,
-  UnifiedMessage
-} from '@renderer/lib/api/types'
-import { type EditableUserMessageDraft } from '@renderer/lib/image-attachments'
+
 
 
 

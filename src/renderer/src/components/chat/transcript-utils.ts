@@ -27,7 +27,6 @@ export interface TailToolExecutionState {
 const messageLookupCache = new WeakMap<UnifiedMessage[], Map<string, UnifiedMessage>>()
 const transcriptStaticAnalysisCache = new WeakMap<UnifiedMessage[], TranscriptStaticAnalysis>()
 export const HIDDEN_MESSAGE_LIST_TOOL_NAMES = new Set(['TaskCreate', 'TaskGet', 'TaskUpdate', 'TaskList'])
-const THINK_OPEN_TAG_RE = /<\s*think\s*>/i
 
 // --- Signature-based fast cache for transcriptStaticAnalysis ---
 // The WeakMap above is keyed by array reference, which misses on every Immer state update.

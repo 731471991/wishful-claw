@@ -7,7 +7,7 @@ import {
 } from '@renderer/lib/select-file-editor'
 import { createSelectFileToken } from '@renderer/lib/select-file-tags'
 import type { ImageAttachment } from '@renderer/lib/image-attachments'
-import type { FileAwareEditorHandle } from '../FileAwareEditor'
+import type { FileAwareEditorHandle } from '../file-aware-editor-utils'
 
 interface UseComposerEditorOptions {
   workingFolder?: string

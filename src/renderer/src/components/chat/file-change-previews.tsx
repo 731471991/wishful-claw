@@ -1,14 +1,10 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
 import type { AgentRunFileChange } from '@renderer/stores/agent-store'
 import { MONO_FONT } from '@renderer/lib/constants'
-import { IPC } from '@renderer/lib/ipc/channels'
-import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
-import { toMessagePackChannel } from '../../../../shared/messagepack/binary-ipc'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
-import { type FilePreviewTone, type CompactActionOp, type TrackedDiffContent, detectLang, shortPath, fileName, normalizeLineEndings, snapshotText, canRenderInlineSnapshot } from './FileChangeCard/utils'
-import { CompactDiffCopyButton, CompactEditDiff } from './file-change-diff'
+import { type FilePreviewTone, type CompactActionOp, detectLang, shortPath, fileName, normalizeLineEndings } from './FileChangeCard/utils'
+import { CompactDiffCopyButton } from './file-change-diff'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -264,111 +260,6 @@ export function PendingEditPreview({ input }: { input: Record<string, unknown> }
         <NewFileContent content={newPreview} filePath={filePath} isStreaming tone="edit" />
       )}
     </div>
-  )
-}
-
-function TrackedEditDiff({
-  change,
-  filePath
-}: {
-  change: AgentRunFileChange
-  filePath: string
-}): React.JSX.Element {
-  const { t } = useTranslation('chat')
-  const [content, setContent] = React.useState<TrackedDiffContent | null>(null)
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [loadError, setLoadError] = React.useState<string | null>(null)
-
-  const canRenderInline =
-    canRenderInlineSnapshot(change.before) && canRenderInlineSnapshot(change.after)
-
-  React.useEffect(() => {
-    if (canRenderInline) {
-      setContent({
-        beforeText: snapshotText(change.before),
-        afterText: snapshotText(change.after)
-      })
-      setIsLoading(false)
-      setLoadError(null)
-      return
-    }
-
-    let cancelled = false
-    const load = async (): Promise<void> => {
-      setIsLoading(true)
-      setLoadError(null)
-      try {
-        const result = await invokeMessagePackBinary(
-          toMessagePackChannel(IPC.AGENT_CHANGES_DIFF_CONTENT),
-          {
-            runId: change.runId,
-            changeId: change.id
-          }
-        )
-        if (cancelled) return
-        if (
-          result &&
-          typeof result === 'object' &&
-          'beforeText' in result &&
-          'afterText' in result &&
-          typeof result.beforeText === 'string' &&
-          typeof result.afterText === 'string'
-        ) {
-          setContent({ beforeText: result.beforeText, afterText: result.afterText })
-          return
-        }
-        if (
-          result &&
-          typeof result === 'object' &&
-          'error' in result &&
-          typeof result.error === 'string'
-        ) {
-          setLoadError(result.error)
-          return
-        }
-        setLoadError('Failed to load full diff')
-      } catch (err) {
-        if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : String(err))
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [canRenderInline, change])
-
-  if (isLoading && !content) {
-    return (
-      <SnapshotSummaryNotice before={change.before} after={change.after} filePath={filePath}>
-        <div className="flex items-center gap-2">
-          <Loader2 className="size-3.5 animate-spin" />
-          <span>{t('thinking.thinkingEllipsis')}</span>
-        </div>
-      </SnapshotSummaryNotice>
-    )
-  }
-
-  if (loadError && !content) {
-    return (
-      <SnapshotSummaryNotice before={change.before} after={change.after} filePath={filePath}>
-        <div className="text-destructive/80">{loadError}</div>
-      </SnapshotSummaryNotice>
-    )
-  }
-
-  if (!content) {
-    return <SnapshotSummaryNotice before={change.before} after={change.after} filePath={filePath} />
-  }
-
-  return (
-    <CompactEditDiff oldStr={content.beforeText} newStr={content.afterText} filePath={filePath} />
   )
 }
 

@@ -35,7 +35,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   // Active project ID — used for highlighting only.
   // Expand/collapse is purely user-controlled via clicking the project title.
   // No auto-expand on active project change.
-  const activeProjectId = useChatStore((s) => s.activeProjectId)
 
   // On initial mount: if there's an active session, expand its parent project
   // so the user can see which conversation is focused after restart.

@@ -4,9 +4,7 @@ import type {
 
   TeamRuntimePermissionUpdatePayload,
 
-  TeamRuntimePlanApprovalRequestPayload,
-
-  TeamRuntimePlanApprovalResponsePayload
+  TeamRuntimePlanApprovalRequestPayload
 
 } from '../../../../../shared/team-runtime-types'
 

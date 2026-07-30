@@ -34,7 +34,6 @@ export function FileChangeCard({
   const isRealtimeWrite =
     name === 'Write' && !trackedChange && (status === 'streaming' || status === 'running')
   const [collapsed, setCollapsed] = React.useState(!forceOpen)
-  const wasLiveFileMutationRef = React.useRef(isLiveFileMutation)
   const undoFileChange = useAgentStore((state) => state.undoFileChange)
   const [isUndoingFile, setIsUndoingFile] = React.useState(false)
 

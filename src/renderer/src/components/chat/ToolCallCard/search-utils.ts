@@ -1,10 +1,6 @@
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import type {
-  ToolCallCardProps,
   WidgetToolPayload,
-  ShellOutputSummary,
-  LiveShellOutputState,
-  ParsedShellResult,
   SearchOutputMeta,
   ParsedGrepEntry,
   LsEntry,

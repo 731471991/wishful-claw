@@ -1,9 +1,6 @@
 import type {
   ContentBlock,
-  ThinkingBlock,
-  TokenUsage,
-  ToolUseBlock,
-  UnifiedMessage
+  ToolUseBlock
 } from '@renderer/lib/api/types'
 import { useBackgroundSessionStore } from '@renderer/stores/background-session-store'
 

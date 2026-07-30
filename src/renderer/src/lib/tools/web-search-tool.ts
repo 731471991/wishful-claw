@@ -59,39 +59,6 @@ const webSearchHandler: ToolHandler = {
   requiresApproval: () => false
 }
 
-const webFetchHandler: ToolHandler = {
-  definition: {
-    name: 'WebFetch',
-    description:
-      'Fetch one or more URLs and return page content. Accepts url or urls (string or string array) and defaults to markdown.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: {
-          type: 'string',
-          description: 'A single URL to fetch'
-        },
-        urls: {
-          type: 'array',
-          items: {
-            type: 'string'
-          },
-          minItems: 1,
-          description: 'A list of URLs to fetch'
-        },
-        format: {
-          type: 'string',
-          enum: ['markdown', 'text', 'html'],
-          default: 'markdown',
-          description: 'Output format, defaults to markdown'
-        }
-      },
-      additionalProperties: false
-    }
-  },
-  execute: async () => nativeOnlyResult('WebFetch'),
-  requiresApproval: () => false
-}
 
 let _registered = false
 

@@ -1,13 +1,13 @@
 // ITheme type stub for xterm
-interface ITheme { [key: string]: unknown }
+export interface ITheme { [key: string]: unknown }
 
 export type AppThemeMode = 'light' | 'dark'
 export type AppThemePreset = 'mulberry' | 'studio' | 'graphite' | 'ocean' | 'forest' | 'dawn'
 export type SshTerminalThemePreset = AppThemePreset
 
-type ThemeCssVars = Record<`--${string}`, string>
+export type ThemeCssVars = Record<`--${string}`, string>
 
-type ThemePreviewPalette = {
+export type ThemePreviewPalette = {
   rail: string
   canvas: string
   card: string

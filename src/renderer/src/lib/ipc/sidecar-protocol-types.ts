@@ -1,5 +1,4 @@
 ﻿import type {
-  ContentBlock,
   MessageMeta,
   ProviderConfig,
   TokenUsage,

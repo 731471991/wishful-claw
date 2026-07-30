@@ -1,6 +1,6 @@
 import * as React from 'react'
 
-export function Collapsible({ children, open, onOpenChange, className }: {
+export function Collapsible({ children, open, className }: {
   children: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void

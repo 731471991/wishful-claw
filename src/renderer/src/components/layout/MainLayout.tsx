@@ -1,5 +1,4 @@
-﻿import { useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+﻿import { useEffect } from 'react'
 import {
   Sparkles,
   Ghost,
@@ -109,57 +108,11 @@ function ContentArea(): React.JSX.Element {
 
 // ─── Title resolver ───
 
-function useTitle(): { title: string; subtitle: string | null } {
-  const { t } = useTranslation('layout')
-  const chatView = useUIStore((s) => s.chatView)
-  const activeNavItem = useUIStore((s) => s.activeNavItem)
-  const settingsPageOpen = useUIStore((s) => s.settingsPageOpen)
-  const activeSession = useChatStore((s) =>
-    s.sessions.find((sess) => sess.id === s.activeSessionId)
-  )
-  const activeProject = useChatStore((s) =>
-    s.projects.find((p) => p.id === s.activeProjectId)
-  )
-
-  return useMemo(() => {
-    if (settingsPageOpen) {
-      return { title: t('title.settings', { defaultValue: 'Settings' }), subtitle: null }
-    }
-
-    if (activeNavItem !== 'chat') {
-      const config = FEATURE_PAGES[activeNavItem]
-      if (config) {
-        return { title: config.title, subtitle: config.iterLabel }
-      }
-    }
-
-    switch (chatView) {
-      case 'home':
-        return { title: t('title.chat', { defaultValue: 'Chat' }), subtitle: null }
-      case 'project':
-        return { title: activeProject?.name ?? t('title.project', { defaultValue: 'Project' }), subtitle: activeProject?.workingFolder ?? null }
-      case 'session':
-        return { title: activeSession?.title ?? t('title.session', { defaultValue: 'Session' }), subtitle: activeProject?.name ?? null }
-      case 'persona':
-        return { title: t('title.persona', { defaultValue: 'Persona' }), subtitle: activeProject?.name ?? null }
-      case 'archive':
-        return { title: t('title.archive', { defaultValue: 'Archive' }), subtitle: null }
-      case 'git':
-        return { title: t('title.git', { defaultValue: 'Git' }), subtitle: null }
-      case 'channels':
-        return { title: t('title.channels', { defaultValue: 'Channels' }), subtitle: null }
-      default:
-        return { title: 'Wishful Claw', subtitle: null }
-    }
-  }, [chatView, activeNavItem, settingsPageOpen, activeSession, activeProject, t])
-}
 
 // ─── MainLayout ───
 
 export function MainLayout(): React.JSX.Element {
 
-  const rightPanelOpen = useUIStore((s) => s.rightPanelOpen)
-  const rightPanelWidth = useUIStore((s) => s.rightPanelWidth)
   const runtimeStatusPanelOpen = useUIStore((s) => s.runtimeStatusPanelOpen)
   const ensureDefaultProject = useChatStore((s) => s.ensureDefaultProject)
 

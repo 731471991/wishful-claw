@@ -23,7 +23,6 @@ export function useChatActions() {
 
   const handleSendMessage = useCallback(
     async (text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
-      const textStr = typeof text === 'string' ? text : text.text
       const providerStore = useProviderStore.getState()
       const activeProvider = providerStore.getActiveProvider()
       if (!activeProvider) {
@@ -50,7 +49,6 @@ export function useChatActions() {
       const projectId = session?.projectId
       const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
       const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
-      const projectName = project?.name
 
       // Build messages from session history — include tool call context
       // so the LLM has full conversation history (text + tool_use + tool_result)

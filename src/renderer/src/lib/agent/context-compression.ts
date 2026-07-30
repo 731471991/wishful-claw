@@ -1,5 +1,4 @@
 import type {
-  AIModelConfig,
   CompactBoundaryMeta,
   ProviderConfig,
   UnifiedMessage

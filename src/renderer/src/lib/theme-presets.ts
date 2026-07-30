@@ -3,8 +3,6 @@ import type {
   AppThemeMode,
   AppThemePreset,
   SshTerminalThemePreset,
-  ThemeCssVars,
-  ThemePreviewPalette,
   SshChromePalette,
   ThemePresetDefinition,
 } from './theme-presets/types'

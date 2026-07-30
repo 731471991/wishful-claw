@@ -7,7 +7,7 @@ import { cloneImageAttachments, type ImageAttachment } from '@renderer/lib/image
 import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
 import { deserializeEditorState } from '@renderer/lib/select-file-editor'
 import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
-import type { FileAwareEditorHandle } from '../FileAwareEditor'
+import type { FileAwareEditorHandle } from '../file-aware-editor-utils'
 import { isReferenceOnlyDocument } from './utils'
 
 export interface InputAreaEffectsInput {

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+﻿import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
@@ -16,13 +16,9 @@ import {
   writeImageDataUrlToClipboard
 } from '@renderer/lib/utils/image-clipboard'
 import type {
-  AIModelConfig,
-  ContentBlock,
-  MessageMeta,
-  SelectedFileReadsMeta,
-  UnifiedMessage
+  SelectedFileReadsMeta
 } from '@renderer/lib/api/types'
-import { type EditableUserMessageDraft, type ImageAttachment } from '@renderer/lib/image-attachments'
+import { type ImageAttachment } from '@renderer/lib/image-attachments'
 import { cn } from '@renderer/lib/utils'
 
 

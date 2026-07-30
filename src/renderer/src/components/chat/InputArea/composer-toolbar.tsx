@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Send, FolderOpen, Globe, Wand2 } from 'lucide-react'
+import { Send, FolderOpen, Wand2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Spinner } from '@renderer/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -8,7 +8,7 @@ import { SkillsMenu } from '../SkillsMenu'
 import { ModelSwitcher } from '../ModelSwitcher'
 import { PersonaSwitcher } from '../PersonaSwitcher'
 import { ContextRing } from './context-ring'
-import { ActiveMcpsBadge, ActiveExtensionsBadge, ReadOnlyModelBadge } from './badges'
+import { ReadOnlyModelBadge } from './badges'
 import { PermissionControl } from './permission-control'
 import { ClearConversationDialog } from './clear-conversation-dialog'
 import type { MessageRequestModelMeta } from '@renderer/lib/api/types'
@@ -86,7 +86,7 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
   const { t } = useTranslation('chat')
   const {
     readOnlyModel, modelRoute, draftSessionId,
-    canToggleWebSearch, webSearchEnabled, toggleWebSearch, disabled, isStreaming,
+    disabled, isStreaming,
     setSelectedSkill, insertSlashCommand, insertPluginPrompt, handleAttachMedia,
     activeProjectId, mode, hideModeSwitch, planMode, goalModeEnabled,
     planModeDisabled, goalModeDisabled, onPlanModeChange, onGoalModeChange,
@@ -100,28 +100,6 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
   } = props
 
   const composerVariant = 'session'
-
-  const webSearchToggleControl = canToggleWebSearch && (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className={composerIconControlClass}
-          data-active={webSearchEnabled ? 'true' : 'false'}
-          onClick={toggleWebSearch}
-          disabled={disabled || isStreaming}
-        >
-          <Globe className="size-4" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {webSearchEnabled
-          ? t('input.disableWebSearch', { defaultValue: 'Disable web search' })
-          : t('input.enableWebSearch', { defaultValue: 'Enable web search' })}
-      </TooltipContent>
-    </Tooltip>
-  )
 
   const skillsMenuControl = (
     <SkillsMenu
@@ -150,8 +128,6 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
     />
   )
 
-  const activeMcpBadge = <ActiveMcpsBadge projectId={activeProjectId} />
-  const activeExtensionBadge = <ActiveExtensionsBadge projectId={activeProjectId} />
 
   const folderControl = onSelectFolder && !hideWorkingFolderPicker && (
     <Tooltip>

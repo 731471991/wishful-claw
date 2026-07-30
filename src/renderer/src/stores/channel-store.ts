@@ -68,7 +68,7 @@ interface ChannelStore {
   setSelectedChannel: (id: string | null) => void
 }
 
-export const useChannelStore = create<ChannelStore>((set, get) => ({
+export const useChannelStore = create<ChannelStore>((set) => ({
   channels: [],
   providers: [],
   loading: false,

@@ -7,17 +7,8 @@ import {
   useGoalStore,
   type SessionGoal,
   type SessionGoalEvent,
-  type SessionGoalEventType
 } from '@renderer/stores/goal-store'
 
-const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
-  'usage_limited',
-  'budget_limited',
-  'completion_deferred',
-  'blocked',
-  'stall_paused',
-  'auto_continue_blocked'
-])
 
 
 export function eventMetadataNumber(event: SessionGoalEvent, key: string): number | null {

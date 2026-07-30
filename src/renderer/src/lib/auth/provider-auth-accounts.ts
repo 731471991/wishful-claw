@@ -1,8 +1,5 @@
 import { nanoid } from 'nanoid'
 import type {
-  AccountRateLimit,
-  AIProvider,
-  OAuthConfig,
   OAuthToken,
   ProviderOAuthAccount
 } from '@renderer/lib/api/types'

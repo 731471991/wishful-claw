@@ -1,9 +1,6 @@
 import type {
-  ProviderConfig,
   StreamEvent,
-  ToolDefinition,
-  ToolCallExtraContent,
-  UnifiedMessage
+  ToolCallExtraContent
 } from '@renderer/lib/api/types'
 import type { AgentEvent } from '@renderer/lib/agent/types'
 
