@@ -4,20 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
-import { useGitStore, type GitBranchItem, type GitStatusFile } from '@renderer/stores/git-store'
+import { useGitStore } from '@renderer/stores/git-store'
 import { useAggregatedChangeSummaries } from '@renderer/components/chat/change-summary-utils'
-import {
-  actionableSourceChanges, aggregateDisplayableRunFileChanges,
-  latestDisplayableRunChangeSet, type AggregatedFileChange
-} from '@renderer/components/chat/file-change-utils'
-import { normalizeLanguageCode } from '@renderer/lib/i18n-language'
+import { aggregateDisplayableRunFileChanges, latestDisplayableRunChangeSet } from '@renderer/components/chat/file-change-utils'
 import type { AgentFileTreeCommand } from '@renderer/components/cowork/file-tree-types'
 import { EMPTY_DIFF_BY_KEY, MAX_PRELOAD_DIFFS } from './agent-files-types'
-import type { GitSection, GitChangeRow, AgentChangeRow, ChangeRow } from './agent-files-types'
-import {
-  dirname, gitDiffKey,
-  repoRelativePath, statusLetters, summarizeUnifiedDiff
-} from './agent-files-utils'
+import type { GitChangeRow, AgentChangeRow, ChangeRow } from './agent-files-types'
+import { gitDiffKey, repoRelativePath, summarizeUnifiedDiff } from './agent-files-utils'
 import { DIFF_PRELOAD_BATCH_SIZE } from './agent-files-types'
 
 export interface UseAgentFilesOptions {

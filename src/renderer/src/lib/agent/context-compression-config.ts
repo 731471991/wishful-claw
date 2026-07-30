@@ -1,22 +1,6 @@
 import type {
   AIModelConfig,
-  CompactBoundaryMeta,
-  ProviderConfig,
-  UnifiedMessage
 } from '../api/types'
-// TODO: implement sidecar context compression IPC bridge
-async function runSidecarContextCompression(_opts: {
-  messages: UnifiedMessage[]
-  provider: ProviderConfig
-  signal?: AbortSignal
-  focusPrompt?: string
-  preserveCount?: number
-  trigger?: CompactBoundaryMeta['trigger']
-  preTokens?: number
-  pinnedContext?: string
-}): Promise<{ messages: UnifiedMessage[]; result: CompressionResult }> {
-  throw new Error('Context compression not yet implemented in wishful-claw')
-}
 
 export interface CompressionConfig {
   enabled: boolean

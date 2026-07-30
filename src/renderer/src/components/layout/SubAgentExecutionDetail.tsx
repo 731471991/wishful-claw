@@ -227,8 +227,8 @@ export function SubAgentExecutionDetail({
   const agentDetail = useAgentStore(
     useShallow((s) => {
       const agent =
-        (toolUseId && s.activeSubAgents[toolUseId]) ??
-        (toolUseId && s.completedSubAgents[toolUseId]) ??
+        (toolUseId ? s.activeSubAgents[toolUseId] : null) ??
+        (toolUseId ? s.completedSubAgents[toolUseId] : null) ??
         (toolUseId ? s.subAgentHistory.find((entry) => entry.toolUseId === toolUseId) : null) ??
         null
       return {
@@ -289,7 +289,7 @@ export function SubAgentExecutionDetail({
     const fromAgent = effectiveAgent?.errorMessage?.trim() || effectiveAgent?.report.trim() || ''
     if (fromAgent) return fromAgent
 
-    const fromMessages = getFallbackReportFromMessages(toolUseId, sessionMessages)
+    const fromMessages = getFallbackReportFromMessages(toolUseId, sessionMessages as UnifiedMessage[])
     if (fromMessages) return fromMessages
 
     return toolUseId
@@ -301,7 +301,7 @@ export function SubAgentExecutionDetail({
 
   const fallbackDetailText = (fallbackReportText.trim() || inlineText?.trim() || '').trim()
   const fallbackInput = React.useMemo(
-    () => findToolUseInput(toolUseId, sessionMessages),
+    () => findToolUseInput(toolUseId, sessionMessages as UnifiedMessage[]),
     [toolUseId, sessionMessages]
   )
   const fallbackDescription =

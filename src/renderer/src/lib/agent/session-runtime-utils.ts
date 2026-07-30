@@ -1,18 +1,8 @@
 import type {
   ContentBlock,
-  ThinkingBlock,
-  TokenUsage,
-  ToolUseBlock,
-  UnifiedMessage
+  ToolUseBlock
 } from '@renderer/lib/api/types'
-import { emitSessionRuntimeSync } from '@renderer/lib/session-runtime-sync'
-import { appendOrUpsertContentBlock } from '@renderer/lib/content-blocks'
-import { useChatStore } from '@renderer/stores/chat-store'
-import { summarizeToolInputForHistory } from '@renderer/lib/tools/tool-input-sanitizer'
 import { useBackgroundSessionStore } from '@renderer/stores/background-session-store'
-import { recordStreamingForegroundFlush } from '@renderer/lib/streaming-perf'
-import { createResidentRequestDebugInfo } from '@renderer/lib/debug-store'
-import { mergeUsageSnapshot } from './usage-merge'
 
 /**
  * Strip any <think>...</think> markers streamed by providers that wrap thinking in pseudo-tags.
@@ -43,9 +33,11 @@ export function upsertBufferedToolUse(blocks: ContentBlock[], toolUse: ToolUseBl
 // --- Visible session cache (50 ms TTL) ---
 // getVisibleSessionIds() is called per-event during streaming — caching avoids
 // re-creating a Set and reading two stores on every invocation.
-let _cachedVisibleIds: Set<string> | null = null
-let _cachedVisibleIdsTs = 0
-const VISIBLE_IDS_CACHE_TTL_MS = 50
+export const _rtState = {
+  _cachedVisibleIds: null as Set<string> | null,
+  _cachedVisibleIdsTs: 0
+}
+export const VISIBLE_IDS_CACHE_TTL_MS = 50
 export const _explicitVisibleSessionIds = new Set<string>()
 
 /**
@@ -53,7 +45,7 @@ export const _explicitVisibleSessionIds = new Set<string>()
  * changes so the next `isSessionForeground` call picks up the new value immediately.
  */
 export function invalidateVisibleSessionCache(): void {
-  _cachedVisibleIds = null
+  _rtState._cachedVisibleIds = null
 }
 
 export function setSessionForegroundVisibility(sessionId: string, visible: boolean): void {

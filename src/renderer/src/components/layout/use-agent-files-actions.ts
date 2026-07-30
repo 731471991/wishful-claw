@@ -2,32 +2,26 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { generateCommitMessageFromStagedDiff } from '@renderer/lib/git/generate-commit-message'
-import { useUIStore } from '@renderer/stores/ui-store'
 import type { AgentFilesState } from './use-agent-files'
 import type { ChangeRow, GitChangeRow, AgentChangeRow } from './agent-files-types'
 import type { AgentFileTreeCommand } from '@renderer/components/cowork/file-tree-types'
-import { gitDiffKey, dirname, repoRelativePath } from './agent-files-utils'
+import { gitDiffKey } from './agent-files-utils'
 import { normalizeLanguageCode } from '../../lib/i18n-language'
 import { useGitStore } from '../../stores/git-store'
 import { actionableSourceChanges } from '../chat/file-change-utils'
 
 export function useAgentFilesActions(state: AgentFilesState) {
   const {
-    t, i18n, sessionView, workingFolder, sshConnectionId,
+    t, i18n,
     selectedRepoPath, git, visibleRows, stageAll, stageFiles,
     getStagedDiffBundle, commitMessage, setCommitOpen, setCommitMessage,
     busyAction, setBusyAction, aiCommitLoading, setAiCommitLoading,
     branchDialog, setBranchDialog, branchValue, setBranchValue,
-    setSelectedChangeKey, setFileTreeCommand, undoFileChange, undoRunChanges,
-    refreshSessionRunChanges, runChangesByRunId, sessionChangeSets,
-    latestChangeSet, agentChanges, agentSummaries, loadFileDiff,
-    scanRepositories, selectedRepo, repoDetails, status, diffByKey,
-    gitRowsBase, gitRows, agentRows, allRows, totals, undoableRunIds,
+    setSelectedChangeKey, setFileTreeCommand, undoFileChange,
+    loadFileDiff,
+    repoDetails, status,
     visibleStagePaths,
-    fileSearchOpen, setFileSearchOpen, preloadingDiffKeysRef,
-    requestedRefreshRef, setActiveTab,
-    activeTab, changeSource, setChangeSource, selectedChangeKey,
-    diffOpen, setDiffOpen
+    setDiffOpen
   } = state
 
   const runGitAction = async (

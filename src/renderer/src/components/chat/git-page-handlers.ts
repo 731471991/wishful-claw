@@ -8,11 +8,7 @@ import {
   type GitBranchItem,
   type GitCommitHistoryItem,
 } from '@renderer/stores/git-store'
-import {
-  type ScmFileRow,
-  parseRemoteBranchName,
-  scmFileKey,
-} from './GitPage/utils'
+import { type ScmFileRow, parseRemoteBranchName } from './GitPage/utils'
 import type { TFunction } from 'i18next'
 
 interface GitPageHandlersOptions {

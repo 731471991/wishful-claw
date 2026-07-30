@@ -1,15 +1,13 @@
 import * as React from 'react'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
 import type { RequestRetryState } from '@renderer/lib/agent/types'
-import type { EditableUserMessageDraft } from '@renderer/lib/image-attachments'
 import { MessageRow } from './MessageRow'
 import type {
   MessageListProps,
   RenderableMessage,
-  ToolResultsLookup,
-  ChatStoreSnapshot
+  ToolResultsLookup
 } from './utils'
-import type { OrchestrationState } from '@renderer/lib/orchestration/build-runs'
+import type { OrchestrationRunStore } from '@renderer/lib/orchestration/build-runs'
 import { mergeHiddenToolUseIds } from './utils'
 
 interface ExportViewProps {
@@ -18,7 +16,7 @@ interface ExportViewProps {
   messageLookup: Map<string, UnifiedMessage>
   toolResultsLookup: ToolResultsLookup
   inlineCompactSummaryState: { byAssistantId: Map<string, UnifiedMessage[]> }
-  orchestrationState: OrchestrationState
+  orchestrationState: OrchestrationRunStore
   duplicatePlanReviewToolUseIds: Set<string>
   sessionAssistantMessageIds: string[]
   sessionToolUseIds: string[]
@@ -72,13 +70,13 @@ export function ExportView(props: ExportViewProps): React.JSX.Element {
               isLastAssistantMessage={row.isLastAssistantMessage}
               showContinue={row.showContinue}
               disableAnimation
-              toolResults={toolResultsLookup.get(row.messageId)}
+              toolResults={toolResultsLookup.get(row.messageId) as any}
               inlineCompactSummaries={inlineCompactSummaryState.byAssistantId.get(row.messageId)}
               orchestrationRun={
                 orchestrationState.byMessageId.get(row.messageId)?.primaryRun ?? null
               }
               hiddenToolUseIds={mergeHiddenToolUseIds(
-                orchestrationState.byMessageId.get(row.messageId)?.hiddenToolUseIds,
+                orchestrationState.byMessageId.get(row.messageId)?.hiddenToolUseIds as any,
                 duplicatePlanReviewToolUseIds
               )}
               anchorMessageId={null}

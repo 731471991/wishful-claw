@@ -9,10 +9,8 @@ import { isStreamingPerfEnabled, recordStreamingReactCommit } from '@renderer/li
 import { mergeHiddenToolUseIds } from './MessageList/utils'
 import { MessageListEmptyState } from './MessageList/EmptyState'
 import { VirtualListContent } from './MessageList/VirtualListContent'
-import { StaticMessageTranscript } from './MessageList/StaticMessageTranscript'
 import { MessageRow } from './MessageList/MessageRow'
 import { areMessageListPropsEqual } from './MessageList/props-equal'
-import { modeHints } from './MessageList/mode-hints'
 import { useMessageListData } from './MessageList/useMessageListData'
 import { useMessageListScroll } from './MessageList/useMessageListScroll'
 import type { MessageListProps } from './MessageList/utils'
@@ -109,19 +107,19 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
                 isLastAssistantMessage={row.isLastAssistantMessage}
                 showContinue={row.showContinue}
                 disableAnimation
-                toolResults={data.toolResultsLookup.get(row.messageId)}
+                toolResults={data.toolResultsLookup.get(row.messageId) as any}
                 inlineCompactSummaries={data.inlineCompactSummaryState.byAssistantId.get(row.messageId)}
                 orchestrationRun={
                   data.orchestrationState.byMessageId.get(row.messageId)?.primaryRun ?? null
                 }
                 hiddenToolUseIds={mergeHiddenToolUseIds(
-                  data.orchestrationState.byMessageId.get(row.messageId)?.hiddenToolUseIds,
+                  data.orchestrationState.byMessageId.get(row.messageId)?.hiddenToolUseIds as any,
                   data.duplicatePlanReviewToolUseIds
                 )}
                 anchorMessageId={null}
                 highlightMessageId={null}
                 requestRetryState={
-                  row.isLastAssistantMessage ? (data.sessionRequestRetryState ?? null) : null
+                  row.isLastAssistantMessage ? ((data.sessionRequestRetryState ?? null) as any) : null
                 }
                 fullWidth={fullWidth}
                 onRetry={onRetry}
@@ -160,14 +158,14 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
       streamingMessageId={streamingMessageId}
       isAgentExecutionActive={data.isAgentExecutionActive}
       highlightedMessageId={scroll.highlightedMessageId}
-      sessionRequestRetryState={data.sessionRequestRetryState}
+      sessionRequestRetryState={data.sessionRequestRetryState as any}
       targetSessionId={targetSessionId}
       fullWidth={fullWidth}
       isAtBottom={scroll.isAtBottom}
       animationsEnabled={animationsEnabled}
       assistantRailItems={data.assistantRailItems}
       activeAssistantRailMessageIds={scroll.activeAssistantRailMessageIds}
-      handleJumpToAssistantMessage={scroll.handleJumpToAssistantMessage}
+      handleJumpToAssistantMessage={scroll.handleJumpToAssistantMessage as any}
       scrollToBottom={scroll.scrollToBottom}
       t={t}
       onRetry={onRetry}

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Check, ChevronDown, Copy, FileCode, Loader2, RotateCcw, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
-import { Sheet, SheetContent } from '@renderer/components/ui/sheet'
 import { MONO_FONT } from '@renderer/lib/constants'
 import { cn } from '@renderer/lib/utils'
 import type { AgentRunChangeSet } from '@renderer/stores/agent-store'
@@ -362,7 +361,7 @@ export function ChangeRow({
   )
 }
 
-interface ChangeReviewPanelContentProps {
+export interface ChangeReviewPanelContentProps {
   runId: string
   initialChangeId?: string | null
   changeSetOverride?: AgentRunChangeSet | null

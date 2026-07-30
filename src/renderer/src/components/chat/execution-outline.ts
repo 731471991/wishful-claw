@@ -104,6 +104,7 @@ const ORDINARY_CONTEXT_TOOL_NAMES = new Set([
   'LS',
   'WebFetch',
   'WebSearch',
+  'BrowserSearch',
 ])
 const FILE_CHANGE_TOOL_NAMES = new Set(['Write', 'Edit', 'Delete', 'NotebookEdit', 'SavePlan'])
 const INTERACTIVE_TOOL_NAMES = new Set([

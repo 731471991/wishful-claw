@@ -88,7 +88,7 @@ export function PreviewToolbar({
             variant="ghost"
             size="icon"
             className="size-7 shrink-0"
-            onClick={handleCopyMarkdown}
+            onClick={onCopyMarkdown}
             title={copied ? t('preview.copied') : t('action.copy', { ns: 'common' })}
           >
             {copied ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5" />}
@@ -101,7 +101,7 @@ export function PreviewToolbar({
               variant={diffViewMode !== 'inline' ? 'secondary' : 'ghost'}
               size="sm"
               className="h-5 gap-1 px-2 text-[10px]"
-              onClick={() => updateSettings({ fileDiffViewMode: 'split' })}
+              onClick={() => onSetDiffViewMode('split')}
               title={t('preview.diffSplit', { defaultValue: 'Split' })}
             >
               <Columns2 className="size-3" />
@@ -110,7 +110,7 @@ export function PreviewToolbar({
               variant={diffViewMode === 'inline' ? 'secondary' : 'ghost'}
               size="sm"
               className="h-5 gap-1 px-2 text-[10px]"
-              onClick={() => updateSettings({ fileDiffViewMode: 'inline' })}
+              onClick={() => onSetDiffViewMode('inline')}
               title={t('preview.diffInline', { defaultValue: 'Inline' })}
             >
               <Rows2 className="size-3" />
@@ -123,7 +123,7 @@ export function PreviewToolbar({
             variant="ghost"
             size="icon"
             className="size-7 shrink-0"
-            onClick={() => void handleSave()}
+            onClick={() => void onSave()}
             disabled={!activeTab.modified}
             title={t('action.save', { ns: 'common' })}
           >
@@ -137,7 +137,7 @@ export function PreviewToolbar({
               variant="ghost"
               size="icon"
               className="size-7 shrink-0"
-              onClick={() => void handleSave()}
+              onClick={() => void onSave()}
               disabled={!activeTab.modified}
               title={t('action.save', { ns: 'common' })}
             >
@@ -160,7 +160,7 @@ export function PreviewToolbar({
             variant="ghost"
             size="icon"
             className="size-7 shrink-0"
-            onClick={() => void handleOpenInSystem()}
+            onClick={() => void onOpenInSystem()}
             title={t('preview.openInSystem')}
           >
             <ExternalLink className="size-3.5" />

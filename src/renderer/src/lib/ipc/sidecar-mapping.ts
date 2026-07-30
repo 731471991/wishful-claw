@@ -1,11 +1,10 @@
 
-import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig } from './sidecar-protocol'
+import { normalizeSidecarRecord, normalizeMaxParallelTools, normalizePlanRevision, normalizePlanExecution, normalizeSlashCommand, normalizeSystemCommand, normalizePluginChannelContext, normalizeRequestContextTexts, isNativeSidecarProviderConfig, SidecarProviderInput, sanitizeSidecarToolInput } from './sidecar-protocol'
 import { toPermissionPolicySnapshot } from '../../../../shared/permission-policy'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { clampMaxConcurrentSubAgents } from '../../stores/settings-store'
 import { CompressionConfig } from '../agent/context-compression-config'
-import { toolRegistry } from '../agent/tool-registry'
 import { resolveProviderUserAgent } from '../api/api-user-agent'
 import { ContentBlock, MessageMeta, ProviderConfig, ToolDefinition, UnifiedMessage } from '../api/types'
 import { SidecarAgentRunRequest, SidecarApprovalRequest, SidecarContentBlock, SidecarContextSource, SidecarPlanExecutionContext, SidecarPlanRevisionContext, SidecarPluginChannelContext, SidecarProviderConfig, SidecarSlashCommandContext, SidecarSystemCommandContext, SidecarToolDefinition, SidecarTranslationContext, SidecarUnifiedMessage, SidecarWebSearchConfig } from './sidecar-protocol-types'
@@ -257,11 +256,12 @@ export function buildSidecarAgentRunRequest(args: {
 
   const maxParallelTools = normalizeMaxParallelTools(args.maxParallelTools)
   const webSearch = mapSidecarWebSearchConfig(args.tools)
-  const parentToolNames = new Set(args.tools.map((tool) => tool.name))
-  const subAgentToolCatalog = toolRegistry
-    .getStableDefinitions()
-    .filter((tool) => !parentToolNames.has(tool.name))
-    .map(mapSidecarTool)
+  // Use only the tools provided by the caller (already filtered by Worker preset).
+  // Renderer-registered tool handlers remain available for execution by name,
+  // but their definitions are NOT merged into the LLM tool list — the Worker's
+  // ToolPreset is the single source of truth for what the LLM sees.
+  const mergedTools = args.tools
+  const subAgentToolCatalog: SidecarToolDefinition[] = []
   // Global settings snapshot, applied to every run this module builds (incl. sub-agents,
   // which inherit the parent's parameters in the native worker).
   const settings = useSettingsStore.getState()
@@ -301,7 +301,7 @@ export function buildSidecarAgentRunRequest(args: {
     ...(liveOverlayMessages.length > 0 ? { liveOverlayMessages } : {}),
     provider,
     ...(compressionProvider ? { compressionProvider } : {}),
-    tools: args.tools.map(mapSidecarTool),
+    tools: mergedTools.map(mapSidecarTool),
     ...(subAgentToolCatalog.length > 0 ? { subAgentToolCatalog } : {}),
     ...(webSearch ? { webSearch } : {}),
     ...(imagePluginProvider ? { imagePluginProvider } : {}),

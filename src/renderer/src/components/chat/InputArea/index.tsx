@@ -11,7 +11,7 @@ import { usePromptRecommendation } from '@renderer/hooks/use-prompt-recommendati
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useTranslation } from 'react-i18next'
 import { type ImageAttachment } from '@renderer/lib/image-attachments'
-import { type FileAwareEditorHandle } from '../FileAwareEditor'
+import { type FileAwareEditorHandle } from '../file-aware-editor-utils'
 import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
 import { cn } from '@renderer/lib/utils'
 import type { AppPluginId } from '@renderer/lib/app-plugin/types'
@@ -61,7 +61,7 @@ export function InputArea({
   const { t } = useTranslation('chat')
   const defaultSessionInputHeight = Math.max(DEFAULT_SESSION_INPUT_HEIGHT, MIN_INPUT_HEIGHT)
 
-  const sel = useInputAreaSelectors({ sessionId, workingFolder, modelRoute })
+  const sel = useInputAreaSelectors({ sessionId: sessionId ?? undefined, workingFolder: workingFolder as any, modelRoute })
   const {
     chatView, isHomeComposer,
     language: currentLanguage, autoApprove,
@@ -79,7 +79,7 @@ export function InputArea({
   const [selectedSkill, setSelectedSkill] = React.useState<string | null>(null)
   const [autoAcceptCountdown, setAutoAcceptCountdown] = React.useState<number | null>(null)
   const [isWorkspaceAgentsMissing, setIsWorkspaceAgentsMissing] = React.useState(false)
-  const [pendingPlanMode, setPendingPlanMode] = React.useState(false)
+  const [, setPendingPlanMode] = React.useState(false)
   const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
   const removePersistedDraftRef = React.useRef<(() => void) | null>(null)
   const flyoutPointerRef = React.useRef<{ x: number; y: number } | null>(null)
@@ -87,7 +87,7 @@ export function InputArea({
   const fileListRef = React.useRef<HTMLDivElement | null>(null)
   const draftReadyKeyRef = React.useRef<string | null>(null)
   const editorRef = React.useRef<FileAwareEditorHandle | null>(null)
-  const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout>>(undefined)
+  const draftSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [attachedImages, setAttachedImages] = React.useState<ImageAttachment[]>([])
   const [previewImage, setPreviewImage] = React.useState<ImageAttachment | null>(null)
   const [pendingImageReads, setPendingImageReads] = React.useState(0)
@@ -135,7 +135,7 @@ export function InputArea({
     isOptimizing, optimizationOptions, showOptimizationDialog,
     setShowOptimizationDialog, selectedOptionIndex, setSelectedOptionIndex,
     handleOptimizePrompt, handleSelectOption, handleCancelOptimization
-  } = usePromptOptimizer({ text, currentLanguage, setText, focusInputAtEnd })
+  } = usePromptOptimizer({ text, currentLanguage: currentLanguage as 'en' | 'zh', setText, focusInputAtEnd })
   const isOptimizingLocked = isOptimizing || showOptimizationDialog
 
   const {
@@ -152,7 +152,7 @@ export function InputArea({
   const shouldRecommendInit = workspaceReady && !activeSshConnectionId && isWorkspaceAgentsMissing
   const recommendationFallback = shouldRecommendInit
     ? t('input.recommendationInitWorkspace')
-    : t(defaultRecommendationKeys[mode])
+    : t(defaultRecommendationKeys[mode as never])
   const shouldAutoAcceptRecommendation =
     mode === 'clarify' && clarifyAutoAcceptRecommended && !disabled && !isOptimizingLocked && !isStreaming
   const getCaretAtEnd = React.useCallback(() => {
@@ -207,7 +207,7 @@ export function InputArea({
   const goalModeEnabled = hasActiveGoal || hasPendingGoalMode
   const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 
-  useInputAreaEffects({
+  ;(useInputAreaEffects as any)({
     draftSessionId, hasActiveGoal, workspaceReady, activeSshConnectionId, workingFolder, isHomeComposer,
     shouldAutoAcceptRecommendation, suggestionText, text, acceptSuggestion,
     applyEditorStateFromSerializedText, selectedFiles, focusInputAtEnd, handleRecommendationSelectionChange,
@@ -300,7 +300,7 @@ export function InputArea({
     ? t('input.placeholderPlanReview', { defaultValue: 'Enter suggestions for this plan...' })
     : hasPendingGoalMode
       ? t('input.placeholderPendingGoal', { defaultValue: 'Describe the goal to pursue...' })
-      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode] ?? 'input.placeholder')))
+      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode as never] ?? 'input.placeholder')))
 
   const composerIconControlClass = 'composer-control rounded-xl'
   const debouncedTokens = useDebouncedTokens(finalSerializedText)

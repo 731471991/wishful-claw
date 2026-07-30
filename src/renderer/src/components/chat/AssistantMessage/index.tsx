@@ -1,23 +1,6 @@
 import * as React from 'react'
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Copy, Check, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown,
-  Bug, ImageDown, ZoomIn, Trash2, RotateCcw, Play, Loader2, CheckCircle2,
-  Ellipsis, Eraser, Languages, Pencil, Volume2, Share2, GitFork, CircleHelp
-} from 'lucide-react'
-import { FadeIn, ScaleIn } from '@renderer/components/animate-ui'
-import { AnimatePresence, motion } from 'motion/react'
-import { cn } from '@renderer/lib/utils'
-import { WebSearchBlock } from '../WebSearchBlock'
-import { ImageGeneratingLoader } from '../ImageGeneratingLoader'
-import { ImageGenerationErrorCard } from '../ImageGenerationErrorCard'
-import { AgentErrorCard } from '../AgentErrorCard'
-import { ImagePreview } from '../ImagePreview'
-import { ImagePluginToolCard } from '../ImagePluginToolCard'
-import { DesktopActionToolCard } from '../DesktopActionToolCard'
-import { BrowserToolCard } from '../BrowserToolCard'
-import { CodeGraphToolCard } from '../CodeGraphToolCard'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import type { AgentRunFileChange } from '@renderer/stores/agent-store'
@@ -26,20 +9,7 @@ import type {
   ContentBlock, UnifiedMessage
 } from '@renderer/lib/api/types'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import { ToolCallCard, WidgetOutputBlock } from '../ToolCallCard'
-import { FileChangeCard } from '../FileChangeCard'
-import { BashArtifactsCard } from '../BashArtifactsCard'
-import { SubAgentCard } from '../SubAgentCard'
-import { ThinkingBlock } from '../ThinkingBlock'
-import { CollapsibleHeightPanel } from '../CollapsibleHeightPanel'
-import { TeamEventCard } from '../TeamEventCard'
-import { AskUserQuestionCard } from '../AskUserQuestionCard'
-import { OrchestrationBlock } from '../OrchestrationBlock'
-import { PlanReviewCard } from '../PlanReviewCard'
-import { ContextCompressionMessage } from '../ContextCompressionMessage'
-import type { OrchestrationRun } from '@renderer/lib/orchestration/types'
 import { TASK_TOOL_NAME } from '@renderer/lib/agent/sub-agents/create-tool'
-import { TEAM_TOOL_NAMES } from '@renderer/lib/agent/teams/register'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useMemoizedTokens } from '@renderer/hooks/use-estimated-tokens'
 import { getLastDebugInfo } from '@renderer/lib/debug-store'
@@ -48,27 +18,9 @@ import {
 } from '@renderer/lib/live-output-animation'
 import type { ToolCallState } from '@renderer/lib/agent/types'
 import {
-  DESKTOP_CLICK_TOOL_NAME, DESKTOP_SCREENSHOT_TOOL_NAME, DESKTOP_SCROLL_TOOL_NAME,
-  DESKTOP_TYPE_TOOL_NAME, DESKTOP_WAIT_TOOL_NAME, IMAGE_GENERATE_TOOL_NAME
-} from '@renderer/lib/app-plugin/types'
-import { isBrowserToolName } from '@renderer/lib/app-plugin/browser-tool-names'
-import {
   buildToolExecutionOutline,
   type ToolExecutionRun
 } from '../execution-outline'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger
-} from '@renderer/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { useUIStore } from '@renderer/stores/ui-store'
-import {
-  openMarkdownHref, resolveLocalFilePath, openLocalFilePath
-} from '@renderer/lib/preview/viewers/markdown-components'
-import { imageBlockToAttachment } from '@renderer/lib/image-attachments'
-import { useImageEditStore } from '@renderer/stores/image-edit-store'
-import { isMcpTool } from '@renderer/lib/mcp/mcp-tools'
-import { Eraser as EraserIcon, Pencil as PencilIcon } from 'lucide-react'
 
 import { useCompletionSummary } from './use-completion-summary'
 import { AssistantActionBar } from './action-bar'
@@ -139,16 +91,16 @@ export function AssistantMessage({
   const thinkingModel = useProviderStore(
     useShallow((state) => {
       const providerId = sessionModelBinding.providerId ?? state.activeProviderId
-      const provider = providerId ? state.providers.find((item) => item.id === providerId) : null
+      const provider = providerId ? state.providers.find((item: any) => item.id === providerId) : null
       const fallbackModelId =
         provider?.defaultModel ??
-        provider?.models.find((item) => item.enabled)?.id ??
+        provider?.models.find((item: any) => item.enabled)?.id ??
         provider?.models[0]?.id ??
         ''
       const modelId =
         sessionModelBinding.modelId ??
         (provider?.id === state.activeProviderId ? state.activeModelId : fallbackModelId)
-      const model = provider?.models.find((item) => item.id === modelId)
+      const model = provider?.models.find((item: any) => item.id === modelId)
 
       return {
         modelId: modelId || null,
@@ -165,18 +117,18 @@ export function AssistantMessage({
     const providerId = sessionModelBinding.providerId ?? state.activeProviderId
     if (!providerId) return false
 
-    const provider = state.providers.find((item) => item.id === providerId)
+    const provider = state.providers.find((item: any) => item.id === providerId)
     if (!provider) return false
 
     const fallbackModelId =
       provider.defaultModel ??
-      provider.models.find((item) => item.enabled)?.id ??
+      provider.models.find((item: any) => item.enabled)?.id ??
       provider.models[0]?.id ??
       ''
     const resolvedModelId =
       sessionModelBinding.modelId ??
       (provider.id === state.activeProviderId ? state.activeModelId : fallbackModelId)
-    const model = provider.models.find((item) => item.id === resolvedModelId)
+    const model = provider.models.find((item: any) => item.id === resolvedModelId)
     const requestType = model?.type ?? provider.type
 
     return requestType === 'openai-responses'

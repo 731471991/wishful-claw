@@ -1,10 +1,6 @@
-import { create } from 'zustand'
-import { toast } from 'sonner'
-import { IPC } from '@renderer/lib/ipc/channels'
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import { toMessagePackChannel } from '../../../shared/messagepack/binary-ipc'
 import { useChatStore } from './chat-store'
-import { useUIStore } from './ui-store'
 
 export interface GitRepositoryItem {
   name: string
@@ -49,7 +45,7 @@ export interface GitBranchItem {
   isCurrent: boolean
 }
 
-interface GitRepositoryDetails {
+export interface GitRepositoryDetails {
   status: GitStatusDetailed | null
   history: GitCommitHistoryItem[]
   fileHistoryByPath: Record<string, GitCommitHistoryItem[]>
@@ -62,16 +58,16 @@ interface GitRepositoryDetails {
   error: string | null
 }
 
-interface GitResultBase {
+export interface GitResultBase {
   success?: boolean
   error?: string
 }
 
-interface RefreshRepositoryOptions {
+export interface RefreshRepositoryOptions {
   force?: boolean
 }
 
-interface GitStore {
+export interface GitStore {
   repositories: GitRepositoryItem[]
   selectedRepoPath: string | null
   isScanning: boolean
@@ -143,12 +139,12 @@ interface GitStore {
   reset: () => void
 }
 
-function getActiveProject(): ReturnType<typeof useChatStore.getState>['projects'][number] | null {
+export function getActiveProject(): ReturnType<typeof useChatStore.getState>['projects'][number] | null {
   const { activeProjectId, projects } = useChatStore.getState()
   return projects.find((project) => project.id === activeProjectId) ?? null
 }
 
-function getGitTarget(repoPath?: string): { cwd: string; sshConnectionId: string | null } {
+export function getGitTarget(repoPath?: string): { cwd: string; sshConnectionId: string | null } {
   const project = getActiveProject()
   return {
     cwd: repoPath ?? project?.workingFolder ?? '',
@@ -156,7 +152,7 @@ function getGitTarget(repoPath?: string): { cwd: string; sshConnectionId: string
   }
 }
 
-function getErrorMessage(result: unknown, fallback: string): string {
+export function getErrorMessage(result: unknown, fallback: string): string {
   if (!result || typeof result !== 'object') return fallback
   if ('error' in result && typeof (result as { error?: unknown }).error === 'string') {
     return (result as { error: string }).error
@@ -164,7 +160,7 @@ function getErrorMessage(result: unknown, fallback: string): string {
   return fallback
 }
 
-async function invokeGit<T>(channel: string, payload: Record<string, unknown>): Promise<T> {
+export async function invokeGit<T>(channel: string, payload: Record<string, unknown>): Promise<T> {
   return await invokeMessagePackBinary<T>(toMessagePackChannel(channel), payload)
 }
 
@@ -182,54 +178,56 @@ function createEmptyRepoDetails(): GitRepositoryDetails {
   }
 }
 
-function ensureRepoDetails(
+export function ensureRepoDetails(
   repoDetailsByPath: Record<string, GitRepositoryDetails>,
   repoPath: string
 ): GitRepositoryDetails {
   return repoDetailsByPath[repoPath] ?? createEmptyRepoDetails()
 }
 
-const pendingFileDiffRequests = new Map<string, Promise<void>>()
-const pendingFileHistoryRequests = new Map<string, Promise<void>>()
-const pendingHistoryFileDiffRequests = new Map<string, Promise<{ success: boolean }>>()
-const pendingScanRequests = new Map<string, Promise<void>>()
-const pendingRepositoryRefreshRequests = new Map<string, Promise<void>>()
-const repositoryRefreshExpiresAtByKey = new Map<string, number>()
+export const pendingFileDiffRequests = new Map<string, Promise<void>>()
+export const pendingFileHistoryRequests = new Map<string, Promise<void>>()
+export const pendingHistoryFileDiffRequests = new Map<string, Promise<{ success: boolean }>>()
+export const pendingScanRequests = new Map<string, Promise<void>>()
+export const pendingRepositoryRefreshRequests = new Map<string, Promise<void>>()
+export const repositoryRefreshExpiresAtByKey = new Map<string, number>()
 const repositoryRefreshRevisionByKey = new Map<string, number>()
-const REPOSITORY_SCAN_CACHE_TTL_MS = 5_000
-const REPOSITORY_REFRESH_CACHE_TTL_MS = 3_000
-const REPOSITORY_REFRESH_ERROR_TTL_MS = 1_000
+export const REPOSITORY_SCAN_CACHE_TTL_MS = 5_000
+export const REPOSITORY_REFRESH_CACHE_TTL_MS = 3_000
+export const REPOSITORY_REFRESH_ERROR_TTL_MS = 1_000
 
-let lastAppliedScanKey: string | null = null
-let scanCacheExpiresAt = 0
+export const _gitState = {
+  lastAppliedScanKey: null as string | null,
+  scanCacheExpiresAt: 0
+}
 
-function fileDiffCacheKey(filePath: string, staged = false): string {
+export function fileDiffCacheKey(filePath: string, staged = false): string {
   return `${staged ? 'staged' : 'unstaged'}:${filePath}`
 }
 
-function fileDiffRequestKey(repoPath: string, filePath: string, staged = false): string {
+export function fileDiffRequestKey(repoPath: string, filePath: string, staged = false): string {
   return `${repoPath}:${fileDiffCacheKey(filePath, staged)}`
 }
 
-function gitTargetCacheKey(target: { cwd: string; sshConnectionId: string | null }): string {
+export function gitTargetCacheKey(target: { cwd: string; sshConnectionId: string | null }): string {
   return `${target.sshConnectionId ?? 'local'}:${target.cwd}`
 }
 
-function projectScanKey(project: ReturnType<typeof getActiveProject>): string | null {
+export function projectScanKey(project: ReturnType<typeof getActiveProject>): string | null {
   if (!project?.workingFolder) return null
   return `${project.sshConnectionId ?? 'local'}:${project.workingFolder}`
 }
 
-function repositoryRefreshRevision(key: string): number {
+export function repositoryRefreshRevision(key: string): number {
   return repositoryRefreshRevisionByKey.get(key) ?? 0
 }
 
-function bumpRepositoryRefreshRevision(key: string): void {
+export function bumpRepositoryRefreshRevision(key: string): void {
   repositoryRefreshRevisionByKey.set(key, repositoryRefreshRevision(key) + 1)
   repositoryRefreshExpiresAtByKey.delete(key)
 }
 
-function clearGitRequestCaches(): void {
+export function clearGitRequestCaches(): void {
   pendingFileDiffRequests.clear()
   pendingFileHistoryRequests.clear()
   pendingHistoryFileDiffRequests.clear()
@@ -237,7 +235,7 @@ function clearGitRequestCaches(): void {
   pendingRepositoryRefreshRequests.clear()
   repositoryRefreshExpiresAtByKey.clear()
   repositoryRefreshRevisionByKey.clear()
-  lastAppliedScanKey = null
-  scanCacheExpiresAt = 0
+  _gitState.lastAppliedScanKey = null
+  _gitState.scanCacheExpiresAt = 0
 }
 

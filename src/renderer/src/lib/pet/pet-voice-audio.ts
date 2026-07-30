@@ -3,8 +3,7 @@ import { agentBridge } from '@renderer/lib/ipc/agent-bridge'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { ensureProviderAuthReady } from '@renderer/lib/auth/provider-auth'
 import { useProviderStore } from '@renderer/stores/provider-store'
-import { usePetAgentStore, type PetVoiceMode } from '@renderer/stores/pet-agent-store'
-import { PetVoiceParams, resolvePetVoiceMode } from './pet-voice'
+import { PetVoiceParams, resolvePetVoiceMode, MAX_SPEECH_CHARS, PCM_SAMPLE_RATE, SPEECH_TIMEOUT_MS, SpeechClip, applyMimoTag, _voiceState } from './pet-voice'
 
 /**
  * Voice playback for the pet's AI speech. Synthesis runs in the native
@@ -20,37 +19,37 @@ import { PetVoiceParams, resolvePetVoiceMode } from './pet-voice'
 
 
 export function getAudioContext(): AudioContext {
-  if (!audioContext) audioContext = new AudioContext()
-  if (audioContext.state === 'suspended') void audioContext.resume()
-  return audioContext
+  if (!_voiceState.audioContext) _voiceState.audioContext = new AudioContext()
+  if (_voiceState.audioContext.state === 'suspended') void _voiceState.audioContext.resume()
+  return _voiceState.audioContext
 }
 
 export function stopStreamingPlayback(): void {
-  for (const source of streamSources) {
+  for (const source of _voiceState.streamSources) {
     try {
       source.stop()
     } catch {
       // already stopped
     }
   }
-  streamSources = []
-  if (activeStreamRequestId) {
-    void ipcClient.invoke('pet:tts-cancel', { requestId: activeStreamRequestId })
-    activeStreamRequestId = null
+  _voiceState.streamSources = []
+  if (_voiceState.activeStreamRequestId) {
+    void ipcClient.invoke('pet:tts-cancel', { requestId: _voiceState.activeStreamRequestId })
+    _voiceState.activeStreamRequestId = null
   }
 }
 
 export function stopPetSpeech(): void {
-  currentAudio?.pause()
-  currentAudio = null
-  if (currentAudioUrl) {
-    URL.revokeObjectURL(currentAudioUrl)
-    currentAudioUrl = null
+  _voiceState.currentAudio?.pause()
+  _voiceState.currentAudio = null
+  if (_voiceState.currentAudioUrl) {
+    URL.revokeObjectURL(_voiceState.currentAudioUrl)
+    _voiceState.currentAudioUrl = null
   }
   stopStreamingPlayback()
 }
 
-async function synthesizeClip(params: PetVoiceParams, text: string): Promise<SpeechClip> {
+export async function synthesizeClip(params: PetVoiceParams, text: string): Promise<SpeechClip> {
   const normalized = text.replace(/\s+/g, ' ').trim().slice(0, MAX_SPEECH_CHARS)
   if (!normalized) throw new Error('empty speech text')
   const input = applyMimoTag(params, normalized)
@@ -150,7 +149,7 @@ async function readSpeechFileChunks(filePath: string, expectedBytes?: number): P
 }
 
 /** Play one clip; resolves when playback ends or is interrupted. */
-async function playClip(clip: SpeechClip): Promise<void> {
+export async function playClip(clip: SpeechClip): Promise<void> {
   stopPetSpeech()
   // Blob URL instead of a data: URL — WAV clips are megabytes of base64,
   // and the CSP media-src allows blob: playback.
@@ -158,15 +157,15 @@ async function playClip(clip: SpeechClip): Promise<void> {
     new Blob(clip.chunks as BlobPart[], { type: clip.mediaType })
   )
   const audio = new Audio(url)
-  currentAudio = audio
-  currentAudioUrl = url
+  _voiceState.currentAudio = audio
+  _voiceState.currentAudioUrl = url
 
   await new Promise<void>((resolve) => {
     const settle = (): void => {
-      if (currentAudio === audio) currentAudio = null
-      if (currentAudioUrl === url) {
+      if (_voiceState.currentAudio === audio) _voiceState.currentAudio = null
+      if (_voiceState.currentAudioUrl === url) {
         URL.revokeObjectURL(url)
-        currentAudioUrl = null
+        _voiceState.currentAudioUrl = null
       }
       resolve()
     }
@@ -184,7 +183,7 @@ async function playClip(clip: SpeechClip): Promise<void> {
  * forwards SSE audio deltas as they arrive and playback starts on the first
  * chunk instead of after the full clip. Resolves when playback finishes.
  */
-async function streamAndPlay(params: PetVoiceParams, text: string): Promise<void> {
+export async function streamAndPlay(params: PetVoiceParams, text: string): Promise<void> {
   const normalized = text.replace(/\s+/g, ' ').trim().slice(0, MAX_SPEECH_CHARS)
   if (!normalized) return
   const input = applyMimoTag(params, normalized)
@@ -197,7 +196,7 @@ async function streamAndPlay(params: PetVoiceParams, text: string): Promise<void
 
   stopPetSpeech()
   const requestId = nanoid()
-  activeStreamRequestId = requestId
+  _voiceState.activeStreamRequestId = requestId
   const ctx = getAudioContext()
   const startedAt = performance.now()
   let nextTime = 0
@@ -222,16 +221,16 @@ async function streamAndPlay(params: PetVoiceParams, text: string): Promise<void
     const startAt = Math.max(ctx.currentTime + 0.08, nextTime)
     source.start(startAt)
     nextTime = startAt + buffer.duration
-    streamSources.push(source)
+    _voiceState.streamSources.push(source)
     source.onended = () => {
-      streamSources = streamSources.filter((item) => item !== source)
+      _voiceState.streamSources = _voiceState.streamSources.filter((item) => item !== source)
     }
   }
 
   const unsubscribe = ipcClient.on('pet:tts-stream-event', (payload) => {
     const event = payload as { requestId?: string; type?: string; data?: string } | null
     if (!event || event.requestId !== requestId) return
-    if (event.type === 'chunk' && event.data && activeStreamRequestId === requestId) {
+    if (event.type === 'chunk' && event.data && _voiceState.activeStreamRequestId === requestId) {
       if (!received) {
         console.info(
           `[Pet][voice] first stream chunk after ${Math.round(performance.now() - startedAt)}ms`
@@ -255,12 +254,12 @@ async function streamAndPlay(params: PetVoiceParams, text: string): Promise<void
     if (!received) throw new Error('speech stream returned no audio')
     // Wait for the scheduled tail to finish playing.
     const remaining = nextTime - ctx.currentTime
-    if (remaining > 0 && activeStreamRequestId === requestId) {
+    if (remaining > 0 && _voiceState.activeStreamRequestId === requestId) {
       await new Promise((resolve) => setTimeout(resolve, remaining * 1000 + 120))
     }
   } finally {
     unsubscribe()
-    if (activeStreamRequestId === requestId) activeStreamRequestId = null
+    if (_voiceState.activeStreamRequestId === requestId) _voiceState.activeStreamRequestId = null
   }
 }
 

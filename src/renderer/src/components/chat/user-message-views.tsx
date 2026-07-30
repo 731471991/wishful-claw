@@ -1,8 +1,7 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+﻿import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@renderer/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,70 +10,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
-import {
-  Pencil,
-  Check,
-  X,
-  Copy,
-  ImagePlus,
-  Trash2,
-  Ellipsis,
-  Languages,
-  Volume2,
-  Share2,
-  ChevronsUpDown,
-  ChevronsDownUp,
-  Sparkles,
-  Loader2,
-  FileText,
-  AlertCircle,
-  CornerDownRight
-} from 'lucide-react'
-import { formatTokens } from '@renderer/lib/format-tokens'
-import { useMemoizedTokens } from '@renderer/hooks/use-estimated-tokens'
+import { Check, X, Copy, Sparkles, Loader2, FileText, AlertCircle } from 'lucide-react'
 import {
   writeImageBlobToClipboard,
   writeImageDataUrlToClipboard
 } from '@renderer/lib/utils/image-clipboard'
 import type {
-  AIModelConfig,
-  ContentBlock,
-  MessageMeta,
-  SelectedFileReadsMeta,
-  UnifiedMessage
+  SelectedFileReadsMeta
 } from '@renderer/lib/api/types'
-import {
-  ACCEPTED_IMAGE_TYPES,
-  cloneImageAttachments,
-  extractEditableUserMessageDraft,
-  fileToImageAttachment,
-  hasEditableDraftContent,
-  type EditableUserMessageDraft,
-  type ImageAttachment
-} from '@renderer/lib/image-attachments'
-import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
-import { useTranslateStore } from '@renderer/stores/translate-store'
-import { useUIStore } from '@renderer/stores/ui-store'
-import { useSkillsStore } from '@renderer/stores/skills-store'
+import { type ImageAttachment } from '@renderer/lib/image-attachments'
 import { cn } from '@renderer/lib/utils'
-import { SystemCommandCard } from './SystemCommandCard'
-import { SelectFileInlineText } from './SelectFileInlineText'
-
-interface UserMessageProps {
-  messageId: string
-  content: string | ContentBlock[]
-  meta?: MessageMeta
-  source?: UnifiedMessage['source']
-  isLast?: boolean
-  createdAt?: number
-  onEdit?: (messageId: string, draft: EditableUserMessageDraft) => void
-  onDelete?: (messageId: string) => void
-}
 
 
-import { UserSkillBadge } from './user-message-helpers'
+
 
 export function UserSelectedFileReadsView({
   reads

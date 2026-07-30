@@ -61,8 +61,8 @@ export function ContextRing({
         ? autoSelection.modelId
         : selection.modelId
     if (!providerId || !modelId) return null
-    const provider = s.providers.find((p) => p.id === providerId)
-    return provider?.models.find((m) => m.id === modelId) ?? null
+    const provider = s.providers.find((p: any) => p.id === providerId)
+    return provider?.models.find((m: any) => m.id === modelId) ?? null
   }) as AIModelConfig | null
   const compressionConfig = activeModelCfg
     ? {

@@ -6,6 +6,7 @@ import { IPC } from '@renderer/lib/ipc/channels'
 import type { ViewerProps } from '../viewer-registry'
 
 async function convertDocxToHtml(base64: string): Promise<string> {
+  // @ts-ignore - mammoth is an optional dependency
   const mammoth = await import('mammoth')
   const buffer = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
   const result = await mammoth.convertToHtml({ arrayBuffer: buffer.buffer })

@@ -1,34 +1,23 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnimatePresence, motion } from 'motion/react'
-import { Check, ChevronDown, Copy, FileCode, Loader2, RefreshCw, RotateCcw, X } from 'lucide-react'
+import { AnimatePresence } from 'motion/react'
+import { Loader2, RefreshCw, RotateCcw } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import { useAgentStore } from '@renderer/stores/agent-store'
-import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
-import {
-  type LoadedChangeContent, type DiffSummaryStats,
-  isLoadedChangeContent, loadAggregatedChangeContent,
-  useAggregatedChangeSummaries
-} from '@renderer/components/chat/change-summary-utils'
-import {
-  actionableSourceChanges, aggregateDisplayableRunFileChanges,
-  buildDiffCopyText, canRenderInlineSnapshot, computeDiff, detectLang,
-  fileName, foldContext, lineCount, latestDisplayableRunChangeSet,
-  matchesAggregatedChangeId, snapshotText,
-  type AggregatedFileChange
-} from '@renderer/components/chat/file-change-utils'
+import { useAggregatedChangeSummaries } from '@renderer/components/chat/change-summary-utils'
+import { aggregateDisplayableRunFileChanges, latestDisplayableRunChangeSet, matchesAggregatedChangeId } from '@renderer/components/chat/file-change-utils'
 import { ChangeRow } from './change-review-row'
-import { ChangeDetail, ReviewEmptyState } from './change-detail'
-import { statusLabelKey } from './session-change-utils'
+import { ReviewEmptyState } from './change-detail'
 
 interface SessionChangeReviewPanelProps {
   sessionId?: string | null
   initialChangeId?: string | null
   onClose?: () => void
+  selectionRequestId?: string | null
 }
 
 const EMPTY_SESSION_MESSAGES: UnifiedMessage[] = []
@@ -110,7 +99,7 @@ export function SessionChangeReviewPanel({
   React.useEffect(() => {
     const nextInitialChangeId = initialChangeId ?? null
     const selectionRequested =
-      selectionRequestId !== undefined && lastSelectionRequestIdRef.current !== selectionRequestId
+      (selectionRequestId as any) !== undefined && lastSelectionRequestIdRef.current !== (selectionRequestId as any)
     setSelectedChangeId((current) => {
       const preferredId =
         nextInitialChangeId &&
@@ -124,7 +113,7 @@ export function SessionChangeReviewPanel({
       return matched?.id ?? null
     })
     lastInitialChangeIdRef.current = nextInitialChangeId
-    lastSelectionRequestIdRef.current = selectionRequestId
+    lastSelectionRequestIdRef.current = selectionRequestId as any
   }, [aggregatedChanges, initialChangeId, selectionRequestId])
 
   const summary = React.useMemo(

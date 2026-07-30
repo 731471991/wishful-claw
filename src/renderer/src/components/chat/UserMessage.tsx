@@ -1,48 +1,17 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@renderer/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@renderer/components/ui/dropdown-menu'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@renderer/components/ui/dropdown-menu'
 import { useProviderStore, modelSupportsVision } from '@renderer/stores/provider-store'
-import {
-  Pencil,
-  Check,
-  X,
-  Copy,
-  ImagePlus,
-  Trash2,
-  Ellipsis,
-  Languages,
-  Volume2,
-  Share2,
-  ChevronsUpDown,
-  ChevronsDownUp,
-  Sparkles,
-  Loader2,
-  FileText,
-  AlertCircle,
-  CornerDownRight
-} from 'lucide-react'
+import { Pencil, Check, X, Copy, ImagePlus, Trash2, Ellipsis, Languages, Volume2, Share2, ChevronsUpDown, ChevronsDownUp, CornerDownRight } from 'lucide-react'
 import { formatTokens } from '@renderer/lib/format-tokens'
 import { useMemoizedTokens } from '@renderer/hooks/use-estimated-tokens'
-import {
-  writeImageBlobToClipboard,
-  writeImageDataUrlToClipboard
-} from '@renderer/lib/utils/image-clipboard'
 import type {
   AIModelConfig,
   ContentBlock,
   MessageMeta,
-  SelectedFileReadsMeta,
   UnifiedMessage
 } from '@renderer/lib/api/types'
 import {
@@ -58,7 +27,6 @@ import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
 import { useTranslateStore } from '@renderer/stores/translate-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useSkillsStore } from '@renderer/stores/skills-store'
-import { cn } from '@renderer/lib/utils'
 import { SystemCommandCard } from './SystemCommandCard'
 import { SelectFileInlineText } from './SelectFileInlineText'
 
@@ -105,12 +73,12 @@ export function UserMessage({
   const activeProvider = useProviderStore((s) => {
     const { providers, activeProviderId } = s
     if (!activeProviderId) return null
-    return providers.find((provider) => provider.id === activeProviderId) ?? null
+    return providers.find((provider: any) => provider.id === activeProviderId) ?? null
   })
   const activeModelId = useProviderStore((s) => s.activeModelId)
   const supportsVision = useMemo(() => {
     if (!activeProvider) return false
-    const model = activeProvider.models.find((item) => item.id === activeModelId)
+    const model = activeProvider.models.find((item: any) => item.id === activeModelId)
     return modelSupportsVision(model as AIModelConfig | undefined, activeProvider.type)
   }, [activeModelId, activeProvider])
   const openTranslatePage = useUIStore((s) => s.openTranslatePage)

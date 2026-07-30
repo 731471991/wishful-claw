@@ -8,12 +8,9 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import {
   isLoadedChangeContent, loadAggregatedChangeContent
 } from '@renderer/components/chat/change-summary-utils'
-import {
-  computeDiff, detectLang, fileName, foldContext, snapshotText,
-  type AggregatedFileChange, type DiffChunk
-} from '@renderer/components/chat/file-change-utils'
+import { computeDiff, foldContext, snapshotText, type DiffChunk } from '@renderer/components/chat/file-change-utils'
 import type { ChangeRow, GitChangeRow } from './agent-files-types'
-import { dirname, gitDiffKey, repoRelativePath } from './agent-files-utils'
+import { gitDiffKey } from './agent-files-utils'
 import { DialogContent } from '../ui/dialog'
 import { joinPath, parseUnifiedDiff } from './agent-files-utils'
 import { AgentFilesEmptyState, ChangeItemRow } from './change-item-row'

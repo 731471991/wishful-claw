@@ -36,6 +36,7 @@ public static class WorkerModuleCatalog
         new SeedanceVideoModule(),
         new XaiVideoModule(),
         new ExtensionModule(),
-        new SkillModule()
+        new SkillModule(),
+        new WebFetchModule()
     ];
 }

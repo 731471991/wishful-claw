@@ -21,7 +21,7 @@ import {
   VIRTUAL_ROW_OVERSCAN,
 } from './utils'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
-import type { ChatRenderableMessageMeta } from '../../transcript-utils'
+import type { ChatRenderableMessageMeta } from '../transcript-utils'
 import type { AssistantReplyRailItem as RailItem } from './utils'
 import { createJumpToAssistantMessage, applySuggestedPrompt as applySuggestedPromptImpl } from './scroll-utils'
 import { AssistantReplyRailItem } from './utils'
@@ -251,7 +251,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
       activeSessionId,
       markProgrammaticScroll,
       requestAssistantRailSync,
-      rowVirtualizer,
+      rowVirtualizer: rowVirtualizer as any,
       setActiveAssistantRailIds,
       setHighlightedMessageId,
       highlightedMessageTimerRef,
@@ -484,7 +484,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     listRef,
     containerRef,
     virtualContentRef,
-    rowVirtualizer,
+    rowVirtualizer: rowVirtualizer as any,
     isAtBottom,
     isLoadingOlderMessages,
     activeAssistantRailMessageIds,

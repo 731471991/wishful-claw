@@ -1,5 +1,4 @@
 ﻿import type {
-  ContentBlock,
   MessageMeta,
   ProviderConfig,
   TokenUsage,
@@ -9,15 +8,7 @@
 } from '../api/types'
 import type { ToolCallState } from '../agent/types'
 import type { CompressionConfig } from '../agent/context-compression'
-import { toolRegistry } from '../agent/tool-registry'
-import { resolveProviderUserAgent } from '../api/api-user-agent'
-import { summarizeToolInputForHistory } from '../tools/tool-input-sanitizer'
-import { clampMaxConcurrentSubAgents, useSettingsStore } from '@renderer/stores/settings-store'
-import { useProviderStore } from '@renderer/stores/provider-store'
-import {
-  toPermissionPolicySnapshot,
-  type PermissionPolicySnapshot
-} from '../../../../shared/permission-policy'
+import { type PermissionPolicySnapshot } from '../../../../shared/permission-policy'
 
 export interface SidecarTextBlock {
   type: 'text'

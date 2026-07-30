@@ -1,20 +1,11 @@
 import { nanoid } from 'nanoid'
-import { useProviderStore } from '@renderer/stores/provider-store'
 import type {
-  AccountRateLimit,
-  AIProvider,
-  OAuthConfig,
   OAuthToken,
   ProviderOAuthAccount
 } from '@renderer/lib/api/types'
-import { startOAuthFlow, refreshOAuthFlow, type StartOAuthFlowOptions } from './oauth'
-import {
-  clearCopilotQuota,
-  exchangeCopilotToken,
-  isCopilotProvider,
-  resolveCopilotApiKey,
-  syncCopilotQuota
-} from './copilot'
+import { buildAccountProjectionPatch, buildOAuthProviderPatch, finalizeOAuthToken, parseImportRecord, upsertAccountInList } from './provider-auth'
+import { refreshOAuthFlow } from './oauth'
+import { exchangeCopilotToken, isCopilotProvider, resolveCopilotApiKey, syncCopilotQuota } from './copilot'
 import { sendChannelCode, verifyChannelCode, fetchChannelUserInfo } from './channel'
 import { findAccountById, getAccountsArray, getProviderById, pickUsableAccount, resolveOAuthConfig, setProviderAuth } from './provider-auth-utils'
 

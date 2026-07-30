@@ -11,12 +11,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import QRCode from 'qrcode'
-import { RefreshCw, QrCode, KeyRound, Settings2, Play, Square, Loader2 } from 'lucide-react'
+import { RefreshCw, QrCode, Loader2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
-import { Input } from '@renderer/components/ui/input'
-import { Switch } from '@renderer/components/ui/switch'
-import { Separator } from '@renderer/components/ui/separator'
-import { Badge } from '@renderer/components/ui/badge'
 import { Spinner } from '@renderer/components/ui/spinner'
 import {
   useChannelStore,
@@ -74,11 +70,11 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
               const patch: Partial<PluginInstance> = {
                 config: {
                   ...channel.config,
-                  token: waitResult.token || channel.config.token,
+                  token: (waitResult as any).token || (channel.config as any).token,
                   userId: waitResult.userId || channel.config.userId,
                   baseUrl: waitResult.baseUrl || channel.config.baseUrl,
-                  accountId: waitResult.accountId || channel.config.accountId
-                },
+                  accountId: (waitResult as any).accountId || (channel.config as any).accountId
+                } as any,
                 enabled: true
               }
               await updateChannel(channel.id, patch)

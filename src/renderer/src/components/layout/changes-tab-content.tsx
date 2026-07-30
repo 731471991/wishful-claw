@@ -9,7 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import type { TFunction } from 'i18next'
-import type { AgentFilesChangeSource } from './agent-files-types'
+import type { AgentFilesChangeSource } from '@renderer/stores/ui-types'
 import type { ChangeRow } from './agent-files-types'
 import { ChangeItemRow, AgentFilesEmptyState } from './change-item-row'
 import type { AgentFilesState } from './use-agent-files'
@@ -37,7 +37,7 @@ interface ChangesTabContentProps {
   openSelectedDiff: (row: ChangeRow) => void
   discardGitRows: AgentFilesActions['discardGitRows']
   undoableRunIds: string[]
-  undoRunChanges: AgentFilesActions['undoRunChanges']
+  undoRunChanges: (runId: string) => void
   undoAgentRow: AgentFilesActions['undoAgentRow']
   setCommitOpen: React.Dispatch<React.SetStateAction<boolean>>
   setBranchDialog: React.Dispatch<React.SetStateAction<'merge' | 'checkout' | null>>
@@ -136,7 +136,7 @@ export function ChangesTabContent(props: ChangesTabContentProps): React.JSX.Elem
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onSelect={() => void discardGitRows(visibleGitRows.length > 0 ? visibleGitRows : gitRows)}
+                onSelect={() => void discardGitRows((visibleGitRows.length > 0 ? visibleGitRows : gitRows) as any)}
               >
                 <Trash2 className="size-4" />
                 {t('agentFiles.discardChanges', { defaultValue: 'Discard Changes' })}

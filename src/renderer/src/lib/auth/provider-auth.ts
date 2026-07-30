@@ -1,9 +1,9 @@
 import { nanoid } from 'nanoid'
-import { useProviderStore } from '@renderer/stores/provider-store'
-import { getProviderById, resolveOAuthConfig, parseExpiryTimestamp, asString, setProviderAuth, extractEmailFromToken, isAccountRateLimited, getAccountsArray, findAccountById, pickUsableAccount, REFRESH_SKEW_MS } from './provider-auth-utils'
-import type { AIProvider, ProviderOAuthAccount } from '@renderer/lib/api/types'
-import { clearCopilotQuota, isCopilotProvider, resolveCopilotApiKey, syncCopilotQuota } from './copilot'
+import { getProviderById, resolveOAuthConfig, asString, setProviderAuth, extractEmailFromToken, isAccountRateLimited, getAccountsArray, REFRESH_SKEW_MS, parseManualOAuthPayload } from './provider-auth-utils'
+import type { AIProvider, ProviderOAuthAccount, OAuthToken, OAuthConfig, AccountRateLimit } from '@renderer/lib/api/types'
+import { clearCopilotQuota, isCopilotProvider, resolveCopilotApiKey, syncCopilotQuota, exchangeCopilotToken } from './copilot'
 import { StartOAuthFlowOptions } from './oauth-utils'
+import { startOAuthFlow } from './oauth'
 
 export function pickUsableAccount(provider: AIProvider): {
 
@@ -49,7 +49,7 @@ export function pickUsableAccount(provider: AIProvider): {
   return { account: earliest ?? null, nextAccounts: swept, changed }
 }
 
-function buildOAuthProviderPatch(provider: AIProvider, token: OAuthToken): Partial<AIProvider> {
+export function buildOAuthProviderPatch(provider: AIProvider, token: OAuthToken): Partial<AIProvider> {
   const apiKey = getProviderApiKey(provider, token)
   const patch: Partial<AIProvider> = {
     authMode: 'oauth',
@@ -67,7 +67,7 @@ function buildOAuthProviderPatch(provider: AIProvider, token: OAuthToken): Parti
  * and projects the active account's token into the top-level oauth/apiKey/baseUrl fields
  * so provider consumers see the current account transparently.
  */
-function buildAccountProjectionPatch(
+export function buildAccountProjectionPatch(
   provider: AIProvider,
   accounts: ProviderOAuthAccount[],
   activeAccountId: string
@@ -91,7 +91,7 @@ function buildAccountProjectionPatch(
   return patch
 }
 
-function upsertAccountInList(
+export function upsertAccountInList(
   accounts: ProviderOAuthAccount[],
   account: ProviderOAuthAccount
 ): ProviderOAuthAccount[] {
@@ -116,7 +116,7 @@ function getProviderApiKey(provider: AIProvider, token: OAuthToken): string {
   return isCopilotProvider(provider) ? resolveCopilotApiKey(token) : token.accessToken
 }
 
-async function finalizeOAuthToken(provider: AIProvider, token: OAuthToken): Promise<OAuthToken> {
+export async function finalizeOAuthToken(provider: AIProvider, token: OAuthToken): Promise<OAuthToken> {
   if (!isCopilotProvider(provider)) {
     return token
   }
@@ -158,7 +158,7 @@ export async function startProviderOAuth(
 
   const account: ProviderOAuthAccount = {
     id: nanoid(),
-    email: resolvedEmail,
+    email: resolvedEmail ?? '',
     oauth: finalToken,
     createdAt: Date.now(),
     lastUsedAt: Date.now()
@@ -335,7 +335,7 @@ export function clearAccountRateLimit(providerId: string, accountId: string): vo
  * Parse a single OAuth record. Reuses parseManualOAuthPayload but requires an `email` field
  * to be present either at the top level or as a sibling of the token keys.
  */
-function parseImportRecord(record: unknown): { email: string; token: OAuthToken; label?: string } {
+export function parseImportRecord(record: unknown): { email: string; token: OAuthToken; label?: string } {
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
     throw new Error('invalid_record')
   }
@@ -376,7 +376,7 @@ export async function applyManualProviderOAuth(
 
   const account: ProviderOAuthAccount = {
     id: nanoid(),
-    email: resolvedEmail,
+    email: resolvedEmail ?? '',
     oauth: finalToken,
     createdAt: Date.now()
   }

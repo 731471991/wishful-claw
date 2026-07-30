@@ -1,4 +1,4 @@
-﻿import { app, BrowserWindow, shell, dialog } from 'electron'
+﻿import { app, BrowserWindow, Notification, shell, dialog } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -37,6 +37,7 @@ function createWindow(): void {
       ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 12, y: 12 } }
       : { frame: false }),
     autoHideMenuBar: true,
+    icon: join(app.getAppPath(), 'resources', 'icon-256.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -100,6 +101,8 @@ function registerWindowControlHandlers(): void {
   })
 }
 
+app.setName('WishfulClaw')
+
 app.whenReady().then(() => {
   installGlobalExceptionHandlers()
   logInfo('main', 'Application started')
@@ -107,6 +110,24 @@ app.whenReady().then(() => {
 
   // Window control handlers (minimize / maximize / close / isMaximized)
   registerWindowControlHandlers()
+
+  // Desktop notification handler — renderer calls this when agent loop ends
+  // and the window is NOT focused (user is away from the app).
+  registerMessagePackHandler<{ title: string; body: string; type?: string }, { success: boolean }>(
+    'notification:show',
+    async (args) => {
+      if (!Notification.isSupported()) {
+        return { success: false }
+      }
+      const notification = new Notification({
+        title: args.title,
+        body: args.body,
+        urgency: args.type === 'error' ? 'critical' : 'normal'
+      })
+      notification.show()
+      return { success: true }
+    }
+  )
 
   // Register IPC handler: forward ping to worker
   registerMessagePackHandler<Record<string, unknown>, { ok: boolean; pid: number }>(

@@ -1,17 +1,3 @@
-import { create } from 'zustand'
-import { ipcClient } from '../lib/ipc/ipc-client'
-import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
-import {
-  DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
-  DB_GOALS_CLEAR_MSGPACK_CHANNEL,
-  DB_GOALS_CREATE_MSGPACK_CHANNEL,
-  DB_GOALS_GET_MSGPACK_CHANNEL,
-  DB_GOALS_LIST_MSGPACK_CHANNEL,
-  DB_GOALS_SET_MSGPACK_CHANNEL,
-  DB_GOALS_UPDATE_MSGPACK_CHANNEL,
-  DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
-  DB_GOAL_EVENTS_LIST_MSGPACK_CHANNEL
-} from '../../../shared/messagepack/binary-ipc'
 
 export type SessionGoalStatus =
   | 'active'
@@ -65,7 +51,7 @@ export interface ActiveGoalRun {
 
 export const EMPTY_SESSION_GOAL_EVENTS: SessionGoalEvent[] = []
 
-interface SessionGoalRow {
+export interface SessionGoalRow {
   session_id: string
   goal_id: string
   objective: string
@@ -77,7 +63,7 @@ interface SessionGoalRow {
   updated_at: number
 }
 
-interface SessionGoalEventRow {
+export interface SessionGoalEventRow {
   id: string
   session_id: string
   goal_id: string | null
@@ -87,14 +73,14 @@ interface SessionGoalEventRow {
   created_at: number
 }
 
-interface GoalMutationResult {
+export interface GoalMutationResult {
   success?: boolean
   error?: string
   goal?: SessionGoalRow | null
   cleared?: boolean
 }
 
-interface GoalEventMutationResult {
+export interface GoalEventMutationResult {
   success?: boolean
   error?: string
   event?: SessionGoalEventRow | null
@@ -107,7 +93,7 @@ interface AccountGoalUsageInput {
   expectedGoalId?: string | null
 }
 
-interface GoalStore {
+export interface GoalStore {
   goalsBySession: Record<string, SessionGoal>
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>

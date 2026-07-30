@@ -5,11 +5,6 @@ import { useAgentStore } from '@renderer/stores/agent-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { cn } from '@renderer/lib/utils'
 
-function formatRetryDelay(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
 interface RetryBannerProps {
   sessionId: string | null
 }
@@ -54,15 +49,10 @@ export function RetryBanner({ sessionId }: RetryBannerProps) {
         <div className="mt-0.5 break-words text-[11px] text-amber-700/80 dark:text-amber-200/80">
           {t('assistantMessage.retryingRequestDetail', {
             defaultValue:
-              'Attempt {{attempt}} / {{maxAttempts}} retry, resend after {{delay}}{{statusSuffix}}',
+              'Attempt {{attempt}} / {{maxAttempts}}',
             attempt: retryState.attempt,
-            maxAttempts: retryState.maxAttempts,
-            delay: formatRetryDelay(retryState.delayMs),
-            statusSuffix: retryState.statusCode
-              ? `, status code ${retryState.statusCode}`
-              : ''
+            maxAttempts: retryState.maxAttempts
           })}
-          {retryState.reason ? ` · ${retryState.reason}` : ''}
         </div>
       </div>
     </motion.div>

@@ -41,7 +41,7 @@ import {
   parseRemoteBranchName,
   ScmSectionHeader,
   ScmFileRowView
-} from './GitPage/utils'
+} from './utils'
 import type { TFunction } from 'i18next'
 import { Textarea } from '@renderer/components/ui/textarea'
 import { CloudDownload, CloudUpload, EllipsisVertical, Upload, Wand2 } from 'lucide-react'
@@ -89,6 +89,14 @@ interface ScmSidebarProps {
   discardFiles: (repoPath: string, paths: string[], scope: string) => Promise<{ success: boolean; error?: string }>
   confirmDiscard: (row: ScmFileRow) => Promise<void>
   isLoadingOlderMessages: boolean
+  upstreamHint: string | null
+  commitMessage: string
+  setCommitMessage: (v: string) => void
+  committing: boolean
+  aiCommitLoading: boolean
+  handleCommit: () => Promise<void>
+  handleAiCommitMessage: () => Promise<void>
+  onScmResizePointerDown: (e: React.PointerEvent) => void
 }
 
 export function ScmSidebar(props: ScmSidebarProps): React.JSX.Element {
@@ -107,9 +115,7 @@ export function ScmSidebar(props: ScmSidebarProps): React.JSX.Element {
     conflictRows,
     stagedRows,
     unstagedRows,
-    allRows,
     activeKey,
-    selectedKey,
     setSelectedKey,
     setHistoryPick,
     selectRepository,
@@ -132,8 +138,15 @@ export function ScmSidebar(props: ScmSidebarProps): React.JSX.Element {
     unstageFiles,
     stageAll,
     unstageAll,
-    discardFiles,
-    confirmDiscard
+    confirmDiscard,
+    upstreamHint,
+    commitMessage,
+    setCommitMessage,
+    committing,
+    aiCommitLoading,
+    handleCommit,
+    handleAiCommitMessage,
+    onScmResizePointerDown
   } = props
 
   return (

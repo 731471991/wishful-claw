@@ -1,21 +1,6 @@
 import * as React from 'react'
 import { cn } from '@renderer/lib/utils'
-import {
-  type FileAwareEditorHandle,
-  type FileAwareEditorProps,
-  appendTextContent,
-  getFileChipLabel,
-  buildFileChip,
-  buildPluginChip,
-  renderDocument,
-  collectTextContent,
-  isSameDocument,
-  parseDomToDocument,
-  getSelectionOffsets,
-  setSelectionFromPoint,
-  setSelectionOffsets,
-  editorDocumentToPlainText,
-} from './file-aware-editor-utils'
+import { type FileAwareEditorHandle, type FileAwareEditorProps, renderDocument, isSameDocument, parseDomToDocument, getSelectionOffsets, setSelectionFromPoint, setSelectionOffsets, editorDocumentToPlainText } from './file-aware-editor-utils'
 import { EditorSelectionOffsets } from './file-aware-editor-utils'
 
 export const FileAwareEditor = React.forwardRef<FileAwareEditorHandle, FileAwareEditorProps>(

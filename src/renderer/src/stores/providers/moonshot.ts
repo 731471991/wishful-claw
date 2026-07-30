@@ -1,5 +1,4 @@
 import type { BuiltinProviderPreset } from './types'
-import { cn } from '@renderer/lib/utils'
 
 // 对齐 github.com/MoonshotAI/kimi-cli 当前版本（coding 端点有客户端白名单，UA 需可识别）。
 // 不换成新 CLI 的 kimi-code-cli/<ver>：那个客户端还会携带 X-Msh-* 设备头，我们不发。

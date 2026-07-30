@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { MONO_FONT } from '@renderer/lib/constants'
-import type { ToolCallStatus } from '@renderer/lib/agent/types'
-import type { ToolResultContent } from '@renderer/lib/api/types'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import { isMcpTool, parseMcpToolName } from '@renderer/lib/mcp/mcp-tools'
 import { parseExtensionToolResult } from '@renderer/lib/extensions/extension-result'
@@ -16,18 +14,7 @@ import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
 
 import type { ToolCallCardProps } from './types'
 import { COMMAND_TOOL_NAMES, COMPACT_BUILTIN_TOOL_NAMES } from './types'
-import {
-  areToolCallCardPropsEqual,
-  outputAsString,
-  hasImageBlocks,
-  deriveOutputError,
-  isErrorOnlyOutput,
-  isStructuredBashResult,
-  getBashInputTerminalId,
-  getShellInputCommand,
-  detectLang,
-  compactWhitespace
-} from './utils'
+import { areToolCallCardPropsEqual, outputAsString, hasImageBlocks, deriveOutputError, isErrorOnlyOutput, isStructuredBashResult, getBashInputTerminalId, getShellInputCommand, detectLang } from './utils'
 import {
   CopyBtn,
   McpToolIcon,
@@ -35,7 +22,6 @@ import {
   ToolDetailSectionHeader
 } from './shared'
 import { StructuredInput } from './input-renderers'
-import { WidgetOutputBlock } from './output-blocks/widget-output'
 import { BashOutputBlock } from './output-blocks/bash-output'
 import { GrepOutputBlock, GlobOutputBlock, LSOutputBlock } from './output-blocks/search-output'
 import {

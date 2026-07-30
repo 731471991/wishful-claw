@@ -1,15 +1,12 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, Copy, FileCode, Loader2, RotateCcw, X } from 'lucide-react'
+import { Loader2, RotateCcw } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { Sheet, SheetContent } from '@renderer/components/ui/sheet'
-import { MONO_FONT } from '@renderer/lib/constants'
-import { cn } from '@renderer/lib/utils'
 import type { AgentRunChangeSet } from '@renderer/stores/agent-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
-import { CodeDiffViewer } from './CodeDiffViewer'
-import { ActionLabel, CopyIconButton, CodeFrame, EmptyState, ChangeDetail, ChangeRow } from './change-review-helpers'
+import { EmptyState, ChangeRow, ChangeReviewPanelContentProps } from './change-review-helpers'
 import { useAggregatedChangeSummaries } from './change-summary-utils'
 import { aggregateDisplayableRunFileChanges, matchesAggregatedChangeId } from './file-change-utils'
 
@@ -192,6 +189,13 @@ export function ChangeReviewPanelContent({
   )
 }
 
+interface ChangeReviewSheetProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  changeSet: any
+  initialChangeId?: string | null
+}
+
 export function ChangeReviewSheet({
   open,
   onOpenChange,
@@ -201,7 +205,6 @@ export function ChangeReviewSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="right"
         showCloseButton={false}
         className="w-[min(820px,calc(100vw-24px))] max-w-none gap-0 border-l border-white/10 bg-[#0d0e10]/98 p-0 text-zinc-100 shadow-[-24px_0_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:max-w-[820px]"
       >

@@ -69,6 +69,22 @@ internal static class ToolDispatchRouter
                 isToolError = true;
             }
         }
+        // use_capability: unified proxy for MCP tools and Skills
+        else if (AgentRuntimeUseCapabilityExecutor.IsUseCapabilityTool(toolCall.Name))
+        {
+            try
+            {
+                toolOutput = await AgentRuntimeUseCapabilityExecutor.ExecuteAsync(
+                    toolCall, state, context, registry, workingFolder, state.CancellationToken);
+                isToolError = IsJsonError(toolOutput);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"use_capability execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
         // WebSearch: executed directly in Worker (HTTP request)
         else if (AgentRuntimeWebSearchExecutor.IsWebSearchTool(toolCall.Name))
         {
@@ -350,6 +366,22 @@ internal static class ToolDispatchRouter
             catch (Exception ex)
             {
                 toolOutput = $"Channel plugin tool execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
+        // Skill management: reverse-request to renderer
+        else if (AgentRuntimeSkillManagementExecutor.IsSkillManagementTool(toolCall.Name))
+        {
+            try
+            {
+                toolOutput = await AgentRuntimeSkillManagementExecutor.ExecuteAsync(
+                    toolCall, context, state.CancellationToken);
+                isToolError = IsJsonError(toolOutput);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"Skill management tool execution failed: {ex.Message}";
                 isToolError = true;
             }
         }

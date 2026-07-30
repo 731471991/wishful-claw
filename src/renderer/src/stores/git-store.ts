@@ -1,9 +1,6 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { IPC } from '@renderer/lib/ipc/channels'
-import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
-import { toMessagePackChannel } from '../../../shared/messagepack/binary-ipc'
-import { useChatStore } from './chat-store'
 import { useUIStore } from './ui-store'
 
 export type {
@@ -13,8 +10,8 @@ export type {
   GitCommitHistoryItem,
   GitBranchItem,
 } from './git-store-types'
-import { getErrorMessage } from '../lib/agent/memory-json-parsers'
-import { GitBranchItem, GitCommitHistoryItem, GitRepositoryItem, GitStatusDetailed } from './git-store-types'
+
+import { GitBranchItem, GitCommitHistoryItem, GitRepositoryItem, GitStatusDetailed, GitResultBase, GitStore, getErrorMessage, REPOSITORY_REFRESH_CACHE_TTL_MS, REPOSITORY_REFRESH_ERROR_TTL_MS, REPOSITORY_SCAN_CACHE_TTL_MS, bumpRepositoryRefreshRevision, clearGitRequestCaches, ensureRepoDetails, fileDiffCacheKey, fileDiffRequestKey, getActiveProject, getGitTarget, gitTargetCacheKey, invokeGit, pendingFileDiffRequests, pendingFileHistoryRequests, pendingHistoryFileDiffRequests, pendingRepositoryRefreshRequests, pendingScanRequests, projectScanKey, repositoryRefreshExpiresAtByKey, repositoryRefreshRevision, _gitState } from './git-store-types'
 
 export const useGitStore = create<GitStore>((set, get) => ({
   repositories: [],
@@ -35,7 +32,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
 
     if (!scanKey) return
     const now = Date.now()
-    if (!options.force && lastAppliedScanKey === scanKey && scanCacheExpiresAt > now) return
+    if (!options.force && _gitState.lastAppliedScanKey === scanKey && _gitState.scanCacheExpiresAt > now) return
 
     const pending = pendingScanRequests.get(scanKey)
     if (!options.force && pending) return pending
@@ -59,8 +56,8 @@ export const useGitStore = create<GitStore>((set, get) => ({
           repositories: [],
           scanError: getErrorMessage(result, 'Failed to scan Git repositories')
         })
-        scanCacheExpiresAt = Date.now() + REPOSITORY_REFRESH_ERROR_TTL_MS
-        lastAppliedScanKey = scanKey
+        _gitState.scanCacheExpiresAt = Date.now() + REPOSITORY_REFRESH_ERROR_TTL_MS
+        _gitState.lastAppliedScanKey = scanKey
         return
       }
 
@@ -70,8 +67,8 @@ export const useGitStore = create<GitStore>((set, get) => ({
         : (repositories[0]?.fullPath ?? null)
 
       set({ repositories, selectedRepoPath: nextSelected, isScanning: false, scanError: null })
-      scanCacheExpiresAt = Date.now() + REPOSITORY_SCAN_CACHE_TTL_MS
-      lastAppliedScanKey = scanKey
+      _gitState.scanCacheExpiresAt = Date.now() + REPOSITORY_SCAN_CACHE_TTL_MS
+      _gitState.lastAppliedScanKey = scanKey
 
       if (nextSelected) {
         await get().refreshRepository(nextSelected)

@@ -2,25 +2,9 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { MONO_FONT } from '@renderer/lib/constants'
-import { FileCode, Folder, Search, Clock, Bot } from 'lucide-react'
 import { LazySyntaxHighlighter } from '../LazySyntaxHighlighter'
-import {
-  CopyBtn,
-  InputField
-} from './shared'
-import {
-  COMMAND_TOOL_NAMES
-} from './types'
-import {
-  getSkillNameFromInput,
-  detectLang,
-  lineCount,
-  formatPrimitiveInputValue,
-  formatStructuredInputValue,
-  compactWhitespace,
-  getStringInput,
-  normalizeWidgetPayload
-} from './utils'
+import { CopyBtn } from './shared'
+import { lineCount } from './utils'
 
 // ── EditPayloadPane ──
 

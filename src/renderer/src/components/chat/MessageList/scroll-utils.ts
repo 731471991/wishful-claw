@@ -4,12 +4,7 @@
 
 import type React from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
-import {
-  type AssistantReplyRailItem,
-  ASSISTANT_RAIL_SCROLL_OFFSET,
-  USER_LOCATOR_HIGHLIGHT_MS,
-  areStringSetsEqual,
-} from './utils'
+import { type AssistantReplyRailItem, ASSISTANT_RAIL_SCROLL_OFFSET, USER_LOCATOR_HIGHLIGHT_MS } from './utils'
 
 /**
  * Scroll the list to a specific assistant message, loading more messages

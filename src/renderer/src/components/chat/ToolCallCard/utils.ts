@@ -2,20 +2,14 @@ import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-form
 import type { ImageBlock, ToolResultContent } from '@renderer/lib/api/types'
 import type {
   ToolCallCardProps,
-  WidgetToolPayload,
   ShellOutputSummary,
   LiveShellOutputState,
-  ParsedShellResult,
-  SearchOutputMeta,
-  ParsedGrepEntry,
-  LsEntry,
-  SearchVisualState
+  ParsedShellResult
 } from './types'
 import {
   ANSI_ESCAPE_RE,
   LIVE_SHELL_OUTPUT_MAX_CHARS
 } from './types'
-import { WIDGET_BRIDGE_SOURCE } from './types'
 
 // ── Record / equality helpers ──
 

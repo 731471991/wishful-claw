@@ -197,9 +197,10 @@ Do not overstep your bounds or create unnecessary files.
 
     private static string BuildToolCapability(JsonElement parameters)
     {
-        return $"""
+        return """
 <tool_calling>
 - Before calling tools, briefly state what you are about to do. After results, briefly summarize what you found. Never call tools silently.
+- Batch independent tool calls in the same assistant turn; keep sequential only when dependent.
 - For complex multi-step tasks, delegate to a sub-agent via the Task tool instead of doing everything yourself.
 </tool_calling>
 """;

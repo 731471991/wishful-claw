@@ -63,6 +63,10 @@ internal static partial class AgentLoop
         // Inject current timestamp as transient user-message prefix (cache-safe)
         InjectTimestampPrefix(conversation);
 
+        // Drain pending memory-update notes and inject as transient user-message prefix (cache-safe)
+        // Mid-session memory changes ride the turn, not the cached system prefix.
+        InjectMemoryUpdatePrefix(conversation, state.SessionId ?? "");
+
         var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 0); // 0 = unlimited
         var hasIterationLimit = requestedMaxIterations > 0;
         var providerTurnOnly = JsonHelpers.GetBool(parameters, "providerTurnOnly", false);
@@ -232,20 +236,78 @@ internal static partial class AgentLoop
 
         await EmitLoopEndAsync(
             state, context,
-            state.StopReason ?? (completed ? "completed" : "max_iterations"));
+            state.StopReason ?? (completed ? "completed" : "max_iterations"),
+            conversation);
     }
 
     /// <summary>
-    /// Emits the loop_end event.
+    /// Emits the loop_end event and triggers a desktop notification
+    /// to alert the user that the agent has finished working.
+    /// Skipped for sub-agents (SuppressTransportEvents = true).
     /// </summary>
     internal static async Task EmitLoopEndAsync(
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
-        string reason)
+        string reason,
+        List<AgentRuntimeChatMessage>? conversation = null)
     {
         await AgentRuntimeTools.EmitAsync(
             state, context,
             new AgentRuntimeStreamEvent("loop_end", Reason: reason));
+
+        // Notification is handled by the renderer on loop_end event.
+        // The renderer checks window focus before deciding to notify.
+    }
+
+    private static JsonElement CreateAutoNotifyInput(string reason, List<AgentRuntimeChatMessage>? conversation)
+    {
+        var title = reason switch
+        {
+            "completed" => "任务完成",
+            "max_iterations" => "达到迭代上限",
+            "cancelled" => "任务已取消",
+            "aborted" => "任务已中断",
+            _ => $"任务停止: {reason}"
+        };
+
+        // Extract last assistant message text for the notification body
+        var body = "工作已完成。";
+        if (conversation is not null)
+        {
+            for (var i = conversation.Count - 1; i >= 0; i--)
+            {
+                if (conversation[i].Role == "assistant" && !string.IsNullOrWhiteSpace(conversation[i].Text))
+                {
+                    var text = conversation[i].Text.Trim();
+                    // Strip markdown formatting and take first meaningful line
+                    body = TruncateNotificationBody(text, 200);
+                    break;
+                }
+            }
+        }
+
+        var type = reason == "completed" ? "success" : "info";
+        var json = $"{{\"title\":\"{EscapeJson(title)}\",\"body\":\"{EscapeJson(body)}\",\"type\":\"{type}\"}}";
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.Clone();
+    }
+
+    private static string EscapeJson(string value)
+    {
+        return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    /// <summary>
+    /// Truncates text for notification body: takes first meaningful paragraph,
+    /// strips excessive whitespace, and truncates to maxChars.
+    /// </summary>
+    private static string TruncateNotificationBody(string text, int maxChars)
+    {
+        // Take first paragraph (split by double newline or single newline)
+        var firstParagraph = text.Split('\n')[0].Trim();
+        // Collapse multiple spaces
+        firstParagraph = System.Text.RegularExpressions.Regex.Replace(firstParagraph, @"\s+", " ");
+        return firstParagraph.Length <= maxChars ? firstParagraph : firstParagraph[..maxChars] + "\u2026";
     }
 
     // ── Provider dispatch ──

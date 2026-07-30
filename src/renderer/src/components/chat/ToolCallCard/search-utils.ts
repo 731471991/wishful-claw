@@ -1,19 +1,10 @@
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
-import type { ImageBlock, ToolResultContent } from '@renderer/lib/api/types'
 import type {
-  ToolCallCardProps,
   WidgetToolPayload,
-  ShellOutputSummary,
-  LiveShellOutputState,
-  ParsedShellResult,
   SearchOutputMeta,
   ParsedGrepEntry,
   LsEntry,
   SearchVisualState
-} from './types'
-import {
-  ANSI_ESCAPE_RE,
-  LIVE_SHELL_OUTPUT_MAX_CHARS
 } from './types'
 import { WIDGET_BRIDGE_SOURCE } from './types'
 import { isRecord } from './utils'

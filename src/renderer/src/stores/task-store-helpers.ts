@@ -1,14 +1,5 @@
-import { create } from 'zustand'
-import { emitAgentRuntimeSync, isAgentRuntimeSyncSuppressed } from '../lib/agent-runtime-sync'
 import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
-import {
-  DB_TASKS_CREATE_MSGPACK_CHANNEL,
-  DB_TASKS_DELETE_BY_SESSION_MSGPACK_CHANNEL,
-  DB_TASKS_DELETE_MSGPACK_CHANNEL,
-  DB_TASKS_LIST_BY_SESSION_MSGPACK_CHANNEL,
-  DB_TASKS_UPDATE_MSGPACK_CHANNEL
-} from '../../../shared/messagepack/binary-ipc'
-import { useChatStore } from './chat-store'
+import { DB_TASKS_CREATE_MSGPACK_CHANNEL, DB_TASKS_DELETE_BY_SESSION_MSGPACK_CHANNEL, DB_TASKS_DELETE_MSGPACK_CHANNEL, DB_TASKS_UPDATE_MSGPACK_CHANNEL } from '../../../shared/messagepack/binary-ipc'
 
 export interface TaskItem {
   id: string
@@ -63,7 +54,7 @@ export function dbDeleteTasksBySession(sessionId: string): void {
   invokeMessagePackBinary(DB_TASKS_DELETE_BY_SESSION_MSGPACK_CHANNEL, sessionId).catch(() => {})
 }
 
-interface TaskRow {
+export interface TaskRow {
   id: string
   session_id: string
   plan_id: string | null
@@ -114,7 +105,7 @@ export function buildDbPatch(
   return dbPatch
 }
 
-interface TaskStore {
+export interface TaskStore {
   tasks: TaskItem[]
   /** Session-scoped cache for background/concurrent session updates */
   tasksBySession: Record<string, TaskItem[]>

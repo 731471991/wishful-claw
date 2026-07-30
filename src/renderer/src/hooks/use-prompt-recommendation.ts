@@ -1,6 +1,5 @@
 import * as React from 'react'
 import type { AppMode } from '@renderer/stores/ui-store'
-import type { UnifiedMessage } from '@renderer/lib/api/types'
 import type { ImageAttachment } from '@renderer/lib/image-attachments'
 
 interface UsePromptRecommendationParams {

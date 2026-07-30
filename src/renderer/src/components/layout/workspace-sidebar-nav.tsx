@@ -1,50 +1,6 @@
-﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  MessageSquare,
-  Settings,
-  FolderTree,
-  Sparkles,
-  Ghost,
-  RefreshCw,
-  PenTool,
-  GitBranch,
-  Plus,
-  Search,
-  Pin,
-  Trash2,
-  Pencil,
-  FolderOpen,
-  Eraser,
-  Copy,
-  ChevronDown,
-  ChevronRight,
-  PanelLeftClose,
-  Archive,
-  Image,
-  CalendarDays
-} from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger
-} from '@renderer/components/ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@renderer/components/ui/dropdown-menu'
+﻿import { useCallback, useRef } from 'react'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useChatStore, type Session, type Project } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
-import { toast } from 'sonner'
-import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
-import { MoreHorizontal } from 'lucide-react'
 
 // ─── Helpers ───
 
@@ -90,7 +46,7 @@ export function ResizeHandle(): React.JSX.Element {
 
 // ─── Nav item renderer ───
 
-interface NavButtonItem {
+export interface NavButtonItem {
   key: string
   label: string
   icon: React.ReactNode

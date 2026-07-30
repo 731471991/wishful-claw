@@ -15,12 +15,11 @@ import {
 export interface UseFileTreeOptions {
   sessionId?: string | null
   surface?: 'card' | 'sheet' | 'agent'
-  agentSearchOpen?: boolean
   watchEnabled?: boolean
 }
 
 export function useFileTree(options: UseFileTreeOptions) {
-  const { sessionId = null, surface = 'card', agentSearchOpen = false, watchEnabled = true } = options
+  const { sessionId = null, surface = 'card', watchEnabled = true } = options
   const { t } = useTranslation('layout')
   const sessionView = useChatStore(
     useShallow((state) => {
@@ -54,7 +53,6 @@ export function useFileTree(options: UseFileTreeOptions) {
   const [searchResults, setSearchResults] = useState<FileSearchItem[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [agentRootExpanded, setAgentRootExpanded] = useState(true)
-  const lastAgentCommandIdRef = useRef(0)
 
   // --- Edit state for context menu actions ---
   const [renamingPath, setRenamingPath] = useState<string | null>(null)

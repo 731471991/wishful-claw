@@ -166,7 +166,6 @@ export function WorkingFolderSelectorDialog({
   const autoProjectName = pendingSelection
     ? deriveProjectNameFromFolder(pendingSelection.folderPath, suggestedProjectName)
     : suggestedProjectName
-  const displayedProjectName = customProjectName.trim() || autoProjectName
 
   // Sync project name input when folder selection changes
   React.useEffect(() => {

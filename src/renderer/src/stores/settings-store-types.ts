@@ -1,33 +1,6 @@
-import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ProviderType, ReasoningEffortLevel, ThinkingConfig } from '../lib/api/types'
-import { ipcStorage } from '../lib/ipc/ipc-storage'
-import {
-  DEFAULT_APP_THEME_PRESET,
-  DEFAULT_SSH_TERMINAL_THEME_PRESET,
-  isAppThemePreset,
-  type AppThemePreset,
-  type SshTerminalThemePreset
-} from '../lib/theme-presets'
-import {
-  LEFT_SIDEBAR_DEFAULT_WIDTH,
-  clampLeftSidebarWidth
-} from '@renderer/components/layout/right-panel-defs'
-import {
-  DEFAULT_BROWSER_USER_DATA_SOURCE,
-  normalizeBrowserUserDataSource,
-  type BrowserUserDataSource
-} from '../../../shared/browser-plugin'
-import {
-  detectSystemLanguage,
-  normalizeLanguageCode,
-  type AppLanguage
-} from '@renderer/lib/i18n-language'
-import {
-  DEFAULT_PERMISSION_POLICY,
-  sanitizePermissionPolicy,
-  type PermissionPolicy
-} from '../../../shared/permission-policy'
+import type { ReasoningEffortLevel, ThinkingConfig } from '../lib/api/types'
+import { type AppThemePreset, type SshTerminalThemePreset } from '../lib/theme-presets'
+import { type AppLanguage } from '@renderer/lib/i18n-language'
 
 export interface ModelBinding {
   providerId: string
@@ -86,15 +59,15 @@ export type ShellExecutionEndpoint =
   | 'custom'
 export const DEFAULT_THEME_MODE = 'system' as const
 export const DEFAULT_SHELL_EXECUTION_ENDPOINT: ShellExecutionEndpoint = 'auto'
-const LEGACY_DEFAULT_THEME_MODE = 'system' as const
-const LEGACY_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'studio'
-const LEGACY_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'graphite'
-const V17_DEFAULT_THEME_MODE = 'dark' as const
-const V17_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'mulberry'
-const V17_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'mulberry'
-const V18_DEFAULT_THEME_MODE = 'dark' as const
-const V18_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'graphite'
-const V18_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'graphite'
+export const LEGACY_DEFAULT_THEME_MODE = 'system' as const
+export const LEGACY_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'studio'
+export const LEGACY_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'graphite'
+export const V17_DEFAULT_THEME_MODE = 'dark' as const
+export const V17_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'mulberry'
+export const V17_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'mulberry'
+export const V18_DEFAULT_THEME_MODE = 'dark' as const
+export const V18_DEFAULT_APP_THEME_PRESET: AppThemePreset = 'graphite'
+export const V18_DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = 'graphite'
 
 export const DEFAULT_MAX_PARALLEL_TOOL_CALLS = 3
 export const MIN_MAX_PARALLEL_TOOL_CALLS = 1

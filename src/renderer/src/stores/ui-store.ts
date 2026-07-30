@@ -1,5 +1,4 @@
-﻿import type React from 'react'
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import {
   LEFT_SIDEBAR_DEFAULT_WIDTH,
   RIGHT_PANEL_DEFAULT_WIDTH,
@@ -7,35 +6,10 @@ import {
   clampRightPanelWidth
 } from '@renderer/components/layout/right-panel-defs'
 import { useChatStore } from '@renderer/stores/chat-store'
-import {
-  type BrowserErrorInfo,
-  type BrowserPanelSessionState,
-  DEFAULT_BROWSER_STATE,
-  getBrowserScopeKey,
-  getBrowserSessionKey,
-  getBrowserStateFromMap,
-  isActiveBrowserScope,
-  resolvePanelScope,
-  updateBrowserStateForSession
-} from './browser-session-helpers'
-import {
-  type PreviewPanelState,
-  type PreviewPanelTab,
-  buildFilePreviewState,
-  previewTabTitle,
-  withPreviewTab,
-  withPreviewScope,
-  activatePreviewTab,
-  rightPanelPreviewTabId
-} from './preview-panel-helpers'
+import { getBrowserScopeKey, getBrowserStateFromMap, isActiveBrowserScope, resolvePanelScope, updateBrowserStateForSession } from './browser-session-helpers'
 import { createPreviewPanelSlice } from './preview-panel-slice'
 import type { UIStore } from './ui-store-interface'
-import {
-  CHAT_SURFACE_NAV_RESET,
-  closeRightSidePanels,
-  ensureRightPanelTabs,
-  getDefaultRightPanelTabs
-} from './right-panel-tab-factories'
+import { CHAT_SURFACE_NAV_RESET, ensureRightPanelTabs, getDefaultRightPanelTabs } from './right-panel-tab-factories'
 
 // Re-export types for backward compatibility
 export type {
@@ -67,50 +41,50 @@ export type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './previ
 export const useUIStore = create<UIStore>((set, get) => ({
   // Top-level view
   view: 'splash',
-  setView: (view) => set({ view }),
+  setView: (view: any) => set({ view }),
   enterMain: () => set({ view: 'main' }),
-  openSettings: (tab) => set({ view: 'settings', settingsTab: tab ?? 'provider' }),
+  openSettings: (tab: any) => set({ view: 'settings', settingsTab: tab ?? 'provider' }),
   closeSettings: () => set({ view: 'main' }),
 
   // Selected provider
   selectedProvider: null,
-  setSelectedProvider: (provider) => set({ selectedProvider: provider }),
+  setSelectedProvider: (provider: any) => set({ selectedProvider: provider }),
 
   // Mode
   mode: 'chat',
-  setMode: (mode) => set({ mode }),
+  setMode: (mode: any) => set({ mode }),
 
   // Navigation rail
   activeNavItem: 'chat',
-  setActiveNavItem: (item) =>
+  setActiveNavItem: (item: any) =>
     set({ activeNavItem: item, leftSidebarOpen: true }),
 
   // Left sidebar
   leftSidebarOpen: true,
   leftSidebarWidth: LEFT_SIDEBAR_DEFAULT_WIDTH,
-  toggleLeftSidebar: () => set((state) => ({ leftSidebarOpen: !state.leftSidebarOpen })),
-  setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
-  setLeftSidebarWidth: (width) => set({ leftSidebarWidth: clampLeftSidebarWidth(width) }),
+  toggleLeftSidebar: () => set((state: any) => ({ leftSidebarOpen: !state.leftSidebarOpen })),
+  setLeftSidebarOpen: (open: any) => set({ leftSidebarOpen: open }),
+  setLeftSidebarWidth: (width: any) => set({ leftSidebarWidth: clampLeftSidebarWidth(width) }),
 
   // Conversation panel
   conversationPanelFullWidth: false,
-  setConversationPanelFullWidth: (fullWidth) => set({ conversationPanelFullWidth: fullWidth }),
+  setConversationPanelFullWidth: (fullWidth: any) => set({ conversationPanelFullWidth: fullWidth }),
 
   // Right panel
   rightPanelOpen: false,
-  toggleRightPanel: () => set((state) => ({ rightPanelOpen: !state.rightPanelOpen })),
-  setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
+  toggleRightPanel: () => set((state: any) => ({ rightPanelOpen: !state.rightPanelOpen })),
+  setRightPanelOpen: (open: any) => set({ rightPanelOpen: open }),
   rightPanelWidth: RIGHT_PANEL_DEFAULT_WIDTH,
-  setRightPanelWidth: (width) => set({ rightPanelWidth: clampRightPanelWidth(width) }),
+  setRightPanelWidth: (width: any) => set({ rightPanelWidth: clampRightPanelWidth(width) }),
   rightPanelTab: 'preview',
-  setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
+  setRightPanelTab: (tab: any) => set({ rightPanelTab: tab }),
   rightPanelSection: 'execution',
-  setRightPanelSection: (section) => set({ rightPanelSection: section }),
+  setRightPanelSection: (section: any) => set({ rightPanelSection: section }),
   rightPanelTabs: getDefaultRightPanelTabs(),
   rightPanelActiveTabId: '',
-  setRightPanelActiveTab: (tabId) => set({ rightPanelActiveTabId: tabId }),
-  closeRightPanelTab: (tabId) => {
-    const tabs = get().rightPanelTabs.filter((t) => t.id !== tabId)
+  setRightPanelActiveTab: (tabId: any) => set({ rightPanelActiveTabId: tabId }),
+  closeRightPanelTab: (tabId: any) => {
+    const tabs = get().rightPanelTabs.filter((t: any) => t.id !== tabId)
     if (tabs.length === 0) {
       // Last tab closed — collapse the right panel
       set({ rightPanelTabs: [], rightPanelActiveTabId: '', rightPanelOpen: false })
@@ -123,26 +97,26 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   // Runtime status panel
   runtimeStatusPanelOpen: false,
-  toggleRuntimeStatusPanel: () => set((state) => ({ runtimeStatusPanelOpen: !state.runtimeStatusPanelOpen })),
-  setRuntimeStatusPanelOpen: (open) => set({ runtimeStatusPanelOpen: open }),
+  toggleRuntimeStatusPanel: () => set((state: any) => ({ runtimeStatusPanelOpen: !state.runtimeStatusPanelOpen })),
+  setRuntimeStatusPanelOpen: (open: any) => set({ runtimeStatusPanelOpen: open }),
 
   // Auto model selection
   autoModelSelectionsBySession: {},
   autoModelRoutingStatesBySession: {},
-  setAutoModelSelection: (sessionId, status) =>
-    set((state) => ({
+  setAutoModelSelection: (sessionId: any, status: any) =>
+    set((state: any) => ({
       autoModelSelectionsBySession: { ...state.autoModelSelectionsBySession, [sessionId]: status }
     })),
-  setAutoModelRoutingState: (sessionId, status) =>
-    set((state) => ({
+  setAutoModelRoutingState: (sessionId: any, status: any) =>
+    set((state: any) => ({
       autoModelRoutingStatesBySession: { ...state.autoModelRoutingStatesBySession, [sessionId]: status }
     })),
 
   // Settings page
   settingsPageOpen: false,
   settingsTab: 'provider',
-  setSettingsTab: (tab) => set({ settingsTab: tab }),
-  openSettingsPage: (tab) => set({ settingsPageOpen: true, settingsTab: tab ?? 'provider' }),
+  setSettingsTab: (tab: any) => set({ settingsTab: tab }),
+  openSettingsPage: (tab: any) => set({ settingsPageOpen: true, settingsTab: tab ?? 'provider' }),
   closeSettingsPage: () => set({ settingsPageOpen: false }),
 
   // Feature page toggles
@@ -173,75 +147,75 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   // Dialogs
   shortcutsOpen: false,
-  setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+  setShortcutsOpen: (open: any) => set({ shortcutsOpen: open }),
   conversationGuideOpen: false,
-  setConversationGuideOpen: (open) => set({ conversationGuideOpen: open }),
+  setConversationGuideOpen: (open: any) => set({ conversationGuideOpen: open }),
   changelogDialogOpen: false,
-  setChangelogDialogOpen: (open) => set({ changelogDialogOpen: open }),
+  setChangelogDialogOpen: (open: any) => set({ changelogDialogOpen: open }),
   pendingInsertText: null,
-  setPendingInsertText: (text) => set({ pendingInsertText: text }),
+  setPendingInsertText: (text: any) => set({ pendingInsertText: text }),
 
   // Detail panel
   detailPanelOpen: false,
   detailPanelContent: null,
-  openDetailPanel: (content) => set({ detailPanelOpen: true, detailPanelContent: content }),
+  openDetailPanel: (content: any) => set({ detailPanelOpen: true, detailPanelContent: content }),
   closeDetailPanel: () => set({ detailPanelOpen: false, detailPanelContent: null }),
 
   // Agent files
   agentFilesActiveTab: 'files',
-  setAgentFilesActiveTab: (tab) => set({ agentFilesActiveTab: tab }),
+  setAgentFilesActiveTab: (tab: any) => set({ agentFilesActiveTab: tab }),
   agentFilesSelectedChangeKey: null,
-  setAgentFilesSelectedChangeKey: (key) => set({ agentFilesSelectedChangeKey: key }),
+  setAgentFilesSelectedChangeKey: (key: any) => set({ agentFilesSelectedChangeKey: key }),
   agentFilesChangeSource: 'all',
-  setAgentFilesChangeSource: (source) => set({ agentFilesChangeSource: source }),
+  setAgentFilesChangeSource: (source: any) => set({ agentFilesChangeSource: source }),
 
   // Bottom terminal dock
   bottomTerminalDockOpenByProjectId: {},
-  setBottomTerminalDockOpen: (projectId, open) =>
-    set((state) => ({ bottomTerminalDockOpenByProjectId: { ...state.bottomTerminalDockOpenByProjectId, [projectId]: open } })),
-  toggleBottomTerminalDock: (projectId) =>
-    set((state) => ({
+  setBottomTerminalDockOpen: (projectId: any, open: any) =>
+    set((state: any) => ({ bottomTerminalDockOpenByProjectId: { ...state.bottomTerminalDockOpenByProjectId, [projectId]: open } })),
+  toggleBottomTerminalDock: (projectId: any) =>
+    set((state: any) => ({
       bottomTerminalDockOpenByProjectId: {
         ...state.bottomTerminalDockOpenByProjectId,
         [projectId]: !state.bottomTerminalDockOpenByProjectId[projectId]
       }
     })),
-  isBottomTerminalDockOpen: (projectId) => {
+  isBottomTerminalDockOpen: (projectId: any) => {
     if (!projectId) return false
     return !!get().bottomTerminalDockOpenByProjectId[projectId]
   },
   bottomTerminalDockHeight: 220,
-  setBottomTerminalDockHeight: (height) => set({ bottomTerminalDockHeight: Math.min(560, Math.max(160, height)) }),
+  setBottomTerminalDockHeight: (height: any) => set({ bottomTerminalDockHeight: Math.min(560, Math.max(160, height)) }),
 
   // SubAgent execution detail
   subAgentExecutionDetailOpen: false,
   subAgentExecutionDetailToolUseId: null,
   subAgentExecutionDetailInlineText: null,
-  openSubAgentExecutionDetail: (toolUseId, inlineText, _title, sessionId) =>
+  openSubAgentExecutionDetail: (toolUseId: any, inlineText: any, _title: any, sessionId: any) =>
     get().ensureSubAgentTab(toolUseId, inlineText ?? null, _title ?? null, sessionId),
   closeSubAgentExecutionDetail: () =>
     set({ subAgentExecutionDetailOpen: false, subAgentExecutionDetailToolUseId: null, subAgentExecutionDetailInlineText: null }),
   selectedSubAgentToolUseId: null,
-  setSelectedSubAgentToolUseId: (toolUseId) => set({ selectedSubAgentToolUseId: toolUseId }),
+  setSelectedSubAgentToolUseId: (toolUseId: any) => set({ selectedSubAgentToolUseId: toolUseId }),
 
   // Orchestration console
   selectedOrchestrationRunId: null,
-  setSelectedOrchestrationRunId: (runId) => set({ selectedOrchestrationRunId: runId }),
+  setSelectedOrchestrationRunId: (runId: any) => set({ selectedOrchestrationRunId: runId }),
   selectedOrchestrationMemberId: null,
-  setSelectedOrchestrationMemberId: (memberId) => set({ selectedOrchestrationMemberId: memberId }),
+  setSelectedOrchestrationMemberId: (memberId: any) => set({ selectedOrchestrationMemberId: memberId }),
   orchestrationConsoleOpen: false,
   orchestrationConsoleView: 'overview',
-  openOrchestrationPanel: (runId, memberId) =>
+  openOrchestrationPanel: (runId: any, memberId: any) =>
     set({ orchestrationConsoleOpen: true, selectedOrchestrationRunId: runId ?? null, selectedOrchestrationMemberId: memberId ?? null }),
   closeOrchestrationPanel: () => set({ orchestrationConsoleOpen: false }),
-  openOrchestrationMember: (runId, memberId) => set({ orchestrationConsoleOpen: true, selectedOrchestrationRunId: runId, selectedOrchestrationMemberId: memberId }),
+  openOrchestrationMember: (runId: any, memberId: any) => set({ orchestrationConsoleOpen: true, selectedOrchestrationRunId: runId, selectedOrchestrationMemberId: memberId }),
 
   // Plan mode
   planMode: false,
   enterPlanMode: () => set({ planMode: true }),
   exitPlanMode: () => set({ planMode: false }),
   planModesBySession: {},
-  isPlanModeEnabled: (sessionId) => {
+  isPlanModeEnabled: (sessionId: any) => {
     if (!sessionId) return get().planMode
     return get().planModesBySession[sessionId] ?? false
   },
@@ -250,32 +224,32 @@ export const useUIStore = create<UIStore>((set, get) => ({
   browserStatesBySession: {},
   browserWebviewRefsBySession: {},
   browserUrl: '',
-  setBrowserUrl: (url, sessionId, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, { url }, projectId)),
+  setBrowserUrl: (url: any, sessionId: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, { url }, projectId)),
   browserLoading: false,
-  setBrowserLoading: (loading, sessionId, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, { loading }, projectId)),
+  setBrowserLoading: (loading: any, sessionId: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, { loading }, projectId)),
   browserPageTitle: '',
-  setBrowserPageTitle: (pageTitle, sessionId, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, { pageTitle }, projectId)),
+  setBrowserPageTitle: (pageTitle: any, sessionId: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, { pageTitle }, projectId)),
   browserCanGoBack: false,
-  setBrowserCanGoBack: (canGoBack, sessionId, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, { canGoBack }, projectId)),
+  setBrowserCanGoBack: (canGoBack: any, sessionId: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, { canGoBack }, projectId)),
   browserCanGoForward: false,
-  setBrowserCanGoForward: (canGoForward, sessionId, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, { canGoForward }, projectId)),
+  setBrowserCanGoForward: (canGoForward: any, sessionId: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, { canGoForward }, projectId)),
   browserErrorInfo: null,
-  setBrowserErrorInfo: (errorInfo, sessionId, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, { errorInfo }, projectId)),
+  setBrowserErrorInfo: (errorInfo: any, sessionId: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, { errorInfo }, projectId)),
   browserWebviewRef: null,
 
   // Selected files
   selectedFiles: [],
-  setSelectedFiles: (files) => set({ selectedFiles: files }),
-  toggleFileSelection: (filePath) =>
-    set((state) => ({
+  setSelectedFiles: (files: any) => set({ selectedFiles: files }),
+  toggleFileSelection: (filePath: any) =>
+    set((state: any) => ({
       selectedFiles: state.selectedFiles.includes(filePath)
-        ? state.selectedFiles.filter((f) => f !== filePath)
+        ? state.selectedFiles.filter((f: any) => f !== filePath)
         : [...state.selectedFiles, filePath]
     })),
   clearSelectedFiles: () => set({ selectedFiles: [] }),
@@ -285,30 +259,30 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   // Hovering state
   isHoveringRightPanel: false,
-  setIsHoveringRightPanel: (hovering) => set({ isHoveringRightPanel: hovering }),
+  setIsHoveringRightPanel: (hovering: any) => set({ isHoveringRightPanel: hovering }),
   runtimeStatusPanelTriggerHovered: false,
-  setRuntimeStatusPanelTriggerHovered: (hovering) => set({ runtimeStatusPanelTriggerHovered: hovering }),
+  setRuntimeStatusPanelTriggerHovered: (hovering: any) => set({ runtimeStatusPanelTriggerHovered: hovering }),
 
   // Session-scoped state
   activeScopedSessionId: null,
   activeScopedProjectId: null,
-  syncSessionScopedState: (sessionId, projectId) =>
+  syncSessionScopedState: (sessionId: any, projectId: any) =>
     set({ activeScopedSessionId: sessionId, activeScopedProjectId: projectId ?? null }),
   messageListViewStatesBySession: {},
-  setMessageListViewState: (sessionId, state) =>
-    set((s) => ({
+  setMessageListViewState: (sessionId: any, state: any) =>
+    set((s: any) => ({
       messageListViewStatesBySession: {
         ...s.messageListViewStatesBySession,
         [sessionId]: state ?? undefined
       }
     })),
-  getMessageListViewState: (sessionId) => {
+  getMessageListViewState: (sessionId: any) => {
     if (!sessionId) return null
     return get().messageListViewStatesBySession[sessionId] ?? null
   },
-  releaseDormantSessionUiState: (sessionId) => {
+  releaseDormantSessionUiState: (sessionId: any) => {
     if (!sessionId) return
-    set((s) => {
+    set((s: any) => {
       const next = { ...s.messageListViewStatesBySession }
       delete next[sessionId]
       return { messageListViewStatesBySession: next }
@@ -323,32 +297,32 @@ export const useUIStore = create<UIStore>((set, get) => ({
     }
     set({ activeNavItem: 'chat', chatView: 'home', ...CHAT_SURFACE_NAV_RESET })
   },
-  navigateToProject: (projectId) => {
+  navigateToProject: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
     set({ activeNavItem: 'chat', chatView: 'project', ...CHAT_SURFACE_NAV_RESET })
     void resolvedProjectId
   },
-  navigateToArchive: (projectId) => {
+  navigateToArchive: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
     set({ activeNavItem: 'chat', chatView: 'archive', ...CHAT_SURFACE_NAV_RESET })
     void resolvedProjectId
   },
-  navigateToChannels: (projectId) => {
+  navigateToChannels: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
     set({ activeNavItem: 'chat', chatView: 'channels', ...CHAT_SURFACE_NAV_RESET })
     void resolvedProjectId
   },
-  navigateToGit: (projectId) => {
+  navigateToGit: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
     set({ activeNavItem: 'chat', chatView: 'git', ...CHAT_SURFACE_NAV_RESET })
     void resolvedProjectId
   },
-  navigateToPersona: (projectId) => {
+  navigateToPersona: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
     set({ activeNavItem: 'chat', chatView: 'persona', ...CHAT_SURFACE_NAV_RESET })
     void resolvedProjectId
   },
-  navigateToSession: (sessionId) => {
+  navigateToSession: (sessionId: any) => {
     const store = useChatStore.getState()
     const resolvedSessionId = sessionId ?? store.activeSessionId ?? null
     if (resolvedSessionId) {
@@ -364,9 +338,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   // Browser tab management
-  ensureBrowserTab: (url, sessionId, projectId, options) =>
-    set((state) => {
-      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'browser')
+  ensureBrowserTab: (url: any, sessionId: any, projectId: any, options: any) =>
+    set((state: any) => {
+      const existing = state.rightPanelTabs.find((tab: any) => tab.kind === 'browser')
       const tab: RightPanelTabInstance = existing ?? {
         id: 'browser',
         kind: 'browser',
@@ -400,8 +374,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
       }
     }),
 
-  ensureSubAgentTab: (toolUseId, inlineText, title, requestedSessionId) =>
-    set((state) => {
+  ensureSubAgentTab: (toolUseId: any, inlineText: any, title: any, requestedSessionId: any) =>
+    set((state: any) => {
       const sessionId =
         (requestedSessionId?.trim() || null) ??
         state.activeScopedSessionId ??
@@ -410,7 +384,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       const tabScopeId = sessionId ?? 'global'
       const tabId = `subagent:${tabScopeId}:overview`
       const existing = state.rightPanelTabs.find(
-        (tab) => tab.kind === 'subagent' && (tab.sessionId ?? null) === sessionId
+        (tab: any) => tab.kind === 'subagent' && (tab.sessionId ?? null) === sessionId
       )
       const tab: RightPanelTabInstance = existing
         ? {
@@ -432,14 +406,14 @@ export const useUIStore = create<UIStore>((set, get) => ({
             createdAt: Date.now()
           }
       const tabsWithoutScopedDuplicates = state.rightPanelTabs.filter(
-        (item) =>
+        (item: any) =>
           item.kind !== 'subagent' ||
           item === existing ||
           (item.sessionId ?? null) !== sessionId
       )
       const rightPanelTabs = ensureRightPanelTabs(
         existing
-          ? tabsWithoutScopedDuplicates.map((item) => (item === existing ? tab : item))
+          ? tabsWithoutScopedDuplicates.map((item: any) => (item === existing ? tab : item))
           : [...tabsWithoutScopedDuplicates, tab]
       )
       return {
@@ -453,12 +427,12 @@ export const useUIStore = create<UIStore>((set, get) => ({
       }
     }),
 
-  openSubAgentsPanel: (toolUseId, sessionId) =>
+  openSubAgentsPanel: (toolUseId: any, sessionId: any) =>
     get().ensureSubAgentTab(toolUseId ?? null, null, null, sessionId),
 
   ensureTerminalTab: () =>
-    set((state) => {
-      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'terminal')
+    set((state: any) => {
+      const existing = state.rightPanelTabs.find((tab: any) => tab.kind === 'terminal')
       if (existing) {
         return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
       }
@@ -476,9 +450,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
       }
     }),
 
-  ensureFilesTab: (sessionId) =>
-    set((state) => {
-      const existing = state.rightPanelTabs.find((tab) => tab.kind === 'files')
+  ensureFilesTab: (sessionId: any) =>
+    set((state: any) => {
+      const existing = state.rightPanelTabs.find((tab: any) => tab.kind === 'files')
       if (existing) {
         return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
       }
@@ -497,7 +471,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       }
     }),
 
-  getBrowserState: (sessionId, projectId) => {
+  getBrowserState: (sessionId: any, projectId: any) => {
     const state = get()
     const scope = resolvePanelScope(state, sessionId, projectId)
     return getBrowserStateFromMap(
@@ -507,20 +481,20 @@ export const useUIStore = create<UIStore>((set, get) => ({
     )
   },
 
-  patchBrowserState: (sessionId, patch, projectId) =>
-    set((state) => updateBrowserStateForSession(state, sessionId, patch, projectId)),
+  patchBrowserState: (sessionId: any, patch: any, projectId: any) =>
+    set((state: any) => updateBrowserStateForSession(state, sessionId, patch, projectId)),
 
-  openBrowserTab: (url, sessionId, projectId, options) =>
+  openBrowserTab: (url: any, sessionId: any, projectId: any, options: any) =>
     get().ensureBrowserTab(url, sessionId, projectId, options),
 
-  getBrowserWebviewRef: (sessionId, projectId) => {
+  getBrowserWebviewRef: (sessionId: any, projectId: any) => {
     const state = get()
     const scope = resolvePanelScope(state, sessionId, projectId)
     return state.browserWebviewRefsBySession[getBrowserScopeKey(scope)] ?? null
   },
 
-  setBrowserWebviewRef: (ref, sessionId, projectId) =>
-    set((state) => {
+  setBrowserWebviewRef: (ref: any, sessionId: any, projectId: any) =>
+    set((state: any) => {
       const scope = resolvePanelScope(state, sessionId, projectId)
       const key = getBrowserScopeKey(scope)
       const browserWebviewRefsBySession = { ...state.browserWebviewRefsBySession }

@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, Notification } from 'electron'
 import { getNativeWorker } from '../lib/native-worker'
 import { safeSendMessagePackToWindow } from '../window-ipc'
 import {
@@ -130,12 +130,16 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     try {
       // notify:desktop uses Electron's Notification API directly
       if (method === 'notify:desktop') {
-        const { Notification } = require('electron')
         const params = request.params as Record<string, unknown> | undefined
         const title = (params?.title as string) ?? ''
         const body = (params?.body as string) ?? ''
+        const type = (params?.type as string) ?? 'info'
         if (Notification.isSupported()) {
-          const notification = new Notification({ title, body })
+          const notification = new Notification({
+            title,
+            body,
+            urgency: type === 'error' ? 'critical' : 'normal'
+          })
           notification.show()
           await sendReverseResponse(id, { success: true, title, body }, undefined)
         } else {
@@ -158,7 +162,10 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     'browser/tool-request',
     'ask-user/request',
     'plan/ui-update',
-    'sub-agent:approve-tool'
+    'sub-agent:approve-tool',
+    'mcp:capability-list',
+    'mcp:capability-inspect',
+    'skill-management:execute'
   ])
   if (rendererMethods.has(method)) {
     const requestId = `sidecar-renderer-tool-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`

@@ -7,7 +7,7 @@ import {
 } from '@renderer/lib/select-file-editor'
 import { createSelectFileToken } from '@renderer/lib/select-file-tags'
 import type { ImageAttachment } from '@renderer/lib/image-attachments'
-import type { FileAwareEditorHandle } from '../FileAwareEditor'
+import type { FileAwareEditorHandle } from '../file-aware-editor-utils'
 
 interface UseComposerEditorOptions {
   workingFolder?: string
@@ -138,8 +138,8 @@ export function useComposerEditor(opts: UseComposerEditorOptions) {
     const liveDocument = opts.editorRef.current?.getDocumentSnapshot() ?? documentRef.current
     const referencedFileIds = new Set(
       liveDocument
-        .filter((node): node is Extract<EditorDocumentNode, { type: 'file' }> => node.type === 'file')
-        .map((node) => node.fileId)
+        .filter((node: any): node is Extract<EditorDocumentNode, { type: 'file' }> => node.type === 'file')
+        .map((node: any) => node.fileId)
     )
     const liveSelectedFiles = selectedFilesRef.current.filter((file) => referencedFileIds.has(file.id))
 

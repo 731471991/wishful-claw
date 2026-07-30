@@ -1,45 +1,17 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FileCode,
-  FilePlus2,
-  FileX2,
-  FileEdit,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Check,
-  Copy,
-  ChevronDown,
-  ChevronRight
-} from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
-import type { AgentRunFileChange } from '@renderer/stores/agent-store'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { MONO_FONT } from '@renderer/lib/constants'
-import { IPC } from '@renderer/lib/ipc/channels'
-import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import { Button } from '@renderer/components/ui/button'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
-import { toMessagePackChannel } from '../../../../shared/messagepack/binary-ipc'
-import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
-import {
-  type FileChangeCardProps, type FilePreviewTone, type CompactActionOp,
-  type DiffLine, type TrackedDiffContent,
-  type ResolvedWritePayload,
-  detectLang, shortPath, fileName, normalizeLineEndings, formatCompactCount,
-  snapshotText, snapshotLineTotal, canRenderInlineSnapshot,
-  computeDiff, summarizeDiff, foldContext,
-  diffDisplayLineNumber, buildDiffCopyText, diffLineStyle,
-  resolveEditPayload, resolveWritePayload, hasPendingEditPreviewContent,
-  resolveEditSummaryDiff, trackedStatusLabelKey, trackedTransportLabelKey,
-  trackedStatusTone, trackedStatusDotTone
-} from './FileChangeCard/utils'
+import { type FileChangeCardProps, type CompactActionOp, shortPath, fileName, snapshotText, canRenderInlineSnapshot, resolveEditPayload, resolveWritePayload, hasPendingEditPreviewContent, resolveEditSummaryDiff, trackedStatusLabelKey, trackedTransportLabelKey, trackedStatusTone, trackedStatusDotTone } from './FileChangeCard/utils'
 
 // ── Types ────────────────────────────────────────────────────────
-import { FilePreviewShell, CodeFrame, NewFileContent, SnapshotSummaryNotice, PendingEditPreview, PendingWritePreview } from './file-change-previews'
-import { DiffCodeChunk, CompactEditDiff, CompactDiffCopyButton, InlineDiff, TrackedEditDiff } from './file-change-diff'
+import { NewFileContent, SnapshotSummaryNotice, PendingEditPreview, PendingWritePreview } from './file-change-previews'
+import { CompactEditDiff, InlineDiff, TrackedEditDiff } from './file-change-diff'
 import { StatusIndicator, CompactStatusDot, FileIcon, ChangeStats, WriteRealtimeStats } from './file-change-stats'
 
 export function FileChangeCard({
@@ -57,12 +29,9 @@ export function FileChangeCard({
   const resolvedEdit = React.useMemo(() => resolveEditPayload(input), [input])
   const resolvedWrite = React.useMemo(() => resolveWritePayload(input), [input])
   const isActive = status === 'streaming' || status === 'running' || status === 'pending_approval'
-  const isLiveFileMutation =
-    (name === 'Write' || name === 'Edit') && (status === 'streaming' || status === 'running')
   const isRealtimeWrite =
     name === 'Write' && !trackedChange && (status === 'streaming' || status === 'running')
   const [collapsed, setCollapsed] = React.useState(!forceOpen)
-  const wasLiveFileMutationRef = React.useRef(isLiveFileMutation)
   const undoFileChange = useAgentStore((state) => state.undoFileChange)
   const [isUndoingFile, setIsUndoingFile] = React.useState(false)
 

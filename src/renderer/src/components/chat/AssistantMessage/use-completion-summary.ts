@@ -77,7 +77,7 @@ export function useCompletionSummary({
       sessionModelBinding.providerId ??
       null
     const provider = fallbackProviderId
-      ? providers.find((item) => item.id === fallbackProviderId)
+      ? providers.find((item: any) => item.id === fallbackProviderId)
       : null
     const modelId =
       requestModel?.modelId ??
@@ -85,7 +85,7 @@ export function useCompletionSummary({
       fastProviderConfig?.model ??
       sessionModelBinding.modelId ??
       thinkingModel.modelId
-    const modelCfg = provider?.models.find((item) => item.id === modelId) ?? null
+    const modelCfg = provider?.models.find((item: any) => item.id === modelId) ?? null
     const billableInput = getBillableInputTokens(usage, modelCfg?.type)
     const cacheRead = Math.max(0, usage.cacheReadTokens ?? 0)
     const cacheCreation = getCacheCreationTokens(usage)

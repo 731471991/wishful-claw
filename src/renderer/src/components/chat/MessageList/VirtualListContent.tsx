@@ -14,14 +14,13 @@ import {
 } from './utils'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
 import type { RequestRetryState } from '@renderer/lib/agent/types'
-import type { OrchestrationState } from '@renderer/lib/orchestration/build-runs'
-import type { Virtualizer } from '@tanstack/react-virtual'
+import type { OrchestrationRunStore } from '@renderer/lib/orchestration/build-runs'
 
 interface VirtualListContentProps {
   containerRef: React.RefObject<HTMLDivElement | null>
   listRef: React.RefObject<HTMLDivElement | null>
   virtualContentRef: React.RefObject<HTMLDivElement | null>
-  rowVirtualizer: ReturnType<typeof Virtualizer.prototype.constructor> & {
+  rowVirtualizer: any & {
     getTotalSize: () => number
     getVirtualItems: () => Array<{ key: string | number; index: number; start: number }>
     measureElement: (el: Element | null) => void
@@ -36,7 +35,7 @@ interface VirtualListContentProps {
   messageLookup: Map<string, UnifiedMessage>
   toolResultsLookup: Map<string, unknown>
   inlineCompactSummaryState: { byAssistantId: Map<string, UnifiedMessage[]> }
-  orchestrationState: OrchestrationState
+  orchestrationState: OrchestrationRunStore
   duplicatePlanReviewToolUseIds: Set<string>
   sessionAssistantMessageIds: string[]
   sessionToolUseIds: string[]
@@ -112,7 +111,7 @@ export function VirtualListContent(props: VirtualListContentProps): React.JSX.El
           className="relative w-full"
           style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
         >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
             const isLoadOlderRow = hasLoadOlderRow && virtualRow.index === 0
             const rowIndex = virtualRow.index - (hasLoadOlderRow ? 1 : 0)
 
@@ -178,7 +177,7 @@ export function VirtualListContent(props: VirtualListContentProps): React.JSX.El
                         isLastAssistantMessage={isLastAssistantMessage}
                         showContinue={showContinue}
                         disableAnimation={disableAnimation}
-                        toolResults={toolResultsLookup.get(messageId)}
+                        toolResults={toolResultsLookup.get(messageId) as any}
                         inlineCompactSummaries={inlineCompactSummaryState.byAssistantId.get(
                           messageId
                         )}
@@ -186,7 +185,7 @@ export function VirtualListContent(props: VirtualListContentProps): React.JSX.El
                           orchestrationState.byMessageId.get(messageId)?.primaryRun ?? null
                         }
                         hiddenToolUseIds={mergeHiddenToolUseIds(
-                          orchestrationState.byMessageId.get(messageId)?.hiddenToolUseIds,
+                          orchestrationState.byMessageId.get(messageId)?.hiddenToolUseIds as any,
                           duplicatePlanReviewToolUseIds
                         )}
                         anchorMessageId={null}
@@ -211,7 +210,7 @@ export function VirtualListContent(props: VirtualListContentProps): React.JSX.El
       </div>
 
       <AssistantReplyRail
-        items={assistantRailItems}
+        items={assistantRailItems as any}
         activeMessageIds={activeAssistantRailMessageIds}
         onJump={handleJumpToAssistantMessage}
       />

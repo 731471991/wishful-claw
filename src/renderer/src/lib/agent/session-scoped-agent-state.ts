@@ -1,4 +1,3 @@
-import type { UnifiedMessage } from '@renderer/lib/api/types'
 
 // ── Cached empty selections (constant references to prevent infinite loops) ──
 

@@ -34,6 +34,9 @@
     "skills": {
       "label": "Skills",
       "desc": "管理已安装的 Skill 和浏览在线市场"
+    },
+    "mcp": {
+      "label": "MCP"
     }
   },
   "general": {
@@ -834,7 +837,12 @@
     "disabledError": "联网搜索已禁用。请在设置中启用。",
     "apiKeyRequired": "此提供商需要 API 密钥。",
     "testSuccess": "联网搜索测试成功！找到 {{count}} 条结果。",
-    "testFailed": "联网搜索测试失败：{{error}}"
+    "testFailed": "联网搜索测试失败：{{error}}",
+    "browserSearchTitle": "内置浏览器搜索",
+    "browserSearchDesc": "基于内置 Chromium 浏览器直接搜索，无需 API 密钥，始终可用。支持 Bing、Baidu、Google 三个引擎。",
+    "browserSearchHint": "Agent 可直接使用 BrowserSearch 工具进行搜索，搜索结果会显示在右侧浏览器面板中。",
+    "apiSearchTitle": "API 搜索（可选）",
+    "apiSearchDesc": "通过 API 提供商进行 AI 增强搜索，结果质量更高但需要配置 API 密钥。"
   },
   "skills": {
     "tabs": {
@@ -870,7 +878,105 @@
     },
     "installer": {
       "title": "Skill 安装助手",
-      "emptyHint2": "从市场复制安装提示词，粘贴到这里发送给 Agent 执行安装"
+      "emptyHint2": "告诉 Agent 你想安装的技能名称，例如：\n“帮我安装 web-composite-search”\nAgent 会自动搜索市场并完成安装"
+    }
+  },
+  "mcp": {
+    "title": "MCP 服务器",
+    "subtitle": "管理 Model Context Protocol 服务器连接",
+    "searchServers": "搜索服务器...",
+    "addServerTitle": "添加 MCP 服务器",
+    "addServerDesc": "配置新的 MCP 服务器连接",
+    "addServer": "添加服务器",
+    "manualCreate": "手动创建",
+    "importJson": "导入 JSON",
+    "name": "名称",
+    "namePlaceholder": "我的 MCP 服务器",
+    "description": "描述",
+    "descriptionPlaceholder": "可选描述",
+    "transport": "传输方式",
+    "command": "命令",
+    "commandPlaceholder": "npx",
+    "arguments": "参数",
+    "argumentsPlaceholder": "-y @modelcontextprotocol/server-filesystem",
+    "argumentsHint": "空格分隔的参数",
+    "workingDirectory": "工作目录",
+    "workingDirectoryPlaceholder": "/path/to/dir",
+    "envVars": "环境变量",
+    "envVarsPlaceholder": "KEY=value",
+    "envVarsHint": "每行一个：KEY=value",
+    "url": "URL",
+    "urlPlaceholderSse": "https://example.com/sse",
+    "urlPlaceholderHttp": "https://example.com/mcp",
+    "headers": "请求头",
+    "headersPlaceholder": "Authorization: Bearer token",
+    "headersHint": "每行一个：Key: Value",
+    "autoFallback": "自动降级",
+    "autoFallbackDesc": "HTTP 失败时降级到 SSE",
+    "connect": "连接",
+    "connecting": "连接中...",
+    "disconnect": "断开",
+    "refresh": "刷新",
+    "connectedTo": "已连接到 {{name}}",
+    "disconnectedFrom": "已断开 {{name}}",
+    "connectionFailed": "连接失败",
+    "deleteConfirm": "删除 \"{{name}}\"？",
+    "deleteServer": "删除",
+    "serverRemoved": "服务器已删除",
+    "serverAdded": "服务器 \"{{name}}\" 已添加",
+    "refreshed": "已刷新",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "noServers": "未配置 MCP 服务器",
+    "noTools": "无可用工具",
+    "noResources": "无可用资源",
+    "noPrompts": "无可用提示",
+    "selectToConfig": "选择服务器进行配置",
+    "importJsonInvalid": "JSON 格式无效",
+    "importJsonSuccess": "已导入 {{count}} 个服务器",
+    "importJsonFailed": "导入失败",
+    "importJsonPlaceholder": "{\n  \"mcpServers\": {\n    \"server-name\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"some-package\"]\n    }\n  }\n}",
+    "importJsonHint": "粘贴 Claude Code / .mcp.json 格式",
+    "importJsonAction": "导入",
+    "tabs": {
+      "installed": "已安装",
+      "market": "市场"
+    },
+    "browseMarket": "浏览市场",
+    "market": {
+      "searchPlaceholder": "搜索 MCP 服务器...",
+      "searching": "搜索中...",
+      "searchFailed": "搜索失败",
+      "noResults": "未找到服务器",
+      "noResultsHint": "试试其他关键词",
+      "searchHint": "搜索官方 MCP Registry",
+      "searchHintDesc": "registry.modelcontextprotocol.io",
+      "noDescription": "暂无描述",
+      "configRequired": "需要配置",
+      "install": "安装",
+      "installed": "已安装 \"{{name}}\"",
+      "installFailed": "安装失败",
+      "noInstallablePackage": "无可安装的包",
+      "cannotAutoInstall": "无法自动安装此服务器",
+      "requiresEnvVars": "此服务器需要配置环境变量"
+    },
+    "detail": {
+      "repository": "代码仓库",
+      "website": "网站",
+      "package": "安装包",
+      "registry": "包管理器",
+      "identifier": "标识符",
+      "transport": "传输方式",
+      "runtime": "运行时",
+      "remoteEndpoint": "远程端点",
+      "environmentVariables": "环境变量",
+      "previewCommand": "预览命令",
+      "install": "安装",
+      "installing": "安装中...",
+      "installed": "已安装 \"{{name}}\"",
+      "installFailed": "安装失败",
+      "fillRequired": "请填写必填字段",
+      "cannotInstall": "无法安装此服务器"
     }
   }
 }

@@ -46,11 +46,11 @@ public sealed class ToolPreset
         ["chat"] = new ToolPreset
         {
             Id = "chat",
-            Description = "Everyday chat — file ops, search, web, browser, memory, ask-user.",
+            Description = "Everyday chat — file ops, search, shell, web, memory, ask-user, plan, goal.",
             AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "file", "search", "shell", "web", "browser", "memory", "ask-user",
-                "plan", "goal", "notify", "image-generate", "skill", "ssh"
+                "file", "search", "shell", "code-compatible", "web", "memory", "ask-user",
+                "plan", "goal", "notify", "capability", "browser"
             },
             AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -61,11 +61,11 @@ public sealed class ToolPreset
         ["coding"] = new ToolPreset
         {
             Id = "coding",
-            Description = "Coding session — file ops, search, shell, git, memory, browser, web.",
+            Description = "Coding session — file ops, search, shell, git, memory, web.",
             AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "file", "search", "shell", "web", "browser", "memory", "ask-user",
-                "plan", "goal", "notebook", "skill", "ssh"
+                "file", "search", "shell", "web", "memory", "ask-user",
+                "plan", "goal", "notify", "capability", "browser"
             },
             AllowedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -104,6 +104,15 @@ public sealed class ToolPreset
             DeniedTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "Write", "Edit", "Bash", "Shell"
+            },
+        },
+        ["skill-installer"] = new ToolPreset
+        {
+            Id = "skill-installer",
+            Description = "Skill installer assistant — skill management tools plus basic file/search.",
+            AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "file", "search", "skill-management", "capability"
             },
         },
     };

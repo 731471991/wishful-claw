@@ -133,7 +133,6 @@ function extractBase64ImageData(dataUrl: string): { data: string; mediaType: str
 
 export {
   type ElectronWebview,
-  type NativeImageLike,
   getWebview,
   requireWebview,
   runWebviewCommand,

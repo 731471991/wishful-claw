@@ -26,6 +26,8 @@ import { registerGoalTools } from './goal-tool'
 import { registerMemoryTools } from './memory-tool'
 import { refreshDynamicToolCatalog } from './dynamic-tool-catalog'
 import { registerCodeCompatibleTools } from './code-compatible-tool'
+import { registerSkillManagementTools } from './skill-management-tool'
+import { registerBrowserSearchTool } from './browser-search-tool'
 
 let _allToolsRegistered = false
 
@@ -56,6 +58,12 @@ export async function registerAllTools(): Promise<void> {
   // Code-agent-compatible aliases and tool shells layer over the existing
   // OpenCowork implementations.
   registerCodeCompatibleTools()
+
+  // Skill management tools for the installation assistant agent
+  registerSkillManagementTools()
+
+  // Built-in browser search tool (no API key required)
+  registerBrowserSearchTool()
 
   // Agent Team tools
   registerTeamTools()

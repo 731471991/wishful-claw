@@ -3,6 +3,8 @@ using WishfulClaw.Core.Tools;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Worker.Modules.Db;
 
+using WishfulClaw.Worker.AgentRuntime;
+
 namespace WishfulClaw.Worker.Tools.MemoryTools;
 
 using static WishfulClaw.Worker.Tools.ToolHelpers;
@@ -64,6 +66,9 @@ public sealed class MemoryUpdateTool : IToolExecutor
             // Use WhereColumns to update by primary key, only SET changed columns
             db.Updateable(entry).WhereColumns(e => e.Id).ExecuteCommand();
 
+            MemoryUpdateQueue.Enqueue(context.SessionId ?? "",
+                $"Memory entry #{id} updated (fields changed: {(content is not null ? "content " : "")}{(priority is not null ? "priority " : "")}{(status is not null ? "status" : "")}).");
+
             return Task.FromResult(new ToolResult($"Memory entry #{id} updated successfully."));
         }
         catch (Exception ex)

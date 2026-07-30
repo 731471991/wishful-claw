@@ -372,10 +372,7 @@ export async function runSidecarContextCompression(args: {
     return meta ? { ...message, meta } : { ...message, meta: undefined }
   })
 
-  const result = await ipcClient.invoke<{
-    messages: UnifiedMessage[]
-    result: CompressionResult
-  }>('worker:request', {
+  const result = await ipcClient.invoke('worker:request', {
     method: 'agent/compress-context',
     params: {
       provider: args.provider,
@@ -396,5 +393,5 @@ export async function runSidecarContextCompression(args: {
     throw new Error('aborted')
   }
 
-  return result
+  return result as { messages: UnifiedMessage[]; result: CompressionResult }
 }

@@ -1,27 +1,16 @@
-import { nanoid } from 'nanoid'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import type {
-  AccountRateLimit,
   AIProvider,
   OAuthConfig,
   OAuthToken,
   ProviderOAuthAccount
 } from '@renderer/lib/api/types'
-import { startOAuthFlow, refreshOAuthFlow, type StartOAuthFlowOptions } from './oauth'
-import {
-  clearCopilotQuota,
-  exchangeCopilotToken,
-  isCopilotProvider,
-  resolveCopilotApiKey,
-  syncCopilotQuota
-} from './copilot'
-import { sendChannelCode, verifyChannelCode, fetchChannelUserInfo } from './channel'
 
 export const REFRESH_SKEW_MS = 2 * 60 * 1000
 
 export function getProviderById(providerId: string): AIProvider | null {
   const providers = useProviderStore.getState().providers
-  return providers.find((p) => p.id === providerId) ?? null
+  return providers.find((p: any) => p.id === providerId) ?? null
 }
 
 export function resolveOAuthConfig(provider: AIProvider): OAuthConfig | null {
@@ -59,7 +48,7 @@ export function asString(value: unknown): string | undefined {
   return undefined
 }
 
-function parseManualOAuthPayload(raw: string): AIProvider['oauth'] {
+export function parseManualOAuthPayload(raw: string): AIProvider['oauth'] {
   let data: unknown
   try {
     data = JSON.parse(raw)

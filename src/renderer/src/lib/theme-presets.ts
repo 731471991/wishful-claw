@@ -3,12 +3,9 @@ import type {
   AppThemeMode,
   AppThemePreset,
   SshTerminalThemePreset,
-  ThemeCssVars,
-  ThemePreviewPalette,
   SshChromePalette,
   ThemePresetDefinition,
 } from './theme-presets/types'
-import { createTerminalTheme } from './theme-presets/terminal-theme'
 import { mulberryPreset } from './theme-presets/mulberry'
 import { studioPreset } from './theme-presets/studio'
 import { graphitePreset } from './theme-presets/graphite'

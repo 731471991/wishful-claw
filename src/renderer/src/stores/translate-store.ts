@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import type { ProviderConfig } from '@renderer/lib/api/types'
-import type { AIProvider } from '../../../shared/types/provider'
 import { streamAiTranslation } from '@renderer/lib/translate-service'
 import { runTranslationAgent } from '@renderer/lib/translate-agent-service'
 import { recordUsageEvent } from '@renderer/lib/usage-analytics'

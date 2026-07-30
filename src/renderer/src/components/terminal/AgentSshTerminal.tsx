@@ -52,7 +52,7 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     const webLinksAddon = new WebLinksAddon()
     const unicodeAddon = new Unicode11Addon()
 
-    term.loadAddon(fitAddon)
+    term.loadAddon(fitAddon as any)
     term.loadAddon(webLinksAddon)
     term.loadAddon(unicodeAddon)
     term.unicode.activeVersion = '11'
@@ -67,7 +67,7 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     const scheduleFit = (): void => {
       requestAnimationFrame(() => {
         try {
-          fitAddon.fit()
+          (fitAddon as any).fit()
         } catch {
           // ignore
         }

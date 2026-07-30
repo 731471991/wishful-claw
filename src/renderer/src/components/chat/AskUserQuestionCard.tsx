@@ -1,37 +1,24 @@
 import * as React from 'react'
 import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Check,
-  ChevronRight,
-  ChevronLeft,
-  MessageSquare,
-  Sparkles,
-} from 'lucide-react'
+import { Check, ChevronRight, ChevronLeft, MessageSquare } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
-import { Badge } from '@renderer/components/ui/badge'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { coerceAskUserQuestions, resolveAskUserAnswers } from '@renderer/lib/tools/ask-user-tool'
-import type {
-  AskUserQuestionItem,
-  AskUserResolvedPayload,
-} from '@renderer/lib/tools/ask-user-tool'
-import type { ToolCallStatus } from '@renderer/lib/agent/types'
-import type { ToolResultContent } from '@renderer/lib/api/types'
 import { isStructuredToolErrorText } from '@renderer/lib/tools/tool-result-format'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
-import {
-  outputAsText,
-  parseAnsweredPairs,
-  isRedundantSummary,
-  buildRecommendedPayload,
-  buildSubmissionPayload,
-  questionHasAnswer,
-  type AnsweredPair,
-} from './ask-user-utils'
-import { QuestionBlock, PreviewPane } from './ask-user-question-block'
+import { outputAsText, parseAnsweredPairs, buildRecommendedPayload, buildSubmissionPayload, questionHasAnswer } from './ask-user-utils'
+import { QuestionBlock } from './ask-user-question-block'
 import { AskUserView } from './ask-user-views'
+
+interface AskUserQuestionCardProps {
+  toolUseId: string
+  input: any
+  output: any
+  status: string
+  isLive: boolean
+}
 
 export function AskUserQuestionCard({
   toolUseId,

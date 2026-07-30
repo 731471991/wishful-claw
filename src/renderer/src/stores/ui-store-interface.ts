@@ -20,7 +20,7 @@ import type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './previ
 
 // ─── Store Interface ───
 
-interface UIStore {
+export interface UIStore {
   // Top-level view (splash / main / settings)
   view: 'splash' | 'main' | 'settings'
   setView: (view: 'splash' | 'main' | 'settings') => void
@@ -217,7 +217,6 @@ interface UIStore {
   ) => void
   openDiff: (params: OpenDiffParams) => void
   openDevServerPreview: (projectDir: string, port: number, sessionId?: string | null) => void
-  openMarkdownPreview: (title: string, content: string, sessionId?: string | null) => void
   closePreviewTab: (tabId: string) => void
   closePreviewPanel: () => void
   setActivePreviewTab: (tabId: string | null) => void

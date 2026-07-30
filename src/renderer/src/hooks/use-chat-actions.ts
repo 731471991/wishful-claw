@@ -3,7 +3,8 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import { ensureRequestToolCatalogFresh } from '@renderer/lib/tools'
+import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type CachedToolDef } from '@renderer/lib/tools/tool-cache'
+import { buildRuntimeReminder } from '@renderer/lib/agent/dynamic-context'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -11,24 +12,10 @@ export interface SendMessageOptions {
   selectedFileReferences?: unknown[]
   goalObjective?: string
   imageEdit?: unknown
+  toolPreset?: string
   [key: string]: unknown
 }
 
-// Fetch tool definitions from the C# Worker (single source of truth for tool definitions)
-let cachedTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null
-let cachedPreset: string | null = null
-
-async function getToolDefinitions(preset = 'chat'): Promise<typeof cachedTools> {
-  if (cachedTools && cachedPreset === preset) return cachedTools
-  try {
-    const result = await window.api.workerRequest<{ tools: typeof cachedTools }>('tool/list', { preset })
-    cachedTools = result.tools
-    cachedPreset = preset
-    return cachedTools
-  } catch {
-    return null
-  }
-}
 
 export function useChatActions() {
   const sendMessage = useChatStore((s) => s.sendMessage)
@@ -36,14 +23,13 @@ export function useChatActions() {
 
   const handleSendMessage = useCallback(
     async (text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
-      const textStr = typeof text === 'string' ? text : text.text
       const providerStore = useProviderStore.getState()
       const activeProvider = providerStore.getActiveProvider()
       if (!activeProvider) {
         console.error('[ChatActions] No provider selected')
         return
       }
-      const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m) => m.enabled)?.id
+      const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m: any) => m.enabled)?.id
       if (!modelId) {
         console.error('[ChatActions] No model selected')
         return
@@ -63,7 +49,6 @@ export function useChatActions() {
       const projectId = session?.projectId
       const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
       const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
-      const projectName = project?.name
 
       // Build messages from session history — include tool call context
       // so the LLM has full conversation history (text + tool_use + tool_result)
@@ -113,17 +98,47 @@ export function useChatActions() {
         }
       }
 
-      // Refresh dynamic tool catalog (skills, sub-agents, extensions)
-      await ensureRequestToolCatalogFresh()
-
-      // Fetch tool definitions from the C# Worker.
-      // Preset selection: workingFolder present = coding, otherwise chat.
-      const toolPreset = workingFolder ? 'coding' : 'chat'
-      const tools = await getToolDefinitions(toolPreset)
-
-      // System prompt is now built by the backend PromptBuilder
-      // using personaId + workingFolder + language + userRules.
+      // Tool definitions: use whatever is already cached/registered.
+      // App startup (registerAllTools + ensureConversationReady) handles
+      // initialization; if tools aren't ready yet, send without them —
+      // the agent can still respond, just without tool-calling capability.
+      const toolPreset = opts?.toolPreset ?? (workingFolder ? 'coding' : 'chat')
       const settings = useSettingsStore.getState()
+
+      // For special presets (e.g. skill-installer), fetch async to ensure
+      // the correct tool list is used. For default presets, use cache + background fetch.
+      let workerTools: CachedToolDef[] | null
+      if (opts?.toolPreset) {
+        workerTools = await fetchToolDefinitionsAsync(opts.toolPreset)
+      } else {
+        workerTools = getCachedTools()
+        fetchToolDefinitions(toolPreset) // fire-and-forget background fetch
+      }
+      // Filter out WebSearch/WebFetch when web search is not enabled.
+      const webSearchEnabled = settings.webSearchEnabled
+      const filteredWorkerTools = (workerTools ?? []).filter(
+        (t) => webSearchEnabled || (t.name !== 'WebSearch' && t.name !== 'WebFetch')
+      )
+      // Use only the Worker's preset-filtered tool list.
+      // Renderer-registered tool handlers are still available for execution
+      // (toolRegistry.get() works by name), but their definitions are NOT
+      // sent to the LLM — this keeps the tool list lean and lets the Worker's
+      // ToolPreset control what the LLM sees.
+      const tools = filteredWorkerTools
+
+      // Build runtime reminder (capability route, session state, selected files)
+      // and inject as user message prefix — NOT into system prompt — to keep
+      // the system prompt byte-stable for provider prefix cache hits.
+      // (Inspired by Reasonix's transient block approach.)
+      const userPromptText = typeof text === 'string' ? text : text.text
+      const runtimeReminder = await buildRuntimeReminder({
+        sessionId: targetSessionId,
+        modelConfig: activeProvider,
+        userPrompt: userPromptText
+      })
+      const userContent = runtimeReminder ? `${runtimeReminder}
+
+${text}` : text
 
       const provider = {
         id: activeProvider.id,
@@ -138,7 +153,7 @@ export function useChatActions() {
 
       await sendMessage({
         provider,
-        messages: [...historyMessages, { role: 'user', content: text }],
+        messages: [...historyMessages, { role: 'user', content: userContent }],
         sessionId: targetSessionId,
         tools: tools ?? undefined,
         workingFolder,

@@ -176,4 +176,38 @@ internal static partial class AgentLoop
             }
         }
     }
+
+    /// <summary>
+    /// Drains pending memory-update notes and injects them as a transient
+    /// prefix to the last user message. Like InjectTimestampPrefix, this stays
+    /// OUT of the system prompt to preserve prefix cache stability.
+    /// Design follows Reasonix's turn-tail note pattern (memory.Queue).
+    /// </summary>
+    internal static void InjectMemoryUpdatePrefix(List<AgentRuntimeChatMessage> conversation, string sessionId)
+    {
+        var notes = MemoryUpdateQueue.Drain(sessionId);
+        if (notes.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("<memory-update>");
+        sb.AppendLine("The following memory changes were just made and apply from now on:");
+        foreach (var note in notes)
+        {
+            sb.Append("- ").AppendLine(note);
+        }
+        sb.AppendLine("</memory-update>");
+        sb.AppendLine();
+
+        var block = sb.ToString();
+
+        // Find the last user message (the current turn's input)
+        for (var i = conversation.Count - 1; i >= 0; i--)
+        {
+            if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
+            {
+                conversation[i] = conversation[i] with { Text = block + conversation[i].Text };
+                break;
+            }
+        }
+    }
 }

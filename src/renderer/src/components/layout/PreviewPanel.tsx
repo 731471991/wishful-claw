@@ -40,17 +40,7 @@ const MonacoDiffEditor = lazy(() =>
   }))
 )
 
-import {
-  fileName,
-  relativePath,
-  breadcrumbParts,
-  fileExtension,
-  isExternalUrl,
-  shouldReadPreviewText,
-  tabTitle,
-  tabPathTitle,
-  TabIcon
-} from './preview-utils'
+import { breadcrumbParts, isExternalUrl, shouldReadPreviewText, tabTitle, tabPathTitle, TabIcon } from './preview-utils'
 import { usePreviewSave } from './use-preview-save'
 import { PreviewToolbar } from './preview-toolbar'
 import { PreviewSaveDialog } from './preview-save-dialog'
@@ -64,7 +54,7 @@ export function PreviewPanel({
   const { t } = useTranslation('layout')
   const tabs = useUIStore((s) => s.previewPanelTabs)
   const activeTabId = useUIStore((s) => s.activePreviewPanelTabId)
-  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null
+  const activeTab = tabs.find((tab: any) => tab.id === activeTabId) ?? null
   const closePreviewTab = useUIStore((s) => s.closePreviewTab)
   const setActivePreviewTab = useUIStore((s) => s.setActivePreviewTab)
   const updatePreviewTab = useUIStore((s) => s.updatePreviewTab)
@@ -110,7 +100,7 @@ export function PreviewPanel({
   const [copied, setCopied] = useState(false)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null)
-  const pendingCloseTab = tabs.find((tab) => tab.id === pendingCloseTabId) ?? null
+  const pendingCloseTab = tabs.find((tab: any) => tab.id === pendingCloseTabId) ?? null
 
   const fileDisplayName = activeTab
     ? tabTitle(activeTab)
@@ -183,7 +173,7 @@ export function PreviewPanel({
   }
 
   const handleSaveDialogConfirm = async (): Promise<void> => {
-    const tabToClose = tabs.find((tab) => tab.id === pendingCloseTabId)
+    const tabToClose = tabs.find((tab: any) => tab.id === pendingCloseTabId)
     if (!tabToClose) {
       setShowSaveDialog(false)
       setPendingCloseTabId(null)
@@ -314,7 +304,7 @@ export function PreviewPanel({
       {showTabStrip ? (
         <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border/50 bg-background px-1">
           <div className="flex min-w-0 flex-1 items-end gap-0.5 overflow-x-auto pt-1">
-            {tabs.map((tab) => {
+            {tabs.map((tab: any) => {
               const active = tab.id === activeTab.id
               return (
                 <div

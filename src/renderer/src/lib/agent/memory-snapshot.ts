@@ -1,18 +1,18 @@
 import { IPC } from '@renderer/lib/ipc/channels'
 import type { IPCClient } from '@renderer/lib/tools/tool-types'
-import { GlobalMemorySnapshot, LayeredMemorySnapshot, SessionMemoryScope, joinFsPath } from './memory-files'
+import { GlobalMemorySnapshot, LayeredMemorySnapshot, SessionMemoryScope, joinFsPath, layeredMemoryListeners, loadDailyMemoryEntries, loadOptionalMemoryFile, loadProjectDailyMemoryEntries, normalizeWatchPath, resolveProjectMemoryTextFileForTarget, snapshotsEqual, toOptionalEntry, _memState } from './memory-files'
 
 
 export function getLayeredMemorySnapshot(): LayeredMemorySnapshot {
-  return cachedLayeredSnapshot
+  return _memState.cachedLayeredSnapshot
 }
 
 export function getGlobalMemorySnapshot(): GlobalMemorySnapshot {
   return {
-    path: cachedLayeredSnapshot.globalMemory?.path,
-    content: cachedLayeredSnapshot.globalMemory?.content,
-    version: cachedLayeredSnapshot.version,
-    updatedAt: cachedLayeredSnapshot.updatedAt
+    path: _memState.cachedLayeredSnapshot.globalMemory?.path,
+    content: _memState.cachedLayeredSnapshot.globalMemory?.content,
+    version: _memState.cachedLayeredSnapshot.version,
+    updatedAt: _memState.cachedLayeredSnapshot.updatedAt
   }
 }
 
@@ -60,21 +60,21 @@ function getRendererEnvHomeDir(): string | undefined {
 }
 
 export async function resolveGlobalMemoryHomePath(ipc: IPCClient): Promise<string | undefined> {
-  if (cachedGlobalHomePath) {
-    return cachedGlobalHomePath
+  if (_memState.cachedGlobalHomePath) {
+    return _memState.cachedGlobalHomePath
   }
 
   const globalMemoryHomePath = await invokeStringIpc(ipc, IPC.APP_GLOBAL_MEMORY_HOME)
   if (globalMemoryHomePath) {
-    cachedGlobalHomePath = globalMemoryHomePath
-    return cachedGlobalHomePath
+    _memState.cachedGlobalHomePath = globalMemoryHomePath
+    return _memState.cachedGlobalHomePath
   }
 
   const homeDirResult = await invokeStringIpc(ipc, IPC.APP_HOMEDIR)
   const homeDir = homeDirResult ?? getRendererEnvHomeDir()
   if (homeDir) {
-    cachedGlobalHomePath = joinFsPath(homeDir, '.open-cowork')
-    return cachedGlobalHomePath
+    _memState.cachedGlobalHomePath = joinFsPath(homeDir, '.open-cowork')
+    return _memState.cachedGlobalHomePath
   }
 
   return undefined
@@ -209,8 +209,8 @@ async function buildLayeredMemorySnapshot(
         : undefined,
     globalDailyMemory,
     projectDailyMemory,
-    version: cachedLayeredSnapshot.version,
-    updatedAt: cachedLayeredSnapshot.updatedAt
+    version: _memState.cachedLayeredSnapshot.version,
+    updatedAt: _memState.cachedLayeredSnapshot.updatedAt
   }
 }
 
@@ -219,31 +219,31 @@ async function ensurePrimaryMemoryWatcher(
   filePath: string | undefined
 ): Promise<void> {
   const normalizedPath = filePath ? normalizeWatchPath(filePath) : undefined
-  if (normalizedPath && watchedLayerPathKey && watchedLayerPathKey === normalizedPath) return
+  if (normalizedPath && _memState.watchedLayerPathKey && _memState.watchedLayerPathKey === normalizedPath) return
 
-  if (layeredMemoryWatchCleanup && watchedLayerPath) {
-    layeredMemoryWatchCleanup()
-    layeredMemoryWatchCleanup = null
-    await ipc.invoke(IPC.FS_UNWATCH_FILE, { path: watchedLayerPath }).catch(() => {})
+  if (_memState.layeredMemoryWatchCleanup && _memState.watchedLayerPath) {
+    _memState.layeredMemoryWatchCleanup()
+    _memState.layeredMemoryWatchCleanup = null
+    await ipc.invoke(IPC.FS_UNWATCH_FILE, { path: _memState.watchedLayerPath }).catch(() => {})
   }
 
   if (!filePath || !normalizedPath) {
-    watchedLayerPath = undefined
-    watchedLayerPathKey = undefined
+    _memState.watchedLayerPath = undefined
+    _memState.watchedLayerPathKey = undefined
     return
   }
 
-  watchedLayerPath = filePath
-  watchedLayerPathKey = normalizedPath
+  _memState.watchedLayerPath = filePath
+  _memState.watchedLayerPathKey = normalizedPath
   await ipc.invoke(IPC.FS_WATCH_FILE, { path: filePath }).catch(() => {})
-  layeredMemoryWatchCleanup = ipc.on(IPC.FS_FILE_CHANGED, (...args: unknown[]) => {
+  _memState.layeredMemoryWatchCleanup = ipc.on(IPC.FS_FILE_CHANGED, (...args: unknown[]) => {
     const data = args[0] as { path?: string } | undefined
     if (!data?.path) return
     if (normalizeWatchPath(data.path) !== normalizedPath) return
     void loadLayeredMemorySnapshot(ipc, {
-      workingFolder: cachedLayeredSnapshot.projectRootPath,
-      sshConnectionId: cachedLayerSshConnectionId,
-      scope: cachedLayerScope
+      workingFolder: _memState.cachedLayeredSnapshot.projectRootPath,
+      sshConnectionId: _memState.cachedLayerSshConnectionId,
+      scope: _memState.cachedLayerScope
     })
   })
 }
@@ -257,9 +257,9 @@ export async function loadLayeredMemorySnapshot(
   } = {}
 ): Promise<LayeredMemorySnapshot> {
   const nextSnapshot = await buildLayeredMemorySnapshot(ipc, options)
-  const previousSnapshot = cachedLayeredSnapshot
-  cachedLayerSshConnectionId = options.sshConnectionId?.trim() || undefined
-  cachedLayerScope = options.scope ?? 'main'
+  const previousSnapshot = _memState.cachedLayeredSnapshot
+  _memState.cachedLayerSshConnectionId = options.sshConnectionId?.trim() || undefined
+  _memState.cachedLayerScope = options.scope ?? 'main'
 
   const materializedSnapshot: LayeredMemorySnapshot = {
     ...nextSnapshot,
@@ -268,37 +268,37 @@ export async function loadLayeredMemorySnapshot(
   }
 
   if (!snapshotsEqual(previousSnapshot, materializedSnapshot)) {
-    layeredMemoryVersion += 1
-    layeredMemoryUpdatedAt = Date.now()
-    cachedLayeredSnapshot = {
+    _memState.layeredMemoryVersion += 1
+    _memState.layeredMemoryUpdatedAt = Date.now()
+    _memState.cachedLayeredSnapshot = {
       ...materializedSnapshot,
-      version: layeredMemoryVersion,
-      updatedAt: layeredMemoryUpdatedAt
+      version: _memState.layeredMemoryVersion,
+      updatedAt: _memState.layeredMemoryUpdatedAt
     }
 
     for (const listener of layeredMemoryListeners) {
-      listener(cachedLayeredSnapshot)
+      listener(_memState.cachedLayeredSnapshot)
     }
   } else {
-    cachedLayeredSnapshot = {
+    _memState.cachedLayeredSnapshot = {
       ...materializedSnapshot,
-      version: layeredMemoryVersion,
-      updatedAt: layeredMemoryUpdatedAt
+      version: _memState.layeredMemoryVersion,
+      updatedAt: _memState.layeredMemoryUpdatedAt
     }
   }
 
-  const primaryWatchPath = cachedLayerSshConnectionId
-    ? cachedLayeredSnapshot.globalMemory?.path ||
-      cachedLayeredSnapshot.globalSoul?.path ||
-      cachedLayeredSnapshot.globalUser?.path
-    : cachedLayeredSnapshot.globalMemory?.path ||
-      cachedLayeredSnapshot.globalSoul?.path ||
-      cachedLayeredSnapshot.globalUser?.path ||
-      cachedLayeredSnapshot.agents?.path
+  const primaryWatchPath = _memState.cachedLayerSshConnectionId
+    ? _memState.cachedLayeredSnapshot.globalMemory?.path ||
+      _memState.cachedLayeredSnapshot.globalSoul?.path ||
+      _memState.cachedLayeredSnapshot.globalUser?.path
+    : _memState.cachedLayeredSnapshot.globalMemory?.path ||
+      _memState.cachedLayeredSnapshot.globalSoul?.path ||
+      _memState.cachedLayeredSnapshot.globalUser?.path ||
+      _memState.cachedLayeredSnapshot.agents?.path
 
   await ensurePrimaryMemoryWatcher(ipc, primaryWatchPath)
 
-  return cachedLayeredSnapshot
+  return _memState.cachedLayeredSnapshot
 }
 
 export async function loadGlobalMemorySnapshot(

@@ -29,6 +29,9 @@
     "skills": {
       "label": "Skills",
       "desc": "Manage installed skills and browse the online market"
+    },
+    "mcp": {
+      "label": "MCP"
     }
   },
   "general": {
@@ -724,7 +727,12 @@
     "disabledError": "Web search is disabled. Please enable it in settings.",
     "apiKeyRequired": "API key is required for this provider.",
     "testSuccess": "Web search test successful! Found {{count}} results.",
-    "testFailed": "Web search test failed: {{error}}"
+    "testFailed": "Web search test failed: {{error}}",
+    "browserSearchTitle": "Built-in Browser Search",
+    "browserSearchDesc": "Searches directly via the built-in Chromium browser. No API key required, always available. Supports Bing, Baidu, and Google.",
+    "browserSearchHint": "The Agent can use the BrowserSearch tool directly. Search results are visible in the browser panel on the right.",
+    "apiSearchTitle": "API Search (Optional)",
+    "apiSearchDesc": "AI-enhanced search via API providers. Higher quality results but requires an API key."
   },
   "skills": {
     "tabs": {
@@ -760,7 +768,105 @@
     },
     "installer": {
       "title": "Skill Installer",
-      "emptyHint2": "Copy an install prompt from the market, paste it here and send to the Agent"
+      "emptyHint2": "Tell the Agent which skill you want to install, e.g.:\n“Install web-composite-search”\nThe Agent will search the marketplace and install it automatically"
+    }
+  },
+  "mcp": {
+    "title": "MCP Servers",
+    "subtitle": "Manage Model Context Protocol server connections",
+    "searchServers": "Search servers...",
+    "addServerTitle": "Add MCP Server",
+    "addServerDesc": "Configure a new MCP server connection",
+    "addServer": "Add Server",
+    "manualCreate": "Manual",
+    "importJson": "Import JSON",
+    "name": "Name",
+    "namePlaceholder": "My MCP Server",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional description",
+    "transport": "Transport",
+    "command": "Command",
+    "commandPlaceholder": "npx",
+    "arguments": "Arguments",
+    "argumentsPlaceholder": "-y @modelcontextprotocol/server-filesystem",
+    "argumentsHint": "Space-separated arguments",
+    "workingDirectory": "Working Directory",
+    "workingDirectoryPlaceholder": "/path/to/dir",
+    "envVars": "Environment Variables",
+    "envVarsPlaceholder": "KEY=value",
+    "envVarsHint": "One per line: KEY=value",
+    "url": "URL",
+    "urlPlaceholderSse": "https://example.com/sse",
+    "urlPlaceholderHttp": "https://example.com/mcp",
+    "headers": "Headers",
+    "headersPlaceholder": "Authorization: Bearer token",
+    "headersHint": "One per line: Key: Value",
+    "autoFallback": "Auto Fallback",
+    "autoFallbackDesc": "Fall back to SSE if HTTP fails",
+    "connect": "Connect",
+    "connecting": "Connecting...",
+    "disconnect": "Disconnect",
+    "refresh": "Refresh",
+    "connectedTo": "Connected to {{name}}",
+    "disconnectedFrom": "Disconnected from {{name}}",
+    "connectionFailed": "Connection failed",
+    "deleteConfirm": "Delete \"{{name}}\"?",
+    "deleteServer": "Delete",
+    "serverRemoved": "Server removed",
+    "serverAdded": "Server \"{{name}}\" added",
+    "refreshed": "Refreshed",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "noServers": "No MCP servers configured",
+    "noTools": "No tools available",
+    "noResources": "No resources available",
+    "noPrompts": "No prompts available",
+    "selectToConfig": "Select a server to configure",
+    "importJsonInvalid": "Invalid JSON format",
+    "importJsonSuccess": "Imported {{count}} servers",
+    "importJsonFailed": "Import failed",
+    "importJsonPlaceholder": "{\n  \"mcpServers\": {\n    \"server-name\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"some-package\"]\n    }\n  }\n}",
+    "importJsonHint": "Paste Claude Code / .mcp.json format",
+    "importJsonAction": "Import",
+    "tabs": {
+      "installed": "Installed",
+      "market": "Market"
+    },
+    "browseMarket": "Browse Market",
+    "market": {
+      "searchPlaceholder": "Search MCP servers...",
+      "searching": "Searching...",
+      "searchFailed": "Search failed",
+      "noResults": "No servers found",
+      "noResultsHint": "Try a different keyword",
+      "searchHint": "Search the official MCP Registry",
+      "searchHintDesc": "registry.modelcontextprotocol.io",
+      "noDescription": "No description",
+      "configRequired": "config required",
+      "install": "Install",
+      "installed": "Installed \"{{name}}\"",
+      "installFailed": "Install failed",
+      "noInstallablePackage": "No installable package",
+      "cannotAutoInstall": "Cannot auto-install this server",
+      "requiresEnvVars": "This server requires configuration"
+    },
+    "detail": {
+      "repository": "Repository",
+      "website": "Website",
+      "package": "Package",
+      "registry": "Registry",
+      "identifier": "Identifier",
+      "transport": "Transport",
+      "runtime": "Runtime",
+      "remoteEndpoint": "Remote Endpoint",
+      "environmentVariables": "Environment Variables",
+      "previewCommand": "Preview Command",
+      "install": "Install",
+      "installing": "Installing...",
+      "installed": "Installed \"{{name}}\"",
+      "installFailed": "Install failed",
+      "fillRequired": "Please fill required fields",
+      "cannotInstall": "Cannot install this server"
     }
   }
 }

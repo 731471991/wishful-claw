@@ -12,6 +12,7 @@ import { useGoalStore } from '@renderer/stores/goal-store'
 import { usePlanStore } from '@renderer/stores/plan-store'
 import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
 import { isProjectSession, workspaceContextAvailable } from '@renderer/lib/session-scope'
+import type { AppMode } from '@renderer/stores/ui-types'
 
 export interface InputAreaSelectorsInput {
   sessionId?: string
@@ -46,7 +47,8 @@ export interface InputAreaSelectorsOutput {
 
   // UI
   chatView: string
-  mode: string
+  isHomeComposer: boolean
+  mode: AppMode
   openSettings: (tab: string) => void
   openFilePreview: (path: string) => void
 
@@ -83,9 +85,9 @@ function getTargetSession(s: ReturnType<typeof useChatStore.getState>, sessionId
   const session = idx !== undefined ? s.sessions[idx] : undefined
   if (!session) return undefined
   return {
-    id: session.id, projectId: session.projectId, pluginId: session.pluginId,
-    providerId: session.providerId, modelId: session.modelId,
-    modelSelectionMode: session.modelSelectionMode,
+    id: session.id, projectId: session.projectId ?? null, pluginId: session.pluginId ?? null,
+    providerId: session.providerId ?? null, modelId: session.modelId ?? null,
+    modelSelectionMode: session.modelSelectionMode ?? null,
     messageCount: session.messageCount, sshConnectionId: session.sshConnectionId ?? null
   }
 }
@@ -94,6 +96,7 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
   const { sessionId, workingFolder, modelRoute } = input
   const chatView = useUIStore((s) => s.chatView)
   const isSessionComposer = chatView === 'session' || Boolean(sessionId)
+
   const isHomeComposer = chatView === 'home' || chatView === 'project'
 
   // ── Settings ────────────────────────────────────────────────────
@@ -126,7 +129,7 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
         : null
       const selection = session
         ? resolveSessionModelSelection({
-            session, providers, activeProviderId, activeModelId,
+            session: session as any, providers, activeProviderId, activeModelId,
             globalMode: mainModelSelectionMode,
             channelProviderId: channel?.providerId, channelModelId: channel?.model
           })
@@ -136,9 +139,9 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
       const modelId = fastConfig?.model ??
         (selection ? (selection.isAutoModeActive && autoSelection?.modelId ? autoSelection.modelId : selection.modelId) : activeModelId)
       if (!providerId || !modelId) return null
-      const provider = providers.find((item) => item.id === providerId)
+      const provider = providers.find((item: any) => item.id === providerId)
       if (!provider) return null
-      const model = provider.models.find((item) => item.id === modelId)
+      const model = provider.models.find((item: any) => item.id === modelId)
       if (!model) return null
       return { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey, type: provider.type, models: provider.models, modelId }
     })
@@ -146,13 +149,13 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
 
   const supportsVision = React.useMemo(() => {
     if (!activeProvider) return false
-    const model = activeProvider.models.find((m) => m.id === activeProvider.modelId)
+    const model = activeProvider.models.find((m: any) => m.id === activeProvider.modelId)
     return modelSupportsVision(model, activeProvider.type)
   }, [activeProvider])
 
   const composerModelCfg = React.useMemo<AIModelConfig | null>(() => {
     if (!activeProvider) return null
-    return activeProvider.models.find((m) => m.id === activeProvider.modelId) ?? null
+    return activeProvider.models.find((m: any) => m.id === activeProvider.modelId) ?? null
   }, [activeProvider])
 
   // ── UI ──────────────────────────────────────────────────────────
@@ -185,8 +188,8 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
   )
 
   const draftSessionId = sessionId ?? (chatView === 'session' ? activeSessionId : null)
-  const projectScoped = isProjectSession({ chatView, session: targetSession, activeProjectId, workingFolder })
-  const workspaceReady = workspaceContextAvailable({ chatView, session: targetSession, activeProjectId, workingFolder })
+  const projectScoped = isProjectSession({ chatView, session: targetSession as any, activeProjectId, workingFolder })
+  const workspaceReady = workspaceContextAvailable({ chatView, session: targetSession as any, activeProjectId, workingFolder })
   // needsWorkingFolder is computed in the main component (depends onSelectFolder prop)
 
   // ── Plan / goal ─────────────────────────────────────────────────
@@ -204,7 +207,7 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
   // ── Auth ────────────────────────────────────────────────────────
   const activeProviderForAuth = useProviderStore(
     useShallow((s) => {
-      const provider = s.providers.find((p) => p.id === s.activeProviderId)
+      const provider = s.providers.find((p: any) => p.id === s.activeProviderId)
       return provider ? { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey } : null
     })
   )
@@ -215,8 +218,8 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
     language, mainModelSelectionMode, autoApprove, permissionWhitelistEnabled,
     clarifyAutoAcceptRecommended, animationsEnabled,
     webSearchEnabled, webSearchProvider, webSearchApiKey, webSearchRequiresApiKey, canToggleWebSearch,
-    targetSession, channels, autoSelection, activeProvider, supportsVision, composerModelCfg,
-    chatView, mode, openSettings, openFilePreview,
+    targetSession, channels, autoSelection: autoSelection as any, activeProvider: activeProvider as any, supportsVision, composerModelCfg,
+    chatView, isHomeComposer, mode, openSettings: openSettings as any, openFilePreview,
     activeProjectId, activeSshConnectionId, activeSessionId, hasMessages, clearSessionMessages,
     draftSessionId, projectScoped, workspaceReady,
     planMode, activeGoal, hasActiveGoal, pendingReviewPlanId,

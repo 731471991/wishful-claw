@@ -2,7 +2,7 @@
 // Manages drag-resize, auto-height, and layout clamping
 
 import * as React from 'react'
-import type { FileAwareEditorHandle } from '../FileAwareEditor'
+import type { FileAwareEditorHandle } from '../file-aware-editor-utils'
 import type { EditorDocumentNode, SelectedFileItem } from '@renderer/lib/select-file-editor'
 import {
   MIN_INPUT_HEIGHT,

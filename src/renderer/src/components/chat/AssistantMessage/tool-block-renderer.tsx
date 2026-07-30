@@ -68,7 +68,6 @@ export function ToolBlockRenderer({
   liveFadeInClassName,
   sessionId,
   trackedChangeByToolUseId,
-  t
 }: ToolBlockRendererProps): React.JSX.Element | null {
   const executionItem = toolExecutionOutline.itemByToolUseId.get(block.id)
   if (

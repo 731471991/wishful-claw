@@ -1,41 +1,13 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FileCode,
-  FilePlus2,
-  FileX2,
-  FileEdit,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Check,
-  Copy,
-  ChevronDown,
-  ChevronRight
-} from 'lucide-react'
-import { cn } from '@renderer/lib/utils'
-import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
+import { Loader2, Check, Copy } from 'lucide-react'
 import type { AgentRunFileChange } from '@renderer/stores/agent-store'
-import { useAgentStore } from '@renderer/stores/agent-store'
 import { MONO_FONT } from '@renderer/lib/constants'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
-import { Button } from '@renderer/components/ui/button'
-import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { toMessagePackChannel } from '../../../../shared/messagepack/binary-ipc'
 import { LazySyntaxHighlighter } from './LazySyntaxHighlighter'
-import {
-  type FileChangeCardProps, type FilePreviewTone, type CompactActionOp,
-  type DiffLine, type TrackedDiffContent,
-  type ResolvedWritePayload,
-  detectLang, shortPath, fileName, normalizeLineEndings, formatCompactCount,
-  snapshotText, snapshotLineTotal, canRenderInlineSnapshot,
-  computeDiff, summarizeDiff, foldContext,
-  diffDisplayLineNumber, buildDiffCopyText, diffLineStyle,
-  resolveEditPayload, resolveWritePayload, hasPendingEditPreviewContent,
-  resolveEditSummaryDiff, trackedStatusLabelKey, trackedTransportLabelKey,
-  trackedStatusTone, trackedStatusDotTone
-} from './FileChangeCard/utils'
+import { type DiffLine, type TrackedDiffContent, detectLang, snapshotText, canRenderInlineSnapshot, computeDiff, summarizeDiff, foldContext, diffDisplayLineNumber, buildDiffCopyText, diffLineStyle } from './FileChangeCard/utils'
 import { FilePreviewShell, SnapshotSummaryNotice } from './file-change-previews'
 
 // ── Types ────────────────────────────────────────────────────────

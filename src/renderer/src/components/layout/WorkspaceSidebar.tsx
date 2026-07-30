@@ -1,54 +1,17 @@
 ﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MessageSquare,
-  Settings,
-  FolderTree,
-  Sparkles,
-  Ghost,
-  RefreshCw,
-  PenTool,
-  GitBranch,
-  Plus,
-  Search,
-  Pin,
-  Trash2,
-  Pencil,
-  FolderOpen,
-  Eraser,
-  Copy,
-  ChevronDown,
-  ChevronRight,
-  PanelLeftClose,
-  Archive,
-  Image,
-  CalendarDays
-} from 'lucide-react'
+import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, PanelLeftClose, Image, CalendarDays } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger
-} from '@renderer/components/ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@renderer/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@renderer/components/ui/dropdown-menu'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useChatStore, type Session, type Project } from '@renderer/stores/chat-store'
+import { useChatStore, type Session } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
 import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
-import { MoreHorizontal } from 'lucide-react'
 
 // ─── Helpers ───
 import { SessionItem, ProjectItem, sortProjects, sortSessions } from './workspace-sidebar-items'
-import { ResizeHandle, renderNavItem } from './workspace-sidebar-nav'
+import { ResizeHandle, renderNavItem, NavButtonItem } from './workspace-sidebar-nav'
 
 export function WorkspaceSidebar(): React.JSX.Element | null {
   const { t } = useTranslation('layout')
@@ -72,7 +35,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   // Active project ID — used for highlighting only.
   // Expand/collapse is purely user-controlled via clicking the project title.
   // No auto-expand on active project change.
-  const activeProjectId = useChatStore((s) => s.activeProjectId)
 
   // On initial mount: if there's an active session, expand its parent project
   // so the user can see which conversation is focused after restart.

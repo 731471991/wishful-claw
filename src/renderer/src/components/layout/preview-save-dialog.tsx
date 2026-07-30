@@ -35,7 +35,7 @@ export function PreviewSaveDialog({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              onClick={(event) => {
+              onClick={(event: any) => {
                 event.preventDefault()
                 onDiscard()
               }}
@@ -43,7 +43,7 @@ export function PreviewSaveDialog({
               {t('preview.discard')}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={(event) => {
+              onClick={(event: any) => {
                 event.preventDefault()
                 void onConfirm()
               }}

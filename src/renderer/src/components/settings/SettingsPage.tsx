@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Search, Puzzle } from 'lucide-react'
+import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Search, Puzzle, Cable } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
@@ -9,9 +9,9 @@ import { PluginPanel } from '@renderer/components/settings/PluginPanel'
 import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
-import { WebSearchPanel } from '@renderer/components/settings/WebSearchPanel'
 import { SshPanel } from '@renderer/components/settings/SshPanel'
 import { SkillPanel } from '@renderer/components/settings/skill-panel'
+import { McpPanel } from '@renderer/components/settings/mcp-panel'
 import { Server as ServerIcon } from 'lucide-react'
 
 function SettingsPage(): React.JSX.Element {
@@ -48,7 +48,8 @@ function SettingsPage(): React.JSX.Element {
     {
       label: t('tabs.groups.extensions', { defaultValue: '扩展' }),
       items: [
-        { id: 'skills', icon: <Puzzle className="size-4" />, label: t('tabs.skills.label', { defaultValue: 'Skills' }) }
+        { id: 'skills', icon: <Puzzle className="size-4" />, label: t('tabs.skills.label', { defaultValue: 'Skills' }) },
+        { id: 'mcp', icon: <Cable className="size-4" />, label: t('tabs.mcp.label', { defaultValue: 'MCP' }) }
       ]
     },
     {
@@ -139,18 +140,6 @@ function SettingsPage(): React.JSX.Element {
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <PersonaPanel />
               </div>
-            ) : settingsTab === 'websearch' ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
-                  <WebSearchPanel />
-                </div>
-              </div>
-            ) : settingsTab === 'websearch' ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
-                  <WebSearchPanel />
-                </div>
-              </div>
             ) : settingsTab === 'channel' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <PluginPanel />
@@ -162,6 +151,10 @@ function SettingsPage(): React.JSX.Element {
             ) : settingsTab === 'skills' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <SkillPanel />
+              </div>
+            ) : settingsTab === 'mcp' ? (
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                <McpPanel />
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto">

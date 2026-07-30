@@ -9,7 +9,7 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { cn } from '@renderer/lib/utils'
 import type { TFunction } from 'i18next'
-import type { AgentFilesTab, AgentFilesChangeSource } from './agent-files-types'
+import type { AgentFilesTab } from '@renderer/stores/ui-types'
 import type { AgentFilesState } from './use-agent-files'
 import type { AgentFilesActions } from './use-agent-files-actions'
 
@@ -23,7 +23,7 @@ interface AgentFilesTitlebarProps {
   busyAction: string | null
   runGitAction: AgentFilesActions['runGitAction']
   sessionView: AgentFilesState['sessionView']
-  refreshSessionRunChanges: AgentFilesActions['refreshSessionRunChanges']
+  refreshSessionRunChanges: (sessionId?: string) => void
   setCommitOpen: React.Dispatch<React.SetStateAction<boolean>>
   t: TFunction
 }

@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Copy, Check } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import type { ToolCallCardProps, SearchOutputMeta, SearchVisualState } from './types'
-import { getSearchVisualState } from './utils'
 
 // ── CopyBtn ──
 

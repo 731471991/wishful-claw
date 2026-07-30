@@ -7,13 +7,7 @@ import type { useChatStore } from '@renderer/stores/chat-store'
 import type { useTeamStore } from '@renderer/stores/team-store'
 import type { RequestRetryState } from '@renderer/lib/agent/types'
 import type { EditableUserMessageDraft } from '@renderer/lib/image-attachments'
-import type { TFunction } from 'i18next'
-import { getCompactSummaryDisplayText } from '@renderer/lib/agent/context-compression'
 import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
-import { buildOrchestrationRuns } from '@renderer/lib/orchestration/build-runs'
-import { selectSessionScopedAgentState } from '@renderer/lib/agent/session-scoped-agent-state'
-import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
-import { DB_MESSAGES_LIST_LOCATOR_MSGPACK_CHANNEL } from '../../../../../shared/messagepack/binary-ipc'
 
 
 export interface MessageListProps {
