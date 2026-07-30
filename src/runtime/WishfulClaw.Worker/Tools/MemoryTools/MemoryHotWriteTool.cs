@@ -115,6 +115,9 @@ public sealed class MemoryHotWriteTool : IToolExecutor
 
             await WriteAndFlushAsync(path, updated, context.CancellationToken);
 
+            MemoryUpdateQueue.Enqueue(context.SessionId ?? "",
+                $"Hot memory section '{section}' was deleted (scope={scope}). Disregard its content still shown in the cached memory until next session.");
+
             return new ToolResult($"Section '{section}' deleted from hot memory (scope={scope}).");
 
         }
@@ -126,6 +129,9 @@ public sealed class MemoryHotWriteTool : IToolExecutor
         fileContent = UpsertSection(fileContent, section!, content!);
 
         await WriteAndFlushAsync(path, fileContent, context.CancellationToken);
+
+        MemoryUpdateQueue.Enqueue(context.SessionId ?? "",
+            $"Hot memory section '{section}' was written/updated (scope={scope}). Current content:\n{content!.Trim()}");
 
         return new ToolResult($"Section '{section}' written to hot memory (scope={scope}).");
 

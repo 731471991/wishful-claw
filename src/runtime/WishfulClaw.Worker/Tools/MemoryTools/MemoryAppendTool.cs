@@ -3,6 +3,8 @@ using WishfulClaw.Core.Tools;
 using WishfulClaw.Worker.Modules.Db;
 using WishfulClaw.Workspace.Memory;
 
+using WishfulClaw.Worker.AgentRuntime;
+
 namespace WishfulClaw.Worker.Tools.MemoryTools;
 
 using static WishfulClaw.Worker.Tools.ToolHelpers;
@@ -50,8 +52,11 @@ public sealed class MemoryAppendTool : IToolExecutor
         };
         var id = db.Insertable(entry).ExecuteReturnIdentity();
 
-        return Task.FromResult(new ToolResult(
-            $"Memory entry #{id} appended successfully (priority={priority.ToString().ToLowerInvariant()}, scope={scope})."));
+        MemoryUpdateQueue.Enqueue(context.SessionId ?? "",
+            $"Memory entry #{id} appended (priority={priorityStr}, scope={scope}): {title}");
+
+        return Task.FromResult(new ToolResult(
+            $"Memory entry #{id} appended successfully (priority={priority.ToString().ToLowerInvariant()}, scope={scope})."));
     }
 
     private static string GenerateTitle(string content)

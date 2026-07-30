@@ -63,6 +63,10 @@ internal static partial class AgentLoop
         // Inject current timestamp as transient user-message prefix (cache-safe)
         InjectTimestampPrefix(conversation);
 
+        // Drain pending memory-update notes and inject as transient user-message prefix (cache-safe)
+        // Mid-session memory changes ride the turn, not the cached system prefix.
+        InjectMemoryUpdatePrefix(conversation, state.SessionId ?? "");
+
         var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 0); // 0 = unlimited
         var hasIterationLimit = requestedMaxIterations > 0;
         var providerTurnOnly = JsonHelpers.GetBool(parameters, "providerTurnOnly", false);

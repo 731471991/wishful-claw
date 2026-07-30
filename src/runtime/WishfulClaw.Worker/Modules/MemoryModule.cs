@@ -81,7 +81,7 @@ internal sealed class MemoryModule : IWorkerModule
                 await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
             }
             await File.WriteAllTextAsync(path, content);
-            SystemPromptCache.Clear(); // Invalidate cached system prompt — memory content changed
+            MemoryUpdateQueue.Enqueue("", "Hot memory file was overwritten via memory/write endpoint.");
             return WorkerResponse.Json(new { ok = true });
         });
     }
