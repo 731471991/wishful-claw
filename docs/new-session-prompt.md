@@ -14,8 +14,8 @@
 
 1. `AGENTS.md` — 项目结构、分层约定、参考源码路径、Git 提交规范、大文件拆分规则
 2. `docs/dev-workflow.md` — 六阶段开发工作流 SOP
-3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五）
-4. `docs/smoke-test-checklist.md` — 冒烟测试清单（含本轮修复记录）
+3. `docs/mvp-v2.md` — MVP v2 计划（8 项待办，含执行顺序和完成标准）
+4. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五）
 
 ## 参考源码位置（笔记本实际路径）
 
@@ -24,137 +24,118 @@
 - OpenClaw.net：`D:\claw\openclaw.net`（记忆主动回忆 / 上下文预算）
 - DeepSeek-Reasonix：`D:\claw\DeepSeek-Reasonix`（prefix cache / 重试策略参考）
 
+## MVP v1 已完成（迭代一~十五，已合并 main，tag v0.15.0）
+
+MVP v1 核心链路全部完成：Agent Loop + 工具链 + 记忆 + 人格 + Skill 市场 + MCP 管理。
+
+### 迭代十五完成的工作
+
+**Skill 市场与 MCP 管理**
+- Skill 安装/卸载/列表管理（SkillsMenu 组件 + skills-store + SkillScanEngine）
+- MCP Server 配置管理（mcp-panel / mcp-server-config / mcp-connection-control / mcp-registry）
+- MCP 工具动态注册和调用（mcp-tool / mcp-capability-bridge）
+- use_capability 工具：统一的能力发现与调用入口（替代旧 discover_tools）
+- skill_management 工具：Agent 可自主安装/卸载 Skill
+- 浏览器搜索工具（browser-search-tool）+ WebFetch 模块
+
+**缓存命中率优化**
+- 动态上下文注入移到 user 消息前缀（runtime-reminder / memory-notes / timestamp），不碰 system prompt
+- 缓存命中率从 60% 提升到 ~95%（Anthropic prefix cache）
+- 缓存指标修复：基于最后一次 API 响应的 cache_read/cache_creation 计算
+
+**工具系统优化**
+- discover_tools 删除，与 use_capability 去重
+- 工具优先级引导注入 Bash 工具描述（Reasonix 风格）
+- ToolCache + ToolSizeBudget：工具定义缓存和大小预算管理
+- ShellExecuteTool 重写（PowerShell 语法提示 / 安全策略 / 超时控制）
+
+**通知与 UI 修复**
+- Agent Loop 结束通知移到渲染端，带焦点检测（窗口聚焦时不弹通知）
+- 桌面通知：中文标题 + 最后回复摘要 + 应用图标
+- 重试 Banner i18n + 简化文案
+- 会话标题去除 system-reminder 前缀
+- 应用名称设为 WishfulClaw，任务栏图标修复
+
+**TypeScript 编译错误全部清零**
+- 从 1888 个 TS 错误降至 0（4 个 batch，逐文件手动修复）
+- 修复类型：未使用导入(TS6133)、类型不匹配(TS2322)、属性不存在(TS2339)、模块未找到(TS2307)、ASI 陷阱、可选依赖声明等
+- tsconfig 保持严格模式（noUnusedLocals / noUnusedParameters / strict 全开）
+- 仅保留 2 处 @ts-ignore（mammoth / react-pdf 可选依赖）
+
+### 迭代十二~十四已完成的工作
+
+- **迭代十二**：SSH SFTP + 远程执行基础设施、提示词系统重构（prefix cache ~95%）、重试策略优化、子 Agent 面板修复、项目侧边栏修复
+- **迭代十四**：Skill 市场基础（SkillsMenu 骨架 + skills-store + SKILL.md 解析 + SkillScanEngine 安全扫描）
+
 ## 当前状态
 
-- 迭代一~八已完成，代码已合并到 `main`（main 最新 commit: `e04aa28`）
-- 当前分支 `dev/iter-12`，已 push 到 origin
-- 最新 commit: `c9ad608`（docs: update new-session-prompt for iter-12 current state）
+- main 最新 commit: `2342fea`（merge dev/iter-15），tag `v0.15.0`
+- `dev/iter-15` 分支已合并 main 并推送远程
+- TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`
+- **每次写完代码必须确保 TS 零报错**（老大明确要求）
 
-## 迭代十二已完成的工作
+## 本次任务：MVP v2
 
-### SSH SFTP + 远程执行基础设施（后延测试）
-- SSH 连接管理（connection-manager / auth / repository）
-- DB 建表 `ssh_connections` + CRUD
-- Main 进程 SSH IPC 注册（ssh:connection:list/create/update/delete + ssh:exec）
-- AgentRuntimeSshToolExecutor 精简版
-- 密码用 safeStorage 加密存储
-- **SSH + 终端面板冒烟测试后延**，不阻塞后续迭代
+详见 `docs/mvp-v2.md`，执行顺序：
 
-### 提示词系统重构
-- PromptBuilder 重构：personaId + workingFolder + language + userRules + sshConnectionId
-- 系统提示词缓存（SystemPromptCache）：按 (personaId, workingFolder, language, userRules, sshConnectionId) 缓存
-- 时间戳注入走 user 消息前缀（不碰 system prompt），保护缓存命中率
-- Anthropic cache_control 显式断点 + tool 列表按 name 排序（字节稳定）
-- OpenAI tool 列表同样按 name 排序
-- Memory 写入后清 SystemPromptCache
-- prefix cache 命中率从 60% 提升到 ~95%
+| 顺序 | 任务 | 说明 |
+|------|------|------|
+| 1 | Runtime 分层架构重构 | Worker 拆分为 WishfulClaw.Agent / WishfulClaw.Persona，Worker 回归薄层 IPC 宿主 |
+| 2 | 缓存命中率修复 | C# 端维护 conversation 状态，每轮只接收增量消息 |
+| 3 | Skill 本地文件安装测试 | 端到端验证：安装 → Agent 使用 → 卸载 |
+| 4 | 渠道配置测试与完善 | OpenAI 兼容 + Anthropic 全链路验证 |
+| 5 | SSH 远程执行测试与完善 | SSH 连接 → 项目绑定 → Agent 远程执行 → 终端旁观 |
+| 6 | 主聊天接入工作台模式 | Agent 在指定工作区目录下执行任务 |
+| 7 | Global 全局模式接入 | 不绑定项目的通用助手模式 |
+| 8 | Goal 模式接入 | 用户设定目标后 Agent 自主拆解执行，可中断，有进度展示 |
 
-### 重试策略优化
-- ProviderRetryPolicy 重写：指数退避（500ms*2^n）+ jitter（0-250ms）+ 封顶 15s + Retry-After 优先
-- 解决级联 429 导致节点切换 cache miss
-
-### 子 Agent 面板修复
-- LEGACY_SUMMARY_PREFIXES 导出修复
-- SubAgentCard：hasSteps 检查 histMeta、effectiveToolCalls 回退历史数据、panelTitle 用 description
-- SubAgentsPanel：移除 SubAgentDetailHeader（返回按钮）、fallback 分支渲染历史子 agent
-- RightPanel：移除 subagent tab title 强制覆盖
-- ui-store：ensureSubAgentTab 用 title 参数、closeRightPanelTab 关闭最后 tab 时收起面板
-- openAgent 传 description 作为标题
-
-### 项目侧边栏修复
-- 重启后自动展开活跃项目（useRef 一次性 useEffect）
-- 移除项目标题点击跳转 chathomepage（会话切换必须点击具体会话）
-- setActiveProjectHome 不再清除 activeSessionId
-
-### 提示词优化器修复
-- toPermissionPolicySnapshot 导入修复（白屏）
-- canSidecarHandle 导入修复（请求发不出）
-- 弹窗 UI i18n 中文化
-- 复用 getActiveProvider() + activeModelId 替代手动挑 fast model（404 根因）
-- error 事件转发（不再静默吞掉）
-
-### tsc 编译验证机制修正
-- 发现 `npx tsc --noEmit` 不带 `-p` 是假编译（只走 references 不检查文件内容）
-- 正确命令：`npx tsc --noEmit -p tsconfig.web.json`
-- 清理本次修改引入的未使用导入（ArrowLeft / ipcClient / navigateToProject）
-
-### 其它
-- 文件树面板修复（useShallow 无限循环、fs:list-dir 格式、图片 base64 预览）
-- 工具 InputSchema 序列化修复（10 个工具文件 `=>` 改 `{ get; } =`）
-- ToolModule 工具 category 修复
-- 取消后消息丢失修复（cancelStream 持久化）
-- 会话时间显示优化（跨天"昨天 HH:MM"、中文化、常驻显示）
-
-## 本次任务：迭代十四 + 十五（Skill 市场 + MCP 管理）
-
-SSH 相关测试后延，迭代十三（聊天窗渲染调整）放到下个 MVP 版本。本次会话推进迭代十四和十五，两者相互独立可并行。
-
-### 迭代十四：Skill 市场
-
-**目标**：实现 Skill 的安装/卸载/列表管理和在线市场。
-
-| 步骤 | 内容 |
-|------|------|
-| 1 | SKILL.md 解析和工具注册 — 读取 Skill 目录下的 SKILL.md，解析工具定义并注册到 ToolRegistry |
-| 2 | Skill 安装/卸载/列表管理 — 复用已有 `SkillsMenu` 组件和 `skills-store` |
-| 3 | 在线 Skill 市场浏览和安装 — 对接 Skill 仓库 API，浏览/搜索/安装 |
-
-**已有基础设施**：前端已有 `SkillsMenu` 组件骨架、`skills-store`。参考 OpenCowork 的 Skill 实现。
-
-**验证标准**：从 Skill 市场安装一个 Skill → Agent 对话中能使用该 Skill 提供的工具 → 卸载后工具不可用。
-
-### 迭代十五：MCP 管理
-
-**目标**：实现 MCP Server 的配置管理和工具调用。
-
-| 步骤 | 内容 |
-|------|------|
-| 1 | MCP Server 配置管理 — 复用已有 `mcp-store`，实现增删改查 |
-| 2 | MCP 工具动态注册和调用 — MCP Server 启动后自动发现工具并注册 |
-| 3 | MCP 状态监控 — 连接状态、工具列表、调用日志 |
-
-**已有基础设施**：前端已有 `mcp-store` 骨架。参考 OpenCowork 的 MCP 客户端实现。
-
-**验证标准**：配置一个 MCP Server → 启动后自动发现其工具 → Agent 对话中能调用 MCP 工具 → 停止后工具不可用。
-
-## 迭代十二遗留事项（不阻塞本次迭代）
-
-1. SSH + 终端面板冒烟测试（后延）
-2. 冒烟测试剩余项：子 Agent（34-37）、记忆系统（25-29）、稳定性观察（49-52）
-3. 代码拆分继续：仍有 30+ 个文件超 500 行
-4. agent:changes 后端记录：Plan 11-5 中 Agent 变更审查的后端持久化
-5. 迭代十二合并 main：需用户确认后合并、打 tag v0.12.0
+**第一步优先**：Runtime 分层架构重构（为后续所有功能开发打基础）。
 
 ## 关键技术备忘
 
-- **正确的编译验证命令**：C# `dotnet build`（可加 -o 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit -p tsconfig.web.json`（必须带 -p！）
-- **Git push 需要代理**：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin dev/iter-12`
+- **编译验证命令**：C# `dotnet build`（可加 -o 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit -p tsconfig.web.json`（必须带 -p！）
+- **TS 零报错规则**：每次写完代码必须跑 tsc 验证，不允许用 @ts-ignore 偷懒（可选依赖 mammoth/react-pdf/xlsx 除外）
+- **Git push 需要代理**：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main`
 - **日志路径**：`%AppData%/wishful-claw/logs/`
 - **DB 路径**：`%USERPROFILE%/.wishful-claw/index.db`
-- **prefix cache 原理**：system prompt + tools + 历史消息前缀需稳定；DeepSeek cache 是节点本地的，429 重试路由到不同节点会 cache miss
+- **prefix cache 原理**：system prompt + tools + 历史消息前缀需 byte-stable；动态内容注入 user 消息前缀，不碰 system prompt
 - **Anthropic cache_control**：需要显式 `cache_control: { type: "ephemeral" }` 标记
-- **Reasonix 的 transient injection 模式**：动态内容注入 user 消息前缀，不碰 system prompt（本项目已采用此方案）
+- **Runtime 分层现状**：Worker 项目承载 90% 代码（192 文件/29k 行），Contracts/Core/Workspace 过薄，需要拆分
+
+## Runtime 分层架构重构要点
+
+当前 Worker 项目包含 AgentRuntime（60 文件）、Persona（9 文件）、Tools 抽象、Modules 整块（DB/Git/Skills/Extensions/Channels 等），需要拆分为：
+
+- `WishfulClaw.Agent`：AgentLoop、所有 Executor、Provider、ConversationCodec、ContextCompression、ToolCallProcessor、SubAgent
+- `WishfulClaw.Persona`：PromptBuilder、PersonaGenerator、PersonaStore
+- Core 上提：ToolSchemaBuilder、ToolDefinitionPlaceholder、ToolModuleState 移到 Core
+- Worker 回归薄层：仅保留 IPC 宿主 + Module 装载 + Program.cs
+- Contracts 精简：只留接口，JSON 序列化实现移到 Core 或 Worker
 
 ## Git 工作流
 
-- 当前在 `dev/iter-12` 分支
-- **功能单元测试通过后才 commit**，不要改一点就提交。中间反复修改不产生 commit
+- 新迭代分支：`dev/iter-16`（从 main 创建）
+- **功能单元测试通过后才 commit**，不要改一点就提交
 - 每个实施阶段完成后独立 commit，便于回滚
-- Git push 需要代理：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin dev/iter-12`
+- Git push 需要代理：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin dev/iter-16`
+- 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
 
-## 特别注意
+## 代码规范
 
 - 从 OpenCowork 搬代码时必须适配项目命名空间（`WishfulClaw.*`）和分层约定
-- 大文件搬入时按职责拆分（AGENTS.md：200~500 行为宜，超 500 行必须拆，C# 用 partial class，TS 用 export/import 模块化）
+- 大文件 200~500 行为宜，超 500 行必须拆（AGENTS.md 规则）
+- C# 用 partial class，TypeScript 用 export/import 模块化
 - 拆分后必须 `tsc --noEmit -p tsconfig.web.json` + `dotnet build` 双编译验证
-- 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
+- **先搬过来适配跑通，再按 AGENTS.md 拆分代码，不要边搬边拆**
+- **工作不容易推进时，优先保量再保质**
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -10` — 定位当前进度
-2. 读 `docs/iteration-plan.md` — 查看迭代十四、十五的详细计划
-3. 查看已有基础设施：`SkillsMenu` 组件、`skills-store`、`mcp-store` 的当前状态
-4. 参考 OpenCowork 中的 Skill 和 MCP 实现：`D:\claw\OpenCowork`
-5. 报告进度摘要，然后从迭代十四（Skill 市场）开始执行
+1. `git status` + `git log --oneline -10` — 确认当前在 main，commit `2342fea`
+2. 读 `docs/mvp-v2.md` — 查看 8 项待办的详细计划
+3. 读 `docs/dev-workflow.md` — 六阶段 SOP（探索态 → 规划态 → 规划验证 → 执行态 → 审查态 → 验证态）
+4. 创建 `dev/iter-16` 分支：`git checkout -b dev/iter-16`
+5. 从第 1 项「Runtime 分层架构重构」开始，先探索当前 Worker 项目结构
+6. 报告进度摘要，然后开始执行
 
 叫老大，我们是并肩协作的兄弟。
