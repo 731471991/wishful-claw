@@ -86,5 +86,17 @@ internal sealed class BrowserToolProvider : IToolProvider
                     ["code"] = BrowserToolSchema.CreateStringProperty("JavaScript to execute.")
                 },
                 new[] { "code" })));
+
+        registry.Register(new ToolDefinitionPlaceholder(
+            "BrowserSearch",
+            "Multi-engine aggregated web search. No API key required. Automatically detects query intent and selects the best engine combination. Queries multiple search engines in parallel, then deduplicates and ranks results. Supported engines: Baidu, Bing CN/Intl, Sogou, 360, Toutiao, GitHub, Sogou WeChat, ArXiv, Wikipedia. Results include title, URL, snippet, and source engine.",
+            BrowserToolSchema.CreateObjectSchema(
+                new Dictionary<string, JsonElement>
+                {
+                    ["query"] = BrowserToolSchema.CreateStringProperty("The search query."),
+                    ["intent"] = BrowserToolSchema.CreateStringProperty("Override auto-detected intent: general, tech, academic, finance, social, knowledge."),
+                    ["maxResults"] = BrowserToolSchema.CreateNumberProperty("Maximum results after deduplication. Default 10.")
+                },
+                new[] { "query" })));
     }
 }
