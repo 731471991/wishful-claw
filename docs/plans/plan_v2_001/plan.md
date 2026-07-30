@@ -6,15 +6,15 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：创建 WishfulClaw.Agent 项目骨架 — 新建 csproj + 目录结构，注册到 sln，配置项目引用（Core + Contracts）。验证：sln 能加载，空项目能编译。
-- [ ] 步骤2：创建 WishfulClaw.Persona 项目骨架 — 新建 csproj + 目录结构，注册到 sln，配置项目引用（Core + Contracts + Workspace）。验证：sln 能加载，空项目能编译。
-- [ ] 步骤3：迁移共享类型到 Core — 将 AgentRuntimeNativeToolCall（ToolModels.cs 中的 record）和 AgentRuntimeReverseRequests 移到 Core。更新所有引用。验证：dotnet build 通过。
-- [ ] 步骤4：迁移 WorkerHttpClientFactory 到 Agent — 移动 Runtime/WorkerHttpClientFactory.cs 到 Agent 项目，改命名空间。验证：dotnet build 通过。
-- [ ] 步骤5：迁移 Persona 9 文件到 Persona 项目 — 移动文件，改命名空间 `WishfulClaw.Worker.Persona` → `WishfulClaw.Persona`，改可见性（internal → public），更新 Worker 中的引用。验证：dotnet build 通过。
-- [ ] 步骤6：迁移 AgentRuntime 65 文件到 Agent 项目 — 移动文件，改命名空间 `WishfulClaw.Worker.AgentRuntime` → `WishfulClaw.Agent`，改可见性（internal → public），更新 Worker 中的引用。验证：dotnet build 通过。
-- [ ] 步骤7：迁移 Tools 框架代码到 Core — 移动 ToolSchemaBuilder、ToolDefinitionPlaceholder、ToolModuleState 到 Core，改命名空间和可见性。验证：dotnet build 通过。
-- [ ] 步骤8：Worker 引用 Agent + Persona — 更新 Worker.csproj 添加 Agent + Persona 引用，更新 WorkerModuleCatalog 的 using，清理无用 using。验证：dotnet build 通过。
-- [ ] 步骤9：全量编译验证 — `dotnet build` 零错误 + `npx tsc --noEmit -p tsconfig.web.json` 零错误。应用启动正常。
+- [✓] 步骤1：创建 WishfulClaw.Agent 项目骨架 — 新建 csproj + 目录结构，注册到 sln，配置项目引用（Core + Contracts）。验证：sln 能加载，空项目能编译。
+- [✓] 步骤2：创建 WishfulClaw.Persona 项目骨架 — 新建 csproj + 目录结构，注册到 sln，配置项目引用（Core + Contracts + Workspace）。验证：sln 能加载，空项目能编译。
+- [✓] 步骤3：迁移共享类型到 Core — 将 AgentRuntimeNativeToolCall（ToolModels.cs 中的 record）和 AgentRuntimeReverseRequests 移到 Core。更新所有引用。验证：dotnet build 通过。
+- [✓] 步骤4：迁移 WorkerHttpClientFactory 到 Agent — 移动 Runtime/WorkerHttpClientFactory.cs 到 Agent 项目，改命名空间。验证：dotnet build 通过。
+- [✓] 步骤5：迁移 Persona 9 文件到 Persona 项目 — 移动文件，改命名空间 `WishfulClaw.Worker.Persona` → `WishfulClaw.Persona`，改可见性（internal → public），更新 Worker 中的引用。验证：dotnet build 通过。
+- [✓] 步骤6：迁移 AgentRuntime 65 文件到 Agent 项目 — 移动文件，改命名空间 `WishfulClaw.Worker.AgentRuntime` → `WishfulClaw.Agent`，改可见性（internal → public），更新 Worker 中的引用。验证：dotnet build 通过。
+- [✓] 步骤7：迁移 Tools 框架代码到 Core — 移动 ToolSchemaBuilder、ToolDefinitionPlaceholder、ToolModuleState 到 Core，改命名空间和可见性。验证：dotnet build 通过。
+- [✓] 步骤8：Worker 引用 Agent + Persona — 更新 Worker.csproj 添加 Agent + Persona 引用，更新 WorkerModuleCatalog 的 using，清理无用 using。验证：dotnet build 通过。
+- [✓] 步骤9：全量编译验证 — `dotnet build` 零错误 + `npx tsc --noEmit -p tsconfig.web.json` 零错误。应用启动正常。
 
 ## 涉及文件
 
