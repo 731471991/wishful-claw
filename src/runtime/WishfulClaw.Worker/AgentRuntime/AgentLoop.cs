@@ -255,24 +255,8 @@ internal static partial class AgentLoop
             state, context,
             new AgentRuntimeStreamEvent("loop_end", Reason: reason));
 
-        // Auto-notify on completion (top-level runs only, not sub-agents)
-        if (!state.SuppressTransportEvents)
-        {
-            try
-            {
-                await AgentRuntimeNotifyExecutor.ExecuteAsync(
-                    new AgentRuntimeNativeToolCall(
-                        $"auto-notify-{state.RunId}",
-                        "Notify",
-                        CreateAutoNotifyInput(reason, conversation)),
-                    context,
-                    state.CancellationToken);
-            }
-            catch
-            {
-                // Notification failure should never break the loop
-            }
-        }
+        // Notification is handled by the renderer on loop_end event.
+        // The renderer checks window focus before deciding to notify.
     }
 
     private static JsonElement CreateAutoNotifyInput(string reason, List<AgentRuntimeChatMessage>? conversation)

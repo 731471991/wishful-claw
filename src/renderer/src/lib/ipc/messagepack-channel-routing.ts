@@ -8,6 +8,7 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'window:maximize',
   'window:close',
   'window:isMaximized',
+  'notification:show',
   'window:capture-region',
   'ssh-window:open',
   'session-window:open',

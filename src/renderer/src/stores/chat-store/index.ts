@@ -5,6 +5,7 @@ import { immer } from 'zustand/middleware/immer'
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
 
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
+import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 import { isChatStreamEvent } from '@renderer/lib/agent/stream-event-adapter'
 
@@ -1126,6 +1127,46 @@ export const useChatStore = create<ChatStore>()(
 
               }
 
+            }
+
+            // Desktop notification: only if the window is NOT focused
+            // (user is away from the app). Skip if user is actively chatting.
+            if (!document.hasFocus() || document.visibilityState !== 'visible') {
+              const sess = get().sessions.find((s) => s.id === targetSessionId)
+              let notifyBody = '工作已完成。'
+              if (sess) {
+                for (let i = sess.messages.length - 1; i >= 0; i -= 1) {
+                  const m = sess.messages[i]
+                  if (m.role === 'assistant' && m.content) {
+                    const text = typeof m.content === 'string'
+                      ? m.content
+                      : Array.isArray(m.content)
+                        ? m.content
+                            .filter((b) => b.type === 'text')
+                            .map((b) => ('text' in b ? b.text ?? '' : ''))
+                            .join('')
+                        : ''
+                    const trimmed = text.trim()
+                    if (trimmed) {
+                      notifyBody = trimmed.length > 200 ? trimmed.slice(0, 200) + '…' : trimmed
+                      break
+                    }
+                  }
+                }
+              }
+              const reason = event.reason ?? 'completed'
+              const notifyTitle = reason === 'completed' ? '任务完成'
+                : reason === 'max_iterations' ? '达到迭代上限'
+                : reason === 'aborted' ? '任务已中断'
+                : reason === 'error' ? '任务出错'
+                : `任务停止: ${reason}`
+              void ipcClient.invoke('notification:show', {
+                title: notifyTitle,
+                body: notifyBody,
+                type: reason === 'completed' ? 'success' : 'info'
+              }).catch(() => {
+                // Notification failure is non-critical
+              })
             }
 
             break
