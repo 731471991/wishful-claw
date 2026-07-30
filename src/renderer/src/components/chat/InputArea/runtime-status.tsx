@@ -15,7 +15,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import {
   calculateCost, calculateCostBreakdown, estimateTokens,
   formatCacheHitRate, formatCost,
-  getCacheCreationTokens, getCacheHitRate
+  getCacheHitRate
 } from '@renderer/lib/format-tokens'
 import type { MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
@@ -35,7 +35,6 @@ import {
   sumNullableCost,
   createEmptyRuntimeUsageTotals,
   addUsageToTotals,
-  getBillableInputForUsage,
   collectRuntimeOutputSnapshot,
 } from './utils'
 
@@ -107,21 +106,6 @@ export function ComposerRuntimeStatus({
         }
       }
 
-      // Find the last assistant message with usage data for per-request cache stats.
-      // Cache hit rate should reflect the most recent API response, not cumulative totals.
-      let lastAssistantUsage: TokenUsage | undefined
-      if (messages) {
-        for (let i = messages.length - 1; i >= 0; i -= 1) {
-          const msg = messages[i]
-          if (msg.role === 'assistant' && msg.usage) {
-            lastAssistantUsage = msg.usage
-            break
-          }
-        }
-      }
-      // When overriding (e.g. sub-agent preview), prefer the override usage.
-      const effectiveLastUsage = messagesOverride && usageOverride ? usageOverride : lastAssistantUsage
-
       return {
         targetSessionId,
         streamingMessageId,
@@ -131,13 +115,6 @@ export function ComposerRuntimeStatus({
         currentInputTokens: normalizeTokenCount(message?.usage?.inputTokens),
         currentOutputTokens: normalizeTokenCount(message?.usage?.outputTokens),
         currentContextTokens: normalizeTokenCount(message?.usage?.contextTokens),
-        lastRequestBillableInputTokens: effectiveLastUsage
-          ? getBillableInputForUsage(effectiveLastUsage)
-          : 0,
-        lastRequestCacheReadTokens: normalizeTokenCount(effectiveLastUsage?.cacheReadTokens),
-        lastRequestCacheCreationTokens: effectiveLastUsage
-          ? normalizeTokenCount(getCacheCreationTokens(effectiveLastUsage))
-          : 0,
         cumulativeInputTokens: effectiveTotals.inputTokens,
         cumulativeOutputTokens: effectiveTotals.outputTokens,
         cumulativeBillableInputTokens: effectiveTotals.billableInputTokens,
@@ -223,12 +200,12 @@ export function ComposerRuntimeStatus({
   const outputTokens =
     live.cumulativeOutputTokens +
     (isStreaming ? Math.max(0, estimatedOutputTokens - live.currentOutputTokens) : 0)
-  // Cache metrics are based on the last API response only, not cumulative totals.
-  // Cumulative totals mix multiple requests and make the hit rate swing wildly.
-  // Draft input tokens (from the input box) are NOT included — they haven't been sent yet.
-  const inputTokens = live.lastRequestBillableInputTokens
-  const cacheReadTokens = live.lastRequestCacheReadTokens
-  const cacheCreationTokens = live.lastRequestCacheCreationTokens
+  // Use cumulative API-returned values only. Draft input tokens (from typing)
+  // are NOT included — they haven't been sent yet and would make metrics jump.
+  // Per-request cache hit rate is shown in each message's token summary bar.
+  const inputTokens = live.cumulativeBillableInputTokens
+  const cacheReadTokens = live.cumulativeCacheReadTokens
+  const cacheCreationTokens = live.cumulativeCacheCreationTokens
   const cacheHitRate = getCacheHitRate(
     inputTokens,
     cacheReadTokens,
