@@ -114,7 +114,8 @@ export const useChatStore = create<ChatStore>()(
       // Auto-generate title from first user message
       const titleSession = get().sessions.find((s) => s.id === sessionId)
       if (titleSession && titleSession.title === 'New Conversation' && userText) {
-        const newTitle = userText.slice(0, 40) + (userText.length > 40 ? '...' : '')
+        const cleanUserText = userText.replace(/<system-remind(?:er)?>[\s\S]*?<\/system-remind(?:er)?>\s*/gi, '').trim()
+        const newTitle = cleanUserText.slice(0, 40) + (cleanUserText.length > 40 ? '...' : '')
         const titleNow = Date.now()
         set((state) => {
           const sess = state.sessions.find((s) => s.id === sessionId)

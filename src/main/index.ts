@@ -100,6 +100,8 @@ function registerWindowControlHandlers(): void {
   })
 }
 
+app.setName('WishfulClaw')
+
 app.whenReady().then(() => {
   installGlobalExceptionHandlers()
   logInfo('main', 'Application started')
