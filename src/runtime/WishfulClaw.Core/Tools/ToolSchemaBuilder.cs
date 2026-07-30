@@ -1,12 +1,12 @@
 using System.Text.Json;
 
-namespace WishfulClaw.Worker.Tools;
+namespace WishfulClaw.Core.Tools;
 
 /// <summary>
 /// Helper to build JSON schemas for tool definitions.
 /// Provides a fluent API for constructing JSON Schema objects.
 /// </summary>
-internal static class ToolSchemaBuilder
+public static class ToolSchemaBuilder
 {
     public static JsonElement Object(
         Dictionary<string, JsonElement>? properties = null,

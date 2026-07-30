@@ -1,7 +1,7 @@
 using System.Text.Json;
 using WishfulClaw.Core.Tools;
 
-namespace WishfulClaw.Worker.Tools;
+namespace WishfulClaw.Core.Tools;
 
 /// <summary>
 /// Generic placeholder for tools whose definitions must appear in tool/list
@@ -9,7 +9,7 @@ namespace WishfulClaw.Worker.Tools;
 /// native executor, etc.). Registering the definition makes the tool visible
 /// to the LLM; the ExecuteAsync here should never be reached.
 /// </summary>
-internal sealed class ToolDefinitionPlaceholder : IToolExecutor
+public sealed class ToolDefinitionPlaceholder : IToolExecutor
 {
     public string Name { get; }
     public string Description { get; }
