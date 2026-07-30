@@ -236,7 +236,8 @@ internal static partial class AgentLoop
 
         await EmitLoopEndAsync(
             state, context,
-            state.StopReason ?? (completed ? "completed" : "max_iterations"));
+            state.StopReason ?? (completed ? "completed" : "max_iterations"),
+            conversation);
     }
 
     /// <summary>
@@ -247,7 +248,8 @@ internal static partial class AgentLoop
     internal static async Task EmitLoopEndAsync(
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
-        string reason)
+        string reason,
+        List<AgentRuntimeChatMessage>? conversation = null)
     {
         await AgentRuntimeTools.EmitAsync(
             state, context,
@@ -262,7 +264,7 @@ internal static partial class AgentLoop
                     new AgentRuntimeNativeToolCall(
                         $"auto-notify-{state.RunId}",
                         "Notify",
-                        CreateAutoNotifyInput(reason)),
+                        CreateAutoNotifyInput(reason, conversation)),
                     context,
                     state.CancellationToken);
             }
@@ -273,19 +275,35 @@ internal static partial class AgentLoop
         }
     }
 
-    private static JsonElement CreateAutoNotifyInput(string reason)
+    private static JsonElement CreateAutoNotifyInput(string reason, List<AgentRuntimeChatMessage>? conversation)
     {
         var title = reason switch
         {
-            "completed" => "Agent completed",
-            "max_iterations" => "Agent reached iteration limit",
-            "cancelled" => "Agent cancelled",
-            _ => $"Agent stopped: {reason}"
+            "completed" => "\xe4\xbb\xbb\xe5\x8a\xa1\xe5\xae\x8c\xe6\x88\x90",
+            "max_iterations" => "\xe8\xbe\xbe\xe5\x88\xb0\xe8\xbf\xad\xe4\xbb\xa3\xe4\xb8\x8a\xe9\x99\x90",
+            "cancelled" => "\xe4\xbb\xbb\xe5\x8a\xa1\xe5\xb7\xb2\xe5\x8f\x96\xe6\xb6\x88",
+            "aborted" => "\xe4\xbb\xbb\xe5\x8a\xa1\xe5\xb7\xb2\xe4\xb8\xad\xe6\x96\xad",
+            _ => $"\xe4\xbb\xbb\xe5\x8a\xa1\xe5\x81\x9c\xe6\xad\xa2: {reason}"
         };
-        var body = reason == "completed"
-            ? "The agent has finished its work."
-            : $"The agent stopped ({reason}).";
-        var json = $"{{\"title\":\"{EscapeJson(title)}\",\"body\":\"{EscapeJson(body)}\",\"type\":\"info\"}}";
+
+        // Extract last assistant message text for the notification body
+        var body = "\xe5\xb7\xa5\xe4\xbd\x9c\xe5\xb7\xb2\xe5\xae\x8c\xe6\x88\x90\xe3\x80\x82";
+        if (conversation is not null)
+        {
+            for (var i = conversation.Count - 1; i >= 0; i--)
+            {
+                if (conversation[i].Role == "assistant" && !string.IsNullOrWhiteSpace(conversation[i].Text))
+                {
+                    var text = conversation[i].Text.Trim();
+                    // Strip markdown formatting and take first meaningful line
+                    body = TruncateNotificationBody(text, 200);
+                    break;
+                }
+            }
+        }
+
+        var type = reason == "completed" ? "success" : "info";
+        var json = $"{{\"title\":\"{EscapeJson(title)}\",\"body\":\"{EscapeJson(body)}\",\"type\":\"{type}\"}}";
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
     }
@@ -293,6 +311,19 @@ internal static partial class AgentLoop
     private static string EscapeJson(string value)
     {
         return value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    }
+
+    /// <summary>
+    /// Truncates text for notification body: takes first meaningful paragraph,
+    /// strips excessive whitespace, and truncates to maxChars.
+    /// </summary>
+    private static string TruncateNotificationBody(string text, int maxChars)
+    {
+        // Take first paragraph (split by double newline or single newline)
+        var firstParagraph = text.Split('\n')[0].Trim();
+        // Collapse multiple spaces
+        firstParagraph = System.Text.RegularExpressions.Regex.Replace(firstParagraph, @"\s+", " ");
+        return firstParagraph.Length <= maxChars ? firstParagraph : firstParagraph[..maxChars] + "\u2026";
     }
 
     // ── Provider dispatch ──

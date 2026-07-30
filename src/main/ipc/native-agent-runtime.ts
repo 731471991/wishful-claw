@@ -1,4 +1,5 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, Notification } from 'electron'
+import { join } from 'path'
 import { getNativeWorker } from '../lib/native-worker'
 import { safeSendMessagePackToWindow } from '../window-ipc'
 import {
@@ -130,12 +131,20 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     try {
       // notify:desktop uses Electron's Notification API directly
       if (method === 'notify:desktop') {
-        const { Notification } = require('electron')
         const params = request.params as Record<string, unknown> | undefined
         const title = (params?.title as string) ?? ''
         const body = (params?.body as string) ?? ''
+        const type = (params?.type as string) ?? 'info'
         if (Notification.isSupported()) {
-          const notification = new Notification({ title, body })
+          // Resolve icon path: in dev, resources/ is at project root;
+          // in production, it's in the app's resources directory.
+          const iconPath = join(process.env.APP_ROOT || process.cwd(), 'resources', 'icon-256.png')
+          const notification = new Notification({
+            title,
+            body,
+            icon: iconPath,
+            urgency: type === 'error' ? 'critical' : 'normal'
+          })
           notification.show()
           await sendReverseResponse(id, { success: true, title, body }, undefined)
         } else {
