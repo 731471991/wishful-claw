@@ -7,6 +7,8 @@ import { recordSyntheticEntry, prepareSessionPipeline, completeStage1, runPhase2
 import { AUTO_RUN_DEBOUNCE_MS, INVALID_MEMORY_JSON_ERROR, RunSessionOptions, TargetDescriptor, buildConversationExcerpt, buildMemoryRootInputs, buildStage1Input, findRootForScope, fingerprintContent, hasUsableProvider, resolveAutomationProvider, summarizeMemorySnapshot, targetForRoot, extractStage1Outputs } from './memory-automation-utils'
 import { loadLayeredMemorySnapshot } from './memory-files'
 import { getErrorMessage } from './memory-json-parsers'
+import type { MemoryStage1OutputInput, MemoryRootDescriptor, MemoryAutomationRunRollupResult } from '../../../../shared/memory-automation-types'
+
 
 export async function runMemoryAutomationForSession(options: RunSessionOptions): Promise<void> {
   const settings = useSettingsStore.getState()

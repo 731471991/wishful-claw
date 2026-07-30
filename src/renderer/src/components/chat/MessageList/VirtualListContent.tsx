@@ -14,7 +14,7 @@ import {
 } from './utils'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
 import type { RequestRetryState } from '@renderer/lib/agent/types'
-import type { OrchestrationState } from '@renderer/lib/orchestration/build-runs'
+import type { OrchestrationRunStore } from '@renderer/lib/orchestration/build-runs'
 import type { Virtualizer } from '@tanstack/react-virtual'
 
 interface VirtualListContentProps {
@@ -36,7 +36,7 @@ interface VirtualListContentProps {
   messageLookup: Map<string, UnifiedMessage>
   toolResultsLookup: Map<string, unknown>
   inlineCompactSummaryState: { byAssistantId: Map<string, UnifiedMessage[]> }
-  orchestrationState: OrchestrationState
+  orchestrationState: OrchestrationRunStore
   duplicatePlanReviewToolUseIds: Set<string>
   sessionAssistantMessageIds: string[]
   sessionToolUseIds: string[]

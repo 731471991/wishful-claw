@@ -7,6 +7,7 @@ import { useTeamStore } from '@renderer/stores/team-store'
 import { teamEvents } from './events'
 import { TeamMessage } from './types'
 import { appendTeamRuntimeMessage, consumeTeamRuntimeMessages } from './runtime-client'
+import type { TeamRuntimePlanApprovalResponsePayload } from '../../../../../shared/team-runtime-types'
 
 
 export async function sendApprovalResponse(params: {

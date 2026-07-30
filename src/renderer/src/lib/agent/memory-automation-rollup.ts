@@ -8,6 +8,8 @@ import { getProjectMemoryCandidatePaths, joinFsPath, readTextFile, resolveProjec
 import { prepareSessionPipeline, writeTargetContent, _maState } from './memory-automation-internal'
 import { resolveGlobalMemoryHomePath } from './memory-snapshot'
 import { runMemoryAutomationForSession, runRollupForDescriptor } from './memory-automation'
+import type { MemoryRootInput, MemoryRootDescriptor, MemoryAutomationEntry, MemoryAutomationListResult, MemoryAutomationUndoResult } from '../../../../shared/memory-automation-types'
+
 
 // Extracted from memory-automation.ts
 export async function runDailyMemoryRollup(options: DailyRollupOptions = {}): Promise<void> {

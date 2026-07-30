@@ -2,26 +2,12 @@ src/renderer/src/components/chat/ask-user-utils.ts(22,15): error TS2484: Export 
 src/renderer/src/components/chat/AskUserQuestionCard.tsx(21,4): error TS2304: Cannot find name 'AskUserQuestionCardProps'.
 src/renderer/src/components/chat/ChangeReviewSheet.tsx(197,4): error TS2304: Cannot find name 'ChangeReviewSheetProps'.
 src/renderer/src/components/chat/ChangeReviewSheet.tsx(201,9): error TS2322: Type '{ children: Element; side: string; showCloseButton: false; className: string; }' is not assignable to type 'IntrinsicAttributes & { children: ReactNode; className?: string | undefined; showCloseButton?: boolean | undefined; }'.
-src/renderer/src/components/chat/file-change-previews.tsx(3,1): error TS6133: 'Loader2' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(6,1): error TS6133: 'IPC' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(7,1): error TS6133: 'invokeMessagePackBinary' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(8,1): error TS6133: 'toMessagePackChannel' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(10,59): error TS6133: 'TrackedDiffContent' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(10,134): error TS6133: 'snapshotText' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(10,148): error TS6133: 'canRenderInlineSnapshot' is declared but its value is never read.
-src/renderer/src/components/chat/file-change-previews.tsx(11,33): error TS6133: 'CompactEditDiff' is declared but its value is never read.
-src/renderer/src/components/chat/FileChangeCard.tsx(37,9): error TS6133: 'wasLiveFileMutationRef' is declared but its value is never read.
+src/renderer/src/components/chat/FileChangeCard.tsx(32,9): error TS6133: 'isLiveFileMutation' is declared but its value is never read.
 src/renderer/src/components/chat/GitPage.tsx(324,11): error TS2322: Type '(repoPath: string, paths: string[]) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[]) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(325,11): error TS2322: Type '(repoPath: string, paths: string[]) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[]) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(326,11): error TS2322: Type '(repoPath: string) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(327,11): error TS2322: Type '(repoPath: string) => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string) => Promise<void>'.
 src/renderer/src/components/chat/GitPage.tsx(328,11): error TS2322: Type '(repoPath: string, paths: string[], scope: "full" | "untracked" | "worktree") => Promise<{ success: boolean; error?: string | undefined; }>' is not assignable to type '(repoPath: string, paths: string[], scope: string) => Promise<{ success: boolean; error?: string | undefined; }>'.
-src/renderer/src/components/chat/InputArea/composer-toolbar.tsx(2,28): error TS6133: 'Globe' is declared but its value is never read.
-src/renderer/src/components/chat/InputArea/composer-toolbar.tsx(11,10): error TS6133: 'ActiveMcpsBadge' is declared but its value is never read.
-src/renderer/src/components/chat/InputArea/composer-toolbar.tsx(11,27): error TS6133: 'ActiveExtensionsBadge' is declared but its value is never read.
-src/renderer/src/components/chat/InputArea/composer-toolbar.tsx(89,5): error TS6133: 'canToggleWebSearch' is declared but its value is never read.
-src/renderer/src/components/chat/InputArea/composer-toolbar.tsx(89,25): error TS6133: 'webSearchEnabled' is declared but its value is never read.
-src/renderer/src/components/chat/InputArea/composer-toolbar.tsx(89,43): error TS6133: 'toggleWebSearch' is declared but its value is never read.
 src/renderer/src/components/chat/InputArea/index.tsx(64,39): error TS2322: Type 'string | null | undefined' is not assignable to type 'string | undefined'.
 src/renderer/src/components/chat/InputArea/index.tsx(155,9): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<AppMode, string>'.
 src/renderer/src/components/chat/InputArea/index.tsx(208,72): error TS2349: This expression is not callable.
@@ -64,7 +50,6 @@ src/renderer/src/components/chat/MessageList/VirtualListContent.tsx(214,9): erro
 src/renderer/src/components/chat/ModelSwitcher.tsx(622,47): error TS2322: Type 'CopilotQuota' is not assignable to type 'CopilotQuotaData'.
 src/renderer/src/components/chat/SkillsMenu.tsx(151,62): error TS2339: Property 'activeChannelIdsByProject' does not exist on type 'ChannelStore'.
 src/renderer/src/components/chat/SkillsMenu.tsx(153,56): error TS2339: Property 'toggleActiveChannel' does not exist on type 'ChannelStore'.
-src/renderer/src/components/chat/WorkingFolderSelectorDialog.tsx(169,9): error TS6133: 'displayedProjectName' is declared but its value is never read.
 src/renderer/src/components/cowork/FileTreePanel.tsx(31,59): error TS2353: Object literal may only specify known properties, and 'agentSearchOpen' does not exist in type 'UseFileTreeOptions'.
 src/renderer/src/components/cowork/FileTreePanel.tsx(145,42): error TS2339: Property 'handleAddToChat' does not exist on type '{ handleDelete: (nodePath: string, nodeName: string, isDir: boolean) => Promise<void>; handleRenameStart: (nodePath: string) => void; handleRenameConfirm: (newName: string) => Promise<...>; ... 15 more ...; treeActions: TreeActions; }'.
 src/renderer/src/components/cowork/FileTreePanel.tsx(146,41): error TS2339: Property 'handleCopyPath' does not exist on type '{ handleDelete: (nodePath: string, nodeName: string, isDir: boolean) => Promise<void>; handleRenameStart: (nodePath: string) => void; handleRenameConfirm: (newName: string) => Promise<...>; ... 15 more ...; treeActions: TreeActions; }'.
@@ -74,7 +59,6 @@ src/renderer/src/components/cowork/FileTreePanel.tsx(161,39): error TS2339: Prop
 src/renderer/src/components/cowork/FileTreePanel.tsx(162,15): error TS2322: Type '(nodePath: string, isDir: boolean) => Promise<void>' is not assignable to type '(path: string, closeOnExit?: boolean | undefined) => void'.
 src/renderer/src/components/editor/CodeEditor.tsx(195,7): error TS2322: Type '(monacoEditor: import("monaco-editor").editor.IStandaloneCodeEditor, monacoInstance: typeof import("monaco-editor")) => void' is not assignable to type 'OnMount'.
 src/renderer/src/components/editor/MonacoDiffEditor.tsx(130,7): error TS2322: Type '(diffEditor: import("monaco-editor").editor.IStandaloneDiffEditor, monacoInstance: typeof import("monaco-editor")) => void' is not assignable to type 'DiffOnMount'.
-src/renderer/src/components/goal/goal-session-utils.tsx(10,8): error TS6133: 'SessionGoalEventType' is declared but its value is never read.
 src/renderer/src/components/goal/goal-session-views.tsx(191,37): error TS2345: Argument of type '{ title: string; description: string; confirmLabel: string; variant: string; }' is not assignable to parameter of type 'string'.
 src/renderer/src/components/layout/agent-files-titlebar.tsx(12,15): error TS2305: Module '"./agent-files-types"' has no exported member 'AgentFilesTab'.
 src/renderer/src/components/layout/agent-files-titlebar.tsx(26,47): error TS2339: Property 'refreshSessionRunChanges' does not exist on type '{ runGitAction: (key: string, action: () => Promise<{ success: boolean; error?: string | undefined; }>) => Promise<boolean>; loadGitDiff: (row: GitChangeRow) => Promise<...>; ... 10 more ...; canCommitInline: boolean; }'.
@@ -83,8 +67,6 @@ src/renderer/src/components/layout/change-item-row.tsx(53,8): error TS2786: 'Fil
 src/renderer/src/components/layout/changes-tab-content.tsx(12,15): error TS2305: Module '"./agent-files-types"' has no exported member 'AgentFilesChangeSource'.
 src/renderer/src/components/layout/changes-tab-content.tsx(40,37): error TS2339: Property 'undoRunChanges' does not exist on type '{ runGitAction: (key: string, action: () => Promise<{ success: boolean; error?: string | undefined; }>) => Promise<boolean>; loadGitDiff: (row: GitChangeRow) => Promise<...>; ... 10 more ...; canCommitInline: boolean; }'.
 src/renderer/src/components/layout/changes-tab-content.tsx(139,53): error TS2345: Argument of type 'ChangeRow[]' is not assignable to parameter of type 'GitChangeRow[]'.
-src/renderer/src/components/layout/MainLayout.tsx(1,21): error TS6133: 'useMemo' is declared but its value is never read.
-src/renderer/src/components/layout/MainLayout.tsx(2,1): error TS6133: 'useTranslation' is declared but its value is never read.
 src/renderer/src/components/layout/preview-toolbar.tsx(33,18): error TS6133: 'onCopyMarkdown' is declared but its value is never read.
 src/renderer/src/components/layout/preview-toolbar.tsx(33,34): error TS6133: 'onSetDiffViewMode' is declared but its value is never read.
 src/renderer/src/components/layout/preview-toolbar.tsx(33,53): error TS6133: 'onSave' is declared but its value is never read.
@@ -99,10 +81,9 @@ src/renderer/src/components/layout/SessionChangeReviewPanel.tsx(26,3): error TS2
 src/renderer/src/components/layout/SubAgentsPanel.tsx(249,7): error TS2322: Type 'UnifiedMessage[] | ChatMessage[]' is not assignable to type 'UnifiedMessage[]'.
 src/renderer/src/components/layout/SubAgentsPanel.tsx(295,9): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
 src/renderer/src/components/layout/workspace-sidebar-items.tsx(309,19): error TS2304: Cannot find name 'e'.
-src/renderer/src/components/layout/WorkspaceSidebar.tsx(38,9): error TS6133: 'activeProjectId' is declared but its value is never read.
 src/renderer/src/components/settings/plugin-panel-qr.tsx(73,37): error TS2339: Property 'token' does not exist on type '{ connected?: boolean | undefined; message?: string | undefined; botToken?: string | undefined; userId?: string | undefined; baseUrl?: string | undefined; }'.
 src/renderer/src/components/settings/plugin-panel-qr.tsx(76,41): error TS2339: Property 'accountId' does not exist on type '{ connected?: boolean | undefined; message?: string | undefined; botToken?: string | undefined; userId?: string | undefined; baseUrl?: string | undefined; }'.
-src/renderer/src/components/settings/SettingsPage.tsx(150,17): error TS2367: This comparison appears to be unintentional because the types '"modelManagement" | "about" | "permission" | "channel" | "plugin" | "extension" | "mcp" | "ssh" | "skills"' and '"websearch"' have no overlap.
+src/renderer/src/components/settings/SettingsPage.tsx(150,17): error TS2367: This comparison appears to be unintentional because the types '"ssh" | "about" | "skills" | "modelManagement" | "permission" | "channel" | "plugin" | "extension" | "mcp"' and '"websearch"' have no overlap.
 src/renderer/src/components/terminal/AgentSshTerminal.tsx(55,20): error TS2345: Argument of type 'FitAddon' is not assignable to parameter of type 'ITerminalAddon'.
 src/renderer/src/components/terminal/AgentSshTerminal.tsx(70,11): error TS18046: 'fitAddon.fit' is of type 'unknown'.
 src/renderer/src/components/terminal/LocalTerminal.tsx(79,20): error TS2345: Argument of type 'FitAddon' is not assignable to parameter of type 'ITerminalAddon'.
@@ -126,8 +107,6 @@ src/renderer/src/lib/auth/oauth.ts(255,11): error TS2304: Cannot find name 'OAut
 src/renderer/src/lib/ipc/agent-bridge-streaming.ts(375,41): error TS2558: Expected 0 type arguments, but got 1.
 src/renderer/src/lib/ipc/agent-bridge-streaming.ts(399,3): error TS2322: Type 'unknown' is not assignable to type '{ messages: UnifiedMessage[]; result: CompressionResult; }'.
 src/renderer/src/lib/preview/viewers/docx-viewer.tsx(9,32): error TS2307: Cannot find module 'mammoth' or its corresponding type declarations.
-src/renderer/src/lib/preview/viewers/markdown-components.tsx(22,7): error TS6133: 'HASH_LINE_RE' is declared but its value is never read.
-src/renderer/src/lib/preview/viewers/markdown-components.tsx(23,7): error TS6133: 'COLON_LINE_RE' is declared but its value is never read.
 src/renderer/src/lib/preview/viewers/pdf-viewer.tsx(3,39): error TS2307: Cannot find module 'react-pdf' or its corresponding type declarations.
 src/renderer/src/lib/preview/viewers/spreadsheet-viewer.tsx(67,29): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
 src/renderer/src/lib/preview/viewers/spreadsheet-viewer.tsx(97,29): error TS2307: Cannot find module 'xlsx' or its corresponding type declarations.
@@ -135,19 +114,6 @@ src/renderer/src/lib/tools/browser-webview-helpers.ts(136,3): error TS2484: Expo
 src/renderer/src/stores/agent-store/slices/sub-agent-slice.ts(115,26): error TS2339: Property 'isBackground' does not exist on type 'SubAgentState'.
 src/renderer/src/stores/agent-store/slices/sub-agent-slice.ts(149,17): error TS2353: Object literal may only specify known properties, and 'isBackground' does not exist in type 'WritableNonArrayDraft<SubAgentState>'.
 src/renderer/src/stores/goal-store.ts(30,44): error TS2552: Cannot find name 'SessionGoal'. Did you mean 'SessionGoalRow'?
-src/renderer/src/stores/right-panel-tab-factories.ts(5,7): error TS6133: 'RIGHT_PANEL_REVIEW_TAB_ID' is declared but its value is never read.
-src/renderer/src/stores/settings-store-types.ts(63,7): error TS6133: 'LEGACY_DEFAULT_APP_THEME_PRESET' is declared but its value is never read.
-src/renderer/src/stores/settings-store-types.ts(64,7): error TS6133: 'LEGACY_DEFAULT_SSH_TERMINAL_THEME_PRESET' is declared but its value is never read.
-src/renderer/src/stores/settings-store-types.ts(66,7): error TS6133: 'V17_DEFAULT_APP_THEME_PRESET' is declared but its value is never read.
-src/renderer/src/stores/settings-store-types.ts(67,7): error TS6133: 'V17_DEFAULT_SSH_TERMINAL_THEME_PRESET' is declared but its value is never read.
-src/renderer/src/stores/settings-store-types.ts(69,7): error TS6133: 'V18_DEFAULT_APP_THEME_PRESET' is declared but its value is never read.
-src/renderer/src/stores/settings-store-types.ts(70,7): error TS6133: 'V18_DEFAULT_SSH_TERMINAL_THEME_PRESET' is declared but its value is never read.
-src/renderer/src/stores/settings-store.ts(31,802): error TS2724: '"./settings-store-types"' has no exported member named 'LEGACY_DEFAULT_APP_THEME_PRESET'. Did you mean 'LEGACY_DEFAULT_THEME_MODE'?
-src/renderer/src/stores/settings-store.ts(31,835): error TS2459: Module '"./settings-store-types"' declares 'LEGACY_DEFAULT_SSH_TERMINAL_THEME_PRESET' locally, but it is not exported.
-src/renderer/src/stores/settings-store.ts(31,901): error TS2459: Module '"./settings-store-types"' declares 'V17_DEFAULT_APP_THEME_PRESET' locally, but it is not exported.
-src/renderer/src/stores/settings-store.ts(31,931): error TS2459: Module '"./settings-store-types"' declares 'V17_DEFAULT_SSH_TERMINAL_THEME_PRESET' locally, but it is not exported.
-src/renderer/src/stores/settings-store.ts(31,994): error TS2459: Module '"./settings-store-types"' declares 'V18_DEFAULT_APP_THEME_PRESET' locally, but it is not exported.
-src/renderer/src/stores/settings-store.ts(31,1024): error TS2459: Module '"./settings-store-types"' declares 'V18_DEFAULT_SSH_TERMINAL_THEME_PRESET' locally, but it is not exported.
 src/renderer/src/stores/task-store.ts(21,9): error TS2304: Cannot find name 'DB_TASKS_LIST_BY_SESSION_MSGPACK_CHANNEL'.
 src/renderer/src/stores/task-store.ts(41,20): error TS2304: Cannot find name 'TaskItem'.
 src/renderer/src/stores/task-store.ts(101,22): error TS2304: Cannot find name 'TaskItem'.

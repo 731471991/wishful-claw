@@ -305,7 +305,7 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
             
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               <button
-                onClick={() => {
+                onClick={(e) => {
                   e.stopPropagation()
                   handleNewSessionInProject()
                 }}

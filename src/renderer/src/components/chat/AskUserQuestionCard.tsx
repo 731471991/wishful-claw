@@ -12,6 +12,14 @@ import { outputAsText, parseAnsweredPairs, buildRecommendedPayload, buildSubmiss
 import { QuestionBlock } from './ask-user-question-block'
 import { AskUserView } from './ask-user-views'
 
+interface AskUserQuestionCardProps {
+  toolUseId: string
+  input: any
+  output: any
+  status: string
+  isLive: boolean
+}
+
 export function AskUserQuestionCard({
   toolUseId,
   input,

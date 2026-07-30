@@ -8,7 +8,7 @@ import type {
   ToolResultsLookup,
   ChatStoreSnapshot
 } from './utils'
-import type { OrchestrationState } from '@renderer/lib/orchestration/build-runs'
+import type { OrchestrationRunStore } from '@renderer/lib/orchestration/build-runs'
 import { mergeHiddenToolUseIds } from './utils'
 
 interface ExportViewProps {
@@ -17,7 +17,7 @@ interface ExportViewProps {
   messageLookup: Map<string, UnifiedMessage>
   toolResultsLookup: ToolResultsLookup
   inlineCompactSummaryState: { byAssistantId: Map<string, UnifiedMessage[]> }
-  orchestrationState: OrchestrationState
+  orchestrationState: OrchestrationRunStore
   duplicatePlanReviewToolUseIds: Set<string>
   sessionAssistantMessageIds: string[]
   sessionToolUseIds: string[]

@@ -4,6 +4,7 @@ import { IPC } from '@renderer/lib/ipc/channels'
 import type { OAuthConfig, OAuthToken } from '@renderer/lib/api/types'
 import { isMoonshotOAuthConfig, buildMoonshotCommonHeaders, OAuthCallbackPayload, randomHex, randomString, sha256 } from './oauth-utils'
 import type { StartOAuthFlowOptions } from './oauth-utils'
+import type { OAuthDeviceCodeInfo } from './oauth-utils'
 export type { StartOAuthFlowOptions } from './oauth-utils'
 
 function buildAuthorizeUrl(config: OAuthConfig, params: Record<string, string>): string {

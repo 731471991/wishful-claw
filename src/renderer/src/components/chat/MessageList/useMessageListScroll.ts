@@ -21,7 +21,7 @@ import {
   VIRTUAL_ROW_OVERSCAN,
 } from './utils'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
-import type { ChatRenderableMessageMeta } from '../../transcript-utils'
+import type { ChatRenderableMessageMeta } from '../transcript-utils'
 import type { AssistantReplyRailItem as RailItem } from './utils'
 import { createJumpToAssistantMessage, applySuggestedPrompt as applySuggestedPromptImpl } from './scroll-utils'
 import { AssistantReplyRailItem } from './utils'

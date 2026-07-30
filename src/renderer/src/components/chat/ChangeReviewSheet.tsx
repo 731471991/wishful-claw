@@ -189,6 +189,13 @@ export function ChangeReviewPanelContent({
   )
 }
 
+interface ChangeReviewSheetProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  changeSet: any
+  initialChangeId?: string | null
+}
+
 export function ChangeReviewSheet({
   open,
   onOpenChange,

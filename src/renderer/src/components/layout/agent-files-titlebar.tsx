@@ -9,7 +9,7 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { cn } from '@renderer/lib/utils'
 import type { TFunction } from 'i18next'
-import type { AgentFilesTab } from './agent-files-types'
+import type { AgentFilesTab } from '@renderer/stores/ui-types'
 import type { AgentFilesState } from './use-agent-files'
 import type { AgentFilesActions } from './use-agent-files-actions'
 

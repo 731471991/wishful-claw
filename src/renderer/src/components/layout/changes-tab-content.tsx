@@ -9,7 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import type { TFunction } from 'i18next'
-import type { AgentFilesChangeSource } from './agent-files-types'
+import type { AgentFilesChangeSource } from '@renderer/stores/ui-types'
 import type { ChangeRow } from './agent-files-types'
 import { ChangeItemRow, AgentFilesEmptyState } from './change-item-row'
 import type { AgentFilesState } from './use-agent-files'
