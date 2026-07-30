@@ -148,9 +148,9 @@ function buildCapabilityRoute(): string | null {
 
   // Built-in proxied tools (low-frequency, not in preset)
   lines.push(
-    '- Built-in extended tools (desktop automation, cron scheduling, notify,',
-    '  image generation, notebook editing, widgets, team management,',
-    '  channel plugins, plugin management, SSH info)'
+    '- Built-in extended tools (browser automation, desktop automation,',
+    '  cron scheduling, image generation, notebook editing, widgets,',
+    '  team management, channel plugins, plugin management, SSH info)'
   )
 
   return [
