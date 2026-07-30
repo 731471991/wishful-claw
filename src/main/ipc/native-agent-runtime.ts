@@ -160,7 +160,8 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     'plan/ui-update',
     'sub-agent:approve-tool',
     'mcp:capability-list',
-    'mcp:capability-inspect'
+    'mcp:capability-inspect',
+    'skill-management:execute'
   ])
   if (rendererMethods.has(method)) {
     const requestId = `sidecar-renderer-tool-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`

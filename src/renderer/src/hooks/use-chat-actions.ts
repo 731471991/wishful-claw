@@ -3,7 +3,7 @@ import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import { getCachedTools, fetchToolDefinitions } from '@renderer/lib/tools/tool-cache'
+import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type CachedToolDef } from '@renderer/lib/tools/tool-cache'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -11,6 +11,7 @@ export interface SendMessageOptions {
   selectedFileReferences?: unknown[]
   goalObjective?: string
   imageEdit?: unknown
+  toolPreset?: string
   [key: string]: unknown
 }
 
@@ -102,10 +103,18 @@ export function useChatActions() {
       // App startup (registerAllTools + ensureConversationReady) handles
       // initialization; if tools aren't ready yet, send without them —
       // the agent can still respond, just without tool-calling capability.
-      const toolPreset = workingFolder ? 'coding' : 'chat'
+      const toolPreset = opts?.toolPreset ?? (workingFolder ? 'coding' : 'chat')
       const settings = useSettingsStore.getState()
-      const workerTools = getCachedTools()
-      fetchToolDefinitions(toolPreset) // fire-and-forget background fetch
+
+      // For special presets (e.g. skill-installer), fetch async to ensure
+      // the correct tool list is used. For default presets, use cache + background fetch.
+      let workerTools: CachedToolDef[] | null
+      if (opts?.toolPreset) {
+        workerTools = await fetchToolDefinitionsAsync(opts.toolPreset)
+      } else {
+        workerTools = getCachedTools()
+        fetchToolDefinitions(toolPreset) // fire-and-forget background fetch
+      }
       // Filter out WebSearch/WebFetch when web search is not enabled.
       const webSearchEnabled = settings.webSearchEnabled
       const filteredWorkerTools = (workerTools ?? []).filter(

@@ -106,6 +106,15 @@ public sealed class ToolPreset
                 "Write", "Edit", "Bash", "Shell"
             },
         },
+        ["skill-installer"] = new ToolPreset
+        {
+            Id = "skill-installer",
+            Description = "Skill installer assistant — skill management tools plus basic file/search.",
+            AllowedCategories = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "file", "search", "skill-management", "capability"
+            },
+        },
     };
 
     /// <summary>

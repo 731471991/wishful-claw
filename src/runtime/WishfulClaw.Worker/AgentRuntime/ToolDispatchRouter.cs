@@ -369,6 +369,22 @@ internal static class ToolDispatchRouter
                 isToolError = true;
             }
         }
+        // Skill management: reverse-request to renderer
+        else if (AgentRuntimeSkillManagementExecutor.IsSkillManagementTool(toolCall.Name))
+        {
+            try
+            {
+                toolOutput = await AgentRuntimeSkillManagementExecutor.ExecuteAsync(
+                    toolCall, context, state.CancellationToken);
+                isToolError = IsJsonError(toolOutput);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"Skill management tool execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
         // SSH info: list connections via reverse-request to Main process
         else if (AgentRuntimeSshToolExecutor.IsSshInfoTool(toolCall.Name))
         {

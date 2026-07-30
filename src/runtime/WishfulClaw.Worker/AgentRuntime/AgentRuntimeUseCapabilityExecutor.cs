@@ -33,7 +33,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
     {
         "desktop", "cron", "image-generate",
         "notebook", "widget", "team",
-        "channel-plugin", "plugin", "ssh"
+        "channel-plugin", "plugin", "ssh", "skill-management"
     };
 
     public static bool IsUseCapabilityTool(string toolName)

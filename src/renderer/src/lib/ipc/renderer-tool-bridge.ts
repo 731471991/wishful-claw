@@ -2,6 +2,7 @@ import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-nati
 import { handleMcpCapabilityList, handleMcpCapabilityInspect } from '@renderer/lib/tools/mcp-capability-bridge'
 import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'
+import { handleSkillManagementExecute } from '@renderer/lib/tools/skill-management-bridge'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
   SIDECAR_RENDERER_TOOL_REQUEST_MSGPACK_CHANNEL,
@@ -93,6 +94,15 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
 
     if (payload.method === 'mcp:capability-inspect') {
       const result = await handleMcpCapabilityInspect(payload.params as { serverId: string; toolName: string })
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'skill-management:execute') {
+      const result = await handleSkillManagementExecute(payload.params as { toolName: string; input: Record<string, unknown> })
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result
