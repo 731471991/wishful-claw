@@ -200,17 +200,8 @@ Do not overstep your bounds or create unnecessary files.
         return """
 <tool_calling>
 - Before calling tools, briefly state what you are about to do. After results, briefly summarize what you found. Never call tools silently.
-- Follow tool schemas exactly and provide required parameters.
-- Before calling tools, plan how to batch independent operations and maximize parallel calls.
 - Batch independent tool calls in the same assistant turn; keep sequential only when dependent.
-- Use Glob/Grep/Read before assuming project structure.
 - For complex multi-step tasks, delegate to a sub-agent via the Task tool instead of doing everything yourself.
-
-**When NOT to use specific tools:**
-- Do not use Bash when Read/Edit/Write/Glob/Grep apply.
-- Do not use Bash with `cat`, `head`, `tail`, `grep`, or `find` — use Read/Grep/Glob instead.
-- Do not use Write when Edit can make a precise change.
-- Do not use Task for simple single-file lookups — use Glob or Grep.
 </tool_calling>
 """;
     }
