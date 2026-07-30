@@ -402,27 +402,188 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 ---
 
+## MVP v2 阶段迭代（v2-iter-1 ~ v2-iter-8）
+
+> MVP v1（迭代一~十五）已全部合并 main，tag `v0.15.0`。以下为 MVP v2 阶段的迭代拆分，分支命名 `dev/v2-iter-{N}`，tag 命名 `v2.{N}.0`。详细需求见 `docs/mvp-v2.md`。
+
+### v2-iter-1：Runtime 分层架构重构
+
+**目标**：Worker 项目从 192 文件/29k 行的巨型项目拆分为 `WishfulClaw.Agent` + `WishfulClaw.Persona`，Worker 回归薄层 IPC 宿主。为后续所有功能开发打基础。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 创建 `WishfulClaw.Agent` 项目，将 AgentRuntime（60 文件）迁入：AgentLoop、所有 Executor、Provider、ConversationCodec、ContextCompression、ToolCallProcessor、SubAgent |
+| 2 | 创建 `WishfulClaw.Persona` 项目，将 Persona（9 文件）迁入：PromptBuilder、PersonaGenerator、PersonaStore |
+| 3 | Core 上提：ToolSchemaBuilder、ToolDefinitionPlaceholder、ToolModuleState 从 Worker 移到 Core |
+| 4 | Worker 精简：仅保留 IPC 宿主 + Module 装载 + Program.cs |
+| 5 | Contracts 精简：只留接口，JSON 序列化实现移到 Core 或 Worker |
+| 6 | 更新 sln 引用关系，确保分层依赖正确（Agent → Core + Contracts；Persona → Core + Contracts；Worker → Agent + Persona + Core + Contracts） |
+| 7 | 双编译验证：`dotnet build` + `npx tsc --noEmit -p tsconfig.web.json` 零错误 |
+
+**验证标准**：编译通过，应用启动正常，核心对话 + 工具调用 + 记忆 + 人格全链路功能不回归。
+
+**分支**：`dev/v2-iter-1`　**Tag**：`v2.1.0`
+
+---
+
+### v2-iter-2：缓存命中率修复
+
+**目标**：C# 端维护 conversation 状态，每轮只接收增量消息，消除全量重建导致的 prefix cache miss。同一会话缓存命中率稳定在 90%+。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | C# 端 conversation 状态管理 — `AgentLoop.cs` 的 `ReadWireConversation` → `ReadConversation` 改为增量追加模式 |
+| 2 | 渲染端 `use-chat-actions.ts` 改为只发送增量消息（新增的 user message + tool results），不再全量重建 history |
+| 3 | `buildRuntimeReminder` 稳定化 — 动态内容注入到 user 消息前缀，确保不破坏前缀缓存 |
+| 4 | `InjectTimestampPrefix` 调整 — 时间戳精度降低或移到不影响缓存的位置 |
+| 5 | `cache_control` 断点优化 — 评估是否移除显式断点，依赖 Anthropic 自动前缀缓存 |
+| 6 | 边界处理：session 切换时重置 conversation 状态、context compression 时重建前缀 |
+| 7 | 缓存命中率指标验证 — 连续多轮对话观察 cache_read/cache_creation 比例 |
+
+**验证标准**：同一会话连续 5 轮对话，缓存命中率稳定在 90%+，不再因全量重建导致跳动。
+
+**分支**：`dev/v2-iter-2`　**Tag**：`v2.2.0`
+
+---
+
+### v2-iter-3：Skill 本地文件安装测试
+
+**目标**：端到端验证 Skill 从本地文件夹安装 → Agent 使用 → 卸载的完整链路。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 端到端测试：选择包含 SKILL.md 的本地文件夹 → 安装成功 → 已安装列表出现 |
+| 2 | 安全扫描验证：安装前危险命令/网络外发检测正常触发 |
+| 3 | Agent 使用验证：安装后 Agent 对话中能调用该 Skill 提供的工具 |
+| 4 | 卸载验证：卸载后工具从 ToolRegistry 移除，Agent 不再可用 |
+| 5 | 修复测试中发现的问题 |
+
+**验证标准**：从本地文件夹安装 Skill → Agent 能使用该 Skill 工具 → 卸载后工具不可用，全链路无手动干预。
+
+**分支**：`dev/v2-iter-3`　**Tag**：`v2.3.0`
+
+---
+
+### v2-iter-4：渠道配置测试与完善
+
+**目标**：OpenAI 兼容 + Anthropic 全链路验证通过，清理不兼容或过时的预设。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | OpenAI 兼容渠道验证：API Key + Base URL 配置 → 连通性测试 → 模型列表拉取 → 实际对话 |
+| 2 | Anthropic 渠道验证：同上全链路 |
+| 3 | 中转商渠道验证：验证 stream_options.include_usage 是否返回 token 统计 |
+| 4 | 不兼容或过时预设清理 |
+| 5 | 修复测试中发现的问题 |
+
+**验证标准**：至少 2 种渠道（OpenAI 兼容 + Anthropic）配置 → 连通性测试 → 模型列表 → 实际对话，全链路通过。
+
+**分支**：`dev/v2-iter-4`　**Tag**：`v2.4.0`
+
+---
+
+### v2-iter-5：SSH 远程执行测试与完善
+
+**目标**：SSH 连接 → 项目绑定 → Agent 远程执行 → 终端旁观，全链路通过。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | SSH 连接创建验证：配置 host/port/user/authType → 密码或密钥认证 → 连接测试通过 |
+| 2 | 项目绑定验证：项目设置关联 connectionId → Agent 自动使用 |
+| 3 | Agent 远程执行验证：Bash 工具带 sshConnectionId 走 SSH 通道 → 返回结构化 stdout/stderr/exitCode |
+| 4 | 终端旁观验证：Agent SSH 执行时终端面板实时显示命令和输出 |
+| 5 | 长连接复用验证：多次命令执行复用同一连接，断线重连 |
+| 6 | 修复测试中发现的问题 |
+
+**验证标准**：配置 SSH 连接 → 项目绑定 → Agent 远程执行 → 终端旁观，全链路无手动干预。
+
+**分支**：`dev/v2-iter-5`　**Tag**：`v2.5.0`
+
+---
+
+### v2-iter-6：主聊天接入工作台模式
+
+**目标**：Agent 在指定工作区目录下执行任务，工具调用绑定到该目录。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 工作台模式定义 — Agent 在指定工作区目录下执行任务，工具调用绑定到该目录 |
+| 2 | 主聊天界面模式选择/切换 UI |
+| 3 | 与项目注册关联 — 选择项目即绑定工作区路径 |
+| 4 | Agent 系统提示词注入工作区信息 |
+| 5 | 工具执行时工作区路径绑定（文件读写/Shell 执行限定在工作区内） |
+
+**验证标准**：选择工作台模式 → Agent 在指定工作区目录下执行任务，工具调用绑定到该目录。
+
+**分支**：`dev/v2-iter-6`　**Tag**：`v2.6.0`
+
+---
+
+### v2-iter-7：Global 全局模式接入
+
+**目标**：不绑定项目的通用助手模式，Agent 以通用身份工作。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 全局模式定义 — 不绑定特定项目/工作区，Agent 以通用助手身份工作 |
+| 2 | 新建会话时可选"全局模式"或"项目模式" |
+| 3 | 全局模式下工具调用不受工作区限制 |
+| 4 | 前端 UI 提供模式切换入口 |
+| 5 | 与工作台模式的切换逻辑复用 |
+
+**验证标准**：新建会话选择全局模式 → Agent 不绑定项目也能正常对话和调工具 → 可随时切换回项目模式。
+
+**分支**：`dev/v2-iter-7`　**Tag**：`v2.7.0`
+
+---
+
+### v2-iter-8：Goal 模式接入
+
+**目标**：用户设定目标后，Agent 自主拆解 → 执行 → 自检 → 继续，直到目标达成或用户中止。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | Goal 状态机实现 — 在现有 Agent Loop 基础上增加 Goal 状态机（plan → execute → verify → continue/adjust） |
+| 2 | Goal 持久化 — 会话级 Goal 状态存储（目标文本 + 子任务列表 + 完成状态） |
+| 3 | 系统提示词注入 — Goal 模式下注入"你正在执行 Goal 模式，当前目标：{goal}，已完成：{done}，待完成：{todo}"引导 |
+| 4 | 前端 Goal 进度面板 — 子任务列表 + 状态标记 + 实时日志 |
+| 5 | 可中断机制 — 用户随时可暂停或中止 Goal 执行 |
+| 6 | 自检机制 — 每个子任务完成后 Agent 自我评估是否达标，不达标则重试或调整方案 |
+| 7 | 与工作台模式协同 — Goal 模式下 Agent 在指定工作区内自主操作 |
+
+**验证标准**：设定目标（如"修复所有 TypeScript 编译错误"）→ Agent 自主拆解执行 → 进度面板实时更新 → 可中断 → 目标达成或用户中止。
+
+**分支**：`dev/v2-iter-8`　**Tag**：`v2.8.0`
+
+---
+
 ## 迭代依赖关系
 
 ```
-已完成（已合并 main）
-迭代一（骨架）→ 二（Provider）→ 三（Agent Loop）→ 四（工具链）→ 五（项目+会话）→ 六（人格）→ 七（记忆）→ 八（集成验证）
+=== MVP v1（已完成，已合并 main，tag v0.15.0）===
+迭代一（骨架）→ 二（Provider）→ 三（Agent Loop）→ 四（工具链）→ 五（项目+会话）
+  → 六（人格）→ 七（记忆）→ 八（集成验证）
+  → 九（输入框修复 + 提示词优化器）→ 十（子 Agent）
+  → 十一（右侧面板 + 子 Agent 架构增强 + 终端/文件管理）
+  → 十二（SSH 远程执行 + Agent 终端旁观）
+  → 十三（聊天窗渲染调整）→ 十四（Skill 市场）→ 十五（MCP 管理）
 
-已完成（dev/iter-11 分支，待合并 main）
-迭代九（输入框修复 + 提示词优化器）
-迭代十（子 Agent）
-迭代十一（右侧面板 + 子 Agent 架构增强 + 终端/文件管理）
+=== MVP v2（进行中）===
+v2-iter-1（Runtime 分层架构重构）  ← 当前最高优先级，为后续所有功能打基础
   ↓
-当前最高优先级
-迭代十二（SSH 远程执行 + Agent 终端旁观）  ← 新增
+v2-iter-2（缓存命中率修复）  ← 依赖架构重构（C# 端 conversation 状态管理）
   ↓
-迭代十三（聊天窗渲染调整）  ← 原迭代十一
+v2-iter-3（Skill 本地文件安装测试）  ┐
+v2-iter-4（渠道配置测试与完善）      ├─ 三者可并行，互不依赖
+v2-iter-5（SSH 远程执行测试与完善）  ┘
   ↓
-迭代十四（Skill 市场）  ← 原迭代十二
+v2-iter-6（主聊天接入工作台模式）  ← 依赖渠道配置验证通过
   ↓
-迭代十五（MCP 管理）  ← 原迭代十三
+v2-iter-7（Global 全局模式接入）  ← 依赖工作台模式（模式切换 UI 复用）
+  ↓
+v2-iter-8（Goal 模式接入）  ← 依赖工作台模式（Agent 需绑定工作区自主操作）
 ```
 
-迭代十二是当前最高优先级——SSH 远程执行是用户核心需求，Agent 终端旁观模式提升信任感。
-迭代十三可与迭代十二部分并行（渲染调整不依赖 SSH）。
-迭代十四和迭代十五可以并行（Skill 和 MCP 是独立生态）。
+v2-iter-1 是当前最高优先级——Runtime 分层架构重构是后续所有功能开发的基础。
+v2-iter-3/4/5 可并行执行（测试类任务，互不依赖）。
+v2-iter-7 和 v2-iter-8 依赖 v2-iter-6 的模式切换 UI。
