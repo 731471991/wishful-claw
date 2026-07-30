@@ -205,7 +205,14 @@ export function ComposerRuntimeStatus({
     (isStreaming ? Math.max(0, estimatedOutputTokens - live.currentOutputTokens) : 0)
   const cacheReadTokens = live.cumulativeCacheReadTokens
   const cacheCreationTokens = live.cumulativeCacheCreationTokens
-  const cacheHitRate = getCacheHitRate(inputTokens, cacheReadTokens, cacheCreationTokens)
+  // Cache hit rate reflects actual API-returned token usage only.
+  // Do NOT include pendingInputTokens (draft tokens from the input box) —
+  // those haven't been sent yet and would make the rate jump while typing.
+  const cacheHitRate = getCacheHitRate(
+    live.cumulativeBillableInputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
+  )
   const streamingExtraUsage = React.useMemo<TokenUsage | null>(() => {
     if (!isStreaming || !model) return null
     const estimatedBillableInputTokens =
