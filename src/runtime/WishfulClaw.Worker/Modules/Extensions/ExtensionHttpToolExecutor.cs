@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
-using WishfulClaw.Worker.Runtime;
+using WishfulClaw.Agent;
 
 namespace WishfulClaw.Worker.Modules.Extensions;
 

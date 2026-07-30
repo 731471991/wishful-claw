@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using WishfulClaw.Core.Protocol;
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 
 namespace WishfulClaw.Worker.Modules.Extensions;
 

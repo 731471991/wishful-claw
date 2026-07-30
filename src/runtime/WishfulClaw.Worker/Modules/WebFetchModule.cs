@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Threading.Tasks;
 using WishfulClaw.Contracts;
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 
 namespace WishfulClaw.Worker.Modules;
 

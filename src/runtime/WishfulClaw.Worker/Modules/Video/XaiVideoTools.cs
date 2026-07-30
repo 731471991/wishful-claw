@@ -4,8 +4,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
-using WishfulClaw.Worker.AgentRuntime;
-using WishfulClaw.Worker.Runtime;
+using WishfulClaw.Agent;
+using WishfulClaw.Agent;
 
 namespace WishfulClaw.Worker.Modules.Video;
 
