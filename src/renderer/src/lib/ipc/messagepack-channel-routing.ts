@@ -220,6 +220,7 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'skills:market-list',
   'skills:download-remote',
   'skills:cleanup-temp',
+  'skills:set-enabled',
   'cron:add',
   'cron:update',
   'cron:remove',
