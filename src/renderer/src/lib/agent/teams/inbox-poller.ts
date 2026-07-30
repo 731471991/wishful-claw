@@ -1,11 +1,12 @@
 import type { ToolCallState } from '../types'
 
-import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initializeTeamCursor, clearTeamCursor, parseToolCall, parsePermissionUpdate, parsePlanApprovalRequest, registerPendingApproval } from './inbox-parsers'
+import { seenMessageIds, approvalRequestToToolCallId, getTeamPollKey, initializeTeamCursor, clearTeamCursor, parseToolCall, parsePermissionUpdate, parsePlanApprovalRequest, registerPendingApproval, LEAD_WAKE_MESSAGE_TYPES, _inboxState } from './inbox-parsers'
 import { inboxPollerState } from './inbox-poller-state'
 import { useAgentStore } from '@renderer/stores/agent-store'
 import { useTeamStore } from '@renderer/stores/team-store'
 import { teamEvents } from './events'
 import { TeamMessage } from './types'
+import { appendTeamRuntimeMessage, consumeTeamRuntimeMessages } from './runtime-client'
 
 
 export async function sendApprovalResponse(params: {
@@ -122,7 +123,7 @@ async function handleLeadMessage(message: TeamMessage, sessionId?: string): Prom
 
   seenMessageIds.add(message.id)
 
-  lastLeadMessageTimestamp = Math.max(lastLeadMessageTimestamp, message.timestamp ?? 0)
+  _inboxState.lastLeadMessageTimestamp = Math.max(_inboxState.lastLeadMessageTimestamp, message.timestamp ?? 0)
 
 
 
@@ -300,7 +301,7 @@ export function startTeamInboxPoller(): void {
 
       // cannot strand the later message.
 
-      afterTimestamp: Math.max(0, lastLeadMessageTimestamp - 1),
+      afterTimestamp: Math.max(0, _inboxState.lastLeadMessageTimestamp - 1),
 
       recipient: 'lead',
 

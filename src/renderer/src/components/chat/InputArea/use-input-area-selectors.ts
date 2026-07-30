@@ -136,9 +136,9 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
       const modelId = fastConfig?.model ??
         (selection ? (selection.isAutoModeActive && autoSelection?.modelId ? autoSelection.modelId : selection.modelId) : activeModelId)
       if (!providerId || !modelId) return null
-      const provider = providers.find((item) => item.id === providerId)
+      const provider = providers.find((item: any) => item.id === providerId)
       if (!provider) return null
-      const model = provider.models.find((item) => item.id === modelId)
+      const model = provider.models.find((item: any) => item.id === modelId)
       if (!model) return null
       return { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey, type: provider.type, models: provider.models, modelId }
     })
@@ -146,13 +146,13 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
 
   const supportsVision = React.useMemo(() => {
     if (!activeProvider) return false
-    const model = activeProvider.models.find((m) => m.id === activeProvider.modelId)
+    const model = activeProvider.models.find((m: any) => m.id === activeProvider.modelId)
     return modelSupportsVision(model, activeProvider.type)
   }, [activeProvider])
 
   const composerModelCfg = React.useMemo<AIModelConfig | null>(() => {
     if (!activeProvider) return null
-    return activeProvider.models.find((m) => m.id === activeProvider.modelId) ?? null
+    return activeProvider.models.find((m: any) => m.id === activeProvider.modelId) ?? null
   }, [activeProvider])
 
   // ── UI ──────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ export function useInputAreaSelectors(input: InputAreaSelectorsInput): InputArea
   // ── Auth ────────────────────────────────────────────────────────
   const activeProviderForAuth = useProviderStore(
     useShallow((s) => {
-      const provider = s.providers.find((p) => p.id === s.activeProviderId)
+      const provider = s.providers.find((p: any) => p.id === s.activeProviderId)
       return provider ? { apiKey: provider.apiKey, requiresApiKey: provider.requiresApiKey } : null
     })
   )

@@ -59,20 +59,22 @@ export interface ResolvedProjectMemoryFile {
   source: ProjectMemoryPathSource
 }
 
-let cachedGlobalHomePath: string | undefined
-let cachedLayeredSnapshot: LayeredMemorySnapshot = {
-  globalDailyMemory: [],
-  projectDailyMemory: [],
-  version: 0
+export const _memState = {
+  cachedGlobalHomePath: undefined as string | undefined,
+  cachedLayeredSnapshot: {
+    globalDailyMemory: [],
+    projectDailyMemory: [],
+    version: 0
+  } as LayeredMemorySnapshot,
+  cachedLayerSshConnectionId: undefined as string | undefined,
+  watchedLayerPath: undefined as string | undefined,
+  watchedLayerPathKey: undefined as string | undefined,
+  cachedLayerScope: 'main' as SessionMemoryScope,
+  layeredMemoryWatchCleanup: null as (() => void) | null,
+  layeredMemoryVersion: 0,
+  layeredMemoryUpdatedAt: undefined as number | undefined,
 }
-let cachedLayerSshConnectionId: string | undefined
-let watchedLayerPath: string | undefined
-let watchedLayerPathKey: string | undefined
-let cachedLayerScope: SessionMemoryScope = 'main'
-let layeredMemoryWatchCleanup: (() => void) | null = null
-let layeredMemoryVersion = 0
-let layeredMemoryUpdatedAt: number | undefined
-const layeredMemoryListeners = new Set<(snapshot: LayeredMemorySnapshot) => void>()
+export const layeredMemoryListeners = new Set<(snapshot: LayeredMemorySnapshot) => void>()
 
 function parseReadError(raw: string): string | null {
   const trimmed = raw.trim()
@@ -95,13 +97,13 @@ function detectPathSeparator(pathValue: string): '\\' | '/' {
   return pathValue.includes('\\') ? '\\' : '/'
 }
 
-function normalizeWatchPath(pathValue: string): string {
+export function normalizeWatchPath(pathValue: string): string {
   const normalized = pathValue.replace(/\\/g, '/')
   if (/^[a-zA-Z]:/.test(normalized)) return normalized.toLowerCase()
   return normalized
 }
 
-function toOptionalEntry(path: string, content?: string): MemoryLayerEntry | undefined {
+export function toOptionalEntry(path: string, content?: string): MemoryLayerEntry | undefined {
   return content?.trim() ? { path, content } : undefined
 }
 
@@ -130,7 +132,7 @@ export function isMissingFileErrorMessage(error: string): boolean {
   )
 }
 
-async function loadDailyMemoryEntries(
+export async function loadDailyMemoryEntries(
   ipc: IPCClient,
   basePath: string | undefined
 ): Promise<DailyMemoryEntry[]> {
@@ -157,7 +159,7 @@ async function loadDailyMemoryEntries(
     }))
 }
 
-async function loadProjectDailyMemoryEntries(
+export async function loadProjectDailyMemoryEntries(
   ipc: IPCClient,
   projectRootPath: string | undefined,
   sshConnectionId?: string | null
@@ -190,7 +192,7 @@ async function loadProjectDailyMemoryEntries(
     }))
 }
 
-function snapshotsEqual(a: LayeredMemorySnapshot, b: LayeredMemorySnapshot): boolean {
+export function snapshotsEqual(a: LayeredMemorySnapshot, b: LayeredMemorySnapshot): boolean {
   try {
     return JSON.stringify(a) === JSON.stringify(b)
   } catch {

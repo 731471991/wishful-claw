@@ -14,13 +14,13 @@ function findModelConfig(providerConfig: ProviderConfig): AIModelConfig | null {
   const { providers } = useProviderStore.getState()
 
   if (providerConfig.providerId) {
-    const provider = providers.find((item) => item.id === providerConfig.providerId)
-    const model = provider?.models.find((item) => item.id === providerConfig.model)
+    const provider = providers.find((item: any) => item.id === providerConfig.providerId)
+    const model = provider?.models.find((item: any) => item.id === providerConfig.model)
     if (model) return model
   }
 
   for (const provider of providers) {
-    const model = provider.models.find((item) => item.id === providerConfig.model)
+    const model = provider.models.find((item: any) => item.id === providerConfig.model)
     if (model) return model
   }
 

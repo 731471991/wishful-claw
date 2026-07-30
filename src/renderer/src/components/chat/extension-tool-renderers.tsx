@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { buildHtmlRendererDocument, isRecord, readStringProp, readArrayProp, readString, readStringArray, safeHttpUrl, formatFieldValue, stringifyData, HTML_RENDERER_SOURCE } from './extension-tool-helpers'
+import { buildHtmlRendererDocument, isRecord, readStringProp, stringifyData, HTML_RENDERER_SOURCE } from './extension-tool-helpers'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { MONO_FONT } from '../../lib/constants'
 import { IPC } from '../../lib/ipc/channels'

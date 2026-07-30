@@ -1,9 +1,9 @@
 // Markdown rendering: code blocks, mermaid, streaming markdown content
 
 import * as React from 'react'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import Markdown, { type Components } from 'react-markdown'
-import { Copy, Check, ImageDown, ZoomIn } from 'lucide-react'
+import { Check, ImageDown, ZoomIn } from 'lucide-react'
 import {
   applyMermaidTheme, copyMermaidToClipboard, useMermaidThemeVersion
 } from '@renderer/lib/utils/mermaid-theme'

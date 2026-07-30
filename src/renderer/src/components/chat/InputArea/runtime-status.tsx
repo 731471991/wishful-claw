@@ -17,7 +17,7 @@ import {
   formatCacheHitRate, formatCost,
   getCacheHitRate
 } from '@renderer/lib/format-tokens'
-import type { MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
+import type { TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
 import type {
   ComposerRuntimeStatusProps,
@@ -73,10 +73,10 @@ export function ComposerRuntimeStatus({
           const reqModel = item.meta?.requestModel
           const providerId = reqModel?.providerId ?? item.debugInfo?.providerId ?? null
           const modelId = reqModel?.modelId ?? item.debugInfo?.model ?? model?.id ?? null
-          const provider = providerId ? (providers.find((p) => p.id === providerId) ?? null) : null
+          const provider = providerId ? (providers.find((p: any) => p.id === providerId) ?? null) : null
           const msgModelCfg =
             (provider && modelId
-              ? (provider.models.find((m) => m.id === modelId) ?? null)
+              ? (provider.models.find((m: any) => m.id === modelId) ?? null)
               : null) ??
             (model && modelId === model.id ? model : null) ??
             model ??

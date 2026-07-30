@@ -30,7 +30,7 @@ export function useChatActions() {
         console.error('[ChatActions] No provider selected')
         return
       }
-      const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m) => m.enabled)?.id
+      const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m: any) => m.enabled)?.id
       if (!modelId) {
         console.error('[ChatActions] No model selected')
         return

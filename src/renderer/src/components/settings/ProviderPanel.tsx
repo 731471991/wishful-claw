@@ -41,20 +41,20 @@ function ProviderPanel(): React.JSX.Element {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null)
 
-  const selectedId = userSelectedId ?? activeProviderId ?? providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null
+  const selectedId = userSelectedId ?? activeProviderId ?? providers.find((p: any) => p.enabled)?.id ?? providers[0]?.id ?? null
   const resolvedSelectedId =
-    selectedId && providers.some((p) => p.id === selectedId)
+    selectedId && providers.some((p: any) => p.id === selectedId)
       ? selectedId
-      : (activeProviderId ?? providers.find((p) => p.enabled)?.id ?? providers[0]?.id ?? null)
+      : (activeProviderId ?? providers.find((p: any) => p.enabled)?.id ?? providers[0]?.id ?? null)
 
   const selectedProvider = resolvedSelectedId
-    ? (providers.find((p) => p.id === resolvedSelectedId) ?? null)
+    ? (providers.find((p: any) => p.id === resolvedSelectedId) ?? null)
     : null
 
   const enabledProviders = useMemo(
     () =>
       providers.filter(
-        (p) => p.enabled && (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        (p: any) => p.enabled && (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
       ),
     [providers, searchQuery]
   )
@@ -62,7 +62,7 @@ function ProviderPanel(): React.JSX.Element {
   const disabledProviders = useMemo(
     () =>
       providers.filter(
-        (p) => !p.enabled && (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        (p: any) => !p.enabled && (!searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()))
       ),
     [providers, searchQuery]
   )
@@ -162,7 +162,7 @@ function ProviderPanel(): React.JSX.Element {
                   <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/55">
                     {t('provider.list.enabled')}
                   </p>
-                  {enabledProviders.map((p) => renderProviderListItem(p, false))}
+                  {enabledProviders.map((p: any) => renderProviderListItem(p, false))}
                 </div>
               )}
               {disabledProviders.length > 0 && (
@@ -170,7 +170,7 @@ function ProviderPanel(): React.JSX.Element {
                   <p className="px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/55">
                     {t('provider.list.disabled')}
                   </p>
-                  {disabledProviders.map((p) => renderProviderListItem(p, true))}
+                  {disabledProviders.map((p: any) => renderProviderListItem(p, true))}
                 </div>
               )}
               {enabledProviders.length === 0 && disabledProviders.length === 0 && (

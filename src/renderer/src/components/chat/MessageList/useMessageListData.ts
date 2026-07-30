@@ -18,23 +18,7 @@ import {
   type ChatRenderableMessageMeta,
   type TailToolExecutionState
 } from '../transcript-utils'
-import {
-  type MessageListRow,
-  type MessageLocatorIndexRow,
-  type MessageLocatorSource,
-  type AssistantRailLayout,
-  type AssistantReplyRailItem,
-  type AssistantRailLayoutRow,
-  getMessageToolUseIds,
-  collectDuplicatePlanReviewToolUseIds,
-  hasCompleteTailToolExecutionResults,
-  buildAssistantRailLayout,
-  parseLocatorRowSource,
-  findPendingAskUserQuestion,
-  EMPTY_MESSAGE_LOCATOR_ROWS,
-  EMPTY_ORCHESTRATION_STATE,
-  MIN_RENDERABLE_HISTORY_ROWS,
-} from './utils'
+import { type MessageListRow, type MessageLocatorIndexRow, type MessageLocatorSource, type AssistantRailLayout, type AssistantReplyRailItem, type AssistantRailLayoutRow, getMessageToolUseIds, collectDuplicatePlanReviewToolUseIds, hasCompleteTailToolExecutionResults, buildAssistantRailLayout, parseLocatorRowSource, findPendingAskUserQuestion, EMPTY_MESSAGE_LOCATOR_ROWS, EMPTY_ORCHESTRATION_STATE } from './utils'
 import {
   selectMessageListSession,
   selectSessionScopedTeamState,

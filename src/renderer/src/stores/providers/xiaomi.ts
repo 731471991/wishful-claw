@@ -1,6 +1,5 @@
 import type { AIModelConfig } from '../../../../shared/types/provider'
 import type { BuiltinProviderPreset } from './types'
-import { cn } from '@renderer/lib/utils'
 
 const xiaomiThinkingConfig = {
   bodyParams: { thinking: { type: 'enabled' } },

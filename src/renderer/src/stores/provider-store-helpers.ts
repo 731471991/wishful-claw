@@ -11,7 +11,7 @@ export const STORAGE_KEY = 'wishful-claw-providers'
 export { builtinProviderPresets }
 export type { BuiltinProviderPreset }
 
-interface ProviderState {
+export interface ProviderState {
   providers: AIProvider[]
   activeProviderId: string | null
   activeModelId: string
@@ -223,9 +223,9 @@ export function ensureBuiltinPresets(): void {
     updates.activeProviderId = firstProvider.id
     // Pick default model
     const defaultModel =
-      firstProvider.models.find((m) => m.id === firstProvider.defaultModel) ??
-      firstProvider.models.find((m) => m.enabled && (!m.category || m.category === 'chat')) ??
-      firstProvider.models.find((m) => m.enabled) ??
+      firstProvider.models.find((m: AIModelConfig) => m.id === firstProvider.defaultModel) ??
+      firstProvider.models.find((m: AIModelConfig) => m.enabled && (!m.category || m.category === 'chat')) ??
+      firstProvider.models.find((m: AIModelConfig) => m.enabled) ??
       firstProvider.models[0]
     if (defaultModel) {
       updates.activeModelId = defaultModel.id
@@ -236,9 +236,9 @@ export function ensureBuiltinPresets(): void {
     const provider = nextProviders.find((p) => p.id === state.activeProviderId)
     if (provider) {
       const defaultModel =
-        provider.models.find((m) => m.id === provider.defaultModel) ??
-        provider.models.find((m) => m.enabled && (!m.category || m.category === 'chat')) ??
-        provider.models.find((m) => m.enabled) ??
+        provider.models.find((m: AIModelConfig) => m.id === provider.defaultModel) ??
+        provider.models.find((m: AIModelConfig) => m.enabled && (!m.category || m.category === 'chat')) ??
+        provider.models.find((m: AIModelConfig) => m.enabled) ??
         provider.models[0]
       if (defaultModel) {
         updates.activeModelId = defaultModel.id

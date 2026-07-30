@@ -1,4 +1,3 @@
-import { toolRegistry } from '../agent/tool-registry'
 import type { ToolHandler } from '../tools/tool-types'
 
 // ── 5 Unified Plugin Tools ──

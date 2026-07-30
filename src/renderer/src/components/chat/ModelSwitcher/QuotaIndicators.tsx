@@ -1,7 +1,6 @@
 // Quota indicator components extracted from ModelSwitcher.tsx
 
 import { MonitorSmartphone } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 
 export interface CodexQuotaData {

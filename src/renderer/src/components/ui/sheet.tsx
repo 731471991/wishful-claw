@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Dialog, DialogContent, DialogOverlay } from './dialog'
+import { Dialog, DialogContent } from './dialog'
 import { cn } from '@renderer/lib/utils'
 
 export function Sheet({ children, open, onOpenChange }: {

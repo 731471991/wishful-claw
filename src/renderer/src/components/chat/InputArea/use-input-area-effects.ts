@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useChatStore } from '@renderer/stores/chat-store'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { cloneImageAttachments, type ImageAttachment } from '@renderer/lib/image-attachments'
 import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
@@ -10,7 +9,6 @@ import { deserializeEditorState } from '@renderer/lib/select-file-editor'
 import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
 import type { FileAwareEditorHandle } from '../FileAwareEditor'
 import { isReferenceOnlyDocument } from './utils'
-import type { InputDraftContext } from '@renderer/lib/input-drafts'
 
 export interface InputAreaEffectsInput {
   draftSessionId: string | null

@@ -1,9 +1,6 @@
 // Pure utility functions, constants, and types extracted from memory-automation.ts
 
 import { Allow, parse as parsePartialJSON } from 'partial-json'
-import { runSidecarTextRequest } from '@renderer/lib/ipc/agent-bridge'
-import { useProviderStore } from '@renderer/stores/provider-store'
-import type { ContentBlock, ProviderConfig, UnifiedMessage } from '@renderer/lib/api/types'
 import { INVALID_MEMORY_JSON_ERROR } from './memory-automation-utils'
 import type { ConsolidationOutput, PipelineScopeOutput } from './memory-automation-utils'
 import { rolloutSlugFromSession } from './memory-automation-utils'

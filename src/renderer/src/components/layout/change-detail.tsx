@@ -1,20 +1,12 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Copy, FileCode, Loader2, RefreshCw, RotateCcw } from 'lucide-react'
+import { Check, Copy, FileCode, Loader2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
-import { MONO_FONT } from '@renderer/lib/constants'
-import { cn } from '@renderer/lib/utils'
 import { CodeDiffViewer } from '@renderer/components/chat/CodeDiffViewer'
-import {
-  type LoadedChangeContent, type DiffSummaryStats, isLoadedChangeContent
-} from '@renderer/components/chat/change-summary-utils'
-import {
-  buildDiffCopyText, canRenderInlineSnapshot, computeDiff, detectLang,
-  fileName, foldContext, lineCount, snapshotText,
-  type AggregatedFileChange
-} from '@renderer/components/chat/file-change-utils'
-import { actionLabel, statusTone } from './session-change-utils'
+import { type LoadedChangeContent, isLoadedChangeContent } from '@renderer/components/chat/change-summary-utils'
+import { buildDiffCopyText, canRenderInlineSnapshot, computeDiff, detectLang, foldContext, lineCount, snapshotText, type AggregatedFileChange } from '@renderer/components/chat/file-change-utils'
 import { isErrorResult } from './session-change-utils'
+import { loadAggregatedChangeContent } from '../chat/change-summary-utils'
 
 export function CopyIconButton({ text }: { text: string }): React.JSX.Element {
   const { t } = useTranslation('common')

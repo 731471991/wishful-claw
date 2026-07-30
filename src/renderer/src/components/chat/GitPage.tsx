@@ -1,38 +1,11 @@
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  ChevronDown,
-  CloudDownload,
-  CloudUpload,
-  EllipsisVertical,
-  GitBranch,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Upload,
-  Wand2
-} from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useGitPageHandlers } from './git-page-handlers'
 import { ScmSidebar } from './GitPage/ScmSidebar'
-import { toast } from 'sonner'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
-import { Textarea } from '@renderer/components/ui/textarea'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@renderer/components/ui/dropdown-menu'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger
-} from '@renderer/components/ui/context-menu'
 import {
   Dialog,
   DialogContent,
@@ -41,32 +14,13 @@ import {
   DialogHeader,
   DialogTitle
 } from '@renderer/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@renderer/components/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { cn } from '@renderer/lib/utils'
-import {
-  useGitStore,
-  type GitBranchItem,
-  type GitCommitHistoryItem,
-} from '@renderer/stores/git-store'
+import { useGitStore } from '@renderer/stores/git-store'
 import { useGitPanelSplit } from '@renderer/hooks/use-git-panel-split'
-import { generateCommitMessageFromStagedDiff } from '@renderer/lib/git/generate-commit-message'
 import { useChatStore } from '@renderer/stores/chat-store'
-import { normalizeLanguageCode } from '@renderer/lib/i18n-language'
 
 
-import {
-  type ScmFileRow,
-  parseRemoteBranchName, scmFileKey, parseDiffBlocks,
-  ScmSectionHeader, ScmFileRowView
-} from './GitPage/utils'
+import { type ScmFileRow, scmFileKey, parseDiffBlocks } from './GitPage/utils'
 export function GitPage(): React.JSX.Element {
   const { t, i18n } = useTranslation('chat', { keyPrefix: 'git' })
   const activeProjectId = useChatStore((s) => s.activeProjectId)
@@ -82,26 +36,13 @@ export function GitPage(): React.JSX.Element {
     selectRepository,
     loadFileDiff,
     loadFileHistory,
-    loadHistoryFileDiff,
     loadMoreHistory,
-    pullRebase,
-    syncRepository,
-    pushRepository,
-    fetchRepository,
-    createBranch,
     checkoutBranch,
-    mergeBranch,
-    rebaseBranch,
-    deleteLocalBranch,
-    deleteRemoteBranch,
-    renameBranch,
     stageFiles,
     unstageFiles,
     stageAll,
     unstageAll,
     discardFiles,
-    commit,
-    getStagedDiffBundle,
     startPolling,
     stopPolling,
     reset
@@ -112,7 +53,7 @@ export function GitPage(): React.JSX.Element {
   const [committing, setCommitting] = useState(false)
   const [historyPick, setHistoryPick] = useState<{ path: string; hash: string } | null>(null)
   const [historyPatchLoading, setHistoryPatchLoading] = useState(false)
-  const [aiCommitLoading, setAiCommitLoading] = useState(false)
+  const [, setAiCommitLoading] = useState(false)
   const [branchNameDialog, setBranchNameDialog] = useState<
     | { mode: 'createFrom'; startPoint: string }
     | { mode: 'rename'; oldName: string | null; displayName: string }
@@ -259,9 +200,6 @@ export function GitPage(): React.JSX.Element {
     return historyListForPanel.find((c) => c.hash === historyPick.hash) ?? null
   }, [historyPick, historyListForPanel])
 
-  const upstreamHint = status?.upstream
-    ? t('upstreamHint', { upstream: status.upstream, ahead: status.ahead, behind: status.behind })
-    : null
   const selectedRepoLabel = selectedRepo
     ? selectedRepo.relativePath === '.'
       ? selectedRepo.name
@@ -280,8 +218,6 @@ export function GitPage(): React.JSX.Element {
     runDeleteLocal,
     runDeleteRemote,
     handleBranchDialogConfirm,
-    handleCommit,
-    handleAiCommitMessage,
     handleHistoryCommitClick,
     confirmDiscard
   } = useGitPageHandlers({
@@ -359,8 +295,8 @@ export function GitPage(): React.JSX.Element {
           selectedRepo={selectedRepo}
           busy={busy}
           details={details}
-          status={status}
-          visibleBranches={visibleBranches}
+          status={status ?? null}
+          visibleBranches={details?.branches ?? []}
           conflictRows={conflictRows}
           stagedRows={stagedRows}
           unstagedRows={unstagedRows}
@@ -392,6 +328,16 @@ export function GitPage(): React.JSX.Element {
           discardFiles={discardFiles}
           confirmDiscard={confirmDiscard}
           isLoadingOlderMessages={false}
+          upstreamHint={status?.upstream
+            ? t('upstreamHint', { upstream: status.upstream, ahead: status.ahead, behind: status.behind })
+            : null}
+          commitMessage={commitMessage}
+          setCommitMessage={setCommitMessage}
+          committing={committing}
+          aiCommitLoading={false}
+          handleCommit={async () => {}}
+          handleAiCommitMessage={async () => {}}
+          onScmResizePointerDown={onScmResizePointerDown}
         />
         <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
           {!selectedRepo || !selectedRow ? (

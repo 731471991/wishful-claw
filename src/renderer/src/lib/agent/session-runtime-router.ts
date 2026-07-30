@@ -1,8 +1,7 @@
-import { stripThinkTagMarkers, upsertBufferedToolUse, _explicitVisibleSessionIds, invalidateVisibleSessionCache, setSessionForegroundVisibility, debouncedMarkSessionUpdate, cancelDebouncedMarkSessionUpdate } from './session-runtime-utils'
+import { stripThinkTagMarkers, upsertBufferedToolUse, _explicitVisibleSessionIds, debouncedMarkSessionUpdate, cancelDebouncedMarkSessionUpdate, VISIBLE_IDS_CACHE_TTL_MS, _rtState } from './session-runtime-utils'
 import { useChatStore } from '@renderer/stores/chat-store'
-import { ThinkingBlock } from '../../components/chat/ThinkingBlock'
 import { useBackgroundSessionStore } from '../../stores/background-session-store'
-import { ContentBlock, TokenUsage, ToolUseBlock, UnifiedMessage } from '../api/types'
+import { ContentBlock, TokenUsage, ToolUseBlock, UnifiedMessage, ThinkingBlock } from '../api/types'
 import { appendOrUpsertContentBlock } from '../content-blocks'
 import { createResidentRequestDebugInfo } from '../debug-store'
 import { emitSessionRuntimeSync } from '../session-runtime-sync'
@@ -41,8 +40,8 @@ function mutateBufferedMessage(
 
 export function getVisibleSessionIds(): Set<string> {
   const now = Date.now()
-  if (_cachedVisibleIds && now - _cachedVisibleIdsTs < VISIBLE_IDS_CACHE_TTL_MS) {
-    return _cachedVisibleIds
+  if (_rtState._cachedVisibleIds && now - _rtState._cachedVisibleIdsTs < VISIBLE_IDS_CACHE_TTL_MS) {
+    return _rtState._cachedVisibleIds
   }
 
   const visibleSessionIds = new Set<string>()
@@ -53,8 +52,8 @@ export function getVisibleSessionIds(): Set<string> {
     visibleSessionIds.add(sessionId)
   }
 
-  _cachedVisibleIds = visibleSessionIds
-  _cachedVisibleIdsTs = now
+  _rtState._cachedVisibleIds = visibleSessionIds
+  _rtState._cachedVisibleIdsTs = now
   return visibleSessionIds
 }
 

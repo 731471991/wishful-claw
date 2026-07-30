@@ -3,7 +3,6 @@
 
 import type { UIStore } from './ui-store-interface'
 import type { RightPanelTabInstance } from './ui-types'
-import type { PreviewPanelState, PreviewPanelTab, OpenDiffParams } from './preview-panel-helpers'
 import {
   buildFilePreviewState,
   previewTabTitle,
@@ -24,14 +23,14 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
       previewPanelState: null,
       previewPanelTabs: [],
       activePreviewPanelTabId: null,
-      openPreviewTab: (previewState, preserveExistingViewMode = false, mirrorToRightPanel = true) =>
-        set((state) => {
+      openPreviewTab: (previewState: any, preserveExistingViewMode = false, mirrorToRightPanel = true) =>
+        set((state: any) => {
           const scope = resolvePanelScope(state, previewState.sessionId, previewState.projectId)
           const scopedPreviewState = withPreviewScope(previewState, scope)
           const nextTab = withPreviewTab(scopedPreviewState)
-          const existing = state.previewPanelTabs.find((tab) => tab.id === nextTab.id)
+          const existing = state.previewPanelTabs.find((tab: any) => tab.id === nextTab.id)
           const nextTabs = existing
-            ? state.previewPanelTabs.map((tab) =>
+            ? state.previewPanelTabs.map((tab: any) =>
                 tab.id === nextTab.id
                   ? {
                       ...tab,
@@ -55,7 +54,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
           if (!mirrorToRightPanel) return previewBase
           const previewRightPanelTabId = rightPanelPreviewTabId(nextTab.id)
           const existingRightPanelTab = state.rightPanelTabs.find(
-            (tab) => tab.id === previewRightPanelTabId
+            (tab: any) => tab.id === previewRightPanelTabId
           )
           const rightPanelTab: RightPanelTabInstance = {
             ...(existingRightPanelTab ?? {
@@ -72,7 +71,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
           }
           const rightPanelTabs = ensureRightPanelTabs(
             existingRightPanelTab
-              ? state.rightPanelTabs.map((tab) =>
+              ? state.rightPanelTabs.map((tab: any) =>
                   tab.id === previewRightPanelTabId ? rightPanelTab : tab
                 )
               : [...state.rightPanelTabs, rightPanelTab]
@@ -84,7 +83,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
             rightPanelOpen: true
           }
         }),
-      openDiff: (params) =>
+      openDiff: (params: any) =>
         get().openPreviewTab(
           {
             source: 'diff',
@@ -109,7 +108,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
           false,
           params.mirrorToRightPanel ?? true
         ),
-      openDevServerPreview: (projectDir, port, sessionId) =>
+      openDevServerPreview: (projectDir: any, port: any, sessionId: any) =>
         get().openPreviewTab({
           source: 'dev-server',
           filePath: '',
@@ -119,7 +118,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
           projectDir,
           sessionId
         }),
-      openMarkdownPreview: (title, content, sessionId) =>
+      openMarkdownPreview: (title: any, content: any, sessionId: any) =>
         get().openPreviewTab({
           source: 'markdown',
           filePath: '',
@@ -130,14 +129,14 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
           sessionId
         }),
       closePreviewPanel: () => set({ previewPanelOpen: false }),
-      closePreviewTab: (tabId) =>
-        set((state) => {
-          const index = state.previewPanelTabs.findIndex((tab) => tab.id === tabId)
+      closePreviewTab: (tabId: any) =>
+        set((state: any) => {
+          const index = state.previewPanelTabs.findIndex((tab: any) => tab.id === tabId)
           if (index < 0) return {}
-          const nextTabs = state.previewPanelTabs.filter((tab) => tab.id !== tabId)
+          const nextTabs = state.previewPanelTabs.filter((tab: any) => tab.id !== tabId)
           const rpTabId = rightPanelPreviewTabId(tabId)
           const nextRightPanelTabs = ensureRightPanelTabs(
-            state.rightPanelTabs.filter((tab) => tab.id !== rpTabId)
+            state.rightPanelTabs.filter((tab: any) => tab.id !== rpTabId)
           )
           const nextActiveId =
             state.activePreviewPanelTabId === tabId
@@ -157,8 +156,8 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
                 : state.rightPanelActiveTabId
           }
         }),
-      setActivePreviewTab: (tabId) =>
-        set((state) => {
+      setActivePreviewTab: (tabId: any) =>
+        set((state: any) => {
           const rpTabId = tabId ? rightPanelPreviewTabId(tabId) : null
           return {
             activePreviewPanelTabId: tabId,
@@ -166,7 +165,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
             previewPanelOpen: tabId ? true : state.previewPanelOpen,
             detailPanelOpen: tabId ? false : state.detailPanelOpen,
             detailPanelContent: tabId ? null : state.detailPanelContent,
-            ...(rpTabId && state.rightPanelTabs.some((tab) => tab.id === rpTabId)
+            ...(rpTabId && state.rightPanelTabs.some((tab: any) => tab.id === rpTabId)
               ? {
                   rightPanelActiveTabId: rpTabId,
                   rightPanelOpen: true
@@ -174,18 +173,18 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
               : {})
           }
         }),
-      updatePreviewTab: (tabId, patch) =>
-        set((state) => {
-          const nextTabs = state.previewPanelTabs.map((tab) =>
+      updatePreviewTab: (tabId: any, patch: any) =>
+        set((state: any) => {
+          const nextTabs = state.previewPanelTabs.map((tab: any) =>
             tab.id === tabId ? { ...tab, ...patch } : tab
           )
-          const updatedTab = nextTabs.find((tab) => tab.id === tabId)
+          const updatedTab = nextTabs.find((tab: any) => tab.id === tabId)
           const rpTabId = rightPanelPreviewTabId(tabId)
           return {
             previewPanelTabs: nextTabs,
             previewPanelState: activatePreviewTab(nextTabs, state.activePreviewPanelTabId),
             rightPanelTabs: updatedTab
-              ? state.rightPanelTabs.map((tab) =>
+              ? state.rightPanelTabs.map((tab: any) =>
                   tab.id === rpTabId
                     ? {
                         ...tab,
@@ -197,7 +196,7 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
               : state.rightPanelTabs
           }
         }),
-      openFilePreview: (filePath, viewMode, sshConnectionId, sessionId, targetLine, targetColumn) =>
+      openFilePreview: (filePath: any, viewMode: any, sshConnectionId: any, sessionId: any, targetLine: any, targetColumn: any) =>
         get().openPreviewTab(
           buildFilePreviewState(
             filePath,
@@ -210,9 +209,9 @@ export function createPreviewPanelSlice(set: SetFn, get: GetFn) {
           ),
           viewMode === undefined && !targetLine
         ),
-      setPreviewViewMode: (mode) =>
-        set((state) => ({
-          previewPanelTabs: state.previewPanelTabs.map((tab) =>
+      setPreviewViewMode: (mode: any) =>
+        set((state: any) => ({
+          previewPanelTabs: state.previewPanelTabs.map((tab: any) =>
             tab.id === state.activePreviewPanelTabId ? { ...tab, viewMode: mode } : tab
           ),
           previewPanelState: state.previewPanelState

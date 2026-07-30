@@ -1,33 +1,6 @@
-import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ProviderType, ReasoningEffortLevel, ThinkingConfig } from '../lib/api/types'
-import { ipcStorage } from '../lib/ipc/ipc-storage'
-import {
-  DEFAULT_APP_THEME_PRESET,
-  DEFAULT_SSH_TERMINAL_THEME_PRESET,
-  isAppThemePreset,
-  type AppThemePreset,
-  type SshTerminalThemePreset
-} from '../lib/theme-presets'
-import {
-  LEFT_SIDEBAR_DEFAULT_WIDTH,
-  clampLeftSidebarWidth
-} from '@renderer/components/layout/right-panel-defs'
-import {
-  DEFAULT_BROWSER_USER_DATA_SOURCE,
-  normalizeBrowserUserDataSource,
-  type BrowserUserDataSource
-} from '../../../shared/browser-plugin'
-import {
-  detectSystemLanguage,
-  normalizeLanguageCode,
-  type AppLanguage
-} from '@renderer/lib/i18n-language'
-import {
-  DEFAULT_PERMISSION_POLICY,
-  sanitizePermissionPolicy,
-  type PermissionPolicy
-} from '../../../shared/permission-policy'
+import type { ReasoningEffortLevel, ThinkingConfig } from '../lib/api/types'
+import { type AppThemePreset, type SshTerminalThemePreset } from '../lib/theme-presets'
+import { type AppLanguage } from '@renderer/lib/i18n-language'
 
 export interface ModelBinding {
   providerId: string

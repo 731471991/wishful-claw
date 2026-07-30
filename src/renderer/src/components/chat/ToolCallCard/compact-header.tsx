@@ -1,16 +1,7 @@
 import type React from 'react'
-import {
-  Waypoints, FileCode, Trash2, ListTodo, CalendarClock, Bell, HelpCircle,
-  Code2, Globe2, MousePointerClick, Keyboard, ScrollText, Camera, Monitor,
-  SquareTerminal, LogIn, LogOut, FileText, Target, Database, Box,
-  Search, FolderTree, Clock
-} from 'lucide-react'
+import { Waypoints, FileCode, Trash2, ListTodo, CalendarClock, Bell, HelpCircle, Code2, Globe2, MousePointerClick, Keyboard, ScrollText, Camera, Monitor, SquareTerminal, LogIn, LogOut, FileText, Target, Database, Box, Search, FolderTree } from 'lucide-react'
 import type { ToolResultContent } from '@renderer/lib/api/types'
-import {
-  CompactToolCallHeader,
-  type CompactToolHeaderBadge,
-  type CompactToolHeaderModel
-} from '../CompactToolCallHeader'
+import { type CompactToolHeaderBadge, type CompactToolHeaderModel } from '../CompactToolCallHeader'
 import type { ToolCallCardProps } from './types'
 import { COMMAND_TOOL_NAMES } from './types'
 import {

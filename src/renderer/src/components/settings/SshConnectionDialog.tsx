@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@renderer/components/ui/select'
-import type { SshConnection } from '@renderer/stores/ssh-store'
 
 export type AuthType = 'password' | 'privateKey' | 'agent'
 

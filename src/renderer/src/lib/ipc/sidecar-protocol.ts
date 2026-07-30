@@ -7,17 +7,7 @@
   ToolResultContent,
   UnifiedMessage
 } from '../api/types'
-import type { ToolCallState } from '../agent/types'
-import type { CompressionConfig } from '../agent/context-compression'
-import { toolRegistry } from '../agent/tool-registry'
-import { resolveProviderUserAgent } from '../api/api-user-agent'
 import { summarizeToolInputForHistory } from '../tools/tool-input-sanitizer'
-import { clampMaxConcurrentSubAgents, useSettingsStore } from '@renderer/stores/settings-store'
-import { useProviderStore } from '@renderer/stores/provider-store'
-import {
-  toPermissionPolicySnapshot,
-  type PermissionPolicySnapshot
-} from '../../../../shared/permission-policy'
 
 // Type definitions extracted to sidecar-protocol-types.ts
 export type {
@@ -50,7 +40,7 @@ export function normalizeSidecarRecord(value: unknown): Record<string, unknown> 
   return isRecord(value) ? value : {}
 }
 
-function sanitizeSidecarToolInput(name: string, rawInput: unknown): Record<string, unknown> {
+export function sanitizeSidecarToolInput(name: string, rawInput: unknown): Record<string, unknown> {
   const input = normalizeSidecarRecord(rawInput)
   return summarizeToolInputForHistory(name, input)
 }
@@ -144,7 +134,7 @@ export function normalizeRequestContextTexts(value: readonly string[] | null | u
 }
 
 /** Minimal provider shape accepted by sidecar mapping functions. Accepts both full ProviderConfig and lightweight { providerId, model } selections. */
-type SidecarProviderInput = Partial<Omit<ProviderConfig, 'providerId'>> & { model?: string; providerId?: string | null }
+export type SidecarProviderInput = Partial<Omit<ProviderConfig, 'providerId'>> & { model?: string; providerId?: string | null }
 
 export function isNativeSidecarProviderConfig(provider: SidecarProviderInput): boolean {
   if (

@@ -17,7 +17,6 @@ import {
   SearchMetaHint
 } from '../shared'
 import { OutputBlock } from './text-output'
-import { useUIStore } from '@renderer/stores/ui-store'
 
 export function GrepOutputBlock({
   output,

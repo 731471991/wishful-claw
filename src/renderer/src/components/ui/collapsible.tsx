@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { cn } from '@renderer/lib/utils'
 
 export function Collapsible({ children, open, onOpenChange, className }: {
   children: React.ReactNode

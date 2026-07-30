@@ -1,7 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { cn } from '@renderer/lib/utils'
 import type { ReasoningEffortLevel } from '@renderer/lib/api/types'
-import { motion } from 'motion/react'
 
 interface ReasoningEffortSliderProps {
   levels: ReasoningEffortLevel[]

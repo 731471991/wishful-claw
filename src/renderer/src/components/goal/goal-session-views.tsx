@@ -2,14 +2,7 @@ import * as React from 'react'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
 import { formatGoalElapsedSeconds, formatGoalTokens, validateGoalObjective } from '../../lib/agent/goal-context'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Pause,
-  Play,
-  Zap
-} from 'lucide-react'
-import { cn } from '@renderer/lib/utils'
+import { AlertTriangle } from 'lucide-react'
 import {
   useGoalStore,
   type SessionGoal,

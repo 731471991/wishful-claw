@@ -1,31 +1,6 @@
 ﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  MessageSquare,
-  Settings,
-  FolderTree,
-  Sparkles,
-  Ghost,
-  RefreshCw,
-  PenTool,
-  GitBranch,
-  Plus,
-  Search,
-  Pin,
-  Trash2,
-  Pencil,
-  Folder,
-  FolderOpen,
-  Eraser,
-  Copy,
-  ChevronDown,
-  ChevronRight,
-  PanelLeftClose,
-  Archive,
-  Image,
-  CalendarDays
-} from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { GitBranch, Plus, Pin, Trash2, Pencil, Folder, FolderOpen, Eraser, Copy, Archive } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,

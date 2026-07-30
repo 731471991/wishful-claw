@@ -4,10 +4,7 @@
  */
 
 import type { ToolResultContent } from '@renderer/lib/api/types'
-import {
-  decodeStructuredToolResult,
-  isStructuredToolErrorText
-} from '@renderer/lib/tools/tool-result-format'
+import { decodeStructuredToolResult } from '@renderer/lib/tools/tool-result-format'
 import type {
   AskUserQuestionItem,
   AskUserAnswers,

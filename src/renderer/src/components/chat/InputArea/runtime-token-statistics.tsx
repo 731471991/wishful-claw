@@ -1,7 +1,6 @@
 // Runtime status bar: token/cost/TPS/TTFT metrics + streaming status indicator
 
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import type { MessageRequestModelMeta, TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
@@ -27,11 +26,11 @@ export function RuntimeTokenStatistics({
     useShallow((state) => {
       if (!requestModel?.modelId) return null
       const provider = state.providers.find(
-        (item) =>
+        (item: any) =>
           (!!requestModel.providerId && item.id === requestModel.providerId) ||
           (!!requestModel.providerBuiltinId && item.builtinId === requestModel.providerBuiltinId)
       )
-      return provider?.models.find((item) => item.id === requestModel.modelId) ?? null
+      return provider?.models.find((item: any) => item.id === requestModel.modelId) ?? null
     })
   )
 

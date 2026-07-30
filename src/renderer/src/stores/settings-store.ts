@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { ProviderType, ReasoningEffortLevel, ThinkingConfig } from '../lib/api/types'
+import type { ProviderType, ReasoningEffortLevel } from '../lib/api/types'
 import { ipcStorage } from '../lib/ipc/ipc-storage'
 import {
   DEFAULT_APP_THEME_PRESET,
@@ -28,47 +28,7 @@ import {
   sanitizePermissionPolicy,
   type PermissionPolicy
 } from '../../../shared/permission-policy'
-import {
-  type ModelBinding,
-  type ClaudeCodePermissionOption,
-  type SessionDefaultModelBinding,
-  type ClaudeCodeConfig,
-  type CodexConfig,
-  type PromptRecommendationModelBinding,
-  type PromptRecommendationModelBindings,
-  type MainModelSelectionMode,
-  type MemoryAutomationWritePolicy,
-  type MemoryScopeMode,
-  type ClarifyPlanModeAutoSwitchTarget,
-  type ProjectDefaultDirectoryMode,
-  type FileDiffViewMode,
-  type ThemeMode,
-  type LiveOutputAnimationStyle,
-  type OnboardingLanguage,
-  type ShellExecutionEndpoint,
-  DEFAULT_THEME_MODE,
-  DEFAULT_SHELL_EXECUTION_ENDPOINT,
-  DEFAULT_MAX_PARALLEL_TOOL_CALLS,
-  MIN_MAX_PARALLEL_TOOL_CALLS,
-  MAX_MAX_PARALLEL_TOOL_CALLS,
-  DEFAULT_MAX_CONCURRENT_SUB_AGENTS,
-  MIN_MAX_CONCURRENT_SUB_AGENTS,
-  MAX_MAX_CONCURRENT_SUB_AGENTS,
-  DEFAULT_MAX_TOOL_CALLS_PER_TURN,
-  MIN_MAX_TOOL_CALLS_PER_TURN,
-  MAX_MAX_TOOL_CALLS_PER_TURN,
-  type RecentWorkingTarget,
-  createDefaultClaudeCodeConfig,
-  createDefaultCodexConfig,
-  getReasoningEffortKey,
-  getRecentWorkingTargetKey,
-  normalizeShellExecutionEndpoint,
-  resolveReasoningEffortForModel,
-  resolveShellExecutable,
-  clampMaxConcurrentSubAgents,
-  clampMaxParallelToolCalls,
-  clampMaxToolCallsPerTurn,
-} from './settings-store-types'
+import { type ModelBinding, type SessionDefaultModelBinding, type ClaudeCodeConfig, type CodexConfig, type PromptRecommendationModelBinding, type PromptRecommendationModelBindings, type MainModelSelectionMode, type MemoryAutomationWritePolicy, type MemoryScopeMode, type ClarifyPlanModeAutoSwitchTarget, type ProjectDefaultDirectoryMode, type FileDiffViewMode, type LiveOutputAnimationStyle, type ShellExecutionEndpoint, DEFAULT_THEME_MODE, DEFAULT_SHELL_EXECUTION_ENDPOINT, DEFAULT_MAX_PARALLEL_TOOL_CALLS, DEFAULT_MAX_CONCURRENT_SUB_AGENTS, DEFAULT_MAX_TOOL_CALLS_PER_TURN, type RecentWorkingTarget, createDefaultClaudeCodeConfig, createDefaultCodexConfig, normalizeShellExecutionEndpoint, clampMaxConcurrentSubAgents, clampMaxParallelToolCalls, clampMaxToolCallsPerTurn } from './settings-store-types'
 
 // Re-export types for consumers
 export type {

@@ -6,7 +6,6 @@ import { Button } from '@renderer/components/ui/button'
 import { writeSvgStringToClipboard } from '@renderer/lib/utils/image-clipboard'
 import { useChatActions } from '@renderer/hooks/use-chat-actions'
 import type { ToolCallStatus } from '@renderer/lib/agent/types'
-import type { WidgetToolPayload } from '../types'
 import { WIDGET_BRIDGE_SOURCE } from '../types'
 import { normalizeWidgetPayload, buildWidgetDocument } from '../utils'
 

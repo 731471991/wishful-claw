@@ -12,13 +12,10 @@ import type {
 
 import { useAgentStore } from '../../../stores/agent-store'
 
-import { useTeamStore, type ActiveTeam } from '../../../stores/team-store'
+import { type ActiveTeam } from '../../../stores/team-store'
 
-import type { TeamMessage } from './types'
 
-import { teamEvents } from './events'
 
-import { appendTeamRuntimeMessage, consumeTeamRuntimeMessages } from './runtime-client'
 
 
 
@@ -26,13 +23,15 @@ import { inboxPollerState } from './inbox-poller-state'
 
 
 
-let lastLeadMessageTimestamp = 0
+export const _inboxState = {
+  lastLeadMessageTimestamp: 0
+}
 
 export const seenMessageIds = new Set<string>()
 
 export const approvalRequestToToolCallId = new Map<string, string>()
 
-const LEAD_WAKE_MESSAGE_TYPES = new Set([
+export const LEAD_WAKE_MESSAGE_TYPES = new Set([
 
   'message',
 
@@ -64,17 +63,17 @@ export function initializeTeamCursor(team: ActiveTeam, seedExistingMessages: boo
 
 
 
-  lastLeadMessageTimestamp = team.createdAt
+  _inboxState.lastLeadMessageTimestamp = team.createdAt
 
   if (seedExistingMessages) {
 
-    lastLeadMessageTimestamp = Math.max(lastLeadMessageTimestamp, team.lastRuntimeSyncAt ?? 0)
+    _inboxState.lastLeadMessageTimestamp = Math.max(_inboxState.lastLeadMessageTimestamp, team.lastRuntimeSyncAt ?? 0)
 
     for (const message of team.messages) {
 
       seenMessageIds.add(message.id)
 
-      lastLeadMessageTimestamp = Math.max(lastLeadMessageTimestamp, message.timestamp ?? 0)
+      _inboxState.lastLeadMessageTimestamp = Math.max(_inboxState.lastLeadMessageTimestamp, message.timestamp ?? 0)
 
     }
 
@@ -88,7 +87,7 @@ export function clearTeamCursor(): void {
 
   inboxPollerState.activePollTeamKey = null
 
-  lastLeadMessageTimestamp = 0
+  _inboxState.lastLeadMessageTimestamp = 0
 
   seenMessageIds.clear()
 

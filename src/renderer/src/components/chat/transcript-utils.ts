@@ -4,12 +4,7 @@ import type {
   ToolUseBlock,
   UnifiedMessage
 } from '@renderer/lib/api/types'
-import { isEditableUserMessage } from '@renderer/lib/image-attachments'
-import {
-  isCompactBoundaryMessage,
-  isCompactSummaryLikeMessage,
-  resolveActiveCompactArtifacts
-} from '@renderer/lib/agent/context-compression'
+import { resolveActiveCompactArtifacts } from '@renderer/lib/agent/context-compression'
 
 export interface RenderableMessageMeta {
   messageId: string
@@ -101,7 +96,7 @@ export interface TranscriptStaticAnalysis {
 }
 
 
-import { isToolResultOnlyUserMessage, isRealUserMessage, hasVisibleAssistantBlock, hasVisibleAssistantStringContent, shouldRenderInMessageList, isTransparentSystemMessage, collectToolResults, buildOrchestrationMessageBindingEntry, buildTailToolExecutionState } from './transcript-filters'
+import { isToolResultOnlyUserMessage, isRealUserMessage, shouldRenderInMessageList, isTransparentSystemMessage, collectToolResults, buildOrchestrationMessageBindingEntry, buildTailToolExecutionState } from './transcript-filters'
 
 export function buildTranscriptStaticAnalysis(
   messages: UnifiedMessage[]

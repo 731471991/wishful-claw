@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronDown, Copy, Loader2, RotateCcw } from 'lucide-react'
+import { ChevronDown, Loader2, RotateCcw } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import type { AggregatedFileChange } from '@renderer/components/chat/file-change-utils'

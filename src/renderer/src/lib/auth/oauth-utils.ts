@@ -1,9 +1,7 @@
-import { nanoid } from 'nanoid'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { IPC } from '@renderer/lib/ipc/channels'
-import type { OAuthConfig, OAuthToken } from '@renderer/lib/api/types'
+import type { OAuthConfig } from '@renderer/lib/api/types'
 
-interface OAuthCallbackPayload {
+export interface OAuthCallbackPayload {
   requestId: string
   code?: string | null
   state?: string | null
@@ -46,19 +44,19 @@ function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
-function randomString(length = 64): string {
+export function randomString(length = 64): string {
   const bytes = new Uint8Array(length)
   window.crypto.getRandomValues(bytes)
   return base64UrlEncode(bytes)
 }
 
-function randomHex(bytes = 16): string {
+export function randomHex(bytes = 16): string {
   const buffer = new Uint8Array(bytes)
   window.crypto.getRandomValues(buffer)
   return Array.from(buffer, (value) => value.toString(16).padStart(2, '0')).join('')
 }
 
-async function sha256(input: string): Promise<string> {
+export async function sha256(input: string): Promise<string> {
   const data = new TextEncoder().encode(input)
   const hash = await window.crypto.subtle.digest('SHA-256', data)
   return base64UrlEncode(new Uint8Array(hash))

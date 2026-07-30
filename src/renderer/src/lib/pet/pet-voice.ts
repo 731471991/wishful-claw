@@ -1,6 +1,4 @@
-import { nanoid } from 'nanoid'
 import { agentBridge } from '@renderer/lib/ipc/agent-bridge'
-import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { ensureProviderAuthReady } from '@renderer/lib/auth/provider-auth'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { usePetAgentStore, type PetVoiceMode } from '@renderer/stores/pet-agent-store'
@@ -17,13 +15,13 @@ import { usePetAgentStore, type PetVoiceMode } from '@renderer/stores/pet-agent-
  * generated, so audio starts roughly in sync with the text.
  */
 
-const SPEECH_TIMEOUT_MS = 120_000
-const MAX_SPEECH_CHARS = 400
+export const SPEECH_TIMEOUT_MS = 120_000
+export const MAX_SPEECH_CHARS = 400
 const SENTENCE_BOUNDARY = /[。！？!?；;…~～\n]/
 /** Softer pause marks the opening segment may cut at for a faster start. */
 const PAUSE_BOUNDARY = /[，,、]/
 /** pcm16 sample rate used by MiMo and OpenAI chat-audio streams. */
-const PCM_SAMPLE_RATE = 24_000
+export const PCM_SAMPLE_RATE = 24_000
 
 export const PET_VOICE_PRESETS: Record<'openai' | 'mimo', string[]> = {
   openai: [
@@ -64,27 +62,28 @@ export interface PetVoiceParams {
  * singing…). Other models would speak the tag aloud, so it only applies to
  * MiMo model ids. User input may already carry brackets — normalize them.
  */
-function applyMimoTag(params: PetVoiceParams, input: string): string {
+export function applyMimoTag(params: PetVoiceParams, input: string): string {
   if (!/mimo/i.test(params.modelId)) return input
   const tag = params.tag.replace(/^[（(["'\s]+|[）)\]"'\s]+$/g, '').trim()
   return tag ? `(${tag})${input}` : input
 }
 
-interface SpeechClip {
+export interface SpeechClip {
   chunks: Uint8Array[]
   mediaType: string
 }
 
-let currentAudio: HTMLAudioElement | null = null
-let currentAudioUrl: string | null = null
+export const _voiceState = {
+  activeStreamRequestId: null as string | null,
+  audioContext: null as AudioContext | null,
+  currentAudio: null as HTMLAudioElement | null,
+  currentAudioUrl: null as string | null,
+  streamSources: [] as AudioBufferSourceNode[]
+}
 
-let audioContext: AudioContext | null = null
-let streamSources: AudioBufferSourceNode[] = []
-let activeStreamRequestId: string | null = null
 
 
-import { getAudioContext, stopStreamingPlayback, decodeBase64Chunk } from './pet-voice-audio'
-import { stopPetSpeech } from './pet-voice-audio'
+import { stopPetSpeech, playClip, streamAndPlay, synthesizeClip } from './pet-voice-audio'
 
 const streamUnsupported = new Set<string>()
 

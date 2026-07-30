@@ -5,24 +5,7 @@ import type {
   ToolCallExtraContent,
   UnifiedMessage
 } from '@renderer/lib/api/types'
-import type { CompressionResult } from '@renderer/lib/agent/context-compression'
 import type { AgentEvent } from '@renderer/lib/agent/types'
-import {
-  RESPONSES_SESSION_SCOPE_SIDECAR_TEXT_REQUEST,
-  withAuxiliaryResponsesRequestPolicy
-} from '@renderer/lib/api/responses-session-policy'
-import {
-  buildSidecarAgentRunRequest,
-  isNativeSidecarProviderConfig,
-  sanitizeSidecarMessageMeta
-} from '@renderer/lib/ipc/sidecar-protocol'
-import type {
-  SidecarSlashCommandContext,
-  SidecarSystemCommandContext
-} from '@renderer/lib/ipc/sidecar-protocol'
-import { agentStream } from '@renderer/lib/ipc/agent-stream-receiver'
-import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { toAgentEvent } from '@renderer/lib/agent/stream-event-adapter'
 
 export function normalizeProviderToolInput(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)

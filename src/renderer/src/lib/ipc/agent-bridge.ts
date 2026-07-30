@@ -1,34 +1,8 @@
 import type {
-  ProviderConfig,
-  StreamEvent,
-  ToolDefinition,
-  ToolCallExtraContent,
   UnifiedMessage
 } from '@renderer/lib/api/types'
-import type { CompressionResult } from '@renderer/lib/agent/context-compression'
-import type { AgentEvent } from '@renderer/lib/agent/types'
-import {
-  RESPONSES_SESSION_SCOPE_SIDECAR_TEXT_REQUEST,
-  withAuxiliaryResponsesRequestPolicy
-} from '@renderer/lib/api/responses-session-policy'
-import {
-  buildSidecarAgentRunRequest,
-  isNativeSidecarProviderConfig,
-  sanitizeSidecarMessageMeta
-} from '@renderer/lib/ipc/sidecar-protocol'
-import type {
-  SidecarSlashCommandContext,
-  SidecarSystemCommandContext
-} from '@renderer/lib/ipc/sidecar-protocol'
-import { agentStream } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { toAgentEvent } from '@renderer/lib/agent/stream-event-adapter'
 
-import {
-  normalizeProviderToolInput,
-  toProviderErrorEvent,
-  mapAgentEventToProviderEvents,
-} from './agent-bridge-events'
 
 class AgentBridgeClient {
   private initialized = false
@@ -89,17 +63,17 @@ class AgentBridgeClient {
   }
 
   async runAgent(params: unknown): Promise<{ started: boolean; runId: string }> {
-    return await ipcClient.invoke<{ started: boolean; runId: string }>(
+    return await ipcClient.invoke(
       'worker:request',
       { method: 'agent/run', params }
-    )
+    ) as { started: boolean; runId: string }
   }
 
   async cancelAgent(runId: string): Promise<{ cancelled: boolean; runId?: string }> {
-    return await ipcClient.invoke<{ cancelled: boolean; runId?: string }>(
+    return await ipcClient.invoke(
       'worker:request',
       { method: 'agent/cancel', params: { runId } }
-    )
+    ) as { cancelled: boolean; runId?: string }
   }
 
   /**
@@ -117,20 +91,20 @@ class AgentBridgeClient {
   }
 
   async requestStopAgent(runId: string): Promise<{ stopped: boolean; runId?: string }> {
-    return await ipcClient.invoke<{ stopped: boolean; runId?: string }>(
+    return await ipcClient.invoke(
       'worker:request',
       { method: 'agent/request-stop', params: { runId } }
-    )
+    ) as { stopped: boolean; runId?: string }
   }
 
   async appendAgentMessages(
     runId: string,
     messages: UnifiedMessage[]
   ): Promise<{ appended: boolean; runId?: string; count: number }> {
-    return await ipcClient.invoke<{ appended: boolean; runId?: string; count: number }>(
+    return await ipcClient.invoke(
       'worker:request',
       { method: 'agent/append-messages', params: { runId, messages } }
-    )
+    ) as { appended: boolean; runId?: string; count: number }
   }
 
   async stop(): Promise<void> {

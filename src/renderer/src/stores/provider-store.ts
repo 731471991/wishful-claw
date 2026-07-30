@@ -1,10 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
-import type { AIProvider, AIModelConfig, BuiltinProviderPreset, ProviderType, ReasoningEffortLevel } from '../../../shared/types/provider'
-import { builtinProviderPresets } from '@renderer/stores/providers'
+import type { AIProvider, AIModelConfig, ProviderType } from '../../../shared/types/provider'
 import { aiProviderStorage } from '@renderer/lib/ipc/ai-provider-storage'
-import { createProviderFromPreset, normalizeModelKey, ensureDefaultReasoningEffort, resolveBuiltinModelFallback, enrichDiscoveredModel, createCustomProvider, ensureBuiltinPresets, builtinModelRegistry, DEFAULT_REASONING_EFFORT, DEFAULT_REASONING_EFFORT_LEVELS, STORAGE_KEY } from './provider-store-helpers'
+import { createProviderFromPreset, enrichDiscoveredModel, createCustomProvider, ensureBuiltinPresets, STORAGE_KEY, type ProviderState } from './provider-store-helpers'
 
 export const useProviderStore = create<ProviderState>()(
   persist(
@@ -19,14 +17,14 @@ export const useProviderStore = create<ProviderState>()(
       getActiveProvider: () => {
         const { providers, activeProviderId } = get()
         if (!activeProviderId) return providers[0] ?? null
-        return providers.find(p => p.id === activeProviderId) ?? null
+        return providers.find((p) => p.id === activeProviderId) ?? null
       },
 
-      getProviderById: (id) => get().providers.find(p => p.id === id) ?? null,
+      getProviderById: (id) => get().providers.find((p) => p.id === id) ?? null,
 
       addProviderFromPreset: (preset) => {
         const provider = createProviderFromPreset(preset)
-        set(state => ({
+        set((state) => ({
           providers: [...state.providers, provider],
           activeProviderId: state.activeProviderId ?? provider.id
         }))
@@ -35,7 +33,7 @@ export const useProviderStore = create<ProviderState>()(
 
       addCustomProvider: (name, type, baseUrl) => {
         const provider = createCustomProvider(name, type, baseUrl)
-        set(state => ({
+        set((state) => ({
           providers: [...state.providers, provider],
           activeProviderId: state.activeProviderId ?? provider.id
         }))
@@ -43,16 +41,16 @@ export const useProviderStore = create<ProviderState>()(
       },
 
       updateProvider: (id, updates) => {
-        set(state => ({
-          providers: state.providers.map(p =>
+        set((state) => ({
+          providers: state.providers.map((p) =>
             p.id === id ? { ...p, ...updates } : p
           )
         }))
       },
 
       deleteProvider: (id) => {
-        set(state => {
-          const providers = state.providers.filter(p => p.id !== id)
+        set((state) => {
+          const providers = state.providers.filter((p) => p.id !== id)
           const activeProviderId =
             state.activeProviderId === id
               ? (providers[0]?.id ?? null)
@@ -78,12 +76,12 @@ export const useProviderStore = create<ProviderState>()(
       },
       activeSpeechProviderId: null,
       activeSpeechModelId: '',
-      getProviderConfigById: (id: string, _modelId?: string) => get().providers.find(p => p.id === id) ?? null,
+      getProviderConfigById: (id: string, _modelId?: string) => get().providers.find((p) => p.id === id) ?? null,
       getActiveModelConfig: () => {
         const { providers, activeProviderId, activeModelId } = get()
-        const provider = providers.find(p => p.id === activeProviderId)
+        const provider = providers.find((p) => p.id === activeProviderId)
         if (!provider) return null
-        const model = provider.models?.find((m: any) => m.id === activeModelId)
+        const model = provider.models?.find((m) => m.id === activeModelId)
         return model ?? null
       },
       getEffectiveMaxTokens: (userDefault?: number | null, _modelId?: string) => {
@@ -112,8 +110,8 @@ export const useProviderStore = create<ProviderState>()(
       setDefaultModel: (modelId) => set({ defaultModel: modelId }),
 
       addModel: (providerId, model) => {
-        set(state => ({
-          providers: state.providers.map(p =>
+        set((state) => ({
+          providers: state.providers.map((p) =>
             p.id === providerId
               ? { ...p, models: [...p.models, model] }
               : p
@@ -122,12 +120,12 @@ export const useProviderStore = create<ProviderState>()(
       },
 
       updateModel: (providerId, modelId, updates) => {
-        set(state => ({
-          providers: state.providers.map(p =>
+        set((state) => ({
+          providers: state.providers.map((p) =>
             p.id === providerId
               ? {
                   ...p,
-                  models: p.models.map(m =>
+                  models: p.models.map((m) =>
                     m.id === modelId ? { ...m, ...updates } : m
                   )
                 }
@@ -137,23 +135,23 @@ export const useProviderStore = create<ProviderState>()(
       },
 
       deleteModel: (providerId, modelId) => {
-        set(state => ({
-          providers: state.providers.map(p =>
+        set((state) => ({
+          providers: state.providers.map((p) =>
             p.id === providerId
-              ? { ...p, models: p.models.filter(m => m.id !== modelId) }
+              ? { ...p, models: p.models.filter((m) => m.id !== modelId) }
               : p
           )
         }))
       },
 
       setModels: (providerId, models) => {
-        set(state => ({
-          providers: state.providers.map(p => {
+        set((state) => ({
+          providers: state.providers.map((p) => {
             if (p.id !== providerId) return p
             // Preserve user customizations for existing models (thinkingConfig, enabled, etc.)
             // while enriching newly discovered models with builtin metadata
-            const existingById = new Map(p.models.map(m => [m.id, m]))
-            const merged = models.map(m => {
+            const existingById = new Map(p.models.map((m) => [m.id, m]))
+            const merged = models.map((m) => {
               const existing = existingById.get(m.id)
               if (existing) {
                 // Merge thinkingConfig: preserve user customizations but fill in missing
@@ -218,7 +216,6 @@ export const useProviderStore = create<ProviderState>()(
     }
   )
 )
-
 
 // ── Helper functions (from OpenCowork, simplified) ──
 

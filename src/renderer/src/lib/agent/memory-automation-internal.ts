@@ -2,18 +2,9 @@ import { estimateTokens } from '@renderer/lib/format-tokens'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { runSidecarTextRequest } from '@renderer/lib/ipc/agent-bridge'
-import { useChatStore } from '@renderer/stores/chat-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import type { ProviderConfig } from '@renderer/lib/api/types'
-import {
-  getProjectMemoryCandidatePaths,
-  isMissingFileErrorMessage,
-  joinFsPath,
-  loadLayeredMemorySnapshot,
-  readTextFile,
-  resolveProjectMemoryTextFileForTarget,
-} from './memory-files'
-import { resolveGlobalMemoryHomePath } from './memory-snapshot'
+import { isMissingFileErrorMessage, joinFsPath, readTextFile } from './memory-files'
 import type {
   MemoryAutomationCandidateKind,
   MemoryAutomationEntry,
@@ -35,47 +26,15 @@ import type {
   MemoryStage1OutputInput
 } from '../../../../shared/memory-automation-types'
 
-import {
-  AUTO_RUN_DEBOUNCE_MS,
-  INVALID_MEMORY_JSON_ERROR,
-  GLOBAL_USER_TEMPLATE,
-  GLOBAL_MEMORY_TEMPLATE,
-  PROJECT_USER_TEMPLATE,
-  PROJECT_MEMORY_TEMPLATE,
-  SUMMARY_TEMPLATE,
-  yesterdayString,
-  fingerprintContent,
-  buildConversationExcerpt,
-  summarizeMemorySnapshot,
-  hasUsableProvider,
-  resolveAutomationProvider,
-  sanitizeMemoryPayload,
-  parseConsolidationJson,
-  getErrorMessage,
-  targetForRoot,
-  userTargetForRoot,
-  extractStage1Outputs,
-  buildMemoryRootInputs,
-  findRootForScope,
-  buildStage1Input,
-  ensureMarkdownDocument,
-  appendPipelineSection,
-  buildRawMemoriesMarkdown,
-  buildRolloutSummaryMarkdown,
-  buildSummaryFallback,
-  buildConsolidationPrompt,
-  escapeRegExp,
-  type ConsolidationOutput,
-  type DailyRollupOptions,
-  type RunSessionOptions,
-  type TargetDescriptor,
-} from './memory-automation-utils'
+import { GLOBAL_USER_TEMPLATE, GLOBAL_MEMORY_TEMPLATE, PROJECT_USER_TEMPLATE, PROJECT_MEMORY_TEMPLATE, SUMMARY_TEMPLATE, fingerprintContent, sanitizeMemoryPayload, parseConsolidationJson, getErrorMessage, targetForRoot, userTargetForRoot, ensureMarkdownDocument, appendPipelineSection, buildRawMemoriesMarkdown, buildRolloutSummaryMarkdown, buildSummaryFallback, buildConsolidationPrompt, type ConsolidationOutput, type TargetDescriptor } from './memory-automation-utils'
 
 
 
-const runningSessionAutomations = new Set<string>()
-let lastAutoRunBySession = new Map<string, number>()
-let rollupInstalled = false
+export const runningSessionAutomations = new Set<string>()
+export const _maState = {
+  lastAutoRunBySession: new Map<string, number>(),
+  rollupInstalled: false
+}
 
 
 

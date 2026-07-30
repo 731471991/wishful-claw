@@ -1,6 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { Loader2, Plus, SquareTerminal, Terminal as TerminalIcon, X } from 'lucide-react'
+import { Loader2, Plus, SquareTerminal, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useTerminalStore } from '@renderer/stores/terminal-store'

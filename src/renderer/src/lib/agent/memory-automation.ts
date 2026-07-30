@@ -1,26 +1,10 @@
-import { estimateTokens } from '@renderer/lib/format-tokens'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { runSidecarTextRequest } from '@renderer/lib/ipc/agent-bridge'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import type { ProviderConfig } from '@renderer/lib/api/types'
-import {
-  recordEntry,
-  recordSyntheticEntry,
-  pipelineRun,
-  prepareSessionPipeline,
-  completeStage1,
-  createPhase2Job,
-  completePhase2Job,
-  listStage1Outputs,
-  readRootFile,
-  writeTargetContent,
-  runConsolidation,
-  writeWithRetry,
-  runPhase2ForRoot
-} from './memory-automation-internal'
-import { AUTO_RUN_DEBOUNCE_MS, INVALID_MEMORY_JSON_ERROR, RunSessionOptions, TargetDescriptor, buildConversationExcerpt, buildMemoryRootInputs, buildStage1Input, findRootForScope, fingerprintContent, hasUsableProvider, resolveAutomationProvider, summarizeMemorySnapshot, targetForRoot } from './memory-automation-utils'
+import { recordSyntheticEntry, prepareSessionPipeline, completeStage1, runPhase2ForRoot, runningSessionAutomations, _maState } from './memory-automation-internal'
+import { AUTO_RUN_DEBOUNCE_MS, INVALID_MEMORY_JSON_ERROR, RunSessionOptions, TargetDescriptor, buildConversationExcerpt, buildMemoryRootInputs, buildStage1Input, findRootForScope, fingerprintContent, hasUsableProvider, resolveAutomationProvider, summarizeMemorySnapshot, targetForRoot, extractStage1Outputs } from './memory-automation-utils'
 import { loadLayeredMemorySnapshot } from './memory-files'
 import { getErrorMessage } from './memory-json-parsers'
 
@@ -40,9 +24,9 @@ export async function runMemoryAutomationForSession(options: RunSessionOptions):
   if (options.aborted) return
 
   const now = Date.now()
-  const lastRunAt = lastAutoRunBySession.get(options.sessionId) ?? 0
+  const lastRunAt = _maState.lastAutoRunBySession.get(options.sessionId) ?? 0
   if (!options.manual && now - lastRunAt < AUTO_RUN_DEBOUNCE_MS) return
-  lastAutoRunBySession = new Map(lastAutoRunBySession).set(options.sessionId, now)
+  _maState.lastAutoRunBySession = new Map(_maState.lastAutoRunBySession).set(options.sessionId, now)
 
   if (runningSessionAutomations.has(options.sessionId)) return
   runningSessionAutomations.add(options.sessionId)
@@ -206,7 +190,7 @@ export async function runMemoryAutomationForSession(options: RunSessionOptions):
   }
 }
 
-async function runRollupForDescriptor(args: {
+export async function runRollupForDescriptor(args: {
   root: MemoryRootDescriptor
   descriptor: TargetDescriptor
   sourceDate: string

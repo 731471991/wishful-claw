@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { usePersonaStore } from '@renderer/stores/persona-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import type { PersonaConfig } from '@renderer/lib/persona/persona-types'
-import { createEmptyPersonaConfig } from '@renderer/lib/persona/persona-types'
 
 interface PersonaGeneratorDialogProps {
   open: boolean
@@ -40,7 +39,7 @@ export function PersonaGeneratorDialog({
       setError(t('settings.persona.noProvider'))
       return
     }
-    const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m) => m.enabled)?.id
+    const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m: any) => m.enabled)?.id
     if (!modelId) {
       setError(t('settings.persona.noModel'))
       return

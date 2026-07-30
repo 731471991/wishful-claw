@@ -163,9 +163,9 @@ function migrateProjectPlugins(
 }
 
 function isImageModelEnabled(providerId: string, modelId: string): boolean {
-  const provider = useProviderStore.getState().providers.find((item) => item.id === providerId)
+  const provider = useProviderStore.getState().providers.find((item: any) => item.id === providerId)
   if (!provider || !provider.enabled) return false
-  const model = provider.models.find((item) => item.id === modelId)
+  const model = provider.models.find((item: any) => item.id === modelId)
   if (!model || !model.enabled) return false
   return (model.category ?? 'chat') === 'image'
 }

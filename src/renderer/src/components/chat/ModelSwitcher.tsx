@@ -6,15 +6,11 @@ import {
   Loader2,
   Globe2
 } from 'lucide-react'
-import {
-  isProviderAvailableForModelSelection,
-  useProviderStore,
-  modelSupportsResponsesImageGeneration
-} from '@renderer/stores/provider-store'
+import { isProviderAvailableForModelSelection, useProviderStore } from '@renderer/stores/provider-store'
 import {
   useSettingsStore,
 } from '@renderer/stores/settings-store'
-import { useChatStore, type SessionModelSelectionMode } from '@renderer/stores/chat-store'
+import { useChatStore } from '@renderer/stores/chat-store'
 import { useChannelStore } from '@renderer/stores/channel-store'
 import { useQuotaStore } from '@renderer/stores/quota-store'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -29,17 +25,8 @@ import {
   AutoModelIcon
 } from '@renderer/components/settings/provider-icons'
 import { cn } from '@renderer/lib/utils'
-import type {
-  AIModelConfig,
-  AIProvider,
-} from '@shared/types/provider'
 import { resolveSessionModelSelection } from '@renderer/lib/session-model-resolution'
-import {
-  type ProviderGroup, type ModelSwitcherSessionSnapshot,
-  isRecord,
-  selectModel, selectFastModel,
-  selectAutoModel, selectFollowGlobalModel
-} from './ModelSwitcher/utils'
+import { type ProviderGroup, type ModelSwitcherSessionSnapshot, selectModel, selectFastModel, selectAutoModel, selectFollowGlobalModel } from './ModelSwitcher/utils'
 import { ModelCapabilityTags, ModelHoverDetails } from './ModelSwitcher/model-info'
 import { ModelSettingsPopover } from './ModelSwitcher/ModelSettingsPopover'
 import { CodexQuotaIndicator, CopilotQuotaIndicator } from './ModelSwitcher/QuotaIndicators'
@@ -129,7 +116,7 @@ export function ModelSwitcher({
   )
 
   const enabledProviders = useMemo(
-    () => (open ? providers.filter((p) => isProviderAvailableForModelSelection(p)) : []),
+    () => (open ? providers.filter((p: any) => isProviderAvailableForModelSelection(p)) : []),
     [open, providers]
   )
   const sessionModelSelection = resolveSessionModelSelection({
@@ -147,8 +134,8 @@ export function ModelSwitcher({
   const displayModelId = isFastRoute
     ? fastSelection.modelId || activeFastModelId || activeModelId
     : sessionModelSelection.modelId
-  const displayProvider = providers.find((p) => p.id === displayProviderId)
-  const displayModel = displayProvider?.models.find((m) => m.id === displayModelId)
+  const displayProvider = providers.find((p: any) => p.id === displayProviderId)
+  const displayModel = displayProvider?.models.find((m: any) => m.id === displayModelId)
   const isAutoModeActive = !isFastRoute && sessionModelSelection.isAutoModeActive
   const isExplicitAutoActive =
     !isFastRoute &&
@@ -158,10 +145,10 @@ export function ModelSwitcher({
   const isFollowGlobalActive =
     !isFastRoute && Boolean(activeSession) && sessionModelSelection.mode === 'inherit'
   const autoResolvedProvider = autoSelection?.providerId
-    ? providers.find((provider) => provider.id === autoSelection.providerId)
+    ? providers.find((provider: any) => provider.id === autoSelection.providerId)
     : null
   const autoResolvedModel = autoResolvedProvider?.models.find(
-    (model) => model.id === autoSelection?.modelId
+    (model: any) => model.id === autoSelection?.modelId
   )
   const settingsProviderId = isAutoModeActive ? autoResolvedProvider?.id : displayProvider?.id
   const settingsModel = isAutoModeActive ? (autoResolvedModel ?? undefined) : displayModel
@@ -231,8 +218,8 @@ export function ModelSwitcher({
     if (!open) return []
     const q = search.toLowerCase().trim()
     return enabledProviders
-      .map((provider) => {
-        const models = provider.models.filter((m) => {
+      .map((provider: any) => {
+        const models = provider.models.filter((m: any) => {
           if (!m.enabled) return false
           if (isFastRoute && (m.category ?? 'chat') !== 'chat') return false
           if (!q) return true
@@ -241,7 +228,7 @@ export function ModelSwitcher({
         })
         return { provider, models }
       })
-      .filter((g) => g.models.length > 0)
+      .filter((g: any) => g.models.length > 0)
   }, [enabledProviders, isFastRoute, open, search])
   const selectedGroup = useMemo(
     () =>

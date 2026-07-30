@@ -1,41 +1,7 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
-import { toast } from 'sonner'
-import {
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  CheckCircle2,
-  Pause,
-  Pencil,
-  Play,
-  Plus,
-  Save,
-  Target,
-  Trash2,
-  Zap
-} from 'lucide-react'
-import { Button } from '@renderer/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@renderer/components/ui/dialog'
-import { Input } from '@renderer/components/ui/input'
-import { Textarea } from '@renderer/components/ui/textarea'
-import { confirm } from '@renderer/components/ui/confirm-dialog'
-import { CollapsibleHeightPanel } from '@renderer/components/chat/CollapsibleHeightPanel'
 import { cn } from '@renderer/lib/utils'
-import { useSettingsStore } from '@renderer/stores/settings-store'
-import {
-  formatGoalElapsedSeconds,
-  formatGoalTokens,
-  goalStatusLabel,
-  validateGoalObjective
-} from '@renderer/lib/agent/goal-context'
+import { formatGoalElapsedSeconds, formatGoalTokens, goalStatusLabel } from '@renderer/lib/agent/goal-context'
 import {
   EMPTY_SESSION_GOAL_EVENTS,
   useGoalStore,
@@ -43,7 +9,6 @@ import {
   type SessionGoalEvent,
   type SessionGoalEventType
 } from '@renderer/stores/goal-store'
-import { abortSession, dispatchNextQueuedMessageForSession } from '@renderer/hooks/use-chat-actions'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',

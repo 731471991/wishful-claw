@@ -11,12 +11,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import QRCode from 'qrcode'
-import { RefreshCw, QrCode, KeyRound, Settings2, Play, Square, Loader2 } from 'lucide-react'
+import { RefreshCw, QrCode, Loader2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
-import { Input } from '@renderer/components/ui/input'
-import { Switch } from '@renderer/components/ui/switch'
-import { Separator } from '@renderer/components/ui/separator'
-import { Badge } from '@renderer/components/ui/badge'
 import { Spinner } from '@renderer/components/ui/spinner'
 import {
   useChannelStore,

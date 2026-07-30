@@ -1,13 +1,13 @@
-import { estimateTokens } from '@renderer/lib/format-tokens'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
-import { runSidecarTextRequest } from '@renderer/lib/ipc/agent-bridge'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
-import type { ProviderConfig } from '@renderer/lib/api/types'
 import type { DailyRollupOptions } from './memory-automation-utils'
 import { TargetDescriptor, escapeRegExp, findRootForScope, hasUsableProvider, resolveAutomationProvider, yesterdayString } from './memory-automation-utils'
-import { getProjectMemoryCandidatePaths, joinFsPath } from './memory-files'
+import { getProjectMemoryCandidatePaths, joinFsPath, readTextFile, resolveProjectMemoryTextFileForTarget } from './memory-files'
+import { prepareSessionPipeline, writeTargetContent, _maState } from './memory-automation-internal'
+import { resolveGlobalMemoryHomePath } from './memory-snapshot'
+import { runMemoryAutomationForSession, runRollupForDescriptor } from './memory-automation'
 
 // Extracted from memory-automation.ts
 export async function runDailyMemoryRollup(options: DailyRollupOptions = {}): Promise<void> {
@@ -97,8 +97,8 @@ export async function runDailyMemoryRollup(options: DailyRollupOptions = {}): Pr
 }
 
 export function installMemoryAutomationDailyRollup(): void {
-  if (rollupInstalled) return
-  rollupInstalled = true
+  if (_maState.rollupInstalled) return
+  _maState.rollupInstalled = true
   window.setTimeout(() => {
     const activeProjectId = useChatStore.getState().activeProjectId
     const project = useChatStore.getState().projects.find((item) => item.id === activeProjectId)

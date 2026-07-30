@@ -12,8 +12,7 @@ import {
   DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
   DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
 } from '../../../shared/messagepack/binary-ipc'
-import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, isGoalRow, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable } from './goal-store-helpers'
-import { SessionGoal } from './goal-store-helpers'
+import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalEventMutationResult, GoalMutationResult, GoalStore, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
 export { EMPTY_SESSION_GOAL_EVENTS }
 
 export const useGoalStore = create<GoalStore>((set, get) => ({

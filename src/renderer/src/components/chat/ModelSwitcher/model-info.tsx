@@ -2,7 +2,6 @@ import { Eye, Wrench, Brain } from 'lucide-react'
 import {
   modelSupportsVision
 } from '@renderer/stores/provider-store'
-import { cn } from '@renderer/lib/utils'
 import type { AIModelConfig, AIProvider } from '@shared/types/provider'
 import { formatContextLength, formatTokenCount, formatPrice } from './utils'
 

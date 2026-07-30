@@ -1,4 +1,3 @@
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileTreePanel } from '@renderer/components/cowork/FileTreePanel'
 import { useChatStore } from '@renderer/stores/chat-store'

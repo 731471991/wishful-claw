@@ -1,7 +1,6 @@
 import * as React from 'react'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
 import type { RequestRetryState } from '@renderer/lib/agent/types'
-import type { EditableUserMessageDraft } from '@renderer/lib/image-attachments'
 import { MessageRow } from './MessageRow'
 import type {
   MessageListProps,

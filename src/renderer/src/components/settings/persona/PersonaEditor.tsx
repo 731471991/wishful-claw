@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Trash2, Save, RotateCcw } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
