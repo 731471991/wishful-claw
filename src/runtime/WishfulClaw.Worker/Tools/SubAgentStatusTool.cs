@@ -39,7 +39,7 @@ public sealed class SubAgentStatusTool : IToolExecutor
 
         if (string.IsNullOrWhiteSpace(toolUseId))
         {
-            var all = AgentRuntime.BackgroundSubAgentRegistry.GetAll();
+            var all = Agent.BackgroundSubAgentRegistry.GetAll();
             if (all.Count == 0)
             {
                 return Task.FromResult(new ToolResult("No sub-agents registered."));
@@ -48,12 +48,12 @@ public sealed class SubAgentStatusTool : IToolExecutor
             var lines = new List<string> { $"Sub-Agents ({all.Count}):" };
             foreach (var r in all)
             {
-                lines.Add($"  {AgentRuntime.BackgroundSubAgentRegistry.FormatBrief(r)}");
+                lines.Add($"  {Agent.BackgroundSubAgentRegistry.FormatBrief(r)}");
             }
             return Task.FromResult(new ToolResult(string.Join("\n", lines)));
         }
 
-        var record = AgentRuntime.BackgroundSubAgentRegistry.Get(toolUseId!);
+        var record = Agent.BackgroundSubAgentRegistry.Get(toolUseId!);
         if (record is null)
         {
             return Task.FromResult(new ToolResult(
@@ -61,7 +61,7 @@ public sealed class SubAgentStatusTool : IToolExecutor
         }
 
         return Task.FromResult(new ToolResult(
-            AgentRuntime.BackgroundSubAgentRegistry.FormatStatusInfo(record)));
+            Agent.BackgroundSubAgentRegistry.FormatStatusInfo(record)));
     }
 }
 
@@ -103,7 +103,7 @@ public sealed class SubAgentDetailTool : IToolExecutor
                 "SubAgentDetail requires a 'toolUseId' parameter.", true));
         }
 
-        var record = AgentRuntime.BackgroundSubAgentRegistry.Get(toolUseId!);
+        var record = Agent.BackgroundSubAgentRegistry.Get(toolUseId!);
         if (record is null)
         {
             return Task.FromResult(new ToolResult(
@@ -111,6 +111,6 @@ public sealed class SubAgentDetailTool : IToolExecutor
         }
 
         return Task.FromResult(new ToolResult(
-            AgentRuntime.BackgroundSubAgentRegistry.FormatDetail(record)));
+            Agent.BackgroundSubAgentRegistry.FormatDetail(record)));
     }
 }

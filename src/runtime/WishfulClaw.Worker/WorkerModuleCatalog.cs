@@ -1,5 +1,5 @@
 using WishfulClaw.Contracts;
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 using WishfulClaw.Worker.Modules;
 using WishfulClaw.Worker.Modules.Db;
 using WishfulClaw.Worker.Modules.AgentChanges;
@@ -10,7 +10,7 @@ using WishfulClaw.Worker.Modules.OpenAIAudio;
 using WishfulClaw.Worker.Modules.Extensions;
 using WishfulClaw.Worker.Modules.Skills;
 using WishfulClaw.Worker.Modules.Video;
-using WishfulClaw.Worker.Persona;
+using WishfulClaw.Persona;
 using WishfulClaw.Worker.Tools;
 
 namespace WishfulClaw.Worker;

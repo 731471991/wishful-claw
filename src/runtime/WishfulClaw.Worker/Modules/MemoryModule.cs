@@ -4,7 +4,7 @@ using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Workspace.Memory;
 using WishfulClaw.Worker.Tools;
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 using WishfulClaw.Worker.Modules.Db;
 
 namespace WishfulClaw.Worker.Modules;

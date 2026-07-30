@@ -7,7 +7,7 @@ using WishfulClaw.Worker.Tools.MemoryTools;
 using WishfulClaw.Worker.Tools.SearchTools;
 using WishfulClaw.Worker.Tools.ShellTools;
 using WishfulClaw.Workspace.Memory;
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 
 namespace WishfulClaw.Worker.Tools;
 
@@ -96,7 +96,7 @@ public sealed class ToolModule : IWorkerModule
 
         // Sub-agent Task tool — load agent definitions from disk into registry first,
         // then construct TaskTool so its description/schema reflect available agent types.
-        AgentRuntime.SubAgentRegistry.LoadFromDisk();
+        Agent.SubAgentRegistry.LoadFromDisk();
         registry.Register(new TaskTool());
 
         // Sub-agent status and detail query tools

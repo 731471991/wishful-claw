@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using WishfulClaw.Core.Tools;
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 
 namespace WishfulClaw.Worker.Tools;
 

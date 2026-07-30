@@ -12,7 +12,7 @@ namespace WishfulClaw.Worker.Tools.MemoryTools;
 
 
 
-using WishfulClaw.Worker.AgentRuntime;
+using WishfulClaw.Agent;
 using static WishfulClaw.Worker.Tools.ToolHelpers;
 
 

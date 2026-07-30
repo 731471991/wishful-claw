@@ -11,6 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\WishfulClaw.Contracts\WishfulClaw.Contracts.csproj" />
     <ProjectReference Include="..\WishfulClaw.Core\WishfulClaw.Core.csproj" />
+    <ProjectReference Include="..\WishfulClaw.Agent\WishfulClaw.Agent.csproj" />
+    <ProjectReference Include="..\WishfulClaw.Persona\WishfulClaw.Persona.csproj" />
     <ProjectReference Include="..\WishfulClaw.Workspace\WishfulClaw.Workspace.csproj" />
   </ItemGroup>
 
@@ -21,11 +23,6 @@
          Cannot upgrade independently without breaking SqlSugar compatibility.
          Suppress until SqlSugarCore bumps its Microsoft.Data.Sqlite dependency. -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.11" NoWarn="NU1903" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Embedded persona preset markdown files -->
-    <EmbeddedResource Include="Resources\Personas\**\*.md" />
   </ItemGroup>
 
 </Project>
