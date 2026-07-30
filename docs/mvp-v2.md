@@ -88,24 +88,64 @@ MVP v2 目标：补齐测试、完善模式接入、新增 Goal 自主执行能�
 - 系统提示词注入：Goal 模式下注入"你正在执行 Goal 模式，当前目标：{goal}，已完成：{done}，待完成：{todo}"引导
 - 前端 Goal 进度面板：子任务列表 + 状态标记 + 实时日志
 
+### 7. Runtime 分层架构重构
+
+**现状**：Worker 项目承载了 90% 代码（192 文件/29k 行），Contracts（4 文件/197 行）、Core（17 文件/2,386 行）、Workspace（11 文件/729 行）过薄。大量本该独立的领域逻辑被塞进 Worker。
+
+**问题**：
+- AgentRuntime（60 文件）：AgentLoop、所有 Executor、Provider（OpenAI/Anthropic SSE parser）、ConversationCodec、ContextCompression、ToolCallProcessor、SubAgent 等 — agent 引擎核心不是 Worker IPC 宿主
+- Persona（9 文件）：PromptBuilder、PersonaGenerator、PersonaStore 等 — 领域逻辑
+- Tools 抽象：ToolSchemaBuilder、ToolDefinitionPlaceholder、ToolModuleState — 框架代码应在 Core
+- Modules 整块：DB/Git/Skills/Extensions/Channels/Video/Audio 等 — 每个是独立功能域
+
+**重构方向**：
+- `WishfulClaw.Agent`：从 Worker/AgentRuntime 独立，包含 AgentLoop、所有 Executor、Provider、ConversationCodec、ContextCompression、ToolCallProcessor、SubAgent
+- `WishfulClaw.Persona`：从 Worker/Persona 独立，PromptBuilder、PersonaGenerator、PersonaStore
+- Core 上提：ToolSchemaBuilder、ToolDefinitionPlaceholder、ToolModuleState 移到 Core
+- Worker 回归薄层：仅保留 IPC 宿主 + Module 装载 + Program.cs
+- Contracts 精简：WorkerResponse 的 JSON 序列化实现移到 Core 或 Worker，Contracts 只留接口
+
+### 8. 缓存命中率修复 — C# 端维护 conversation 状态
+
+**现状**：缓存命中率在 31%~99% 之间剧烈跳动，同一会话连续两轮请求命中率差异可达 50%+。
+
+**根因**：无状态架构 — 每轮全量重建消息历史。渲染端 `use-chat-actions.ts` 每轮从 session.messages 全量构建 historyMessages 发给 C# Worker，Worker 再序列化为 provider 请求。只要重建过程中有任何 byte 差异（JSON 字段顺序、空格、数字精度、tool output 格式化差异等），Anthropic 前缀缓存就 miss。
+
+**对比 Reasonix**：Reasonix 的 sidecar 是长驻进程，内存中维护 conversation，每轮只追加新消息，前缀天然 byte-stable，缓存命中率接近 100%。
+
+**次要因素**：
+- `buildRuntimeReminder` 每轮变化（task 状态、goal 状态、MCP server 数量等注入到最后一条 user message）
+- `InjectTimestampPrefix` 每秒都变的时间戳
+- `cache_control` 断点设置差异（我们设了显式断点，Reasonix 不设，依赖 Anthropic 自动前缀缓存）
+
+**修复方向**：
+- 在 C# 端维护 conversation 状态，每轮只接收增量消息（新增的 user message + tool results），而不是全量重建
+- `AgentLoop.cs` 的 `ReadWireConversation` → `ReadConversation` 逻辑改为增量追加
+- 渲染端 `use-chat-actions.ts` 改为只发送增量消息
+- 需要处理 session 切换、context compression 等边界情况
+
 ## 执行顺序
 
 ```
-1. Skill 本地文件安装测试     ← 可与 2、3 并行
-2. 渠道配置测试与完善         ← 可与 1、3 并行
-3. SSH 远程执行测试与完善     ← 可与 1、2 并行
-4. 主聊天接入工作台模式       ← 依赖渠道配置验证通过
-5. Global 全局模式接入        ← 依赖工作台模式（模式切换 UI 复用）
-6. Goal 模式接入              ← 依赖工作台模式（Agent 需绑定工作区自主操作）
+1. Runtime 分层架构重构       ← 优先执行，为后续所有功能开发打基础
+2. 缓存命中率修复             ← 依赖架构重构（C# 端 conversation 状态管理）
+3. Skill 本地文件安装测试     ← 可与 4、5 并行
+4. 渠道配置测试与完善         ← 可与 3、5 并行
+5. SSH 远程执行测试与完善     ← 可与 3、4 并行
+6. 主聊天接入工作台模式       ← 依赖渠道配置验证通过
+7. Global 全局模式接入        ← 依赖工作台模式（模式切换 UI 复用）
+8. Goal 模式接入              ← 依赖工作台模式（Agent 需绑定工作区自主操作）
 ```
 
 ## MVP v2 完成标准
 
 ```
-1. Skill 从本地文件夹安装可用，卸载干净
-2. 至少 2 种渠道（OpenAI 兼容 + Anthropic）配置 → 对话全链路验证通过
-3. SSH 连接配置 → 项目绑定 → Agent 远程执行 → 终端旁观，全链路通过
-4. 主聊天支持工作台模式，Agent 在指定工作区下执行任务
-5. 全局模式可用，不绑定项目也能正常对话和调工具
-6. Goal 模式可用，设定目标后 Agent 自主拆解执行，可中断，有进度展示
+1. Worker 拆分为 WishfulClaw.Agent / WishfulClaw.Persona，Worker 回归薄层 IPC 宿主
+2. 同一会话缓存命中率稳定在 90%+，不再因打字或全量重建导致跳动
+3. Skill 从本地文件夹安装可用，卸载干净
+4. 至少 2 种渠道（OpenAI 兼容 + Anthropic）配置 → 对话全链路验证通过
+5. SSH 连接配置 → 项目绑定 → Agent 远程执行 → 终端旁观，全链路通过
+6. 主聊天支持工作台模式，Agent 在指定工作区下执行任务
+7. 全局模式可用，不绑定项目也能正常对话和调工具
+8. Goal 模式可用，设定目标后 Agent 自主拆解执行，可中断，有进度展示
 ```
