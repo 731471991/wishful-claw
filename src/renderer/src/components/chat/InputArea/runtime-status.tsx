@@ -206,7 +206,7 @@ export function ComposerRuntimeStatus({
   // Use cumulative API-returned values only. Draft input tokens (from typing)
   // are NOT included — they haven't been sent yet and would make metrics jump.
   // Per-request cache hit rate is shown in each message's token summary bar.
-  const inputTokens = live.cumulativeBillableInputTokens
+  const inputTokens = live.cumulativeInputTokens
   const cacheReadTokens = live.cumulativeCacheReadTokens
   const cacheCreationTokens = live.cumulativeCacheCreationTokens
   // Session-level cache hit rate from backend (Reasonix-style: Σhit/Σ(hit+miss))
@@ -418,7 +418,7 @@ export function ComposerRuntimeStatus({
       [
         {
           key: 'input',
-          label: t('input.runtimeMetrics.input', { defaultValue: '未命中' }),
+          label: t('input.runtimeMetrics.total', { defaultValue: '总' }),
           color: '#38bdf8',
           value: totalInputCost
         },
@@ -456,29 +456,29 @@ export function ComposerRuntimeStatus({
       aria-live={isStreaming ? 'polite' : 'off'}
     >
       <RuntimeMetric
-        label={t('input.runtimeMetrics.input', { defaultValue: '未命中' })}
-        value={inputTokens}
-        tone="input"
-        animate={isStreaming}
-        duration={520}
-        title={buildCostTitle(
-          t('input.runtimeMetrics.input', { defaultValue: '未命中' }),
-          inputTokens,
-          metricPricing.inputPrice
-        )}
-      />
-      <span className="shrink-0 text-muted-foreground/35">/</span>
-      <RuntimeMetric
         label={t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' })}
         value={cacheReadTokens}
         tone="cacheHit"
         animate={isStreaming}
-        duration={620}
+        duration={520}
         suffix={sessionCacheRateLabel ?? formatCacheHitRate(cacheHitRate)}
         title={buildCostTitle(
           t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' }),
           cacheReadTokens,
           metricPricing.cacheReadPrice
+        )}
+      />
+      <span className="shrink-0 text-muted-foreground/35">/</span>
+      <RuntimeMetric
+        label={t('input.runtimeMetrics.total', { defaultValue: '总' })}
+        value={inputTokens}
+        tone="input"
+        animate={isStreaming}
+        duration={620}
+        title={buildCostTitle(
+          t('input.runtimeMetrics.total', { defaultValue: '总' }),
+          live.cumulativeBillableInputTokens,
+          metricPricing.inputPrice
         )}
       />
 
