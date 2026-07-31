@@ -115,6 +115,15 @@
         "desc": "Maximum number of sub-agents running simultaneously"
       }
     },
+    "contextCompression": {
+      "label": "Context Compression",
+      "desc": "Automatically summarize earlier messages when the conversation approaches the context window limit",
+      "enabled": "When enabled, context will be automatically compressed at the threshold",
+      "threshold": {
+        "label": "Compression Threshold",
+        "desc": "Trigger compression at this context window usage ratio. Range: 30% - 90%"
+      }
+    },
     "developerMode": {
       "label": "Developer Mode",
       "desc": "Show request parameters (URL, headers, body) for each assistant message. Useful for debugging during development.",

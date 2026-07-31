@@ -131,7 +131,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       }
     })
     void dbDeleteSession(id)
-    void window.api.workerRequest("agent/clear-session", { sessionId: id })
+    void window.api.workerRequest('agent/clear-session', { sessionId: id })
   },
 
   setActiveSession: (id) => {

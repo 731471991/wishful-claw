@@ -164,7 +164,9 @@ ${text}` : text
         personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,
         language: settings.language,
         userRules: settings.systemPrompt || undefined,
-        messageCount: historyMessages.length
+        messageCount: historyMessages.length,
+        contextCompressionEnabled: settings.contextCompressionEnabled,
+        contextCompressionThreshold: settings.contextCompressionThreshold
       })
 
       void opts

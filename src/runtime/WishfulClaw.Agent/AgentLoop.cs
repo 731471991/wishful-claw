@@ -126,8 +126,8 @@ internal static partial class AgentLoop
                 break;
             }
 
-            // ── Context compression (simplified: token-based truncation) ──
-            if (lastInputTokens > 0 && ShouldCompress(lastInputTokens, provider))
+            // ── Context compression (LLM summarization) ──
+            if (lastInputTokens > 0 && ShouldCompress(lastInputTokens, provider, parameters))
             {
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
@@ -142,8 +142,8 @@ internal static partial class AgentLoop
                 try
                 {
                     var originalCount = wireConversation.Count;
-                    var (newConversation, newWireConversation) = ContextCompression.TruncateMessages(
-                        conversation, wireConversation, provider);
+                    var (newConversation, newWireConversation) = await ContextCompression.CompactAsync(
+                        conversation, wireConversation, provider, context, state.CancellationToken);
                     if (newWireConversation.Count < originalCount)
                     {
                         sessionConv.Replace(newConversation, newWireConversation);
@@ -384,14 +384,27 @@ internal static partial class AgentLoop
 
     // ── Context compression check ──
 
-    private static bool ShouldCompress(int inputTokens, JsonElement provider)
+    private static bool ShouldCompress(int inputTokens, JsonElement provider, JsonElement parameters)
     {
+        // Check if compression is enabled (default: true)
+        var compressionEnabled = JsonHelpers.GetBool(parameters, "contextCompressionEnabled", true);
+        if (!compressionEnabled)
+        {
+            return false;
+        }
+
         var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
         if (contextLength <= 0)
         {
             return false;
         }
-        var threshold = (int)(contextLength * DefaultContextCompressionThreshold);
+
+        // Read threshold from parameters (sent by frontend settings), fallback to 0.8
+        var thresholdRatio = JsonHelpers.GetDoubleNullable(parameters, "contextCompressionThreshold") ?? DefaultContextCompressionThreshold;
+        // Clamp to 0.3 ~ 0.9
+        thresholdRatio = Math.Min(0.9, Math.Max(0.3, thresholdRatio));
+
+        var threshold = (int)(contextLength * thresholdRatio);
         var reserved = contextLength - DefaultContextCompressionReservedOutputTokens - ContextCompressionAutoBufferTokens;
         var trigger = Math.Min(threshold, reserved);
         return inputTokens >= trigger;

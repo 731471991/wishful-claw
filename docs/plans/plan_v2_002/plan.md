@@ -13,6 +13,11 @@ C# 端维护 conversation 状态，每轮只接收增量消息，消除全量重
 - [x] 步骤5：cache_control 断点对齐 Reasonix — 第二个断点从 tools 最后一个改为最后一条 message 的最后一个 content block。验证：dotnet build 通过。
 - [x] 步骤6：session 切换边界处理 — deleteSession/clearSessionMessages 时调用 `agent/clear-session` 清理 C# 端状态；context compression 时通过 `sessionConv.Replace()` 替换。验证：dotnet build + tsc 通过。
 - [x] 步骤7：双编译验证 — `dotnet build` + `tsc --noEmit` 零错误。
+- [x] 步骤8：ContextCompression 升级为 LLM 总结式压缩 — 重写 ContextCompression.cs，实现 SummarizeAsync（LLM 调用）+ PlanCompaction（分区：pinned prefix + foldable middle + recent tail）+ PartitionFold（小 user turns 保留，assistant/tool 折叠）+ MechanicalFold（失败回退）。参考 Reasonix compact.go 7 段式 summary prompt。
+- [x] 步骤9：AgentLoop 压缩流程升级 — ShouldCompress 从硬编码改为读取前端传入的 compressionThreshold；压缩时调 CompactAsync（异步 LLM）；压缩后 sessionConv.Replace() 同步状态。
+- [x] 步骤10：前端传递压缩设置 — sendMessage 参数增加 contextCompressionEnabled + contextCompressionThreshold 字段，从 settings store 读取。
+- [x] 步骤11：GeneralPanel 添加压缩设置 UI — Switch（开关）+ Slider（阈值 30%-90%），参考 OpenCowork SettingsPage 布局。i18n 补充翻译。
+- [x] 步骤12：双编译验证 + 功能测试。
 
 ## 涉及文件
 

@@ -71,6 +71,8 @@ export interface AgentActions {
 
     userRules?: string
     messageCount?: number
+    contextCompressionEnabled?: boolean
+    contextCompressionThreshold?: number
 
   }) => Promise<void>
 
