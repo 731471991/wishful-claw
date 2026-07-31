@@ -258,6 +258,12 @@ Worker
 - **Plan 完成后才 push**：一个 Plan 的所有功能单元都完成并通过验证后，一次性 push
 - **Push 需要代理**：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin <branch>`
 
+### 分支管理
+
+- **新分支必须从最新的 main 拆出**：开始新迭代前，先确保上一个迭代分支已合并到 main 并打 tag，然后从更新后的 main 创建新分支
+- **禁止从旧分支拆分支**：如果上一个分支未合并 main，新分支会缺少前序迭代的代码变更，导致编译错误或功能缺失
+- **标准流程**：`git checkout main` → `git pull origin main` → `git checkout -b dev/v2-iter-{N}` → 开发 → commit → push → 合并 main → 打 tag → 删除分支 → 下一个迭代从 main 重新拆出
+
 ## 异常日志
 
 项目运行时的所有异常（主进程、渲染进程、Worker、IPC 通道）会自动写入日志文件。
