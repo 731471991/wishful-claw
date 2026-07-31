@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Session } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
+import { APP_VERSION_LABEL } from '@renderer/lib/app-version'
 import { toast } from 'sonner'
 import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
 
@@ -317,7 +318,7 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
         >
           <Settings className="size-3.5" />
           {t('navRail.settings', { defaultValue: 'Settings' })}
-          <span className="ml-auto text-[9px] text-muted-foreground/40 select-none">v0.4.0</span>
+          <span className="ml-auto text-[9px] text-muted-foreground/40 select-none">{APP_VERSION_LABEL}</span>
         </button>
       </div>
 

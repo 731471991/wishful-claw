@@ -21,6 +21,7 @@ import {
   DialogTitle
 } from '@renderer/components/ui/dialog'
 import { cn } from '@renderer/lib/utils'
+import { APP_VERSION_LABEL } from '@renderer/lib/app-version'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -301,7 +302,7 @@ export function PersonaSelectPage(): React.JSX.Element {
       </main>
 
       <footer className="flex h-8 shrink-0 items-center justify-center text-[11px] text-muted-foreground/50">
-        Wishful Claw · v0.6.0-dev
+        Wishful Claw · {APP_VERSION_LABEL}
       </footer>
 
       {/* Persona Detail Dialog */}

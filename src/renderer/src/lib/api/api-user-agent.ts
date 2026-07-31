@@ -1,8 +1,7 @@
-import packageJson from '../../../../../package.json'
+import { APP_VERSION } from '../app-version'
 
-const APP_NAME = 'OpenCowork'
-const packageVersion = typeof packageJson.version === 'string' ? packageJson.version.trim() : ''
-const DEFAULT_API_USER_AGENT = packageVersion ? `${APP_NAME}/${packageVersion}` : APP_NAME
+const APP_NAME = 'WishfulClaw'
+const DEFAULT_API_USER_AGENT = APP_VERSION ? `${APP_NAME}/${APP_VERSION}` : APP_NAME
 
 function isDefaultApiUserAgentPlaceholder(userAgent: string): boolean {
   return userAgent === APP_NAME || userAgent === `${APP_NAME}/`
