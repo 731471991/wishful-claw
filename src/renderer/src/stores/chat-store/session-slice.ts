@@ -474,6 +474,11 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         target.loadedRangeEnd = offset + messages.length
         target.lastKnownMessageCount = actualCount
       })
+      // Restore backend session from DB (Reasonix-style: backend is the
+      // single source of truth for conversation history).
+      // Fire-and-forget: the next agent/run will see MessageCount > 0
+      // and append instead of initializing.
+      void window.api.workerRequest('agent/restore-session', { sessionId })
     } catch (err) {
       console.error('[DB] loadRecentSessionMessages failed:', err)
       set((state) => {
