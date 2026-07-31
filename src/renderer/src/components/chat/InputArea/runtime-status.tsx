@@ -63,11 +63,16 @@ export function ComposerRuntimeStatus({
       const streamingMessageId = messagesOverride
         ? (streamingMessageIdOverride ?? null)
         : (s.streamingMessages[targetSessionId] ?? null)
+      const session = idx !== undefined ? s.sessions[idx] : undefined
       const totals = createEmptyRuntimeUsageTotals()
       const message = streamingMessageId
         ? messages?.find((item) => item.id === streamingMessageId)
         : undefined
-      if (messages) {
+      // Use cached session totals when available (avoids per-render traversal).
+      // Only traverse messages when an override is provided (sub-agent / preview).
+      if (!messagesOverride && session?.usageTotals) {
+        Object.assign(totals, session.usageTotals)
+      } else if (messages) {
         const { providers } = useProviderStore.getState()
         for (const item of messages) {
           const reqModel = item.meta?.requestModel

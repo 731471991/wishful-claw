@@ -9,6 +9,8 @@ import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 import { isChatStreamEvent } from '@renderer/lib/agent/stream-event-adapter'
 import { accumulateUsageSnapshot } from '@renderer/lib/agent/usage-merge'
+import { applyUsageDeltaToSession } from './session-usage-totals'
+import { useProviderStore } from '@renderer/stores/provider-store'
 
 import { createSessionSlice, type SessionSlice } from './session-slice'
 
@@ -570,6 +572,17 @@ export const useChatStore = create<ChatStore>()(
                   msg.usage = accumulateUsageSnapshot(msg.usage, event.usage)
 
                   msg.timing = event.timing
+
+                  // Incrementally update session-level usage totals
+                  const _reqModel = msg.meta?.requestModel
+                  const _providerId = _reqModel?.providerId ?? msg.debugInfo?.providerId ?? null
+                  const _modelId = _reqModel?.modelId ?? msg.debugInfo?.model ?? null
+                  const _providers = useProviderStore.getState().providers
+                  const _provider = _providerId ? (_providers.find((p: any) => p.id === _providerId) ?? null) : null
+                  const _modelCfg = (_provider && _modelId
+                    ? (_provider.models.find((m: any) => m.id === _modelId) ?? null)
+                    : null) ?? null
+                  applyUsageDeltaToSession(session, event.usage, _modelCfg)
 
                   // Mark the last thinking segment as completed
 

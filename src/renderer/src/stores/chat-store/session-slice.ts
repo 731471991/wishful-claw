@@ -2,6 +2,8 @@
 import type { StateCreator } from 'zustand'
 import type { Session, CreateSessionOptions, ChatMessage } from './types'
 import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage, dbGetMessageCount } from './db-helpers'
+import { initSessionUsageTotals } from './session-usage-totals'
+import { useProviderStore } from '@renderer/stores/provider-store'
 
 export interface SessionSlice {
   sessions: Session[]
@@ -473,6 +475,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         target.loadedRangeStart = offset
         target.loadedRangeEnd = offset + messages.length
         target.lastKnownMessageCount = actualCount
+        // Initialize cached usage totals from loaded messages
+        initSessionUsageTotals(target, useProviderStore.getState().providers as any)
       })
     } catch (err) {
       console.error('[DB] loadRecentSessionMessages failed:', err)
