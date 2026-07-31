@@ -38,10 +38,10 @@ src/
     │   ├── Protocol/                     #   通信协议（MessagePack 编解码、流式事件、Worker 分发）
     │   └── Tools/                        #   工具框架（IToolExecutor / IToolProvider / ToolRegistry / ToolSchemaBuilder）
     │
-    ├── WishfulClaw.Infrastructure/       # 3. 基础设施（计划中，v2-iter-3 新建）
-    │   ├── Db/                           #   数据库（DbClient + Entities 从 Worker 搬入）
-    │   ├── Storage/                      #   配置存储（ConfigStore + ProviderStore + JsonFileNodeCache 从 Worker 搬入）
-    │   └── Http/                         #   HTTP 客户端（WorkerHttpClientFactory 从 Agent 搬入）
+    ├── WishfulClaw.Infrastructure/       # 3. 基础设施（Db / Storage / Http）
+    │   ├── Db/                           #   DbClient + Entities + Db*Tools（SQLite 持久化）
+    │   ├── Storage/                      #   ConfigStore + ProviderStore + JsonFileNodeCache（JSON 配置读写）
+    │   └── Http/                         #   WorkerHttpClientFactory（HTTP 客户端工厂）
     │
     ├── WishfulClaw.Workspace/            # 4. 记忆系统（业务层）
     │   └── Memory/                       #   记忆读写/检索/分层流转/巩固/语义降级/FTS5 + MemoryFtsService
@@ -54,7 +54,7 @@ src/
     │
     ├── WishfulClaw.Agent/                # 6. Agent 运行时（核心业务逻辑）
     │   ├── AgentLoop*.cs                 #   Agent Loop 循环主体（partial class 拆分）
-    │   ├── SessionConversation.cs        #   per-session 会话状态管理（增量追加 + prefix cache 优化）
+    │   ├── SessionConversation.cs        #   per-session 会话状态管理（增量追加 + prefix cache 优化 + 缓存计数器）
     │   ├── ContextCompression.cs         #   LLM 总结式上下文压缩
     │   ├── ToolCallProcessor.cs          #   工具调用处理
     │   ├── ToolDispatchRouter.cs         #   工具分派路由
@@ -63,31 +63,16 @@ src/
     │   │   ├── AnthropicMessages*.cs
     │   │   ├── OpenAIChat*.cs
     │   │   └── ...
+    │   ├── Tools/                        #   工具实现（FileTools / SearchTools / ShellTools / MemoryTools / Providers / AgentChanges）
+    │   ├── Modules/                      #   业务模块（Git / Skills / Extensions / Channels / Video / Media / OpenAIAudio / ProviderTest / WebFetch）
     │   ├── *Executor.cs                  #   工具执行器（AskUser / Browser / ImageGenerate / SSH / Task / WebFetch / WebSearch ...）
     │   ├── ConversationCodec.cs          #   对话编解码
-    │   ├── StreamEventModels.cs          #   流式事件模型
-    │   └── WorkerHttpClientFactory.cs    #   ⚠️ 待搬到 Infrastructure
+    │   └── StreamEventModels.cs          #   流式事件模型
     │
     └── WishfulClaw.Worker/               # 7. 进程入口（薄层 IPC 宿主）
         ├── Program.cs                    #   入口
         ├── WorkerHost*.cs                #   宿主构建 + 模块装载
-        ├── Modules/                      #   模块注册（IWorkerModule 模式）
-        │   ├── Db/                       #   ⚠️ DbClient + Entities 待搬到 Infrastructure
-        │   ├── Git/                      #   Git 工具模块
-        │   ├── Skills/                   #   Skill 管理模块
-        │   ├── Extensions/               #   扩展模块
-        │   ├── Channels/                 #   渠道模块
-        │   ├── Video/                    #   视频生成模块
-        │   └── ...
-        ├── Tools/                        #   工具实现（FileTools / SearchTools / ShellTools / MemoryTools / Providers）
-        │   ├── FileTools/                #   ⚠️ 依赖 DbClient，待 Infrastructure 后可独立拆分
-        │   ├── SearchTools/
-        │   ├── ShellTools/
-        │   ├── MemoryTools/
-        │   └── Providers/                #   工具 Provider 注册（18 个 ToolProvider）
-        ├── ConfigStore.cs                #   ⚠️ 待搬到 Infrastructure
-        ├── ProviderStore.cs              #   ⚠️ 待搬到 Infrastructure
-        └── JsonFileNodeCache.cs          #   ⚠️ 待搬到 Infrastructure
+        └── WorkerModuleCatalog.cs        #   模块注册（引用 Agent / Infrastructure 中的实现）
 ```
 
 ### 各项目文件数（当前实际）
@@ -125,23 +110,21 @@ Agent 通用框架，不含任何业务逻辑。
 
 ### 3. Infrastructure 层（WishfulClaw.Infrastructure）
 
-> 计划中，v2-iter-3 新建。
-
 基础设施层，提供数据库、配置存储、HTTP 客户端等通用能力。
 
 - **依赖** Contracts + Core
 - **不依赖** Workspace / Persona / Agent / Worker
 - 包含：
-  - **Db**：DbClient + Entities（从 Worker 搬入）— SQLite 持久化
-  - **Storage**：ConfigStore + ProviderStore + JsonFileNodeCache（从 Worker 搬入）— JSON 配置文件读写
-  - **Http**：WorkerHttpClientFactory（从 Agent 搬入）— HTTP 客户端工厂
-- 目的：解耦 Worker 对基础设施的直接依赖，使 Worker 中的 Tools / Modules 能迁出
+  - **Db**：DbClient + Entities + Db*Tools — SQLite 持久化
+  - **Storage**：ConfigStore + ProviderStore + JsonFileNodeCache — JSON 配置文件读写
+  - **Http**：WorkerHttpClientFactory — HTTP 客户端工厂
+- 目的：解耦 Worker 对基础设施的直接依赖，使 Tools / Modules 能迁出到 Agent 层
 
 ### 4. Workspace 层（WishfulClaw.Workspace）
 
 记忆系统业务层。
 
-- **依赖** Contracts（+ Infrastructure，待 v2-iter-3 后）
+- **依赖** Contracts + Infrastructure
 - **不依赖** Persona / Agent / Worker
 - 包含：Memory（读写/检索/分层流转/巩固/语义降级/FTS5）
 
@@ -168,7 +151,7 @@ Agent 运行时核心业务逻辑。
 - **依赖** Agent + Persona + Workspace + Core + Contracts + Infrastructure
 - 负责模块注册、依赖注入、进程生命周期
 - 被 Electron Main 进程拉起
-- **目标**：瘦身后仅保留 Program.cs + WorkerHost + Module 注册 + 少量 Worker 专属逻辑（~30 文件）
+- 当前仅保留 Program.cs + WorkerHost + WorkerModuleCatalog（12 文件），其余已迁入 Agent / Infrastructure
 
 ### 依赖方向（严格单向）
 
