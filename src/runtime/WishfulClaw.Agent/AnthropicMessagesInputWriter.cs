@@ -78,8 +78,6 @@ internal static partial class AnthropicMessagesProvider
     private static void WriteMessages(Utf8JsonWriter writer, IReadOnlyList<AgentRuntimeChatMessage> conversation)
     {
         // Pre-compute which messages will be written (filter consecutive same-role).
-        // This allows us to know which message is last, so we can place the
-        // cache_control breakpoint on its final content block (Reasonix pattern).
         var messagesToWrite = new List<AgentRuntimeChatMessage>();
         string? lastRole = null;
 
@@ -93,18 +91,31 @@ internal static partial class AnthropicMessagesProvider
         }
 
         var needsContinueMessage = lastRole == "assistant";
+        var count = messagesToWrite.Count;
 
         writer.WriteStartArray();
 
-        for (var i = 0; i < messagesToWrite.Count; i++)
+        // Breakpoint strategy (max 4, we use 3):
+        // 1. System prompt (added in BuildRequestBody)
+        // 2. Second-to-last real message (stable conversation prefix)
+        // 3. Last real message (current turn, cached for next turn)
+        // When needsContinueMessage, BP goes on the last REAL message,
+        // not on the synthetic "Continue." message.
+        for (var i = 0; i < count; i++)
         {
-            var isLastMessage = i == messagesToWrite.Count - 1 && !needsContinueMessage;
-            WriteSingleMessage(writer, messagesToWrite[i], isLastMessage);
+            var isLastReal = i == count - 1;
+            var isSecondToLast = i == count - 2;
+            // BP on last real message (always)
+            // BP on second-to-last message (when there are 3+ messages)
+            var addBP = isLastReal || (isSecondToLast && count >= 3);
+            WriteSingleMessage(writer, messagesToWrite[i], addBP);
         }
 
         if (needsContinueMessage)
         {
-            // Write "Continue." as the last message with cache_control breakpoint
+            // Write "Continue." WITHOUT cache_control breakpoint.
+            // The BP is on the last real message (the assistant message),
+            // which is the stable prefix that next turn will hit.
             writer.WriteStartObject();
             writer.WriteString("role", "user");
             writer.WritePropertyName("content");
@@ -112,7 +123,6 @@ internal static partial class AnthropicMessagesProvider
             writer.WriteStartObject();
             writer.WriteString("type", "text");
             writer.WriteString("text", "Continue.");
-            WriteCacheControl(writer);
             writer.WriteEndObject();
             writer.WriteEndArray();
             writer.WriteEndObject();
