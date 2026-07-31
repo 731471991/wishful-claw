@@ -1,7 +1,9 @@
 using WishfulClaw.Contracts;
 using WishfulClaw.Agent;
 using WishfulClaw.Worker.Modules;
+using WishfulClaw.Infrastructure.Db;
 using WishfulClaw.Worker.Modules.Db;
+using WishfulClaw.Agent.Tools.AgentChanges;
 using WishfulClaw.Worker.Modules.AgentChanges;
 using WishfulClaw.Worker.Modules.Git;
 using WishfulClaw.Worker.Modules.Channels;
@@ -11,7 +13,7 @@ using WishfulClaw.Worker.Modules.Extensions;
 using WishfulClaw.Worker.Modules.Skills;
 using WishfulClaw.Worker.Modules.Video;
 using WishfulClaw.Persona;
-using WishfulClaw.Worker.Tools;
+using WishfulClaw.Agent.Tools;
 
 namespace WishfulClaw.Worker;
 

@@ -1,11 +1,11 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Agent;
-using WishfulClaw.Agent;
+using WishfulClaw.Infrastructure.Http;
 
 namespace WishfulClaw.Worker.Modules.Video;
 

@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Agent;
+using WishfulClaw.Infrastructure.Http;
 
 namespace WishfulClaw.Worker.Modules.Extensions;
 

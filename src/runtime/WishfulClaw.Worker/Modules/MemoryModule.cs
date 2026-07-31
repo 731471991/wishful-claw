@@ -3,9 +3,9 @@ using System.Linq;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Workspace.Memory;
-using WishfulClaw.Worker.Tools;
+using WishfulClaw.Agent.Tools;
 using WishfulClaw.Agent;
-using WishfulClaw.Worker.Modules.Db;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Worker.Modules;
 

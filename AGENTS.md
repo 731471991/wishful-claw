@@ -14,7 +14,7 @@ Wishful Claw 是一个 Agent 编程软件，融合 OpenCowork 的 Agent Loop + �
 
 ## 项目结构（7 层架构）
 
-> 当前状态：6 项目已落地（Contracts / Core / Workspace / Persona / Agent / Worker），Infrastructure 层计划在 v2-iter-3 中新建。
+> 当前状态：7 项目已落地（Contracts / Core / Infrastructure / Workspace / Persona / Agent / Worker）。
 
 ```
 src/
@@ -37,7 +37,7 @@ src/
     │   └── Http/                         #   HTTP 客户端（WorkerHttpClientFactory 从 Agent 搬入）
     │
     ├── WishfulClaw.Workspace/            # 4. 记忆系统（业务层）
-    │   └── Memory/                       #   记忆读写/检索/分层流转/巩固/语义降级/FTS5
+    │   └── Memory/                       #   记忆读写/检索/分层流转/巩固/语义降级/FTS5 + MemoryFtsService
     │
     ├── WishfulClaw.Persona/              # 5. 人格系统
     │   ├── PromptBuilder.cs              #   分段组装 System Prompt + 字符预算
@@ -89,11 +89,11 @@ src/
 |------|--------|------|
 | Contracts | 4 | 纯接口契约 |
 | Core | 19 | Agent 通用框架（Protocol + Tools） |
-| Infrastructure | — | 计划中（v2-iter-3 新建） |
-| Workspace | 12 | 记忆系统 |
+| Infrastructure | 13 | 基础设施（Db / Storage / Http） |
+| Workspace | 12 | 记忆系统（含 MemoryFtsService） |
 | Persona | 9 | 人格系统 |
-| Agent | 65 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent） |
-| Worker | 101 | IPC 宿主 + 模块注册 + 工具实现 + Db/Storage（待瘦身至 ~30） |
+| Agent | 106 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools） |
+| Worker | 57 | IPC 宿主 + 模块注册（待进一步瘦身至 ~30） |
 
 > 统计不含 obj/ 目录下的自动生成文件。
 
@@ -150,15 +150,15 @@ Agent 通用框架，不含任何业务逻辑。
 
 Agent 运行时核心业务逻辑。
 
-- **依赖** Contracts + Core（+ Infrastructure，待 v2-iter-3 后）+ Persona
+- **依赖** Contracts + Core + Infrastructure + Persona
 - **不依赖** Worker
-- 包含：AgentLoop / Provider 实现 / 工具执行器 / 上下文压缩 / SubAgent / SessionConversation
+- 包含：AgentLoop / Provider 实现 / 工具执行器 / 上下文压缩 / SubAgent / SessionConversation / Tools（FileTools / SearchTools / ShellTools / MemoryTools / Providers / AgentChanges）
 
 ### 7. Worker 层（WishfulClaw.Worker）
 
 进程入口，薄层 IPC 宿主。
 
-- **依赖** Agent + Persona + Workspace + Core + Contracts（+ Infrastructure，待 v2-iter-3 后）
+- **依赖** Agent + Persona + Workspace + Core + Contracts + Infrastructure
 - 负责模块注册、依赖注入、进程生命周期
 - 被 Electron Main 进程拉起
 - **目标**：瘦身后仅保留 Program.cs + WorkerHost + Module 注册 + 少量 Worker 专属逻辑（~30 文件）
@@ -170,7 +170,7 @@ Contracts
   ↑
 Core
   ↑
-Infrastructure  ←──── （计划中）
+Infrastructure
   ↑
 Workspace
   ↑

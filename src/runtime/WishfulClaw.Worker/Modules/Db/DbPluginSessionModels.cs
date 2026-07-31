@@ -1,4 +1,5 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Worker.Modules.Db;
 

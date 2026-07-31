@@ -1,5 +1,6 @@
-using WishfulClaw.Contracts;
+﻿using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Storage;
 
 namespace WishfulClaw.Worker;
 
