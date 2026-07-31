@@ -1,0 +1,86 @@
+﻿using System.Text.Json;
+using WishfulClaw.Contracts;
+using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Db;
+
+namespace WishfulClaw.Infrastructure.Db;
+
+public sealed class DbModule : IWorkerModule
+{
+    public string Name => "db";
+
+    public void Register(IWorkerModuleContext context)
+    {
+        // ── Initialize ──
+        context.Register("db/initialize", DbInitialize);
+
+        // ── Projects ──
+        context.Register("db/projects-list", DbProjectTools.List);
+        context.Register("db/projects-get", DbProjectTools.Get);
+        context.Register("db/projects-create", DbProjectTools.Create);
+        context.Register("db/projects-update", DbProjectTools.Update);
+        context.Register("db/projects-delete", DbProjectTools.Delete);
+        context.Register("db/projects-ensure-default", DbProjectTools.EnsureDefault);
+
+        // ── Sessions ──
+        context.Register("db/sessions-list", DbSessionTools.List);
+        context.Register("db/sessions-get", DbSessionTools.Get);
+        context.Register("db/sessions-create", DbSessionTools.Create);
+        context.Register("db/sessions-update", DbSessionTools.Update);
+        context.Register("db/sessions-delete", DbSessionTools.Delete);
+        context.Register("db/sessions-clear-all", DbSessionTools.ClearAll);
+        context.Register("db/session-reset-conversation", DbSessionTools.ResetConversation);
+        context.Register("db/session-status", DbSessionTools.Status);
+
+        // ── Messages ──
+        context.Register("db/messages-list", DbMessageTools.List);
+        context.Register("db/messages-list-page", DbMessageTools.ListPage);
+        context.Register("db/messages-add", DbMessageTools.Add);
+        context.Register("db/messages-add-batch", DbMessageTools.AddBatch);
+        context.Register("db/messages-upsert", DbMessageTools.Upsert);
+        context.Register("db/messages-update", DbMessageTools.Update);
+        context.Register("db/messages-clear", DbMessageTools.Clear);
+        context.Register("db/messages-delete", DbMessageTools.Delete);
+        context.Register("db/messages-count", DbMessageTools.Count);
+        context.Register("db/messages-delete-last", DbMessageTools.DeleteLast);
+        context.Register("db/messages-truncate-from", DbMessageTools.TruncateFrom);
+        context.Register("db/messages-compact-session", DbMessageCompactTools.CompactSession);
+        context.Register("db/messages-usage-stats", DbMessageCompactTools.UsageStats);
+
+        // ── Sub-Agent Runs ──
+        context.Register("db/sub-agent-read-by-tool-use-id", DbSubAgentTools.ReadByToolUseId);
+        context.Register("db/sub-agent-read-session", DbSubAgentTools.ReadSession);
+        context.Register("db/sub-agent-index", DbSubAgentTools.Index);
+        context.Register("db/sub-agent-apply", DbSubAgentTools.Apply);
+        context.Register("db/sub-agent-replace", DbSubAgentTools.Replace);
+
+        // ── SSH Connections ──
+        context.Register("db/ssh-connections-list", DbSshTools.List);
+        context.Register("db/ssh-connections-get", DbSshTools.Get);
+        context.Register("db/ssh-connections-create", DbSshTools.Create);
+        context.Register("db/ssh-connections-update", DbSshTools.Update);
+        context.Register("db/ssh-connections-delete", DbSshTools.Delete);
+
+        // ── Plugin Sessions ──
+        context.Register("db/plugin-normal-projects", DbPluginSessionTools.ListNormalProjects);
+        context.Register("db/plugin-sync-session-models", DbPluginSessionTools.SyncPluginSessionModels);
+        context.Register("db/plugin-sync-session-project", DbPluginSessionTools.SyncPluginSessionProject);
+        context.Register("db/plugin-remove-data", DbPluginSessionTools.RemovePluginData);
+        context.Register("db/plugin-sessions-list", DbPluginSessionTools.ListPluginSessions);
+        context.Register("db/plugin-sessions-create", DbPluginSessionTools.CreatePluginSession);
+        context.Register("db/plugin-sessions-find-by-chat", DbPluginSessionTools.FindPluginSessionByChat);
+        context.Register("db/plugin-sessions-list-all", DbPluginSessionTools.ListAllPluginSessions);
+        context.Register("db/plugin-session-messages-list", DbPluginSessionTools.ListPluginSessionMessages);
+        context.Register("db/plugin-session-messages-clear", DbPluginSessionTools.ClearPluginSession);
+        context.Register("db/plugin-session-delete", DbPluginSessionTools.DeletePluginSession);
+        context.Register("db/plugin-session-rename", DbPluginSessionTools.RenamePluginSession);
+        context.Register("db/plugin-route-session", DbPluginSessionRouting.RoutePluginSession);
+    }
+
+    private static WorkerResponse DbInitialize(JsonElement parameters)
+    {
+        var dbPath = DbClient.ResolveDbPath(parameters);
+        var result = DbClient.Initialize(dbPath);
+        return WorkerResponse.Json(result);
+    }
+}
