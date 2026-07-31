@@ -54,23 +54,6 @@ export interface ChatMessage {
   createdAt: number
 }
 
-// ─── Session Usage Totals (cached on session to avoid per-render traversal) ───
-export interface SessionUsageTotals {
-  inputTokens: number
-  outputTokens: number
-  billableInputTokens: number
-  cacheReadTokens: number
-  cacheCreationTokens: number
-  cacheCreation5mTokens: number
-  cacheCreation1hTokens: number
-  inputCost: number | null
-  outputCost: number | null
-  cacheReadCost: number | null
-  cacheCreationCost: number | null
-  totalCost: number | null
-  latestRequestTiming: RequestTimingWire | null
-}
-
 // ─── Session ───
 export interface Session {
   id: string
@@ -99,8 +82,6 @@ export interface Session {
   providerId?: string
   modelId?: string
   personaId?: string
-  /** Cached cumulative usage across all messages — updated incrementally on message_end. */
-  usageTotals?: SessionUsageTotals
 }
 
 // ─── Project ───
@@ -168,7 +149,6 @@ export function createRestorableSessionSnapshot(session: Session): Session {
     pluginSenderName: session.pluginSenderName,
     modelSelectionMode: session.modelSelectionMode,
     providerId: session.providerId,
-    modelId: session.modelId,
-    usageTotals: session.usageTotals
+    modelId: session.modelId
   }
 }
