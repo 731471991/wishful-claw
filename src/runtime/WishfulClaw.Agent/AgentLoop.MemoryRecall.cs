@@ -50,7 +50,17 @@ internal static partial class AgentLoop
 
             if (!string.IsNullOrWhiteSpace(injected))
             {
-                conversation.Insert(1, AgentRuntimeChatMessage.User(injected));
+                // Inject as prefix to the last user message (same pattern as
+                // InjectTimestampPrefix) so the conversation prefix stays stable.
+                var recallBlock = $"<memory-recall>\n{injected}\n</memory-recall>\n\n";
+                for (var i = conversation.Count - 1; i >= 0; i--)
+                {
+                    if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
+                    {
+                        conversation[i] = conversation[i] with { Text = recallBlock + conversation[i].Text };
+                        break;
+                    }
+                }
                 WorkerLog.Info($"memory recall injected runId={state.RunId} length={injected.Length}");
             }
             else

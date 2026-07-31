@@ -37,36 +37,38 @@ internal static partial class AgentLoop
 
         ValidateProvider(provider);
 
-        // ── Session conversation state ──
-        // Use SessionConversation for per-session state management.
-        // First call (or messageCount mismatch): full init.
-        // Subsequent calls (messageCount matches): incremental append.
+        // -- Session conversation state (Reasonix pattern) --
+        // Backend is the single source of truth for the conversation.
+        // Frontend sends only the new user message each turn.
+        // First turn (empty session): Initialize with the user message.
+        // Subsequent turns: Append the new user message to the existing session.
         var sessionId = state.SessionId ?? "";
         var sessionConv = SessionConversationManager.GetOrCreate(sessionId);
-        var frontendMessageCount = JsonHelpers.GetInt(parameters, "messageCount", 0);
 
         List<AgentRuntimeChatMessage> conversation;
         List<JsonElement> wireConversation;
 
-        if (frontendMessageCount > 0 && frontendMessageCount == sessionConv.MessageCount)
+        if (sessionConv.MessageCount == 0)
         {
-            // Incremental mode: parameters contains only new messages.
-            var newWireMessages = ReadWireConversation(parameters);
-            var newConversation = ReadConversation(newWireMessages);
-            sessionConv.Append(newWireMessages, newConversation);
-            WorkerLog.Debug(
-                $"agent loop incremental session={FormatSessionId(sessionId)} " +
-                $"existing={frontendMessageCount} appended={newWireMessages.Count}");
-        }
-        else
-        {
-            // Full mode: initialize from scratch (first turn, session restore, or sync mismatch).
+            // First turn: initialize session with the user message.
             wireConversation = ReadWireConversation(parameters);
             conversation = ReadConversation(wireConversation);
             sessionConv.Initialize(wireConversation, conversation);
             WorkerLog.Debug(
-                $"agent loop full init session={FormatSessionId(sessionId)} " +
-                $"messages={wireConversation.Count} frontendCount={frontendMessageCount}");
+                $"agent loop init session={FormatSessionId(sessionId)} " +
+                $"messages={wireConversation.Count}");
+        }
+        else
+        {
+            // Subsequent turn: append the new user message.
+            var newWireMessages = ReadWireConversation(parameters);
+            var newConversation = ReadConversation(newWireMessages);
+            sessionConv.Append(newWireMessages, newConversation);
+            conversation = sessionConv.GetConversation();
+            wireConversation = sessionConv.GetWireConversation();
+            WorkerLog.Debug(
+                $"agent loop append session={FormatSessionId(sessionId)} " +
+                $"existing={sessionConv.MessageCount - newWireMessages.Count} appended={newWireMessages.Count}");
         }
 
         // Get live references from SessionConversation for the loop to use.
