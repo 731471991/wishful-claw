@@ -8,6 +8,7 @@ import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 import { isChatStreamEvent } from '@renderer/lib/agent/stream-event-adapter'
+import { accumulateUsageSnapshot } from '@renderer/lib/agent/usage-merge'
 
 import { createSessionSlice, type SessionSlice } from './session-slice'
 
@@ -566,7 +567,7 @@ export const useChatStore = create<ChatStore>()(
 
                 if (msg) {
 
-                  msg.usage = event.usage
+                  msg.usage = accumulateUsageSnapshot(msg.usage, event.usage)
 
                   msg.timing = event.timing
 
