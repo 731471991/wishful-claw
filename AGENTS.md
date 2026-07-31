@@ -89,11 +89,11 @@ src/
 |------|--------|------|
 | Contracts | 4 | 纯接口契约 |
 | Core | 19 | Agent 通用框架（Protocol + Tools） |
-| Infrastructure | 13 | 基础设施（Db / Storage / Http） |
+| Infrastructure | 23 | 基础设施（Db / Storage / Http + Db Tools） |
 | Workspace | 12 | 记忆系统（含 MemoryFtsService） |
 | Persona | 9 | 人格系统 |
-| Agent | 106 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools） |
-| Worker | 57 | IPC 宿主 + 模块注册（待进一步瘦身至 ~30） |
+| Agent | 141 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools / Modules） |
+| Worker | 12 | IPC 宿主（Program + Host + Catalog + 5 核心 Module） |
 
 > 统计不含 obj/ 目录下的自动生成文件。
 
