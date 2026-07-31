@@ -15,7 +15,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import {
   calculateCost, calculateCostBreakdown, estimateTokens,
   formatCacheHitRate, formatCost,
-  getCacheHitRate
+  formatSessionCacheHitRate, getCacheHitRate
 } from '@renderer/lib/format-tokens'
 import type { TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
@@ -58,7 +58,8 @@ export function ComposerRuntimeStatus({
     useShallow((s) => {
       const targetSessionId = sessionId
       const idx = s.sessionsById[targetSessionId]
-      const sessionMessages = idx !== undefined ? s.sessions[idx]?.messages : undefined
+      const session = idx !== undefined ? s.sessions[idx] : undefined
+      const sessionMessages = session?.messages
       const messages = messagesOverride ?? sessionMessages
       const streamingMessageId = messagesOverride
         ? (streamingMessageIdOverride ?? null)
@@ -132,7 +133,9 @@ export function ComposerRuntimeStatus({
           ? false
           : streamingMessageId
             ? Boolean(s.generatingImageMessages[streamingMessageId])
-            : false
+            : false,
+        sessionCacheHit: session?.sessionCacheHit,
+        sessionCacheMiss: session?.sessionCacheMiss
       }
     })
   )
@@ -206,11 +209,15 @@ export function ComposerRuntimeStatus({
   const inputTokens = live.cumulativeBillableInputTokens
   const cacheReadTokens = live.cumulativeCacheReadTokens
   const cacheCreationTokens = live.cumulativeCacheCreationTokens
-  const cacheHitRate = getCacheHitRate(
-    inputTokens,
-    cacheReadTokens,
-    cacheCreationTokens
-  )
+  // Session-level cache hit rate from backend (Reasonix-style: Σhit/Σ(hit+miss))
+  // Falls back to per-message traversal when session counters are unavailable.
+  const hasSessionCache = live.sessionCacheHit != null || live.sessionCacheMiss != null
+  const cacheHitRate = hasSessionCache
+    ? (live.sessionCacheHit ?? 0) / Math.max(1, (live.sessionCacheHit ?? 0) + (live.sessionCacheMiss ?? 0))
+    : getCacheHitRate(inputTokens, cacheReadTokens, cacheCreationTokens)
+  const sessionCacheRateLabel = hasSessionCache
+    ? formatSessionCacheHitRate(live.sessionCacheHit, live.sessionCacheMiss)
+    : null
   const streamingExtraUsage = React.useMemo<TokenUsage | null>(() => {
     if (!isStreaming || !model) return null
     const estimatedBillableInputTokens =
@@ -467,7 +474,7 @@ export function ComposerRuntimeStatus({
         tone="cacheHit"
         animate={isStreaming}
         duration={620}
-        suffix={formatCacheHitRate(cacheHitRate)}
+        suffix={sessionCacheRateLabel ?? formatCacheHitRate(cacheHitRate)}
         title={buildCostTitle(
           t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' }),
           cacheReadTokens,

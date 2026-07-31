@@ -31,6 +31,11 @@ export interface TokenUsageWire {
   reasoningTokens?: number
   contextTokens?: number
   contextLength?: number
+  // Session-cumulative cache counters (filled by backend AgentLoop)
+  sessionCacheHitTokens?: number
+  sessionCacheMissTokens?: number
+  // Source: "executor", "subagent", "compaction", etc.
+  usageSource?: string
 }
 
 export interface RequestTimingWire {

@@ -112,6 +112,38 @@ export function formatCacheHitRate(rate: number): string {
   return `${Number.isInteger(percent) ? percent.toFixed(0) : percent.toFixed(1)}%`
 }
 
+/**
+ * Session-level cache hit rate using Reasonix's formula:
+ * hitRate = sessionCacheHit / (sessionCacheHit + sessionCacheMiss)
+ * Returns 0 when no cache data exists.
+ */
+export function getSessionCacheHitRate(
+  sessionCacheHit: number | undefined,
+  sessionCacheMiss: number | undefined
+): number {
+  const hit = Math.max(0, sessionCacheHit ?? 0)
+  const miss = Math.max(0, sessionCacheMiss ?? 0)
+  const denom = hit + miss
+  if (denom <= 0) return 0
+  return hit / denom
+}
+
+/**
+ * Format session cache hit rate as a percentage string.
+ * Uses 2 decimal places (matching Reasonix's formatCacheHitRate).
+ */
+export function formatSessionCacheHitRate(
+  sessionCacheHit: number | undefined,
+  sessionCacheMiss: number | undefined
+): string {
+  const hit = Math.max(0, sessionCacheHit ?? 0)
+  const miss = Math.max(0, sessionCacheMiss ?? 0)
+  const denom = hit + miss
+  if (denom <= 0) return '-'
+  const pct = (hit / denom) * 100
+  return `${pct.toFixed(2)}%`
+}
+
 export function getUsageCacheHitRate(
   usage: TokenUsage,
   requestType?: ProviderType | AIModelConfig['type']

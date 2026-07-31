@@ -197,6 +197,9 @@ internal static partial class AgentLoop
             }
 
             // ── Execute provider turn (with retry policy for 429/5xx) ──
+            // Expose SessionConversation on state so providers can attach
+            // session-cumulative cache counters to message_end events.
+            state.SessionConversation = sessionConv;
             var turn = await ProviderRetryPolicy.ExecuteAsync(
                 () => ExecuteTurnAsync(parameters, provider, conversation, state, context),
                 state,
@@ -209,6 +212,7 @@ internal static partial class AgentLoop
             {
                 lastInputTokens = turn.Usage.ContextTokens.Value;
             }
+
 
             // ── Emit text_phase if this turn has both text and tool calls ──
             // The text was streamed before tool execution — mark it as 'pre_tool'

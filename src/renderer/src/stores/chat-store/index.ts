@@ -571,6 +571,14 @@ export const useChatStore = create<ChatStore>()(
 
                   msg.timing = event.timing
 
+                  // Store session-cumulative cache counters from backend
+                  if (event.usage?.sessionCacheHitTokens != null) {
+                    session.sessionCacheHit = event.usage.sessionCacheHitTokens
+                  }
+                  if (event.usage?.sessionCacheMissTokens != null) {
+                    session.sessionCacheMiss = event.usage.sessionCacheMissTokens
+                  }
+
                   // Mark the last thinking segment as completed
 
                   if (msg.segments) {

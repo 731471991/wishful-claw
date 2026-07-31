@@ -21,6 +21,41 @@ public sealed class SessionConversation
     private List<JsonElement> _wireConversation = [];
     private long _version;
 
+    // Session-level cumulative cache counters (LA Reasonix's sessCacheHit/sessCacheMiss).
+    // Atomic: the run loop accumulates them while the status bar reads them.
+    // NOT reset on compaction -- the aggregate never craters when the prefix is summarized away.
+    private long _sessCacheHit;
+    private long _sessCacheMiss;
+
+    /// <summary>
+    /// Cumulative cache-hit prompt tokens across every API call this session.
+    /// </summary>
+    public long SessionCacheHit => Interlocked.Read(ref _sessCacheHit);
+
+    /// <summary>
+    /// Cumulative cache-miss prompt tokens across every API call this session.
+    /// </summary>
+    public long SessionCacheMiss => Interlocked.Read(ref _sessCacheMiss);
+
+    /// <summary>
+    /// Accumulate cache hit/miss tokens from a single API call.
+    /// Thread-safe via Interlocked.
+    /// </summary>
+    public void AccumulateCacheTokens(int hit, int miss)
+    {
+        if (hit > 0) Interlocked.Add(ref _sessCacheHit, hit);
+        if (miss > 0) Interlocked.Add(ref _sessCacheMiss, miss);
+    }
+
+    /// <summary>
+    /// Reset cache counters -- called on Initialize (full session restore).
+    /// </summary>
+    public void ResetCacheTotals()
+    {
+        Interlocked.Exchange(ref _sessCacheHit, 0);
+        Interlocked.Exchange(ref _sessCacheMiss, 0);
+    }
+
     /// <summary>
     /// Number of wire messages currently stored.
     /// Safe to call from any thread.
@@ -66,6 +101,7 @@ public sealed class SessionConversation
             _conversation = conversation;
             _version++;
         }
+        ResetCacheTotals();
     }
 
     /// <summary>

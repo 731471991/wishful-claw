@@ -38,6 +38,19 @@ public sealed class AgentRuntimeRunState : IDisposable
     public bool SuppressTransportEvents { get; set; }
 
     /// <summary>
+    /// Identifies the source of usage events: "executor", "subagent", "compaction", etc.
+    /// Default is "executor". Set by the caller before executing a provider turn.
+    /// </summary>
+    public string UsageSource { get; set; } = "executor";
+
+    /// <summary>
+    /// The session conversation for this run. Set by AgentLoop before executing
+    /// provider turns so that providers can read session-level cache counters
+    /// and attach them to message_end events.
+    /// </summary>
+    public SessionConversation? SessionConversation { get; set; }
+
+    /// <summary>
     /// Optional callback invoked for every event when SuppressTransportEvents is true.
     /// The SubAgentExecutor uses this to collect text/tool events from the child loop.
     /// </summary>

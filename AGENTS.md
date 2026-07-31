@@ -201,6 +201,7 @@ Worker
 | OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链、Provider、流式协议（已迁移） |
 | KodaClaw | `D:\claw\koda-claw` | 记忆系统、人格系统、PromptBuilder（已迁移） |
 | OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆、记忆工具、上下文预算（已迁移） |
+| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现（参考中） |
 
 ## 开发约定
 

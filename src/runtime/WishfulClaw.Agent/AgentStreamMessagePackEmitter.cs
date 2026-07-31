@@ -300,6 +300,9 @@ public static class AgentStreamMessagePackEmitter
             writer.WriteString("cacheReadRatio");
             writer.WriteDouble(usage.CacheReadRatio.Value);
         }
+        WriteOptionalInt(writer, "sessionCacheHitTokens", usage.SessionCacheHitTokens);
+        WriteOptionalInt(writer, "sessionCacheMissTokens", usage.SessionCacheMissTokens);
+        WriteOptionalString(writer, "usageSource", usage.UsageSource);
     }
 
     private static int CountUsageProperties(AgentRuntimeTokenUsage usage)
@@ -313,6 +316,9 @@ public static class AgentStreamMessagePackEmitter
         if (usage.CacheCreation5mTokens.HasValue) count++;
         if (usage.CacheCreation1hTokens.HasValue) count++;
         if (usage.CacheReadRatio.HasValue) count++;
+        if (usage.SessionCacheHitTokens.HasValue) count++;
+        if (usage.SessionCacheMissTokens.HasValue) count++;
+        if (usage.UsageSource is not null) count++;
         return count;
     }
 

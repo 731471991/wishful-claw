@@ -109,12 +109,30 @@ internal static partial class AnthropicMessagesProvider
         await FlushPendingToolCallsAsync(parseState, state, context);
 
         var totalMs = AgentLoop.ElapsedMs(startedAt);
+        // Accumulate cache tokens and attach session-cumulative counters + usage source.
+        var emitUsage = parseState.Usage;
+        if (emitUsage is not null && state.SessionConversation is { } sessConv)
+        {
+            var cacheHit = emitUsage.CacheReadTokens ?? 0;
+            var billableInput = emitUsage.BillableInputTokens
+                ?? Math.Max(0, emitUsage.InputTokens - cacheHit);
+            var cacheCreation = emitUsage.CacheCreationTokens ?? 0;
+            var cacheMiss = billableInput + cacheCreation;
+            sessConv.AccumulateCacheTokens(cacheHit, cacheMiss);
+            emitUsage = emitUsage with
+            {
+                SessionCacheHitTokens = (int)sessConv.SessionCacheHit,
+                SessionCacheMissTokens = (int)sessConv.SessionCacheMiss,
+                UsageSource = state.UsageSource
+            };
+        }
+
         await AgentRuntimeTools.EmitAsync(
             state, context,
             new AgentRuntimeStreamEvent(
                 "message_end",
                 StopReason: parseState.StopReason,
-                Usage: parseState.Usage,
+                Usage: emitUsage,
                 Timing: new AgentRuntimeRequestTiming(
                     totalMs,
                     parseState.FirstTokenMs,
