@@ -402,7 +402,7 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 ---
 
-## MVP v2 阶段迭代（v2-iter-1 ~ v2-iter-8）
+## MVP v2 阶段迭代（v2-iter-1 ~ v2-iter-9）
 
 > MVP v1（迭代一~十五）已全部合并 main，tag `v0.15.0`。以下为 MVP v2 阶段的迭代拆分，分支命名 `dev/v2-iter-{N}`，tag 命名 `v2.{N}.0`。详细需求见 `docs/mvp-v2.md`。
 
@@ -442,11 +442,35 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：同一会话连续 5 轮对话，缓存命中率稳定在 90%+，不再因全量重建导致跳动。
 
-**分支**：`dev/v2-iter-2`　**Tag**：`v2.2.0`
+**分支**：`dev/v2-iter-2`　**Tag**：`v2.2.0`　**状态**：✅ 已完成
+
+> 执行记录：12 步骤全部完成。SessionConversation per-session 状态管理、增量消息发送、prefix cache 断点优化（messages[last] 而非 tools[last]）、时间戳分钟级精度。额外完成：LLM 总结式上下文压缩（参考 Reasonix compact.go，7 段式结构化 briefing + PlanCompaction 分区折叠 + 90s 超时重试）、压缩设置 UI（Switch + Slider 30%-90%）、版本号单一来源（app-version.ts 从 package.json 读取）、全局 OpenCowork → WishfulClaw 名称替换（56 前端文件 87 处 + 49 C# 文件 55 处）。5 个 commit 在 dev/v2-iter-2 分支。
 
 ---
 
-### v2-iter-3：Skill 本地文件安装测试
+### v2-iter-3：Infrastructure 层拆分
+
+**目标**：新建 `WishfulClaw.Infrastructure` 项目，将 Db/Storage/Http 基础设施从 Worker 和 Agent 下沉，使 Worker 能进一步拆分 Tools 等模块。Worker 文件数从 113 降至 ~30。
+
+| 步骤 | 内容 |
+|------|------|
+| 1 | 创建 `WishfulClaw.Infrastructure` 项目，配置 csproj 引用 Contracts + Core |
+| 2 | 搬入 Db — `DbClient.cs` + `Entities/` 从 Worker/Modules/Db 迁入 Infrastructure/Db |
+| 3 | 搬入 Storage — `ConfigStore.cs` + `ProviderStore.cs` + `JsonFileNodeCache.cs` 从 Worker 迁入 Infrastructure/Storage |
+| 4 | 搬入 Http — `WorkerHttpClientFactory.cs` 从 Agent 迁入 Infrastructure/Http |
+| 5 | 更新引用关系 — Agent 引用 Infrastructure；Worker 引用 Infrastructure；Worker 中的 Db Module 改为调用 Infrastructure |
+| 6 | Worker 模块瘦身 — 将 FileTools / SearchTools / ShellTools / Providers 等工具实现迁出 Worker（迁入 Agent 或独立项目） |
+| 7 | 更新 sln 引用关系，确保分层依赖正确（Contracts → Core → Infrastructure → Workspace → Persona → Agent → Worker） |
+| 8 | 双编译验证：`dotnet build` + `npx tsc --noEmit -p tsconfig.web.json` 零错误 |
+| 9 | 功能回归验证 — 核心对话 + 工具调用 + 记忆 + 人格 + DB 读写全链路不回归 |
+
+**验证标准**：编译通过，应用启动正常，全链路功能不回归。Worker 文件数降至 ~30。Infrastructure 层独立可引用。
+
+**分支**：`dev/v2-iter-3`　**Tag**：`v2.3.0`
+
+---
+
+### v2-iter-4：Skill 本地文件安装测试
 
 **目标**：端到端验证 Skill 从本地文件夹安装 → Agent 使用 → 卸载的完整链路。
 
@@ -460,11 +484,11 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：从本地文件夹安装 Skill → Agent 能使用该 Skill 工具 → 卸载后工具不可用，全链路无手动干预。
 
-**分支**：`dev/v2-iter-3`　**Tag**：`v2.3.0`
+**分支**：`dev/v2-iter-4`　**Tag**：`v2.4.0`
 
 ---
 
-### v2-iter-4：渠道配置测试与完善
+### v2-iter-5：渠道配置测试与完善
 
 **目标**：OpenAI 兼容 + Anthropic 全链路验证通过，清理不兼容或过时的预设。
 
@@ -478,11 +502,11 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：至少 2 种渠道（OpenAI 兼容 + Anthropic）配置 → 连通性测试 → 模型列表 → 实际对话，全链路通过。
 
-**分支**：`dev/v2-iter-4`　**Tag**：`v2.4.0`
+**分支**：`dev/v2-iter-5`　**Tag**：`v2.5.0`
 
 ---
 
-### v2-iter-5：SSH 远程执行测试与完善
+### v2-iter-6：SSH 远程执行测试与完善
 
 **目标**：SSH 连接 → 项目绑定 → Agent 远程执行 → 终端旁观，全链路通过。
 
@@ -497,11 +521,11 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：配置 SSH 连接 → 项目绑定 → Agent 远程执行 → 终端旁观，全链路无手动干预。
 
-**分支**：`dev/v2-iter-5`　**Tag**：`v2.5.0`
+**分支**：`dev/v2-iter-6`　**Tag**：`v2.6.0`
 
 ---
 
-### v2-iter-6：主聊天接入工作台模式
+### v2-iter-7：主聊天接入工作台模式
 
 **目标**：Agent 在指定工作区目录下执行任务，工具调用绑定到该目录。
 
@@ -515,11 +539,11 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：选择工作台模式 → Agent 在指定工作区目录下执行任务，工具调用绑定到该目录。
 
-**分支**：`dev/v2-iter-6`　**Tag**：`v2.6.0`
+**分支**：`dev/v2-iter-7`　**Tag**：`v2.7.0`
 
 ---
 
-### v2-iter-7：Global 全局模式接入
+### v2-iter-8：Global 全局模式接入
 
 **目标**：不绑定项目的通用助手模式，Agent 以通用身份工作。
 
@@ -533,11 +557,11 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：新建会话选择全局模式 → Agent 不绑定项目也能正常对话和调工具 → 可随时切换回项目模式。
 
-**分支**：`dev/v2-iter-7`　**Tag**：`v2.7.0`
+**分支**：`dev/v2-iter-8`　**Tag**：`v2.8.0`
 
 ---
 
-### v2-iter-8：Goal 模式接入
+### v2-iter-9：Goal 模式接入
 
 **目标**：用户设定目标后，Agent 自主拆解 → 执行 → 自检 → 继续，直到目标达成或用户中止。
 
@@ -553,7 +577,7 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
 
 **验证标准**：设定目标（如"修复所有 TypeScript 编译错误"）→ Agent 自主拆解执行 → 进度面板实时更新 → 可中断 → 目标达成或用户中止。
 
-**分支**：`dev/v2-iter-8`　**Tag**：`v2.8.0`
+**分支**：`dev/v2-iter-9`　**Tag**：`v2.9.0`
 
 ---
 
@@ -569,21 +593,24 @@ stream.on('close') ──→ { stdout, stderr, exitCode } 返回
   → 十三（聊天窗渲染调整）→ 十四（Skill 市场）→ 十五（MCP 管理）
 
 === MVP v2（进行中）===
-v2-iter-1（Runtime 分层架构重构）  ← 当前最高优先级，为后续所有功能打基础
+v2-iter-1（Runtime 分层架构重构）✅
   ↓
-v2-iter-2（缓存命中率修复）  ← 依赖架构重构（C# 端 conversation 状态管理）
+v2-iter-2（缓存命中率修复）✅
   ↓
-v2-iter-3（Skill 本地文件安装测试）  ┐
-v2-iter-4（渠道配置测试与完善）      ├─ 三者可并行，互不依赖
-v2-iter-5（SSH 远程执行测试与完善）  ┘
+v2-iter-3（Infrastructure 层拆分）  ← 当前最高优先级，Worker 瘦身基础设施下沉
   ↓
-v2-iter-6（主聊天接入工作台模式）  ← 依赖渠道配置验证通过
+v2-iter-4（Skill 本地文件安装测试）  ┐
+v2-iter-5（渠道配置测试与完善）      ├─ 三者可并行，互不依赖
+v2-iter-6（SSH 远程执行测试与完善）  ┘
   ↓
-v2-iter-7（Global 全局模式接入）  ← 依赖工作台模式（模式切换 UI 复用）
+v2-iter-7（主聊天接入工作台模式）  ← 依赖渠道配置验证通过
   ↓
-v2-iter-8（Goal 模式接入）  ← 依赖工作台模式（Agent 需绑定工作区自主操作）
+v2-iter-8（Global 全局模式接入）  ← 依赖工作台模式（模式切换 UI 复用）
+  ↓
+v2-iter-9（Goal 模式接入）  ← 依赖工作台模式（Agent 需绑定工作区自主操作）
 ```
 
-v2-iter-1 是当前最高优先级——Runtime 分层架构重构是后续所有功能开发的基础。
-v2-iter-3/4/5 可并行执行（测试类任务，互不依赖）。
-v2-iter-7 和 v2-iter-8 依赖 v2-iter-6 的模式切换 UI。
+v2-iter-1、v2-iter-2 已完成。
+v2-iter-3（Infrastructure 层拆分）是当前最高优先级——Worker 瘦身后才能进一步拆分工具模块。
+v2-iter-4/5/6 可并行执行（测试类任务，互不依赖）。
+v2-iter-8 和 v2-iter-9 依赖 v2-iter-7 的模式切换 UI。
