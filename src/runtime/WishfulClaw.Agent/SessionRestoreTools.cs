@@ -57,8 +57,19 @@ internal static class SessionRestoreTools
             // Parse to AgentRuntimeChatMessage list
             var conversation = ParseWireMessages(wireMessages);
 
-            // Initialize the SessionConversation
+            // Initialize the SessionConversation - but only if it's empty.
+            // If the session already has messages (e.g. agent loop is running
+            // or a previous turn already populated it), skip to avoid
+            // clobbering the live conversation state.
             var sessionConv = SessionConversationManager.GetOrCreate(sessionId);
+            if (sessionConv.MessageCount > 0)
+            {
+                WorkerLog.Info(
+                    $"agent restore-session: skipped (session already has {sessionConv.MessageCount} messages) " +
+                    $"session={FormatLogValue(sessionId)}");
+                return WorkerResponse.Json(new { restored = true, sessionId, messageCount = sessionConv.MessageCount, skipped = true });
+            }
+
             sessionConv.Initialize(wireMessages, conversation);
 
             WorkerLog.Info(
