@@ -180,8 +180,8 @@ internal static partial class AgentLoop
             if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
             {
                 var now = DateTimeOffset.Now;
-                var timestampBlock = $"\n\n<current_time>\n{now:yyyy-MM-dd HH:mm zzz} ({now:dddd})\n</current_time>";
-                conversation[i] = conversation[i] with { Text = conversation[i].Text + timestampBlock };
+                var timestampBlock = $"<current_time>\n{now:yyyy-MM-dd HH:mm zzz} ({now:dddd})\n</current_time>\n\n";
+                conversation[i] = conversation[i] with { Text = timestampBlock + conversation[i].Text };
                 break;
             }
         }
@@ -205,7 +205,8 @@ internal static partial class AgentLoop
         {
             sb.Append("- ").AppendLine(note);
         }
-        sb.AppendLine("\n</memory-update>");
+        sb.AppendLine("</memory-update>");
+        sb.AppendLine();
 
         var block = sb.ToString();
 
@@ -214,7 +215,7 @@ internal static partial class AgentLoop
         {
             if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
             {
-                conversation[i] = conversation[i] with { Text = conversation[i].Text + block };
+                conversation[i] = conversation[i] with { Text = block + conversation[i].Text };
                 break;
             }
         }
