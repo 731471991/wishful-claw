@@ -93,12 +93,12 @@ internal static partial class AgentLoop
             WorkerLog.Info($"persona system prompt (cached) id={personaId} length={builtPrompt.Length}");
         }
 
-        // Inject current timestamp as transient user-message prefix (cache-safe)
-        InjectTimestampPrefix(conversation);
-
-        // Drain pending memory-update notes and inject as transient user-message prefix (cache-safe)
-        // Mid-session memory changes ride the turn, not the cached system prefix.
-        InjectMemoryUpdatePrefix(conversation, state.SessionId ?? "");
+        // Create a working copy for API calls - injections go on the copy,
+        // not on the main conversation. This keeps the main conversation pristine
+        // so that Initialize() on the next turn rebuilds an identical prefix.
+        var apiConversation = conversation.ToList();
+        InjectTimestampPrefix(apiConversation);
+        InjectMemoryUpdatePrefix(apiConversation, state.SessionId ?? "");
 
         var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 0); // 0 = unlimited
         var hasIterationLimit = requestedMaxIterations > 0;
@@ -149,6 +149,10 @@ internal static partial class AgentLoop
                         sessionConv.Replace(newConversation, newWireConversation);
                         conversation = sessionConv.GetConversation();
                         wireConversation = sessionConv.GetWireConversation();
+                        // Rebuild apiConversation from the compressed conversation
+                        apiConversation = conversation.ToList();
+                        InjectTimestampPrefix(apiConversation);
+                        InjectMemoryUpdatePrefix(apiConversation, state.SessionId ?? "");
                         await AgentRuntimeTools.EmitAsync(
                             state, context,
                             new AgentRuntimeStreamEvent(
@@ -193,7 +197,7 @@ internal static partial class AgentLoop
             // ── Memory recall injection (iteration 7) ──
             if (iteration == 1)
             {
-                await TryInjectMemoryRecallAsync(parameters, conversation, state, context);
+                await TryInjectMemoryRecallAsync(parameters, apiConversation, state, context);
             }
 
             // ── Execute provider turn (with retry policy for 429/5xx) ──
@@ -201,10 +205,11 @@ internal static partial class AgentLoop
             // session-cumulative cache counters to message_end events.
             state.SessionConversation = sessionConv;
             var turn = await ProviderRetryPolicy.ExecuteAsync(
-                () => ExecuteTurnAsync(parameters, provider, conversation, state, context),
+                () => ExecuteTurnAsync(parameters, provider, apiConversation, state, context),
                 state,
                 context);
             conversation.Add(turn.AssistantMessage);
+            apiConversation.Add(turn.AssistantMessage);
             var assistantWireMessage = CreateAssistantWireMessage(turn.AssistantMessage, turn.Usage);
             wireConversation.Add(assistantWireMessage);
 
@@ -262,6 +267,7 @@ internal static partial class AgentLoop
             // Add tool results as a user message to the conversation
             var toolResultsMessage = AgentRuntimeChatMessage.UserToolResults(toolResults);
             conversation.Add(toolResultsMessage);
+            apiConversation.Add(toolResultsMessage);
             wireConversation.Add(CreateToolResultsWireMessage(toolResults));
 
             await AgentRuntimeTools.EmitAsync(

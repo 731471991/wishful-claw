@@ -54,12 +54,12 @@ internal static partial class AgentLoop
                 // InjectTimestampPrefix) to preserve prefix cache stability.
                 // Inserting at index 1 would shift the entire conversation and
                 // break DeepSeek/Anthropic prompt caching when recall changes.
-                var recallBlock = $"<memory-recall>\n{injected}\n</memory-recall>\n\n";
+                var recallBlock = $"\n\n<memory-recall>\n{injected}\n</memory-recall>";
                 for (var i = conversation.Count - 1; i >= 0; i--)
                 {
                     if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
                     {
-                        conversation[i] = conversation[i] with { Text = recallBlock + conversation[i].Text };
+                        conversation[i] = conversation[i] with { Text = conversation[i].Text + recallBlock };
                         break;
                     }
                 }
