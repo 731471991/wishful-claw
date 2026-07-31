@@ -1143,7 +1143,7 @@ export const useChatStore = create<ChatStore>()(
 
             // Desktop notification: only if the window is NOT focused
             // (user is away from the app). Skip if user is actively chatting.
-            if (!document.hasFocus() || document.visibilityState !== 'visible') {
+            if (!document.hasFocus() && document.visibilityState !== 'visible') {
               const sess = get().sessions.find((s) => s.id === targetSessionId)
               let notifyBody = '工作已完成。'
               if (sess) {

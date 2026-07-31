@@ -101,7 +101,10 @@ public sealed class SessionConversation
             _conversation = conversation;
             _version++;
         }
-        ResetCacheTotals();
+        // NOTE: Cache counters are NOT reset here. They accumulate across the
+        // entire session lifetime and only reset on Clear() (session switch).
+        // This matches Reasonix's design where sessCacheHit/sessCacheMiss
+        // survive compaction and full re-init.
     }
 
     /// <summary>
@@ -157,6 +160,7 @@ public sealed class SessionConversation
             _wireConversation = [];
             _version++;
         }
+        ResetCacheTotals();
     }
 
     /// <summary>
