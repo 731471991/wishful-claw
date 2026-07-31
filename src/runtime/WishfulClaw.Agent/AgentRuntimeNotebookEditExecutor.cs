@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// NotebookEdit tool executor — Jupyter notebook cell editing.
 /// Simplified port: basic JSON notebook manipulation.
-/// Ported from OpenCowork (NotebookEdit native tool concept).
+/// Ported from WishfulClaw (NotebookEdit native tool concept).
 /// </summary>
 public static class AgentRuntimeNotebookEditExecutor
 {

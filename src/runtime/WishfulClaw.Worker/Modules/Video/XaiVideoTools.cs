@@ -11,7 +11,7 @@ namespace WishfulClaw.Worker.Modules.Video;
 
 /// <summary>
 /// xAI-compatible asynchronous video generation tools.
-/// Ported from OpenCowork, adapted for wishful-claw.
+/// Ported from WishfulClaw, adapted for wishful-claw.
 /// </summary>
 internal static class XaiVideoTools
 {

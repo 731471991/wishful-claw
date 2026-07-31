@@ -26,7 +26,7 @@ using static WishfulClaw.Worker.Tools.ToolHelpers;
 
 /// Execute a shell command with timeout, output capture, shell selection, and abort support.
 
-/// Adapted from OpenCowork ShellTools.cs (ShellModule) and AgentRuntimeNativeToolExecutor.ExecuteShellAsync.
+/// Adapted from WishfulClaw ShellTools.cs (ShellModule) and AgentRuntimeNativeToolExecutor.ExecuteShellAsync.
 
 /// </summary>
 
@@ -457,7 +457,7 @@ public sealed class ShellExecuteTool : IToolExecutor
 
 
 
-    // ── Shell resolution (adapted from OpenCowork ShellTools.ResolveLaunch) ──
+    // ── Shell resolution (adapted from WishfulClaw ShellTools.ResolveLaunch) ──
 
 
 

@@ -9,7 +9,7 @@ namespace WishfulClaw.Worker.Modules.Skills;
 /// <summary>
 /// Skill scan engine — security scanning, folder installation, and temp cleanup.
 /// Partial of SkillCatalog, separated by responsibility.
-/// Ported from OpenCowork SkillCatalog, adapted for wishful-claw.
+/// Ported from WishfulClaw SkillCatalog, adapted for wishful-claw.
 /// </summary>
 internal static partial class SkillCatalog
 {

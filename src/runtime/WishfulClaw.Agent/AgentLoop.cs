@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent;
 /// Agent main loop. Each iteration = one provider turn.
 /// Design fused from:
 /// - KodaClaw: Step abstraction (iteration = model call + optional tool execution)
-/// - OpenCowork: SSE parsing, provider dispatch
+/// - WishfulClaw: SSE parsing, provider dispatch
 /// - OpenClaw.net: TryInjectRecallAsync (iteration 7)
 /// </summary>
 internal static partial class AgentLoop

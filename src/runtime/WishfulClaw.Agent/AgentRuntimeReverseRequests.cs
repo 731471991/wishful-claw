@@ -10,7 +10,7 @@ namespace WishfulClaw.Agent;
 /// and await the response. The worker emits a "agent/reverse-request" event, and the
 /// main process routes it (e.g. to the browser tool handler in the renderer). The
 /// response comes back as a "agent/reverse-response" request.
-/// Ported from OpenCowork AgentRuntimeReverseRequests.
+/// Ported from WishfulClaw AgentRuntimeReverseRequests.
 /// </summary>
 public static class AgentRuntimeReverseRequests
 {

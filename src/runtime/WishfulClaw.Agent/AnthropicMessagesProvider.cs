@@ -11,7 +11,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// Anthropic Messages API provider (anthropic protocol).
 /// SSE streaming with content_block events, thinking support, tool use.
-/// Simplified from OpenCowork — no cache_control, no sanitizer, no request validator.
+/// Simplified from WishfulClaw — no cache_control, no sanitizer, no request validator.
 /// </summary>
 internal static partial class AnthropicMessagesProvider
 {

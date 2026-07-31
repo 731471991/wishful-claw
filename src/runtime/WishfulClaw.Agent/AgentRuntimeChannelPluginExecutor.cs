@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Channel plugin executor — Feishu/Weixin integration via reverse-request to Main process.
-/// Ported from OpenCowork AgentRuntimeChannelPluginExecutor.
+/// Ported from WishfulClaw AgentRuntimeChannelPluginExecutor.
 /// </summary>
 public static class AgentRuntimeChannelPluginExecutor
 {

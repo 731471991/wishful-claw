@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// ImageGenerate tool executor — AI image generation via reverse-request to Main process.
-/// Simplified port from OpenCowork (actual generation delegated to Main/renderer).
+/// Simplified port from WishfulClaw (actual generation delegated to Main/renderer).
 /// </summary>
 public static class AgentRuntimeImageGenerateExecutor
 {

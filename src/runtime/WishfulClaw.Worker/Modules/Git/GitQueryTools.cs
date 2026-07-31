@@ -4,7 +4,7 @@ namespace WishfulClaw.Worker.Modules.Git;
 
 /// <summary>
 /// Handles git/query IPC — 12 query operations (head, range, status, diff, history, branches, etc.).
-/// Ported from OpenCowork GitTools.cs, SSH paths removed.
+/// Ported from WishfulClaw GitTools.cs, SSH paths removed.
 /// </summary>
 internal static class GitQueryTools
 {

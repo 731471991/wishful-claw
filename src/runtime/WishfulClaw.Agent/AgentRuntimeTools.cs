@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Agent runtime run management: accept/cancel/stop runs, event emission.
-/// Simplified from OpenCowork — no SubAgent/Team/Reverse support.
+/// Simplified from WishfulClaw — no SubAgent/Team/Reverse support.
 /// </summary>
 public static class AgentRuntimeTools
 {

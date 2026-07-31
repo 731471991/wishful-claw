@@ -10,7 +10,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// Desktop control tool executor that routes to the main process via reverse-request.
 /// Supports screenshot, click, type, scroll, and wait operations.
-/// Ported from OpenCowork AgentRuntimeDesktopExecutor.
+/// Ported from WishfulClaw AgentRuntimeDesktopExecutor.
 /// </summary>
 public static class AgentRuntimeDesktopExecutor
 {

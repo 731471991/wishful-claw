@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// In-memory registry for SubAgent definitions.
 /// Populated once at startup from ~/.wishful-claw/agents/*.md files.
-/// This is the C# equivalent of OpenCowork's SubAgentRegistry (TS).
+/// This is the C# equivalent of WishfulClaw's SubAgentRegistry (TS).
 ///
 /// The registry decouples Task tool definition (which lists available agent types)
 /// from SubAgentExecutor (which resolves a type name to a SubAgentDefinition).

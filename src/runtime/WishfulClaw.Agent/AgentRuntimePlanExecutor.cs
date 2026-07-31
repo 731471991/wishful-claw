@@ -11,7 +11,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// Plan mode executor — EnterPlanMode/ExitPlanMode for read-only analysis.
 /// Simplified port: file-based plan storage (no SQLite, no SSH).
-/// Ported from OpenCowork AgentRuntimePlanExecutor.
+/// Ported from WishfulClaw AgentRuntimePlanExecutor.
 /// </summary>
 public static class AgentRuntimePlanExecutor
 {

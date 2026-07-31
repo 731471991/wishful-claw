@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Widget tool executor — renders inline UI widgets.
-/// Ported from OpenCowork AgentRuntimeWidgetExecutor.
+/// Ported from WishfulClaw AgentRuntimeWidgetExecutor.
 /// </summary>
 public static class AgentRuntimeWidgetExecutor
 {

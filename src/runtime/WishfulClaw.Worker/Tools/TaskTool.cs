@@ -13,7 +13,7 @@ namespace WishfulClaw.Worker.Tools;
 /// Execution is intercepted by ToolDispatchRouter → SubAgentExecutor;
 /// ExecuteAsync here should never be reached.
 ///
-/// Design (mirrors OpenCowork's create-tool.ts):
+/// Design (mirrors WishfulClaw's create-tool.ts):
 /// - Task is the unified entry point; subagent_type selects which SubAgent to run.
 /// - "custom" is always available as the general-purpose fallback.
 /// - Sub-agent definitions are registered in SubAgentRegistry at startup.
@@ -43,7 +43,7 @@ public sealed class TaskTool : IToolExecutor
 
     /// <summary>
     /// Build the tool description listing all available sub-agent types.
-    /// Mirrors OpenCowork's buildTaskDescription().
+    /// Mirrors WishfulClaw's buildTaskDescription().
     /// </summary>
     private static string BuildDescription()
     {

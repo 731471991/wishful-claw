@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Task tool executor — TaskCreate/Get/Update/List.
-/// Simplified port: in-memory storage (no SQLite). Ported from OpenCowork AgentRuntimeTaskExecutor.
+/// Simplified port: in-memory storage (no SQLite). Ported from WishfulClaw AgentRuntimeTaskExecutor.
 /// </summary>
 public static class AgentRuntimeTaskExecutor
 {

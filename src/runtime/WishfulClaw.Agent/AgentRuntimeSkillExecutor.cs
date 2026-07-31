@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Skill tool executor — loads SKILL.md from ~/.agents/skills directory.
-/// Ported from OpenCowork AgentRuntimeSkillExecutor.
+/// Ported from WishfulClaw AgentRuntimeSkillExecutor.
 /// </summary>
 public static class AgentRuntimeSkillExecutor
 {
