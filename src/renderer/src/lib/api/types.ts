@@ -10,7 +10,7 @@ import type {
   RequestOverrides,
   ImageGenerationStreamConfig
 } from '@shared/types/provider'
-// Re-export shared provider types so OpenCowork imports (`@renderer/lib/api/types`) work.
+// Re-export shared provider types so WishfulClaw imports (`@renderer/lib/api/types`) work.
 export type {
   ProviderType,
   ModelCategory,

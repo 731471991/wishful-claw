@@ -179,7 +179,7 @@ function AboutPanel(): React.JSX.Element {
       <div className="mt-6 space-y-3 text-sm text-muted-foreground">
         <p>{t('about.description')}</p>
         <ul className="ml-4 list-disc space-y-1">
-          <li>{t('about.openCowork')}</li>
+          <li>{t('about.wishfulClaw')}</li>
           <li>{t('about.kodaClaw')}</li>
           <li>{t('about.openClaw')}</li>
         </ul>

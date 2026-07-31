@@ -661,7 +661,7 @@
     "title": "About Wishful Claw",
     "version": "Version: v0.2.0-dev",
     "description": "Wishful Claw is an AI Agent programming assistant combining the strengths of three open-source projects:",
-    "openCowork": "OpenCowork — Agent Loop / Toolchain / Provider / Architecture",
+    "wishfulClaw": "WishfulClaw — Agent Loop / Toolchain / Provider / Architecture",
     "kodaClaw": "KodaClaw — Memory System / Personality System Design",
     "openClaw": "OpenClaw — Active Memory Recall Mechanism"
   },

@@ -276,7 +276,7 @@ export interface BaseHookInput {
     workingFolder?: string
     target: 'local' | 'ssh' | 'none'
   }
-  openCoworkPermissionMode?: 'default' | 'autoApprove' | 'plan' | 'background'
+  wishfulClawPermissionMode?: 'default' | 'autoApprove' | 'plan' | 'background'
 }
 
 export interface SessionStartInput extends BaseHookInput {

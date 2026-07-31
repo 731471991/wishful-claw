@@ -6,7 +6,7 @@ import { getNativeWorker } from '../lib/native-worker'
  * These forward to the native worker via the same named-pipe IPC as worker:request.
  *
  * The normal chat path uses window.api.workerRequest() directly, but features ported
- * from OpenCowork (prompt optimizer, context compression, translate, etc.) use
+ * from WishfulClaw (prompt optimizer, context compression, translate, etc.) use
  * agentBridge which calls sidecar:* and agent:* channels.
  */
 export function registerSidecarHandlers(): void {

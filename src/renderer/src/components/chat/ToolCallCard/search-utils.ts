@@ -317,11 +317,11 @@ export function buildWidgetDocument(payload: WidgetToolPayload): string {
         color: #e5e7eb;
         overflow: hidden;
       }
-      #open-cowork-widget-root {
+      #wishful-claw-widget-root {
         width: 100%;
         background: transparent !important;
       }
-      ${payload.kind === 'svg' ? '#open-cowork-widget-root { display: block; overflow: hidden; line-height: 0; font-size: 0; } #open-cowork-widget-root > svg { display: block; width: 100%; height: auto; margin: 0; background: transparent !important; overflow: hidden; }' : ''}
+      ${payload.kind === 'svg' ? '#wishful-claw-widget-root { display: block; overflow: hidden; line-height: 0; font-size: 0; } #wishful-claw-widget-root > svg { display: block; width: 100%; height: auto; margin: 0; background: transparent !important; overflow: hidden; }' : ''}
     </style>
     <script>
       (() => {
@@ -342,7 +342,7 @@ export function buildWidgetDocument(payload: WidgetToolPayload): string {
           );
         };
         const reportSize = () => {
-          const root = document.getElementById('open-cowork-widget-root');
+          const root = document.getElementById('wishful-claw-widget-root');
           const content = root?.firstElementChild;
           const nextHeight =
             getBoundingHeight(content) ||
@@ -369,7 +369,7 @@ export function buildWidgetDocument(payload: WidgetToolPayload): string {
         const applyWidgetCode = (code) => {
           if (typeof code !== 'string' || code === lastAppliedCode) return;
           lastAppliedCode = code;
-          const root = document.getElementById('open-cowork-widget-root');
+          const root = document.getElementById('wishful-claw-widget-root');
           if (!root) return;
           root.innerHTML = code;
           executeInsertedScripts(root);
@@ -393,8 +393,8 @@ export function buildWidgetDocument(payload: WidgetToolPayload): string {
           applyWidgetCode(data.code);
         });
 
-        window.__openCoworkWidgetReady = () => {
-          const root = document.getElementById('open-cowork-widget-root');
+        window.__wishfulClawWidgetReady = () => {
+          const root = document.getElementById('wishful-claw-widget-root');
           if (typeof ResizeObserver !== 'undefined' && root) {
             const observer = new ResizeObserver(() => reportSize());
             observer.observe(root);
@@ -409,8 +409,8 @@ export function buildWidgetDocument(payload: WidgetToolPayload): string {
     </script>
   </head>
   <body>
-    <div id="open-cowork-widget-root"></div>
-    <script>window.__openCoworkWidgetReady && window.__openCoworkWidgetReady();</script>
+    <div id="wishful-claw-widget-root"></div>
+    <script>window.__wishfulClawWidgetReady && window.__wishfulClawWidgetReady();</script>
   </body>
 </html>`
 }

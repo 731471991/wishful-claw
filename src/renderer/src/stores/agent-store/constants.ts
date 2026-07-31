@@ -9,8 +9,8 @@ const MAX_BACKGROUND_PROCESS_OUTPUT_CHARS = 12_000
 const MAX_BACKGROUND_PROCESS_ENTRIES = 60
 const MAX_RUN_CHANGESETS = 40
 const BACKGROUND_PROCESS_OUTPUT_FLUSH_MS = 80
-const AGENT_STORE_STORAGE_KEY = 'opencowork-agent'
-const LEGACY_AGENT_HISTORY_STORAGE_KEY = 'opencowork-agent-history'
+const AGENT_STORE_STORAGE_KEY = 'wishfulclaw-agent'
+const LEGACY_AGENT_HISTORY_STORAGE_KEY = 'wishfulclaw-agent-history'
 const AGENT_HISTORY_PERSIST_DEBOUNCE_MS = 500
 const SHELL_TOOL_NAMES = new Set(['Bash', 'Shell', 'PowerShell'])
 

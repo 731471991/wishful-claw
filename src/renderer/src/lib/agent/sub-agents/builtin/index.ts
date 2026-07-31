@@ -30,7 +30,7 @@ function getProviderConfig(): ProviderConfig {
 }
 
 /**
- * Load all agent .md files from ~/.open-cowork/agents/ via IPC,
+ * Load all agent .md files from ~/.wishful-claw/agents/ via IPC,
  * register them in the SubAgent registry, then register one unified
  * "Task" tool in the tool registry.
  *

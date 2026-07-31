@@ -456,7 +456,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
     }
 
     try {
-      // Load the most recent messages (like OpenCowork: tail page).
+      // Load the most recent messages (like WishfulClaw: tail page).
       // Query the actual count from DB — don't trust session.messageCount,
       // which can be stale and cause the newest messages to be dropped.
       const actualCount = await dbGetMessageCount(sessionId)

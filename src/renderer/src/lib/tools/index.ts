@@ -56,7 +56,7 @@ export async function registerAllTools(): Promise<void> {
   await refreshDynamicToolCatalog()
 
   // Code-agent-compatible aliases and tool shells layer over the existing
-  // OpenCowork implementations.
+  // WishfulClaw implementations.
   registerCodeCompatibleTools()
 
   // Skill management tools for the installation assistant agent

@@ -9,7 +9,7 @@ import { nativeExtensionRequest } from './extension-native-bridge'
 
 /**
  * Extension resource synchronization.
- * Ported from OpenCowork extension-plugin-sync.ts, simplified for wishful-claw:
+ * Ported from WishfulClaw extension-plugin-sync.ts, simplified for wishful-claw:
  * - Skills/agents/commands sync omitted (those modules don't exist yet)
  * - MCP server sync retained
  * - Data dir: ~/.wishful-claw

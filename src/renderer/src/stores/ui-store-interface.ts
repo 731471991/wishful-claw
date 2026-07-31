@@ -72,7 +72,7 @@ export interface UIStore {
   toggleRuntimeStatusPanel: () => void
   setRuntimeStatusPanelOpen: (open: boolean) => void
 
-  // Auto model selection (from OpenCowork)
+  // Auto model selection (from WishfulClaw)
   autoModelSelectionsBySession: Record<string, AutoModelSelectionStatus | null>
   autoModelRoutingStatesBySession: Record<string, AutoModelRoutingState>
   setAutoModelSelection: (sessionId: string, status: AutoModelSelectionStatus | null) => void

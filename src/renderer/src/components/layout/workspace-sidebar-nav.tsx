@@ -73,5 +73,5 @@ export function renderNavItem(item: NavButtonItem): React.JSX.Element {
   )
 }
 
-// ─── Main WorkspaceSidebar (single column, OpenCowork-style) ───
+// ─── Main WorkspaceSidebar (single column, WishfulClaw-style) ───
 

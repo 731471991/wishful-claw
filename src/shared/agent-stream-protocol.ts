@@ -1,6 +1,6 @@
 /**
  * Agent stream protocol — wire format for main→renderer event streaming.
- * Simplified from OpenCowork: no SubAgent/Image/WebSearch/Translation events.
+ * Simplified from WishfulClaw: no SubAgent/Image/WebSearch/Translation events.
  */
 
 // ---- Protocol version ----

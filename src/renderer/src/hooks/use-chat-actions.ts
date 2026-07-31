@@ -213,7 +213,7 @@ export async function sendImplementPlanInNewSession(_projectId: string | null, _
   // TODO: implement plan execution in new session
 }
 
-// === Additional exports needed by OpenCowork InputArea ===
+// === Additional exports needed by WishfulClaw InputArea ===
 
 export interface PendingSessionMessageItem {
   id: string

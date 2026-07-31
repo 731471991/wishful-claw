@@ -211,7 +211,7 @@ export const useExtensionStore = create<ExtensionStore>()(
       }
     }),
     {
-      name: 'opencowork-extension-activation',
+      name: 'wishfulclaw-extension-activation',
       version: 1,
       storage: createJSONStorage(() => ipcStorage),
       migrate: (persisted) => {

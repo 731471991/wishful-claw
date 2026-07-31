@@ -78,7 +78,7 @@ export class AgentStreamReceiver {
 
   // wishful-claw compatibility bridge
   // Our code calls start(callback) with an envelope-level callback,
-  // while OpenCowork API uses attach() + subscribeAll(event-level).
+  // while WishfulClaw API uses attach() + subscribeAll(event-level).
   private envelopeCallbacks = new Set<(envelope: AgentStreamEnvelope) => void>()
 
   start(callback: (envelope: AgentStreamEnvelope) => void): void {
@@ -153,7 +153,7 @@ function getByteLength(bytes: ArrayBuffer | ArrayBufferView): number {
 
 function shouldLogMessagePackTrace(): boolean {
   try {
-    return localStorage.getItem('openCowork.msgpackTrace') === '1'
+    return localStorage.getItem('wishfulClaw.msgpackTrace') === '1'
   } catch {
     return false
   }

@@ -48,7 +48,7 @@ function getExtensionId(args: string | { id?: string }): string {
 
 /**
  * Register extension management IPC handlers.
- * Ported from OpenCowork extension-handlers.ts, adapted for wishful-claw:
+ * Ported from WishfulClaw extension-handlers.ts, adapted for wishful-claw:
  * - Uses getMcpManager() from mcp-handlers instead of parameter injection
  * - Uses registerMessagePackHandler instead of ipcMain.handle
  */

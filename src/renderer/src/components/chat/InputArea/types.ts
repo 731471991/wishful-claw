@@ -36,7 +36,7 @@ export interface AppPluginPromptItem {
 }
 
 export const EMPTY_QUEUED_MESSAGES: PendingSessionMessageItem[] = []
-export const INTERNAL_FILE_DRAG_MIME = 'application/x-opencowork-file-paths'
+export const INTERNAL_FILE_DRAG_MIME = 'application/x-wishfulclaw-file-paths'
 export const IMAGE_MEDIA_TYPE_BY_EXTENSION: Record<string, string> = {
   gif: 'image/gif',
   jpeg: 'image/jpeg',

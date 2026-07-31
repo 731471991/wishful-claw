@@ -73,7 +73,7 @@ function getStableAssistantToolResults(
   if (Array.isArray(assistantMessage.content)) {
     collectToolResults(assistantMessage.content as ContentBlock[], innerMap)
   }
-  // Also collect from contributor messages (OpenCowork-style separate user messages)
+  // Also collect from contributor messages (WishfulClaw-style separate user messages)
   for (const contributor of contributors) {
     collectToolResults(contributor.content as ContentBlock[], innerMap)
   }

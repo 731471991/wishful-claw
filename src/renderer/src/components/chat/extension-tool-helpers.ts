@@ -1,5 +1,5 @@
 
-export const HTML_RENDERER_SOURCE = 'open_cowork_extension_renderer'
+export const HTML_RENDERER_SOURCE = 'wishful_claw_extension_renderer'
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)

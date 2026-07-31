@@ -3,7 +3,7 @@ import { getPetsDir } from '@renderer/stores/pet-skin-store'
 import { localDateKey } from '@renderer/stores/pet-store'
 
 /**
- * Persistent pet memory: ~/.open-cowork/pets/MEMORY.md, one `- [date] fact`
+ * Persistent pet memory: ~/.wishful-claw/pets/MEMORY.md, one `- [date] fact`
  * line per entry, human-editable. The agent saves memories by appending a
  * hidden `[[记住: ...]]` directive to its reply (see buildMemorySection);
  * the renderer strips the directive and appends the fact here — the model
