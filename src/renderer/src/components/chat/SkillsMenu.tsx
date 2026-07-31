@@ -367,7 +367,7 @@ function SkillsMenuContent({
               ) : commands.length === 0 ? (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                   <p>{t('skills.noCommands')}</p>
-                  <p className="mt-1 text-[10px] opacity-70">~/.open-cowork/commands/</p>
+                  <p className="mt-1 text-[10px] opacity-70">~/.wishful-claw/commands/</p>
                 </div>
               ) : (
                 commands.map((command) => (
@@ -413,7 +413,7 @@ function SkillsMenuContent({
               ) : visibleSkills.length === 0 ? (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                   <p>{t('skills.noSkills')}</p>
-                  <p className="mt-1 text-[10px] opacity-70">~/.open-cowork/skills/</p>
+                  <p className="mt-1 text-[10px] opacity-70">~/.wishful-claw/skills/</p>
                 </div>
               ) : (
                 visibleSkills.map((skill) => (

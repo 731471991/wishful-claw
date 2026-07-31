@@ -11,7 +11,7 @@ namespace WishfulClaw.Worker.Modules.Extensions;
 /// Executor for extension tools called by the agent runtime.
 /// Handles both HTTP tools (delegated to ExtensionHttpToolExecutor) and JS tools
 /// (delegated to the main process via reverse-request).
-/// Ported from OpenCowork AgentRuntimeExtensionExecutor, adapted for wishful-claw.
+/// Ported from WishfulClaw AgentRuntimeExtensionExecutor, adapted for wishful-claw.
 /// </summary>
 internal static class AgentRuntimeExtensionExecutor
 {

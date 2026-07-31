@@ -17,7 +17,7 @@ namespace WishfulClaw.Agent;
 /// connections via ssh2, so each call reuses the long-lived connection and
 /// returns structured {stdout, stderr, exitCode} without interactive PTY.
 ///
-/// Ported from OpenCowork AgentRuntimeSshToolExecutor (simplified).
+/// Ported from WishfulClaw AgentRuntimeSshToolExecutor (simplified).
 /// </summary>
 public static class AgentRuntimeSshToolExecutor
 {

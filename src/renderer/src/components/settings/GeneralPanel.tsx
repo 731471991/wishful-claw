@@ -429,6 +429,56 @@ function GeneralPanel(): React.JSX.Element {
         </div>
       </section>
 
+      {/* Context Compression */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between max-w-lg">
+          <div>
+            <div className="text-sm font-medium text-foreground">{t('general.contextCompression.label')}</div>
+            <p className="text-xs text-muted-foreground">{t('general.contextCompression.desc')}</p>
+          </div>
+          <Switch
+            checked={settings.contextCompressionEnabled}
+            onCheckedChange={(checked) =>
+              settings.updateSettings({ contextCompressionEnabled: checked })
+            }
+          />
+        </div>
+        {settings.contextCompressionEnabled && (
+          <div className="max-w-lg space-y-2">
+            <p className="text-xs text-muted-foreground/70">
+              {t('general.contextCompression.enabled')}
+            </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-medium">
+                    {t('general.contextCompression.threshold.label')}
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {t('general.contextCompression.threshold.desc')}
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-muted-foreground">
+                  {Math.round(settings.contextCompressionThreshold * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={30}
+                max={90}
+                step={1}
+                value={Math.round(settings.contextCompressionThreshold * 100)}
+                onChange={(e) => {
+                  const ratio = Math.min(0.9, Math.max(0.3, parseInt(e.target.value) / 100))
+                  settings.updateSettings({ contextCompressionThreshold: ratio })
+                }}
+                className="flex-1 max-w-lg accent-primary"
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Developer Mode */}
       <section className="space-y-3">
         <div>

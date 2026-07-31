@@ -9,6 +9,7 @@ import { PluginPanel } from '@renderer/components/settings/PluginPanel'
 import { GeneralPanel } from '@renderer/components/settings/GeneralPanel'
 import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 import { cn } from '@renderer/lib/utils'
+import { APP_VERSION_LABEL } from '@renderer/lib/app-version'
 import { SshPanel } from '@renderer/components/settings/SshPanel'
 import { SkillPanel } from '@renderer/components/settings/skill-panel'
 import { McpPanel } from '@renderer/components/settings/mcp-panel'
@@ -122,7 +123,7 @@ function SettingsPage(): React.JSX.Element {
             </nav>
 
             <div className="border-t border-sidebar-border/60 px-4 py-3 text-[11px] text-muted-foreground/55">
-              Wishful Claw v0.2.0-dev
+              Wishful Claw {APP_VERSION_LABEL}
             </div>
           </div>
 
@@ -178,7 +179,7 @@ function AboutPanel(): React.JSX.Element {
       <div className="mt-6 space-y-3 text-sm text-muted-foreground">
         <p>{t('about.description')}</p>
         <ul className="ml-4 list-disc space-y-1">
-          <li>{t('about.openCowork')}</li>
+          <li>{t('about.wishfulClaw')}</li>
           <li>{t('about.kodaClaw')}</li>
           <li>{t('about.openClaw')}</li>
         </ul>

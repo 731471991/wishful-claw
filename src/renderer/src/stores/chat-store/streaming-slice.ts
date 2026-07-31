@@ -83,22 +83,22 @@ export const createStreamingSlice: StateCreator<
   },
 
   setThinkingEncryptedContent: (_sessionId, _msgId, _encryptedContent, _provider) => {
-    // Stub - to be implemented when migrating thinking encryption from OpenCowork
+    // Stub - to be implemented when migrating thinking encryption from WishfulClaw
   },
 
   completeThinking: (_sessionId, _msgId) => {
-    // Stub - to be implemented when migrating thinking completion from OpenCowork
+    // Stub - to be implemented when migrating thinking completion from WishfulClaw
   },
 
   appendToolUse: (_sessionId, _msgId, _toolUse) => {
-    // Stub - to be implemented when migrating tool use streaming from OpenCowork
+    // Stub - to be implemented when migrating tool use streaming from WishfulClaw
   },
 
   updateToolUseInput: (_sessionId, _msgId, _toolUseId, _input) => {
-    // Stub - to be implemented when migrating tool use streaming from OpenCowork
+    // Stub - to be implemented when migrating tool use streaming from WishfulClaw
   },
 
   appendContentBlock: (_sessionId, _msgId, _block) => {
-    // Stub - to be implemented when migrating content block streaming from OpenCowork
+    // Stub - to be implemented when migrating content block streaming from WishfulClaw
   }
 })

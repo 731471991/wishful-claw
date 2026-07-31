@@ -115,6 +115,15 @@
         "desc": "Maximum number of sub-agents running simultaneously"
       }
     },
+    "contextCompression": {
+      "label": "Context Compression",
+      "desc": "Automatically summarize earlier messages when the conversation approaches the context window limit",
+      "enabled": "When enabled, context will be automatically compressed at the threshold",
+      "threshold": {
+        "label": "Compression Threshold",
+        "desc": "Trigger compression at this context window usage ratio. Range: 30% - 90%"
+      }
+    },
     "developerMode": {
       "label": "Developer Mode",
       "desc": "Show request parameters (URL, headers, body) for each assistant message. Useful for debugging during development.",
@@ -652,7 +661,7 @@
     "title": "About Wishful Claw",
     "version": "Version: v0.2.0-dev",
     "description": "Wishful Claw is an AI Agent programming assistant combining the strengths of three open-source projects:",
-    "openCowork": "OpenCowork — Agent Loop / Toolchain / Provider / Architecture",
+    "wishfulClaw": "WishfulClaw — Agent Loop / Toolchain / Provider / Architecture",
     "kodaClaw": "KodaClaw — Memory System / Personality System Design",
     "openClaw": "OpenClaw — Active Memory Recall Mechanism"
   },

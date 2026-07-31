@@ -11,7 +11,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// AskUserQuestion tool executor that routes to the renderer via reverse-request.
 /// The renderer shows an interactive question card and returns the user's answers.
-/// Ported from OpenCowork AgentRuntimeAskUserExecutor.
+/// Ported from WishfulClaw AgentRuntimeAskUserExecutor.
 /// </summary>
 internal static partial class AgentRuntimeAskUserExecutor
 {

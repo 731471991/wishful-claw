@@ -123,7 +123,7 @@ export function getToolNamespace(name: string): string {
   if (name === 'visualize_show_widget') return 'widget'
   if (name === 'Notify') return 'notify'
   if (name === 'Skill') return 'skill'
-  return 'open-cowork'
+  return 'wishful-claw'
 }
 
 export function buildCompactToolHeaderModel({

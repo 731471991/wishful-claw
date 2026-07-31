@@ -10,7 +10,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// WebFetch tool executor — fetches URLs and converts HTML to markdown/text/html.
-/// Ported from OpenCowork AgentRuntimeWebFetchExecutor.
+/// Ported from WishfulClaw AgentRuntimeWebFetchExecutor.
 /// </summary>
 public static class AgentRuntimeWebFetchExecutor
 {

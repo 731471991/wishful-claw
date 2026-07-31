@@ -12,7 +12,7 @@ using static WishfulClaw.Worker.Tools.ToolHelpers;
 
 /// <summary>
 /// Edit a file by finding and replacing text.
-/// Adapted from OpenCowork AgentRuntimeNativeToolExecutor.EditAsync.
+/// Adapted from WishfulClaw AgentRuntimeNativeToolExecutor.EditAsync.
 /// </summary>
 public sealed class FileEditTool : IToolExecutor
 {

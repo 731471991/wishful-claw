@@ -11,7 +11,7 @@ namespace WishfulClaw.Worker.Modules.Video;
 
 /// <summary>
 /// Seedance (Volcengine Ark) async video generation tools.
-/// Ported from OpenCowork, adapted for wishful-claw (no WorkerTaskQuotas, inline file save).
+/// Ported from WishfulClaw, adapted for wishful-claw (no WorkerTaskQuotas, inline file save).
 /// </summary>
 internal static class SeedanceVideoTools
 {

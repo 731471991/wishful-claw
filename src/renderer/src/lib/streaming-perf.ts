@@ -184,7 +184,7 @@ export function installStreamingPerfMonitor(): void {
   if (!enabled || installed) return
   installed = true
 
-  window.__openCoworkStreamingPerf = {
+  window.__wishfulClawStreamingPerf = {
     snapshot,
     reset
   }
@@ -229,6 +229,6 @@ export function installStreamingPerfMonitor(): void {
 
 declare global {
   interface Window {
-    __openCoworkStreamingPerf?: StreamingPerfApi
+    __wishfulClawStreamingPerf?: StreamingPerfApi
   }
 }

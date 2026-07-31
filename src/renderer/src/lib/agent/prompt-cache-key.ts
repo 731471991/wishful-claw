@@ -1,7 +1,7 @@
 import type { ProviderConfig } from '../api/types'
 import { ipcClient } from '../ipc/ipc-client'
 
-const PROMPT_CACHE_INSTALL_ID_CONFIG_KEY = 'opencowork-prompt-cache-install-id'
+const PROMPT_CACHE_INSTALL_ID_CONFIG_KEY = 'wishfulclaw-prompt-cache-install-id'
 const OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH = 64
 
 let cachedInstallId: string | null = null

@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// MCP tool executor — bridges mcp__* tool calls to MCP servers via reverse-request.
-/// Ported from OpenCowork AgentRuntimeMcpExecutor.
+/// Ported from WishfulClaw AgentRuntimeMcpExecutor.
 /// </summary>
 public static class AgentRuntimeMcpExecutor
 {

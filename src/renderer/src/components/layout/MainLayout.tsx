@@ -168,7 +168,7 @@ export function MainLayout(): React.JSX.Element {
           state.activeProjectId = nextActiveProjectId
         })
 
-        // Load messages for the active session (like OpenCowork does)
+        // Load messages for the active session (like WishfulClaw does)
         if (nextActiveSessionId) {
           await useChatStore.getState().loadRecentSessionMessages(nextActiveSessionId)
           // Navigate to session view so user sees the conversation directly

@@ -265,7 +265,7 @@ export const useAppPluginStore = create<AppPluginStore>()(
       isDesktopControlToolAvailable: () => false
     }),
     {
-      name: 'opencowork-app-plugins',
+      name: 'wishfulclaw-app-plugins',
       version: 4,
       storage: createJSONStorage(() => configStorage),
       migrate: (persisted, version) => {

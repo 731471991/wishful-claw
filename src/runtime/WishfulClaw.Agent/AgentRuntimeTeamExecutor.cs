@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Team tool executor — TeamCreate/Status/Delete/SendMessage.
-/// Simplified port: in-memory storage (no TeamRuntimeStore). Ported from OpenCowork AgentRuntimeTeamExecutor.
+/// Simplified port: in-memory storage (no TeamRuntimeStore). Ported from WishfulClaw AgentRuntimeTeamExecutor.
 /// </summary>
 public static class AgentRuntimeTeamExecutor
 {

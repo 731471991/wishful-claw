@@ -6,7 +6,7 @@ namespace WishfulClaw.Worker.Modules.Extensions;
 /// Extension management module. Provides IPC for listing, installing,
 /// updating, removing extensions, reading assets, storage CRUD, and
 /// executing HTTP-based extension tools.
-/// Ported from OpenCowork, adapted for wishful-claw infrastructure.
+/// Ported from WishfulClaw, adapted for wishful-claw infrastructure.
 /// </summary>
 internal sealed class ExtensionModule : IWorkerModule
 {

@@ -82,7 +82,7 @@ export type LsEntry = { name: string; type: string; path?: string }
 
 // ── Constants ──
 
-export const WIDGET_BRIDGE_SOURCE = 'open_cowork_widget'
+export const WIDGET_BRIDGE_SOURCE = 'wishful_claw_widget'
 
 export const LIVE_SHELL_OUTPUT_MAX_CHARS = 12_000
 

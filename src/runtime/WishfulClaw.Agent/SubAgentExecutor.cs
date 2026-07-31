@@ -13,7 +13,7 @@ namespace WishfulClaw.Agent;
 /// AgentLoop, and returns the final assistant message as the tool result.
 ///
 /// Architecture references:
-/// - OpenCowork: AgentRuntimeSubAgentExecutor.cs (child state, event emission, prompt building)
+/// - WishfulClaw: AgentRuntimeSubAgentExecutor.cs (child state, event emission, prompt building)
 /// - Reasonix: task.go (system prompt design, tool filtering, depth limiting)
 /// </summary>
 public static class SubAgentExecutor

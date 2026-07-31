@@ -10,7 +10,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// WebSearch tool executor — performs web searches using the configured provider.
 /// Supports tavily, searxng, exa, bocha, zhipu, google, bing, baidu.
-/// Ported from OpenCowork AgentRuntimeWebSearchExecutor.
+/// Ported from WishfulClaw AgentRuntimeWebSearchExecutor.
 /// </summary>
 internal static partial class AgentRuntimeWebSearchExecutor
 {

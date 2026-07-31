@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// CodeGraph tool executor — routes codegraph_* tools to the CodeGraph sidecar
 /// via reverse-request to the Main process.
-/// Ported from OpenCowork AgentRuntimeCodeGraphExecutor.
+/// Ported from WishfulClaw AgentRuntimeCodeGraphExecutor.
 /// </summary>
 public static class AgentRuntimeCodeGraphExecutor
 {

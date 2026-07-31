@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent;
 /// Agent main loop. Each iteration = one provider turn.
 /// Design fused from:
 /// - KodaClaw: Step abstraction (iteration = model call + optional tool execution)
-/// - OpenCowork: SSE parsing, provider dispatch
+/// - WishfulClaw: SSE parsing, provider dispatch
 /// - OpenClaw.net: TryInjectRecallAsync (iteration 7)
 /// </summary>
 internal static partial class AgentLoop
@@ -37,8 +37,41 @@ internal static partial class AgentLoop
 
         ValidateProvider(provider);
 
-        var wireConversation = ReadWireConversation(parameters);
-        var conversation = ReadConversation(wireConversation);
+        // ── Session conversation state ──
+        // Use SessionConversation for per-session state management.
+        // First call (or messageCount mismatch): full init.
+        // Subsequent calls (messageCount matches): incremental append.
+        var sessionId = state.SessionId ?? "";
+        var sessionConv = SessionConversationManager.GetOrCreate(sessionId);
+        var frontendMessageCount = JsonHelpers.GetInt(parameters, "messageCount", 0);
+
+        List<AgentRuntimeChatMessage> conversation;
+        List<JsonElement> wireConversation;
+
+        if (frontendMessageCount > 0 && frontendMessageCount == sessionConv.MessageCount)
+        {
+            // Incremental mode: parameters contains only new messages.
+            var newWireMessages = ReadWireConversation(parameters);
+            var newConversation = ReadConversation(newWireMessages);
+            sessionConv.Append(newWireMessages, newConversation);
+            WorkerLog.Debug(
+                $"agent loop incremental session={FormatSessionId(sessionId)} " +
+                $"existing={frontendMessageCount} appended={newWireMessages.Count}");
+        }
+        else
+        {
+            // Full mode: initialize from scratch (first turn, session restore, or sync mismatch).
+            wireConversation = ReadWireConversation(parameters);
+            conversation = ReadConversation(wireConversation);
+            sessionConv.Initialize(wireConversation, conversation);
+            WorkerLog.Debug(
+                $"agent loop full init session={FormatSessionId(sessionId)} " +
+                $"messages={wireConversation.Count} frontendCount={frontendMessageCount}");
+        }
+
+        // Get live references from SessionConversation for the loop to use.
+        conversation = sessionConv.GetConversation();
+        wireConversation = sessionConv.GetWireConversation();
         var runtimeParameters = CreateRuntimeParametersWithoutMessages(parameters);
         state.ReplaceParameters(runtimeParameters);
         parameters = runtimeParameters;
@@ -93,8 +126,8 @@ internal static partial class AgentLoop
                 break;
             }
 
-            // ── Context compression (simplified: token-based truncation) ──
-            if (lastInputTokens > 0 && ShouldCompress(lastInputTokens, provider))
+            // ── Context compression (LLM summarization) ──
+            if (lastInputTokens > 0 && ShouldCompress(lastInputTokens, provider, parameters))
             {
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
@@ -109,12 +142,13 @@ internal static partial class AgentLoop
                 try
                 {
                     var originalCount = wireConversation.Count;
-                    var (newConversation, newWireConversation) = ContextCompression.TruncateMessages(
-                        conversation, wireConversation, provider);
+                    var (newConversation, newWireConversation) = await ContextCompression.CompactAsync(
+                        conversation, wireConversation, provider, context, state.CancellationToken);
                     if (newWireConversation.Count < originalCount)
                     {
-                        conversation = newConversation;
-                        wireConversation = newWireConversation;
+                        sessionConv.Replace(newConversation, newWireConversation);
+                        conversation = sessionConv.GetConversation();
+                        wireConversation = sessionConv.GetWireConversation();
                         await AgentRuntimeTools.EmitAsync(
                             state, context,
                             new AgentRuntimeStreamEvent(
@@ -350,14 +384,27 @@ internal static partial class AgentLoop
 
     // ── Context compression check ──
 
-    private static bool ShouldCompress(int inputTokens, JsonElement provider)
+    private static bool ShouldCompress(int inputTokens, JsonElement provider, JsonElement parameters)
     {
+        // Check if compression is enabled (default: true)
+        var compressionEnabled = JsonHelpers.GetBool(parameters, "contextCompressionEnabled", true);
+        if (!compressionEnabled)
+        {
+            return false;
+        }
+
         var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
         if (contextLength <= 0)
         {
             return false;
         }
-        var threshold = (int)(contextLength * DefaultContextCompressionThreshold);
+
+        // Read threshold from parameters (sent by frontend settings), fallback to 0.8
+        var thresholdRatio = JsonHelpers.GetDoubleNullable(parameters, "contextCompressionThreshold") ?? DefaultContextCompressionThreshold;
+        // Clamp to 0.3 ~ 0.9
+        thresholdRatio = Math.Min(0.9, Math.Max(0.3, thresholdRatio));
+
+        var threshold = (int)(contextLength * thresholdRatio);
         var reserved = contextLength - DefaultContextCompressionReservedOutputTokens - ContextCompressionAutoBufferTokens;
         var trigger = Math.Min(threshold, reserved);
         return inputTokens >= trigger;

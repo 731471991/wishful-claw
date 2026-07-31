@@ -2,7 +2,7 @@
  * Provider core type definitions.
  * Shared between renderer, preload, and main process.
  *
- * Aligned with OpenCowork's type system — API Key mode only (no OAuth/channel).
+ * Aligned with WishfulClaw's type system — API Key mode only (no OAuth/channel).
  * All request-protocol, caching, compression, and tool-capability fields preserved.
  */
 

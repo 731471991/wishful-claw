@@ -8,8 +8,8 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Code compatible tool executor — PowerShell execution and output monitoring.
-/// Simplified port from OpenCowork (uses Process directly, no session management).
-/// Ported from OpenCowork AgentRuntimeCodeCompatibleExecutor.
+/// Simplified port from WishfulClaw (uses Process directly, no session management).
+/// Ported from WishfulClaw AgentRuntimeCodeCompatibleExecutor.
 /// </summary>
 public static class AgentRuntimeCodeCompatibleExecutor
 {

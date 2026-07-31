@@ -19,7 +19,7 @@ const sessionScopedAgentSelectionCache = new Map<string, typeof EMPTY_SESSION_AG
 
 /**
  * Stub implementation — returns a cached empty selection.
- * The real OpenCowork version tracks sub-agents, tool calls, and orchestration state.
+ * The real WishfulClaw version tracks sub-agents, tool calls, and orchestration state.
  * TODO: Replace with full implementation when agent orchestration is built.
  */
 export function selectSessionScopedAgentState(

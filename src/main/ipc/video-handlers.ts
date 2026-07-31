@@ -13,7 +13,7 @@ import { safeSendMessagePackToAllWindows } from '../window-ipc'
  * receives `video:job-update` status events (and can query status on
  * reconnect). Generation therefore survives page navigation in the renderer.
  *
- * Ported from OpenCowork seedance-video-handlers.ts, adapted for wishful-claw:
+ * Ported from WishfulClaw seedance-video-handlers.ts, adapted for wishful-claw:
  * - Uses registerMessagePackHandler instead of ipcMain.handle
  * - Uses safeSendMessagePackToAllWindows for broadcasting
  * - Data directory: ~/.wishful-claw/video

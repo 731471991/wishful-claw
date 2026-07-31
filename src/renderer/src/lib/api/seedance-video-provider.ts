@@ -6,7 +6,7 @@
  * the renderer only starts a job (video:start) and receives status events.
  * This module just holds the shared param shape + command formatting.
  *
- * Ported from OpenCowork seedance-video-provider.ts.
+ * Ported from WishfulClaw seedance-video-provider.ts.
  */
 
 export interface SeedanceVideoParams {

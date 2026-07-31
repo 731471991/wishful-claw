@@ -5,7 +5,7 @@ namespace WishfulClaw.Worker.Modules.Skills;
 /// <summary>
 /// Skill management module — IPC for listing, reading, editing,
 /// deleting, installing, and scanning skills.
-/// Ported from OpenCowork, adapted for wishful-claw.
+/// Ported from WishfulClaw, adapted for wishful-claw.
 /// </summary>
 internal sealed class SkillModule : IWorkerModule
 {

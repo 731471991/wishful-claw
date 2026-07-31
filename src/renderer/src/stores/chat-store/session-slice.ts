@@ -131,6 +131,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       }
     })
     void dbDeleteSession(id)
+    void window.api.workerRequest('agent/clear-session', { sessionId: id })
   },
 
   setActiveSession: (id) => {
@@ -194,6 +195,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.updatedAt = Date.now()
       }
     })
+    void window.api.workerRequest("agent/clear-session", { sessionId })
   },
 
   clearSessionPromptSnapshot: (_sessionId: string) => {
@@ -454,7 +456,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
     }
 
     try {
-      // Load the most recent messages (like OpenCowork: tail page).
+      // Load the most recent messages (like WishfulClaw: tail page).
       // Query the actual count from DB — don't trust session.messageCount,
       // which can be stale and cause the newest messages to be dropped.
       const actualCount = await dbGetMessageCount(sessionId)

@@ -11,7 +11,7 @@ namespace WishfulClaw.Agent;
 /// Browser tool executor that routes tool calls to the renderer via the reverse-request mechanism.
 /// The actual browser operations (Navigate, Click, Type, etc.) are executed in the renderer
 /// process by browser-native-ui.ts operating on the Electron webview.
-/// Ported from OpenCowork AgentRuntimeBrowserExecutor.
+/// Ported from WishfulClaw AgentRuntimeBrowserExecutor.
 /// </summary>
 public static class AgentRuntimeBrowserExecutor
 {

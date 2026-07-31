@@ -9,8 +9,8 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Extension tool executor — bridges extension__* tool calls to the Main process
-/// via reverse-request. Simplified port from OpenCowork (no ExtensionManifestStore).
-/// Ported from OpenCowork AgentRuntimeExtensionExecutor.
+/// via reverse-request. Simplified port from WishfulClaw (no ExtensionManifestStore).
+/// Ported from WishfulClaw AgentRuntimeExtensionExecutor.
 /// </summary>
 public static class AgentRuntimeExtensionExecutor
 {

@@ -10,7 +10,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// Cron tool executor — CronAdd/Create/Update/Remove/Delete/List.
 /// Routes via reverse-request to Main process for cron schedule management.
-/// Ported from OpenCowork AgentRuntimeCronExecutor.
+/// Ported from WishfulClaw AgentRuntimeCronExecutor.
 /// </summary>
 public static class AgentRuntimeCronExecutor
 {

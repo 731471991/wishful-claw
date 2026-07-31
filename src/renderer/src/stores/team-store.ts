@@ -246,7 +246,7 @@ export const useTeamStore = create<TeamStore>()(
       }
     })),
     {
-      name: 'opencowork-team',
+      name: 'wishfulclaw-team',
       storage: createJSONStorage(() => ipcStorage),
       partialize: (state) => ({
         activeTeam: state.activeTeam,

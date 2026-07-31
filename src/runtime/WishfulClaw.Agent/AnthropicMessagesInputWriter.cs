@@ -77,106 +77,161 @@ internal static partial class AnthropicMessagesProvider
 
     private static void WriteMessages(Utf8JsonWriter writer, IReadOnlyList<AgentRuntimeChatMessage> conversation)
     {
-        writer.WriteStartArray();
-        string? lastWrittenRole = null;
+        // Pre-compute which messages will be written (filter consecutive same-role).
+        // This allows us to know which message is last, so we can place the
+        // cache_control breakpoint on its final content block (Reasonix pattern).
+        var messagesToWrite = new List<AgentRuntimeChatMessage>();
+        string? lastRole = null;
 
         foreach (var message in conversation)
         {
             if (message.Role == "system") continue;
-
             var role = message.Role == "assistant" ? "assistant" : "user";
-
-            // Anthropic requires alternating user/assistant turns
-            // If same role as last, merge into the previous message
-            if (role == lastWrittenRole)
-            {
-                // For simplicity, skip duplicate consecutive roles
-                // (in production, we'd merge content blocks)
-                continue;
-            }
-
-            writer.WriteStartObject();
-            writer.WriteString("role", role);
-
-            // Tool results → user message with tool_result content blocks
-            if (message.ToolResults.Count > 0)
-            {
-                writer.WritePropertyName("content");
-                writer.WriteStartArray();
-                foreach (var toolResult in message.ToolResults)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("type", "tool_result");
-                    writer.WriteString("tool_use_id", toolResult.ToolUseId);
-                    writer.WritePropertyName("content");
-                    if (toolResult.Content.ValueKind == JsonValueKind.String)
-                    {
-                        writer.WriteStringValue(toolResult.Content.GetString() ?? string.Empty);
-                    }
-                    else
-                    {
-                        writer.WriteStringValue(ProviderContentHelpers.ToolResultToString(toolResult.Content));
-                    }
-                    if (toolResult.IsError.HasValue)
-                    {
-                        writer.WriteBoolean("is_error", toolResult.IsError.Value);
-                    }
-                    writer.WriteEndObject();
-                }
-                // Also include any text
-                if (!string.IsNullOrEmpty(message.Text))
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("type", "text");
-                    writer.WriteString("text", message.Text);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-            }
-            else if (message.ToolUses.Count > 0)
-            {
-                // Assistant with tool_use blocks
-                writer.WritePropertyName("content");
-                writer.WriteStartArray();
-                if (!string.IsNullOrEmpty(message.Text))
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("type", "text");
-                    writer.WriteString("text", message.Text);
-                    writer.WriteEndObject();
-                }
-                foreach (var toolUse in message.ToolUses)
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("type", "tool_use");
-                    writer.WriteString("id", toolUse.Id);
-                    writer.WriteString("name", toolUse.Name);
-                    writer.WritePropertyName("input");
-                    toolUse.Input.WriteTo(writer);
-                    writer.WriteEndObject();
-                }
-                writer.WriteEndArray();
-            }
-            else
-            {
-                // Simple text message
-                writer.WriteString("content", message.Text);
-            }
-
-            writer.WriteEndObject();
-            lastWrittenRole = role;
+            if (role == lastRole) continue;
+            messagesToWrite.Add(message);
+            lastRole = role;
         }
 
-        // Anthropic requires conversation to end with a user turn
-        if (lastWrittenRole == "assistant")
+        var needsContinueMessage = lastRole == "assistant";
+
+        writer.WriteStartArray();
+
+        for (var i = 0; i < messagesToWrite.Count; i++)
         {
+            var isLastMessage = i == messagesToWrite.Count - 1 && !needsContinueMessage;
+            WriteSingleMessage(writer, messagesToWrite[i], isLastMessage);
+        }
+
+        if (needsContinueMessage)
+        {
+            // Write "Continue." as the last message with cache_control breakpoint
             writer.WriteStartObject();
             writer.WriteString("role", "user");
-            writer.WriteString("content", "Continue.");
+            writer.WritePropertyName("content");
+            writer.WriteStartArray();
+            writer.WriteStartObject();
+            writer.WriteString("type", "text");
+            writer.WriteString("text", "Continue.");
+            WriteCacheControl(writer);
+            writer.WriteEndObject();
+            writer.WriteEndArray();
             writer.WriteEndObject();
         }
 
         writer.WriteEndArray();
+    }
+
+    /// <summary>
+    /// Writes a single message. When <paramref name="addCacheControl"/> is true,
+    /// cache_control: ephemeral is added to the last content block — this is the
+    /// Reasonix-aligned breakpoint that ensures the entire conversation prefix
+    /// is cached for subsequent turns.
+    /// </summary>
+    private static void WriteSingleMessage(Utf8JsonWriter writer, AgentRuntimeChatMessage message, bool addCacheControl)
+    {
+        var role = message.Role == "assistant" ? "assistant" : "user";
+
+        writer.WriteStartObject();
+        writer.WriteString("role", role);
+
+        if (message.ToolResults.Count > 0)
+        {
+            writer.WritePropertyName("content");
+            writer.WriteStartArray();
+            for (var j = 0; j < message.ToolResults.Count; j++)
+            {
+                var toolResult = message.ToolResults[j];
+                var isLastBlock = addCacheControl && j == message.ToolResults.Count - 1 && string.IsNullOrEmpty(message.Text);
+                writer.WriteStartObject();
+                writer.WriteString("type", "tool_result");
+                writer.WriteString("tool_use_id", toolResult.ToolUseId);
+                writer.WritePropertyName("content");
+                if (toolResult.Content.ValueKind == JsonValueKind.String)
+                {
+                    writer.WriteStringValue(toolResult.Content.GetString() ?? string.Empty);
+                }
+                else
+                {
+                    writer.WriteStringValue(ProviderContentHelpers.ToolResultToString(toolResult.Content));
+                }
+                if (toolResult.IsError.HasValue)
+                {
+                    writer.WriteBoolean("is_error", toolResult.IsError.Value);
+                }
+                if (isLastBlock) WriteCacheControl(writer);
+                writer.WriteEndObject();
+            }
+            // Also include any text
+            if (!string.IsNullOrEmpty(message.Text))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("type", "text");
+                writer.WriteString("text", message.Text);
+                if (addCacheControl) WriteCacheControl(writer);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+        else if (message.ToolUses.Count > 0)
+        {
+            // Assistant with tool_use blocks
+            writer.WritePropertyName("content");
+            writer.WriteStartArray();
+            if (!string.IsNullOrEmpty(message.Text))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("type", "text");
+                writer.WriteString("text", message.Text);
+                writer.WriteEndObject();
+            }
+            for (var j = 0; j < message.ToolUses.Count; j++)
+            {
+                var toolUse = message.ToolUses[j];
+                var isLastBlock = addCacheControl && j == message.ToolUses.Count - 1;
+                writer.WriteStartObject();
+                writer.WriteString("type", "tool_use");
+                writer.WriteString("id", toolUse.Id);
+                writer.WriteString("name", toolUse.Name);
+                writer.WritePropertyName("input");
+                toolUse.Input.WriteTo(writer);
+                if (isLastBlock) WriteCacheControl(writer);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+        }
+        else
+        {
+            // Simple text message
+            if (addCacheControl)
+            {
+                // Convert to array format to attach cache_control
+                writer.WritePropertyName("content");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                writer.WriteString("type", "text");
+                writer.WriteString("text", message.Text);
+                WriteCacheControl(writer);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+            }
+            else
+            {
+                writer.WriteString("content", message.Text);
+            }
+        }
+
+        writer.WriteEndObject();
+    }
+
+    /// <summary>
+    /// Writes the cache_control: ephemeral breakpoint marker.
+    /// </summary>
+    private static void WriteCacheControl(Utf8JsonWriter writer)
+    {
+        writer.WritePropertyName("cache_control");
+        writer.WriteStartObject();
+        writer.WriteString("type", "ephemeral");
+        writer.WriteEndObject();
     }
 
     private static void WriteTools(Utf8JsonWriter writer, JsonElement parameters)
@@ -203,33 +258,15 @@ internal static partial class AnthropicMessagesProvider
         writer.WritePropertyName("tools");
         writer.WriteStartArray();
 
-        for (var i = 0; i < toolList.Count; i++)
+        // cache_control breakpoint is on the last message (not tools),
+        // aligned with Reasonix pattern: system[last] + messages[last].
+        foreach (var (name, tool) in toolList)
         {
-            var (name, tool) = toolList[i];
-            var isLast = i == toolList.Count - 1;
-
             // Anthropic format: { name, description, input_schema }
             // Transform inputSchema -> input_schema if needed
             if (tool.TryGetProperty("input_schema", out _))
             {
-                // Already in Anthropic format — write with cache_control on last
-                if (isLast)
-                {
-                    writer.WriteStartObject();
-                    foreach (var prop in tool.EnumerateObject())
-                    {
-                        prop.WriteTo(writer);
-                    }
-                    writer.WritePropertyName("cache_control");
-                    writer.WriteStartObject();
-                    writer.WriteString("type", "ephemeral");
-                    writer.WriteEndObject();
-                    writer.WriteEndObject();
-                }
-                else
-                {
-                    tool.WriteTo(writer);
-                }
+                tool.WriteTo(writer);
                 continue;
             }
 
@@ -248,14 +285,6 @@ internal static partial class AnthropicMessagesProvider
             {
                 writer.WritePropertyName("input_schema");
                 inputSchema.WriteTo(writer);
-            }
-            // Add cache_control breakpoint on the last tool
-            if (isLast)
-            {
-                writer.WritePropertyName("cache_control");
-                writer.WriteStartObject();
-                writer.WriteString("type", "ephemeral");
-                writer.WriteEndObject();
             }
             writer.WriteEndObject();
         }

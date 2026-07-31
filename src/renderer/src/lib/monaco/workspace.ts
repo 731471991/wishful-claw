@@ -83,7 +83,7 @@ function createInMemoryUri(filePath: string, authority?: string): string {
   const modelKey = createModelKey(filePath)
   const fileName = getFileName(filePath)
   const fileNameSegment = fileName ? `/${encodeURIComponent(fileName)}` : ''
-  return `inmemory://${authority || 'opencowork'}/model/${modelKey}${fileNameSegment}`
+  return `inmemory://${authority || 'wishfulclaw'}/model/${modelKey}${fileNameSegment}`
 }
 
 function createFileUri(filePath: string): string {

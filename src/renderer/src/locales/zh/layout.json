@@ -2,7 +2,7 @@
   "splash": {
     "enterMain": "进入主页",
     "enterSettings": "AI 服务商设置",
-    "hero": "你的 AI Agent 编程助手。融合 OpenCowork 的工具链、KodaClaw 的记忆与人格系统，以及 OpenClaw 的主动回忆机制。",
+    "hero": "你的 AI Agent 编程助手。融合 WishfulClaw 的工具链、KodaClaw 的记忆与人格系统，以及 OpenClaw 的主动回忆机制。",
     "features": {
       "localFirst": "本地工具，真实上下文",
       "localFirstDesc": "本地工具，真实上下文。Agent 可以直接操作文件、终端、项目和工作区。",

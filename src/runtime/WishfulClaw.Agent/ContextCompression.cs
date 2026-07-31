@@ -1,19 +1,165 @@
+using System.Diagnostics;
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
+using WishfulClaw.Contracts;
+using WishfulClaw.Core.Protocol;
 
 namespace WishfulClaw.Agent;
 
 /// <summary>
-/// Simplified context compression: token-based truncation.
-/// No LLM summary (added in later iterations).
+/// LLM-based context compression, inspired by Reasonix's compact.go.
+///
+/// Flow:
+/// 1. PlanCompaction: split conversation into pinned prefix + foldable middle + recent tail
+/// 2. PartitionFold: in the middle, keep small user turns verbatim, fold assistant/tool messages
+/// 3. SummarizeAsync: call the provider's LLM (no tools) to distill the foldable region into a briefing
+/// 4. On failure: MechanicalFold (deterministic stand-in)
+/// 5. Replace: session becomes [pinned prefix] + [kept user turns] + [summary] + [recent tail]
+///
+/// The summary is wrapped in &lt;compaction-summary&gt; tags so the model can distinguish it
+/// from live user input.
 /// </summary>
 public static class ContextCompression
 {
-    private const int PreserveHeadCount = 2;
-    private const int PreserveTailCount = 12;
+    // ── HttpClient for summarization calls ──
+
+    private static readonly HttpClient Http = new(new HttpClientHandler
+    {
+        MaxConnectionsPerServer = 4
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(120)
+    };
+
+    // ── Constants (aligned with Reasonix compact.go) ──
+
+    private const int PreserveHeadCount = 2;       // system + first user
+    private const int PreserveTailCount = 12;       // recent tail messages
+    private const int DefaultTailTokens = 16384;    // verbatim recent-tail token budget
+    private const int MinCompactMessages = 2;       // skip compaction below this many foldable messages
+    private const int MinFoldTokens = 400;          // skip if fold region too small
+    private const double FallbackTokPerChar = 0.25; // ~4 chars/token before usage data
+    private const int MaxPinnedFirstUserTokens = 1500;
+    private const double PinnedFirstUserWindowFrac = 0.15;
+
+    private static readonly TimeSpan SummaryTimeout = TimeSpan.FromSeconds(90);
+
+    // ── Summary system prompt (7-section structured briefing, from Reasonix) ──
+
+    private const string SummarySystemPrompt =
+        "You are compacting the earlier part of a coding agent's conversation to save context.\n" +
+        "The agent keeps your summary alongside the user's own turns (kept verbatim) and the recent tail; your job is to fold the assistant/tool work into a briefing it can resume from.\n" +
+        "Write under these exact headings, omitting a heading only if it has no content:\n\n" +
+        "## Standing facts & constraints\n" +
+        "Everything the user stated that still governs the work — names, paths, IDs, versions, tokens, preferences, and hard \"never do X\" rules — in their own words. Be exhaustive; this is the durable contract, so prefer over- to under-including.\n\n" +
+        "## Goal\nThe user's request and intent.\n\n" +
+        "## Decisions & rationale\nKey choices made so far and why — so they are not re-litigated or reversed.\n\n" +
+        "## Files & code\nFiles read or modified, with the specific facts that matter: signatures, line locations, data shapes, and exact edits applied. Be concrete; this is what lets the agent act without re-reading everything.\n\n" +
+        "## Commands & outcomes\nCommands run (builds, tests, git) and their relevant results — what passed, what failed, and the error text that matters.\n\n" +
+        "## Errors & fixes\nProblems hit and how they were resolved (or not), so the same dead ends are not repeated.\n\n" +
+        "## Pending & next step\nWhat is still in progress or unstarted, and the single most concrete next action to take.\n\n" +
+        "Rules: be terse — bullet points and fragments, not prose. Preserve identifiers, paths, and numbers exactly. Do NOT invent anything not present in the messages; if something is unknown, leave it out rather than guessing.";
+
+    private const string SummaryTagOpen = "<compaction-summary>";
+    private const string SummaryTagClose = "</compaction-summary>";
+
+    // ── Public API ──
 
     /// <summary>
-    /// Truncates the conversation by removing old messages,
-    /// keeping the head (system + first user) and recent tail.
+    /// Compacts the conversation: summarizes the foldable middle, keeps pinned prefix and recent tail.
+    /// Returns the new (conversation, wireConversation) tuple. On LLM failure, falls back to mechanical fold.
+    /// </summary>
+    public static async Task<(List<AgentRuntimeChatMessage> conversation, List<JsonElement> wireConversation)> CompactAsync(
+        List<AgentRuntimeChatMessage> conversation,
+        List<JsonElement> wireConversation,
+        JsonElement provider,
+        IWorkerRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        var (head, start, ok) = PlanCompaction(conversation, provider, MinCompactMessages);
+
+        if (!ok)
+        {
+            // Try with min=1 for a single huge message
+            (head, start, ok) = PlanCompaction(conversation, provider, 1);
+            if (!ok)
+                return (conversation, wireConversation); // nothing to compact
+        }
+
+        var region = conversation.Skip(head).Take(start - head).ToList();
+
+        // Partition: keep small user turns + prior summaries, fold the rest
+        var (kept, fold) = PartitionFold(region, provider);
+
+        if (fold.Count == 0)
+            return (conversation, wireConversation); // nothing to fold
+
+        // Economic check: skip if fold region too small
+        if (EstimateMessagesTokens(fold) < MinFoldTokens)
+            return (conversation, wireConversation);
+
+        // Summarize the foldable region
+        string summary;
+        try
+        {
+            summary = await SummarizeAsync(fold, provider, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            WorkerLog.Warn($"context compression LLM summarization failed: {ex.GetType().Name}: {ex.Message}");
+            summary = MechanicalFoldDigest(fold.Count);
+        }
+
+        // Build the compacted conversation
+        var newConversation = new List<AgentRuntimeChatMessage>();
+        var newWireConversation = new List<JsonElement>();
+
+        // Pinned prefix
+        for (var i = 0; i < head; i++)
+        {
+            newConversation.Add(conversation[i]);
+            newWireConversation.Add(wireConversation[i]);
+        }
+
+        // Kept user turns (from the foldable region)
+        var keptOffset = head;
+        foreach (var keptMsg in kept)
+        {
+            var keptIdx = conversation.IndexOf(keptMsg, keptOffset);
+            if (keptIdx >= 0)
+            {
+                newConversation.Add(keptMsg);
+                newWireConversation.Add(wireConversation[keptIdx]);
+                keptOffset = keptIdx + 1;
+            }
+        }
+
+        // Summary message
+        var summaryContent = $"{SummaryTagOpen}\nSummary of earlier conversation (older messages were compacted to save context):\n{summary}\n{SummaryTagClose}";
+        var summaryMessage = AgentRuntimeChatMessage.User(summaryContent);
+        newConversation.Add(summaryMessage);
+        newWireConversation.Add(CreateSummaryWireMessage(summaryContent));
+
+        // Recent tail
+        for (var i = start; i < conversation.Count; i++)
+        {
+            newConversation.Add(conversation[i]);
+            newWireConversation.Add(wireConversation[i]);
+        }
+
+        WorkerLog.Info(
+            $"context compression completed: original={conversation.Count} " +
+            $"folded={fold.Count} kept={kept.Count} summary={summary.Length}chars " +
+            $"result={newConversation.Count}");
+
+        return (newConversation, newWireConversation);
+    }
+
+    // ── Legacy truncation (kept as fallback) ──
+
+    /// <summary>
+    /// Simple token-based truncation. Used as a last-resort fallback when LLM summarization is unavailable.
     /// </summary>
     public static (List<AgentRuntimeChatMessage> conversation, List<JsonElement> wireConversation) TruncateMessages(
         List<AgentRuntimeChatMessage> conversation,
@@ -22,25 +168,20 @@ public static class ContextCompression
     {
         var total = conversation.Count;
         if (total <= PreserveHeadCount + PreserveTailCount)
-        {
             return (conversation, wireConversation);
-        }
 
-        // Keep head (first few messages) + tail (most recent)
         var headCount = Math.Min(PreserveHeadCount, total);
         var tailCount = Math.Min(PreserveTailCount, total - headCount);
 
         var newConversation = new List<AgentRuntimeChatMessage>();
         var newWireConversation = new List<JsonElement>();
 
-        // Head
         for (var i = 0; i < headCount; i++)
         {
             newConversation.Add(conversation[i]);
             newWireConversation.Add(wireConversation[i]);
         }
 
-        // Tail
         var tailStart = total - tailCount;
         for (var i = tailStart; i < total; i++)
         {
@@ -49,5 +190,419 @@ public static class ContextCompression
         }
 
         return (newConversation, newWireConversation);
+    }
+
+    // ── Planning ──
+
+    /// <summary>
+    /// Locates the region to summarize.
+    /// head = count of leading messages preserved verbatim (system + first user + prior summaries).
+    /// start = where the preserved recent tail begins.
+    /// msgs[head:start] is the compactable region.
+    /// </summary>
+    private static (int head, int start, bool ok) PlanCompaction(
+        List<AgentRuntimeChatMessage> conversation,
+        JsonElement provider,
+        int min)
+    {
+        var head = PinnedPrefixLen(conversation, provider);
+        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
+
+        int start;
+        if (contextLength > 0)
+        {
+            var budget = DefaultTailTokens;
+            var maxByWin = (int)(contextLength * 0.5); // defaultCompactTarget
+            if (maxByWin < budget) budget = maxByWin;
+            start = TailStart(conversation, head, budget);
+        }
+        else
+        {
+            // No window: keep a fixed count of recent messages
+            start = conversation.Count - PreserveTailCount;
+            // Align off any tool result
+            while (start > head && conversation[start].Role == "user" && conversation[start].ToolResults.Count > 0)
+                start--;
+        }
+
+        if (start < head) start = head;
+        if (start - head < min) return (head, start, false);
+        return (head, start, true);
+    }
+
+    /// <summary>
+    /// Counts leading messages a fold keeps verbatim: system prompt, first user turn (if small enough),
+    /// and any prior compaction summaries.
+    /// </summary>
+    private static int PinnedPrefixLen(List<AgentRuntimeChatMessage> conversation, JsonElement provider)
+    {
+        var i = 0;
+
+        // Skip system messages
+        while (i < conversation.Count && conversation[i].Role == "system")
+            i++;
+
+        // First user turn (if pinnable)
+        if (i < conversation.Count &&
+            conversation[i].Role == "user" &&
+            !IsCompactionSummary(conversation[i]) &&
+            IsPinnableUserTurn(conversation[i], provider))
+        {
+            i++;
+        }
+
+        // Prior compaction summaries
+        while (i < conversation.Count && IsCompactionSummary(conversation[i]))
+            i++;
+
+        return i;
+    }
+
+    private static bool IsPinnableUserTurn(AgentRuntimeChatMessage message, JsonElement provider)
+    {
+        var budget = MaxPinnedFirstUserTokens;
+        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
+        if (contextLength > 0)
+        {
+            var fracBudget = (int)(contextLength * PinnedFirstUserWindowFrac);
+            if (fracBudget < budget) budget = fracBudget;
+        }
+        return EstimateTextTokens(message.Text) <= budget;
+    }
+
+    /// <summary>
+    /// Walks newest→oldest, growing the verbatim tail until the next message would push its
+    /// token estimate past budgetTokens. Aligns the boundary back off any tool result.
+    /// </summary>
+    private static int TailStart(List<AgentRuntimeChatMessage> conversation, int head, int budgetTokens)
+    {
+        var start = conversation.Count;
+        var acc = 0;
+        var minKeep = 2;
+
+        for (var i = conversation.Count - 1; i > head; i--)
+        {
+            var tok = EstimateMessageTokens(conversation[i]);
+            if (conversation.Count - i > minKeep && acc + tok > budgetTokens)
+                break;
+            acc += tok;
+            start = i;
+        }
+
+        // Align off tool results (don't start tail with an orphan tool result)
+        while (start > head && start < conversation.Count &&
+               conversation[start].Role == "user" && conversation[start].ToolResults.Count > 0)
+            start--;
+
+        return start;
+    }
+
+    // ── Partitioning ──
+
+    /// <summary>
+    /// Splits a compaction region into:
+    /// - kept: small user turns (verbatim) + prior compaction summaries
+    /// - fold: assistant messages, tool results, large user messages (to be summarized)
+    /// </summary>
+    private static (List<AgentRuntimeChatMessage> kept, List<AgentRuntimeChatMessage> fold) PartitionFold(
+        List<AgentRuntimeChatMessage> region,
+        JsonElement provider)
+    {
+        var kept = new List<AgentRuntimeChatMessage>();
+        var fold = new List<AgentRuntimeChatMessage>();
+
+        foreach (var message in region)
+        {
+            if (IsCompactionSummary(message) ||
+                (message.Role == "user" && message.ToolResults.Count == 0 && IsPinnableUserTurn(message, provider)))
+            {
+                kept.Add(message);
+            }
+            else
+            {
+                fold.Add(message);
+            }
+        }
+
+        return (kept, fold);
+    }
+
+    // ── Summarization ──
+
+    /// <summary>
+    /// Calls the provider's LLM (no tools) to distill the foldable region into a structured briefing.
+    /// </summary>
+    private static async Task<string> SummarizeAsync(
+        List<AgentRuntimeChatMessage> fold,
+        JsonElement provider,
+        CancellationToken cancellationToken)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(SummaryTimeout);
+
+        var providerType = JsonHelpers.GetString(provider, "type") ?? string.Empty;
+        var transcript = RenderTranscript(fold);
+
+        // Build summary request body using JsonSerializer for proper escaping
+        var requestBody = BuildSummaryRequestBody(transcript, providerType);
+
+        string? summary = null;
+        Exception? lastErr = null;
+
+        for (var attempt = 0; attempt < 2 && summary == null; attempt++)
+        {
+            try
+            {
+                summary = providerType switch
+                {
+                    "anthropic" => await CallAnthropicSummary(requestBody, provider, cts.Token),
+                    "openai-chat" => await CallOpenAISummary(requestBody, provider, cts.Token),
+                    _ => throw new InvalidOperationException($"Unsupported provider for summarization: {providerType}")
+                };
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                lastErr = ex;
+            }
+        }
+
+        if (summary == null)
+            throw lastErr ?? new InvalidOperationException("Summarizer returned empty output");
+
+        if (string.IsNullOrWhiteSpace(summary))
+            throw new InvalidOperationException("Summarizer returned empty output");
+
+        return summary.Trim();
+    }
+
+    /// <summary>
+    /// Placeholder — transcript is passed directly to CallXxx methods.
+    /// </summary>
+    private static string BuildSummaryRequestBody(string transcript, string providerType)
+    {
+        return transcript;
+    }
+
+    /// <summary>
+    /// Calls Anthropic Messages API for summarization (no tools, no streaming).
+    /// </summary>
+    private static async Task<string> CallAnthropicSummary(
+        string transcript, JsonElement provider, CancellationToken ct)
+    {
+        var model = JsonHelpers.GetString(provider, "model") ?? string.Empty;
+        var apiKey = JsonHelpers.GetString(provider, "apiKey") ?? string.Empty;
+        var baseUrl = (JsonHelpers.GetString(provider, "baseUrl") ?? "https://api.anthropic.com").Trim().TrimEnd('/');
+        var url = $"{baseUrl}/v1/messages";
+
+        var bodyJson = JsonSerializer.Serialize(new
+        {
+            model,
+            max_tokens = 4096,
+            system = SummarySystemPrompt,
+            messages = new[] { new { role = "user", content = transcript } }
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        request.Headers.Add("x-api-key", apiKey);
+        request.Headers.Add("anthropic-version", "2023-06-01");
+
+        using var response = await Http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"Anthropic summarization HTTP {response.StatusCode}: {errorBody}");
+        }
+
+        var responseJson = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(responseJson);
+        return string.Join("", doc.RootElement
+            .GetProperty("content")
+            .EnumerateArray()
+            .Where(b => b.GetProperty("type").GetString() == "text")
+            .Select(b => b.GetProperty("text").GetString() ?? ""));
+    }
+
+    /// <summary>
+    /// Calls OpenAI Chat Completions API for summarization (no tools).
+    /// </summary>
+    private static async Task<string> CallOpenAISummary(
+        string transcript, JsonElement provider, CancellationToken ct)
+    {
+        var model = JsonHelpers.GetString(provider, "model") ?? string.Empty;
+        var apiKey = JsonHelpers.GetString(provider, "apiKey") ?? string.Empty;
+        var baseUrl = (JsonHelpers.GetString(provider, "baseUrl") ?? "https://api.openai.com").Trim().TrimEnd('/');
+        var url = $"{baseUrl}/v1/chat/completions";
+
+        var bodyJson = JsonSerializer.Serialize(new
+        {
+            model,
+            max_tokens = 4096,
+            messages = new object[]
+            {
+                new { role = "system", content = SummarySystemPrompt },
+                new { role = "user", content = transcript }
+            }
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        request.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+        request.Headers.Add("Authorization", $"Bearer {apiKey}");
+
+        using var response = await Http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"OpenAI summarization HTTP {response.StatusCode}: {errorBody}");
+        }
+
+        var responseJson = await response.Content.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(responseJson);
+        return doc.RootElement
+            .GetProperty("choices")[0]
+            .GetProperty("message")
+            .GetProperty("content")
+            .GetString() ?? "";
+    }
+
+    // ── Mechanical fold (fallback) ──
+
+    /// <summary>
+    /// Deterministic stand-in used when the summarizer is unreachable.
+    /// </summary>
+    private static string MechanicalFoldDigest(int messageCount)
+    {
+        return $"{messageCount} earlier message(s) were folded here to free context, " +
+               "but the automatic summary was unavailable. " +
+               "Ask the user if you need details from before this point.";
+    }
+
+    // ── Transcript rendering ──
+
+    /// <summary>
+    /// Flattens messages into a readable transcript for summarization.
+    /// </summary>
+    private static string RenderTranscript(List<AgentRuntimeChatMessage> messages)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var message in messages)
+        {
+            switch (message.Role)
+            {
+                case "user" when message.ToolResults.Count > 0:
+                    foreach (var tr in message.ToolResults)
+                    {
+                        sb.AppendLine($"[tool {tr.ToolUseId} result]");
+                        sb.AppendLine(tr.Content.ValueKind == JsonValueKind.String
+                            ? tr.Content.GetString() ?? ""
+                            : tr.Content.GetRawText());
+                        sb.AppendLine();
+                    }
+                    break;
+
+                case "user":
+                    sb.AppendLine("[user]");
+                    sb.AppendLine(message.Text);
+                    sb.AppendLine();
+                    break;
+
+                case "assistant":
+                    if (!string.IsNullOrEmpty(message.Text))
+                    {
+                        sb.AppendLine("[assistant]");
+                        sb.AppendLine(message.Text);
+                    }
+                    foreach (var tu in message.ToolUses)
+                    {
+                        sb.AppendLine($"[assistant calls {tu.Name}] {SummarizeToolArgs(tu.Input.GetRawText())}");
+                    }
+                    sb.AppendLine();
+                    break;
+
+                case "system":
+                    sb.AppendLine("[system]");
+                    sb.AppendLine(message.Text);
+                    sb.AppendLine();
+                    break;
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Returns a short summary of tool-call arguments instead of the full JSON.
+    /// </summary>
+    private static string SummarizeToolArgs(string args)
+    {
+        if (string.IsNullOrEmpty(args))
+            return "(no arguments)";
+        try
+        {
+            using var doc = JsonDocument.Parse(args);
+            var keys = doc.RootElement.EnumerateObject().Select(p => p.Name).OrderBy(k => k).ToList();
+            return $"{{{string.Join(", ", keys)}}} ({keys.Count} keys)";
+        }
+        catch
+        {
+            return $"({args.Length} bytes)";
+        }
+    }
+
+    // ── Token estimation (from Reasonix) ──
+
+    internal static int EstimateMessageTokens(AgentRuntimeChatMessage message)
+    {
+        var total = 4;
+        total += EstimateTextTokens(message.Text);
+        foreach (var tu in message.ToolUses)
+        {
+            total += 8;
+            total += EstimateTextTokens(tu.Id);
+            total += EstimateTextTokens(tu.Name);
+            total += EstimateTextTokens(tu.Input.GetRawText());
+        }
+        foreach (var tr in message.ToolResults)
+        {
+            total += 4;
+            total += EstimateTextTokens(tr.ToolUseId);
+            total += EstimateTextTokens(tr.Content.ValueKind == JsonValueKind.String
+                ? tr.Content.GetString() ?? ""
+                : tr.Content.GetRawText());
+        }
+        return total;
+    }
+
+    internal static int EstimateMessagesTokens(List<AgentRuntimeChatMessage> messages)
+    {
+        var total = 0;
+        foreach (var m in messages)
+            total += EstimateMessageTokens(m);
+        return total;
+    }
+
+    internal static int EstimateTextTokens(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return 0;
+        var byBytes = (text.Length + 3) / 4;
+        return Math.Max(byBytes, text.Length);
+    }
+
+    // ── Helpers ──
+
+    private static bool IsCompactionSummary(AgentRuntimeChatMessage message)
+    {
+        return message.Role == "user" &&
+               !string.IsNullOrEmpty(message.Text) &&
+               message.Text.AsSpan().TrimStart().StartsWith(SummaryTagOpen, StringComparison.Ordinal);
+    }
+
+    private static JsonElement CreateSummaryWireMessage(string content)
+    {
+        var json = $"{{\"role\":\"user\",\"content\":{JsonSerializer.Serialize(content)}}}";
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.Clone();
     }
 }

@@ -1,6 +1,6 @@
 /**
  * System prompt builder for WishfulClaw.
- * Simplified from OpenCowork's system-prompt.ts — keeps the core structure
+ * Simplified from WishfulClaw's system-prompt.ts — keeps the core structure
  * (identity, environment, tool guidelines, communication style, working folder)
  * without the team/sub-agent/plan-mode/memory complexity.
  */

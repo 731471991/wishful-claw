@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Static definition of a sub-agent, loaded from ~/.wishful-claw/agents/*.md files.
-/// Simplified from OpenCowork's SubAgentDefinitionNative.
+/// Simplified from WishfulClaw's SubAgentDefinitionNative.
 /// </summary>
 /// <param name="Name">Unique name, used as subagent_type in the Task tool</param>
 /// <param name="Description">Human-readable description for the LLM</param>
@@ -24,7 +24,7 @@ public sealed record SubAgentDefinition(
 
 /// <summary>
 /// Loads sub-agent definitions from the filesystem.
-/// Files are Markdown with YAML frontmatter, similar to OpenCowork's approach.
+/// Files are Markdown with YAML frontmatter, similar to WishfulClaw's approach.
 /// </summary>
 internal static partial class SubAgentDefinitionLoader
 {

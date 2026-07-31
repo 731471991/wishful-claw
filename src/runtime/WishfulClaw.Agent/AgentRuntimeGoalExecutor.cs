@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Goal tool executor — get/create/update goals.
-/// Simplified port: in-memory storage (no SQLite). Ported from OpenCowork AgentRuntimeGoalExecutor.
+/// Simplified port: in-memory storage (no SQLite). Ported from WishfulClaw AgentRuntimeGoalExecutor.
 /// </summary>
 public static class AgentRuntimeGoalExecutor
 {

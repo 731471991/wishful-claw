@@ -217,7 +217,7 @@ export const useProviderStore = create<ProviderState>()(
   )
 )
 
-// ── Helper functions (from OpenCowork, simplified) ──
+// ── Helper functions (from WishfulClaw, simplified) ──
 
 export function modelSupportsVision(
   model: AIModelConfig | null | undefined,

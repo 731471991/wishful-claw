@@ -356,7 +356,7 @@ export const useSettingsStore = create<SettingsStore>()(
       clearRecentWorkingTargets: () => set({ recentWorkingTargets: [] })
     }),
     {
-      name: 'opencowork-settings',
+      name: 'wishfulclaw-settings',
       version: 30,
       storage: createJSONStorage(() => ipcStorage),
       migrate: (persisted: unknown, version: number) => {

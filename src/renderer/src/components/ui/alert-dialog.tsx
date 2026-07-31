@@ -4,7 +4,7 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
 import { cn } from '@renderer/lib/utils'
 import { buttonVariants } from '@renderer/components/ui/button'
 
-// Allow extra props (size, variant, etc.) that OpenCowork code passes
+// Allow extra props (size, variant, etc.) that WishfulClaw code passes
 // but shadcn AlertDialog doesn't natively support.
 type ExtraProps = { [key: string]: any }
 

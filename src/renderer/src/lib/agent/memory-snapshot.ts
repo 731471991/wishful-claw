@@ -73,7 +73,7 @@ export async function resolveGlobalMemoryHomePath(ipc: IPCClient): Promise<strin
   const homeDirResult = await invokeStringIpc(ipc, IPC.APP_HOMEDIR)
   const homeDir = homeDirResult ?? getRendererEnvHomeDir()
   if (homeDir) {
-    _memState.cachedGlobalHomePath = joinFsPath(homeDir, '.open-cowork')
+    _memState.cachedGlobalHomePath = joinFsPath(homeDir, '.wishful-claw')
     return _memState.cachedGlobalHomePath
   }
 

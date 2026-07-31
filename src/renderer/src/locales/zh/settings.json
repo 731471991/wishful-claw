@@ -120,6 +120,15 @@
         "desc": "同时运行的子 Agent 数量上限"
       }
     },
+    "contextCompression": {
+      "label": "上下文压缩",
+      "desc": "当对话接近上下文窗口上限时，自动总结早期消息以释放空间",
+      "enabled": "启用后将在达到阈值时自动压缩上下文",
+      "threshold": {
+        "label": "压缩阈值",
+        "desc": "达到上下文窗口使用率后触发压缩，范围 30% - 90%"
+      }
+    },
     "developerMode": {
       "label": "开发者模式",
       "desc": "显示每条助手消息的请求参数（URL、请求头、请求体），便于开发调试",
@@ -657,7 +666,7 @@
     "title": "关于 Wishful Claw",
     "version": "版本: v0.2.0-dev",
     "description": "Wishful Claw 是一个 AI Agent 编程助手，融合三个开源项目的优点：",
-    "openCowork": "OpenCowork — Agent Loop / 工具链 / Provider / 架构",
+    "wishfulClaw": "WishfulClaw — Agent Loop / 工具链 / Provider / 架构",
     "kodaClaw": "KodaClaw — 记忆系统 / 人格系统设计",
     "openClaw": "OpenClaw — 记忆主动回忆机制"
   },

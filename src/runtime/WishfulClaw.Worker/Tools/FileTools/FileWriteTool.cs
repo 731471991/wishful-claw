@@ -12,7 +12,7 @@ using static WishfulClaw.Worker.Tools.ToolHelpers;
 
 /// <summary>
 /// Write content to a file. Creates the file if it doesn't exist, overwrites if it does.
-/// Adapted from OpenCowork AgentRuntimeNativeToolExecutor.WriteAsync.
+/// Adapted from WishfulClaw AgentRuntimeNativeToolExecutor.WriteAsync.
 /// Records file changes for AgentChanges tracking.
 /// </summary>
 public sealed class FileWriteTool : IToolExecutor

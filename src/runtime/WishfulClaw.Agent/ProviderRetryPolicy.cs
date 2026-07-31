@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent;
 /// <summary>
 /// Exception thrown by providers when an HTTP request fails.
 /// Carries status code and Retry-After header for the retry policy.
-/// Ported from OpenCowork's AgentRuntimeProviderRetryPolicy.
+/// Ported from WishfulClaw's AgentRuntimeProviderRetryPolicy.
 /// </summary>
 public sealed class ProviderHttpException : InvalidOperationException
 {

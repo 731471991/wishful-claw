@@ -303,7 +303,7 @@ export function ConversationGuideDialog({
               size="sm"
               className="gap-1.5"
               onClick={() =>
-                window.open('https://open-cowork.shop/', '_blank', 'noopener,noreferrer')
+                window.open('https://wishful-claw.shop/', '_blank', 'noopener,noreferrer')
               }
             >
               <ExternalLink className="size-3.5" />

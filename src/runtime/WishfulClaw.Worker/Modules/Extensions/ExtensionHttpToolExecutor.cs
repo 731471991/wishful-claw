@@ -13,7 +13,7 @@ namespace WishfulClaw.Worker.Modules.Extensions;
 /// <summary>
 /// Executes HTTP-based extension tools. Handles URL/header interpolation,
 /// network permission checks, redirect following, and response normalization.
-/// Ported from OpenCowork, adapted for wishful-claw (WorkerHttpClientFactory, namespace).
+/// Ported from WishfulClaw, adapted for wishful-claw (WorkerHttpClientFactory, namespace).
 /// </summary>
 internal static partial class ExtensionHttpToolExecutor
 {

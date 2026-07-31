@@ -9,7 +9,7 @@ namespace WishfulClaw.Worker.Modules.Skills;
 
 /// <summary>
 /// Skill catalog — core CRUD operations for ~/.agents/skills/ directory.
-/// Ported from OpenCowork SkillCatalog, adapted for wishful-claw.
+/// Ported from WishfulClaw SkillCatalog, adapted for wishful-claw.
 /// </summary>
 internal static partial class SkillCatalog
 {

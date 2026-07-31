@@ -8,8 +8,8 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Notify tool executor — sends desktop notifications via reverse-request to Main process.
-/// Simplified port from OpenCowork (no DeliveryGuard, no plugin redirect).
-/// Ported from OpenCowork AgentRuntimeNotifyExecutor.
+/// Simplified port from WishfulClaw (no DeliveryGuard, no plugin redirect).
+/// Ported from WishfulClaw AgentRuntimeNotifyExecutor.
 /// </summary>
 public static class AgentRuntimeNotifyExecutor
 {

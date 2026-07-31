@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 // ─── Simplified quota store ───
-// From OpenCowork, reduced to just what ModelSwitcher needs.
+// From WishfulClaw, reduced to just what ModelSwitcher needs.
 // IPC listener registration removed (no backend quota system yet).
 
 export interface CodexQuotaWindow {

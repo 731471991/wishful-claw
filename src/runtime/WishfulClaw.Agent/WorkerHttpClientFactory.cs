@@ -4,7 +4,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Factory for creating HttpClient instances with sensible defaults.
-/// Ported from OpenCowork WorkerHttpClientFactory (simplified — no WorkerMemory env vars).
+/// Ported from WishfulClaw WorkerHttpClientFactory (simplified — no WorkerMemory env vars).
 /// </summary>
 public static class WorkerHttpClientFactory
 {

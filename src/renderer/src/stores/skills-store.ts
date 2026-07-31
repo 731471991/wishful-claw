@@ -453,7 +453,7 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
 
   closeInstallDialog: () => {
     const state = get()
-    if (state.installSourcePath && state.installSourcePath.includes('opencowork-skills')) {
+    if (state.installSourcePath && state.installSourcePath.includes('wishfulclaw-skills')) {
       void ipcClient.invoke('skills:cleanup-temp', { tempPath: state.installSourcePath })
     }
     set({
@@ -494,7 +494,7 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
       const result = await state.addSkillFromFolder(state.installSourcePath)
       if (result.success) {
         // Clean up temp directory if it's a downloaded skill
-        if (state.installSourcePath.includes('opencowork-skills')) {
+        if (state.installSourcePath.includes('wishfulclaw-skills')) {
           await ipcClient.invoke('skills:cleanup-temp', { tempPath: state.installSourcePath })
         }
 

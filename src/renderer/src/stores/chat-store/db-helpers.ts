@@ -318,7 +318,7 @@ export async function dbLoadMessages(sessionId: string): Promise<ChatMessage[]> 
 }
 
 /**
- * Load a page of messages from DB (like OpenCowork's dbListMessagesPage).
+ * Load a page of messages from DB (like WishfulClaw's dbListMessagesPage).
  */
 export async function dbListMessagesPage(args: {
   sessionId: string

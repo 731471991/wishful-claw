@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Agent runtime run management: accept/cancel/stop runs, event emission.
-/// Simplified from OpenCowork — no SubAgent/Team/Reverse support.
+/// Simplified from WishfulClaw — no SubAgent/Team/Reverse support.
 /// </summary>
 public static class AgentRuntimeTools
 {
@@ -213,6 +213,27 @@ public static class AgentRuntimeTools
             state.Dispose();
             WorkerLog.Info($"agent run finalized runId={state.RunId}");
         }
+    }
+
+    // ── Reverse response (from renderer tool execution) ──
+
+    // ── Session management ──
+
+    /// <summary>
+    /// Clears the SessionConversation state for a given sessionId.
+    /// Called when the user deletes a session or clears session messages.
+    /// </summary>
+    public static WorkerResponse ClearSession(JsonElement parameters)
+    {
+        var sessionId = JsonHelpers.GetString(parameters, "sessionId")?.Trim();
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            return WorkerResponse.Error("sessionId is required.");
+        }
+
+        SessionConversationManager.Remove(sessionId);
+        WorkerLog.Info($"agent session cleared sessionId={FormatLogValue(sessionId)}");
+        return WorkerResponse.Json(new { cleared = true, sessionId });
     }
 
     // ── Reverse response (from renderer tool execution) ──

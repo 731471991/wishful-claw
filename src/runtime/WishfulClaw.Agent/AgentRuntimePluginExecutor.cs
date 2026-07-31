@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Plugin tool executor — routes PluginSendMessage/ReplyMessage/etc to Main process.
-/// Ported from OpenCowork AgentRuntimePluginExecutor (simplified: no DeliveryGuard, no DB).
+/// Ported from WishfulClaw AgentRuntimePluginExecutor (simplified: no DeliveryGuard, no DB).
 /// </summary>
 public static class AgentRuntimePluginExecutor
 {

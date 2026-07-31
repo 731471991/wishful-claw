@@ -163,7 +163,10 @@ ${text}` : text
         maxConcurrentSubAgents: settings.maxConcurrentSubAgents,
         personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,
         language: settings.language,
-        userRules: settings.systemPrompt || undefined
+        userRules: settings.systemPrompt || undefined,
+        messageCount: historyMessages.length,
+        contextCompressionEnabled: settings.contextCompressionEnabled,
+        contextCompressionThreshold: settings.contextCompressionThreshold
       })
 
       void opts
@@ -210,7 +213,7 @@ export async function sendImplementPlanInNewSession(_projectId: string | null, _
   // TODO: implement plan execution in new session
 }
 
-// === Additional exports needed by OpenCowork InputArea ===
+// === Additional exports needed by WishfulClaw InputArea ===
 
 export interface PendingSessionMessageItem {
   id: string

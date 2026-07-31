@@ -31,7 +31,7 @@ const monitorHandler: ToolHandler = {
   definition: {
     name: 'Monitor',
     description:
-      'Run a background command and monitor its output through OpenCowork background tasks.',
+      'Run a background command and monitor its output through WishfulClaw background tasks.',
     inputSchema: {
       type: 'object',
       properties: {
