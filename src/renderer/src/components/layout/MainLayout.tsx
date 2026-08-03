@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react'
+import { useEffect } from 'react'
 import {
   Sparkles,
   Ghost,
@@ -9,7 +9,6 @@ import {
   GitBranch,
   Plug,
   FolderTree,
-  Archive
 } from 'lucide-react'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -24,6 +23,7 @@ import { SessionConversationPane } from './SessionConversationPane'
 import { PlaceholderPage } from './PlaceholderPage'
 import { ChatHomePage } from '@renderer/components/chat/ChatHomePage'
 import { ProjectHomePage } from '@renderer/components/chat/ProjectHomePage'
+import { ProjectArchivePage } from '@renderer/components/chat/ProjectArchivePage'
 import { SettingsPage } from '@renderer/components/settings/SettingsPage'
 import { PersonaPanel } from '@renderer/components/settings/PersonaPanel'
 
@@ -96,7 +96,7 @@ function ContentArea(): React.JSX.Element {
         <PersonaPanel workingFolder={activeProject?.workingFolder} />
       )
     case 'archive':
-      return <PlaceholderPage title="Archive" iterLabel="后续" icon={Archive} />
+      return <ProjectArchivePage />
     case 'git':
       return <PlaceholderPage title="Git" iterLabel="后续" icon={GitBranch} />
     case 'channels':
