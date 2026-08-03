@@ -9,6 +9,7 @@ import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { getTerminalTheme, resolveAppThemeMode } from '@renderer/lib/theme-presets'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import { useTranslation } from 'react-i18next'
 
 interface SshExecOutputEvent {
   execId?: string
@@ -24,6 +25,7 @@ interface SshExecOutputEvent {
  * This component does NOT support input — it is purely for observation.
  */
 export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Element {
+  const { t } = useTranslation('settings')
   const { resolvedTheme } = useTheme()
   const themePreset = useSettingsStore((state) => state.themePreset)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -61,7 +63,7 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     fitAddonRef.current = fitAddon
 
     // Write a header line indicating this is an agent SSH session
-    term.writeln(`\x1b[36m[Agent SSH Session]\x1b[0m execId: ${execId.slice(0, 8)}...`)
+    term.writeln(`\x1b[36m[${t('terminal.agentSshSession', { defaultValue: 'Agent SSH Session' })}]\x1b[0m execId: ${execId.slice(0, 8)}...`)
     term.writeln('')
 
     const scheduleFit = (): void => {

@@ -1025,5 +1025,15 @@
     },
     "testSuccess": "连接测试成功",
     "testFailed": "连接测试失败"
+  },
+  "terminal": {
+    "noSessions": "暂无终端会话",
+    "newTerminal": "新建终端",
+    "closeTerminal": "关闭终端",
+    "exited": "终端已退出",
+    "exitCode": "退出码：{code}",
+    "ended": "终端已结束",
+    "selectToStart": "选择一个终端开始",
+    "agentSshSession": "Agent SSH 会话"
   }
 }

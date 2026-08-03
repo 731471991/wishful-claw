@@ -6,6 +6,7 @@ import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useTerminalStore } from '@renderer/stores/terminal-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 const LocalTerminal = lazy(() =>
   import('./LocalTerminal').then((m) => ({ default: m.LocalTerminal }))
@@ -31,6 +32,7 @@ function StatusDot({ status }: { status: 'running' | 'exited' | 'error' }): Reac
 }
 
 export function TerminalPanel(): React.JSX.Element {
+  const { t } = useTranslation('settings')
   const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
@@ -88,7 +90,7 @@ export function TerminalPanel(): React.JSX.Element {
                 transition={{ duration: animationsEnabled ? 0.15 : 0 }}
                 className="px-2 text-[11px] text-muted-foreground"
               >
-                No terminal sessions
+                {t('terminal.noSessions', { defaultValue: 'No terminal sessions' })}
               </motion.span>
             ) : (
               tabs.map((tab) => {
@@ -145,7 +147,7 @@ export function TerminalPanel(): React.JSX.Element {
                           event.stopPropagation()
                           void handleClose(tab.id)
                         }}
-                        title="Close terminal"
+                        title={t('terminal.closeTerminal', { defaultValue: 'Close terminal' })}
                       >
                         <X className="size-3" />
                       </span>
@@ -162,7 +164,7 @@ export function TerminalPanel(): React.JSX.Element {
           size="icon"
           className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground"
           onClick={handleCreate}
-          title="New terminal"
+          title={t('terminal.newTerminal', { defaultValue: 'New terminal' })}
         >
           <Plus className="size-3.5" />
         </Button>
@@ -189,13 +191,13 @@ export function TerminalPanel(): React.JSX.Element {
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
                   {tab.status === 'error' ? (
                     <>
-                      <div>Terminal exited</div>
-                      <div>Exit code: {tab.exitCode ?? '-'}</div>
+                      <div>{t('terminal.exited', { defaultValue: 'Terminal exited' })}</div>
+                      <div>{t('terminal.exitCode', { defaultValue: 'Exit code', code: tab.exitCode ?? '-' })}: {tab.exitCode ?? '-'}</div>
                     </>
                   ) : (
                     <>
                       <Loader2 className="size-4" />
-                      <div>Terminal ended</div>
+                      <div>{t('terminal.ended', { defaultValue: 'Terminal ended' })}</div>
                     </>
                   )}
                 </div>
@@ -205,10 +207,10 @@ export function TerminalPanel(): React.JSX.Element {
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-xs text-muted-foreground">
             <SquareTerminal className="size-10 text-muted-foreground/40" />
-            <div>Select a terminal to get started</div>
+            <div>{t('terminal.selectToStart', { defaultValue: 'Select a terminal to get started' })}</div>
             <Button size="sm" className="h-7 gap-1 text-xs" onClick={handleCreate}>
               <Plus className="size-3.5" />
-              New terminal
+              {t('terminal.newTerminal', { defaultValue: 'New terminal' })}
             </Button>
           </div>
         )}

@@ -911,5 +911,15 @@
     },
     "testSuccess": "Connection test successful",
     "testFailed": "Connection test failed"
+  },
+  "terminal": {
+    "noSessions": "No terminal sessions",
+    "newTerminal": "New terminal",
+    "closeTerminal": "Close terminal",
+    "exited": "Terminal exited",
+    "exitCode": "Exit code: {code}",
+    "ended": "Terminal ended",
+    "selectToStart": "Select a terminal to get started",
+    "agentSshSession": "Agent SSH Session"
   }
 }
