@@ -12,7 +12,8 @@ import {
   type SshConnectionInput,
   type SshConnectionPatch
 } from '../ssh/repository'
-import { execSshCommand, testSshConnection, type SshExecResult } from '../ssh/ssh-exec'
+import { execSshCommand, type SshExecResult } from '../ssh/ssh-exec'
+import { testSshConnection } from '../ssh/ssh-test'
 import { closeConnection, closeAllSshConnections } from '../ssh/connection-pool'
 
 // SSH IPC handlers: connection CRUD + exec + group stubs + misc.

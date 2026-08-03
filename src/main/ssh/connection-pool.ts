@@ -25,7 +25,7 @@ interface ConnectionHandle {
 const handles = new Map<string, ConnectionHandle>()
 
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10000, 30000]
-const MAX_RECONNECT_ATTEMPTS = 5
+const MAX_RECONNECT_ATTEMPTS = 2
 const LINGER_MS = 60_000
 
 function currentState(handle: ConnectionHandle): HandleState {

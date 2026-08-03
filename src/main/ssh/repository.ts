@@ -198,7 +198,7 @@ export async function createConnection(input: SshConnectionInput): Promise<void>
     port: input.port ?? 22,
     username: input.username,
     authType: input.authType ?? 'password',
-    encryptedPassword: input.password ? encodeSecret(input.password) : undefined,
+    encryptedPassword: input.password ? encodeSecret(input.password) : undefined
     privateKeyPath: input.privateKeyPath ?? undefined,
     encryptedPassphrase: input.passphrase ? encodeSecret(input.passphrase) : undefined,
     startupCommand: input.startupCommand ?? undefined,
