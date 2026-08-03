@@ -33,7 +33,7 @@ async function ensureSshInitialized(): Promise<void> {
   }
 }
 
-function toMeta(meta: SshConnectionMeta): Record<string, unknown> {
+function toMeta(meta: SshConnectionMeta, password?: string | null, passphrase?: string | null): Record<string, unknown> {
   // Returns snake_case fields to match SshConnectionRow / rowToConnection in frontend
   return {
     id: meta.id,
@@ -53,7 +53,9 @@ function toMeta(meta: SshConnectionMeta): Record<string, unknown> {
     created_at: meta.createdAt,
     updated_at: meta.updatedAt,
     has_password: meta.hasPassword,
-    has_passphrase: meta.hasPassphrase
+    has_passphrase: meta.hasPassphrase,
+    password: password ?? null,
+    passphrase: passphrase ?? null
   }
 }
 
@@ -62,7 +64,10 @@ export function registerSshHandlers(): void {
 
   registerMessagePackHandler('ssh:connection:list', async () => {
     await ensureSshInitialized()
-    return listConnections().map(toMeta)
+    return listConnections().map((meta) => {
+      const withSecrets = getConnectionWithSecrets(meta.id)
+      return toMeta(meta, withSecrets?.password, withSecrets?.passphrase)
+    })
   })
 
   registerMessagePackHandler('ssh:connection:create', async (args) => {
@@ -70,16 +75,16 @@ export function registerSshHandlers(): void {
     const input = args as SshConnectionInput
     if (!input.id) input.id = randomUUID()
     await createConnection(input)
-    const meta = getConnectionMeta(input.id)
-    return meta ? toMeta(meta) : null
+    const withSecrets = getConnectionWithSecrets(input.id)
+    return withSecrets ? toMeta(withSecrets, withSecrets.password, withSecrets.passphrase) : null
   })
 
   registerMessagePackHandler('ssh:connection:update', async (args) => {
     await ensureSshInitialized()
     const { id, ...patch } = args as { id: string } & SshConnectionPatch
     await updateConnection(id, patch)
-    const meta = getConnectionMeta(id)
-    return meta ? toMeta(meta) : null
+    const withSecrets = getConnectionWithSecrets(id)
+    return withSecrets ? toMeta(withSecrets, withSecrets.password, withSecrets.passphrase) : null
   })
 
   registerMessagePackHandler('ssh:connection:delete', async (args) => {

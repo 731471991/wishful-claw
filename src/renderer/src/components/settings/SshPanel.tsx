@@ -43,9 +43,9 @@ export function SshPanel(): React.JSX.Element {
       port: conn.port,
       username: conn.username,
       authType: conn.authType,
-      password: '',
+      password: conn.password ?? '',
       privateKeyPath: conn.privateKeyPath ?? '',
-      passphrase: '',
+      passphrase: conn.passphrase ?? '',
       defaultDirectory: conn.defaultDirectory ?? '',
       keepAliveInterval: conn.keepAliveInterval
     })
