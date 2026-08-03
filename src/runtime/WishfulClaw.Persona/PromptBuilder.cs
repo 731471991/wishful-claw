@@ -71,7 +71,7 @@ public static class PromptBuilder
         // ── Project Context ──
         if (!string.IsNullOrWhiteSpace(workingFolder))
         {
-            parts.Add(BuildProjectContext(workingFolder));
+            parts.Add(BuildProjectContext(workingFolder, JsonHelpers.GetString(parameters, "sshConnectionId")));
         }
 
         // ── User Rules ──
@@ -211,6 +211,7 @@ Do not overstep your bounds or create unnecessary files.
     private static string BuildSshContext(JsonElement parameters)
     {
         var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+        var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
 
         if (string.IsNullOrWhiteSpace(sshConnectionId))
         {
@@ -226,23 +227,33 @@ Do not overstep your bounds or create unnecessary files.
 """;
         }
 
+        var cwdLine = string.IsNullOrWhiteSpace(workingFolder)
+            ? ""
+            : $"\n- Remote working directory: `{workingFolder}` — all Bash commands default to this directory on the remote server.";
+
         return $"""
 <ssh_capability>
-**SSH Remote Execution:**
-- The Bash tool supports an optional `sshConnectionId` parameter to execute commands on a remote SSH server.
-- Use `SshListConnections` to discover available SSH connection IDs.
-- When `sshConnectionId` is provided, the command runs remotely via a persistent SSH connection and returns structured stdout, stderr, and exitCode.
-- Real-time output is displayed in the terminal panel for the user to observe.
-
-**Current SSH Binding:**
-- This session has a bound SSH connection: `{sshConnectionId}`
-- All Bash commands will automatically use this connection unless you explicitly pass a different `sshConnectionId` or omit it for local execution.
+**Current project is a remote SSH project.**
+- SSH connection ID: `{sshConnectionId}`{cwdLine}
+- All Bash/Shell commands you execute will automatically run on the remote server via this SSH connection. You do NOT need to manually pass `sshConnectionId` in tool calls — the system routes them automatically.
+- The working folder above is a **remote path** on the SSH server, not a local path. Do not attempt to read it with local file tools.
+- Use `SshListConnections` if you need to inspect available connections.
+- Real-time command output is displayed in the terminal panel for the user to observe.
 </ssh_capability>
 """;
     }
 
-    private static string BuildProjectContext(string workingFolder)
+    private static string BuildProjectContext(string workingFolder, string? sshConnectionId)
     {
+        if (!string.IsNullOrWhiteSpace(sshConnectionId))
+        {
+            return $"""
+## Project
+- Remote Working Folder: `{workingFolder}`
+This is a remote path on the SSH server. All Bash commands default to this directory. Use SSH file tools (not local file tools) to read or write files on the remote server.
+""";
+        }
+
         return $"""
 ## Project
 - Working Folder: `{workingFolder}`
