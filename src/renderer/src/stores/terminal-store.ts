@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
+import { useUIStore } from '@renderer/stores/ui-store'
 
 // ─── Types ───
 
@@ -160,6 +161,9 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       tabs: [...state.tabs, tab],
       activeTabId: tab.id
     }))
+
+    // Auto-open the right panel and switch to terminal tab so user can see the output
+    useUIStore.getState().ensureTerminalTab()
   },
 
   completeSshAgentTab: (execId, exitCode) => {
