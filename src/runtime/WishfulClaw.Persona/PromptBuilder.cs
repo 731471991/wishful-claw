@@ -44,6 +44,17 @@ public static class PromptBuilder
         // ── Session Context ──
         parts.Add(BuildSessionContext(language));
 
+        // ── SSH Context + Project Context (high priority — put early so Agent doesn't miss it) ──
+        var sshContext = BuildSshContext(parameters);
+        if (!string.IsNullOrWhiteSpace(sshContext))
+        {
+            parts.Add(sshContext);
+        }
+        if (!string.IsNullOrWhiteSpace(workingFolder))
+        {
+            parts.Add(BuildProjectContext(workingFolder, JsonHelpers.GetString(parameters, "sshConnectionId")));
+        }
+
         // ── Context Documents (Persona) ──
         if (profile == PromptProfile.Main && !string.IsNullOrWhiteSpace(personaId))
         {
@@ -60,19 +71,6 @@ public static class PromptBuilder
 
         // ── Tool Capability ──
         parts.Add(BuildToolCapability(parameters));
-
-        // ── SSH Context ──
-        var sshContext = BuildSshContext(parameters);
-        if (!string.IsNullOrWhiteSpace(sshContext))
-        {
-            parts.Add(sshContext);
-        }
-
-        // ── Project Context ──
-        if (!string.IsNullOrWhiteSpace(workingFolder))
-        {
-            parts.Add(BuildProjectContext(workingFolder, JsonHelpers.GetString(parameters, "sshConnectionId")));
-        }
 
         // ── User Rules ──
         if (!string.IsNullOrWhiteSpace(userRules))
