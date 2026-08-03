@@ -178,15 +178,9 @@ export function TerminalPanel(): React.JSX.Element {
               style={{ display: tab.id === activeTab.id ? undefined : 'none' }}
             >
               {tab.kind === 'ssh-agent' ? (
-                tab.status === 'running' ? (
-                  <Suspense fallback={null}>
-                    <AgentSshTerminal execId={tab.execId ?? tab.id} />
-                  </Suspense>
-                ) : (
-                  <Suspense fallback={null}>
-                    <AgentSshTerminal execId={tab.execId ?? tab.id} />
-                  </Suspense>
-                )
+                <Suspense fallback={null}>
+                  <AgentSshTerminal execId={tab.execId ?? tab.id} />
+                </Suspense>
               ) : tab.status === 'running' ? (
                 <Suspense fallback={null}>
                   <LocalTerminal terminalId={tab.id} />

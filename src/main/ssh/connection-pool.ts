@@ -268,6 +268,17 @@ export async function withSftp<T>(
 }
 
 /**
+ * Close a single SSH connection by connectionId.
+ * Used when the user explicitly disconnects.
+ */
+export function closeConnection(connectionId: string): void {
+  const handle = handles.get(connectionId)
+  if (handle) {
+    closeHandle(handle)
+  }
+}
+
+/**
  * Close all active SSH connections (used during app shutdown).
  */
 export function closeAllSshConnections(): void {

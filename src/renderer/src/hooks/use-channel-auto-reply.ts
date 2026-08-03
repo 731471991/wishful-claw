@@ -23,6 +23,7 @@ import { useChannelStore } from '@renderer/stores/channel-store'
 import { IPC } from '@renderer/lib/ipc/channels'
 import type { AgentStreamEvent } from '../../../shared/agent-stream-protocol'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
+import type { ThinkingConfig } from '../../../shared/types/provider'
 
 // ── Types ──
 
@@ -177,7 +178,7 @@ async function handleSessionTask(task: SessionTaskPayload): Promise<void> {
 
   const settings = useSettingsStore.getState()
   const modelConfig = targetProvider.models.find((m: { id: string; thinkingConfig?: unknown }) => m.id === modelId)
-  const thinkingConfig = modelConfig?.thinkingConfig as { type?: string; budget_tokens?: number } | undefined
+  const thinkingConfig = modelConfig?.thinkingConfig as ThinkingConfig | undefined
   const thinkingEnabled = settings.thinkingEnabled && !!thinkingConfig
   const reasoningEffort = thinkingConfig
     ? resolveReasoningEffortForModel({
