@@ -113,9 +113,9 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   }, [])
 
   const handleCreateProjectWithDirectory = useCallback(
-    async (folderPath: string, _connectionId: string | null, projectName?: string) => {
+    async (folderPath: string, connectionId: string | null, projectName?: string) => {
       const name = projectName?.trim() || folderPath.split(/[\\/]/).pop() || 'New Project'
-      const projectId = await createProject({ name, workingFolder: folderPath })
+      const projectId = await createProject({ name, workingFolder: folderPath, sshConnectionId: connectionId ?? undefined })
       useChatStore.getState().setActiveProjectHome(projectId)
       useUIStore.getState().navigateToProject(projectId)
       toast.success(t('sidebar.projectCreated', { defaultValue: 'Project created' }))

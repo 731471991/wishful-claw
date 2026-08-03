@@ -162,8 +162,11 @@ private static IMemorySearch GetSearch() =>
                 var projectId = GetString(parameters, "projectId");
                 var sshConnectionId = GetString(parameters, "sshConnectionId");
                 var workingFolder = GetString(parameters, "workingFolder");
-                if (!string.IsNullOrWhiteSpace(sshConnectionId) && !string.IsNullOrWhiteSpace(projectId))
-                    return $"project:ssh:{projectId}";
+                if (!string.IsNullOrWhiteSpace(sshConnectionId))
+                {
+                    var scopeId = !string.IsNullOrWhiteSpace(projectId) ? projectId : sshConnectionId;
+                    return $"project:ssh:{scopeId}";
+                }
                 if (!string.IsNullOrWhiteSpace(workingFolder))
                     return $"project:{workingFolder}";
                 return "global";
@@ -176,8 +179,11 @@ private static IMemorySearch GetSearch() =>
         var sshConnId = GetString(parameters, "sshConnectionId");
         var projId = GetString(parameters, "projectId");
         var wf = GetString(parameters, "workingFolder");
-        if (!string.IsNullOrWhiteSpace(sshConnId) && !string.IsNullOrWhiteSpace(projId))
-            return $"project:ssh:{projId}";
+        if (!string.IsNullOrWhiteSpace(sshConnId))
+        {
+            var scopeId = !string.IsNullOrWhiteSpace(projId) ? projId : sshConnId;
+            return $"project:ssh:{scopeId}";
+        }
         if (!string.IsNullOrWhiteSpace(wf))
             return $"project:{wf}";
         return allowNull ? "global" : "global";

@@ -172,10 +172,12 @@ Do not overstep your bounds or create unnecessary files.
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
 
         string scope;
-        if (!string.IsNullOrWhiteSpace(sshConnectionId) && !string.IsNullOrWhiteSpace(projectId))
+        if (!string.IsNullOrWhiteSpace(sshConnectionId))
         {
-            // SSH project: memory stored locally under ~/.wishful-claw/projects/{projectId}/
-            scope = $"project:ssh:{projectId}";
+            // SSH project: memory stored locally under ~/.wishful-claw/projects/{id}/
+            // Use projectId if available, otherwise fall back to sshConnectionId
+            var scopeId = !string.IsNullOrWhiteSpace(projectId) ? projectId : sshConnectionId;
+            scope = $"project:ssh:{scopeId}";
         }
         else if (!string.IsNullOrWhiteSpace(workingFolder))
         {

@@ -17,12 +17,11 @@ internal static class MemoryToolHelpers
     /// </summary>
     public static string ResolveScope(ToolExecutionContext context)
     {
-        // SSH project: has projectId but workingFolder is a remote path
-        if (!string.IsNullOrWhiteSpace(context.ProjectId)
-            && !string.IsNullOrWhiteSpace(context.WorkingFolder)
-            && !Directory.Exists(context.WorkingFolder))
+        // SSH project: has sshConnectionId
+        if (!string.IsNullOrWhiteSpace(context.SshConnectionId))
         {
-            return $"project:ssh:{context.ProjectId}";
+            var scopeId = !string.IsNullOrWhiteSpace(context.ProjectId) ? context.ProjectId : context.SshConnectionId;
+            return $"project:ssh:{scopeId}";
         }
 
         // Local project: workingFolder exists on local filesystem

@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -51,6 +51,7 @@ public static class ToolCallProcessor
     {
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
         var projectId = JsonHelpers.GetString(parameters, "projectId");
+        var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
         var maxParallelTools = Math.Max(1, JsonHelpers.GetInt(parameters, "maxParallelTools", 1));
         var maxToolCallsPerTurn = JsonHelpers.GetInt(parameters, "maxToolCallsPerTurn", 0); // 0 = unlimited
         var maxConcurrentSubAgents = Math.Max(1, JsonHelpers.GetInt(parameters, "maxConcurrentSubAgents", 2));
@@ -91,7 +92,7 @@ public static class ToolCallProcessor
 
             await semaphore.WaitAsync(state.CancellationToken);
             toolTasks.Add(ExecuteSingleAsync(
-                toolCall, workingFolder, projectId, state, context, semaphore, registry));
+                toolCall, workingFolder, projectId, sshConnectionId, state, context, semaphore, registry));
         }
 
         // Wait for all started tool tasks to complete
@@ -163,6 +164,7 @@ public static class ToolCallProcessor
         AgentRuntimeNativeToolCall toolCall,
         string? workingFolder,
         string? projectId,
+        string? sshConnectionId,
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
         SemaphoreSlim semaphore,
@@ -283,7 +285,7 @@ public static class ToolCallProcessor
 
             // Dispatch to the appropriate executor
             var (toolOutput, isToolError) = await ToolDispatchRouter.DispatchAsync(
-                toolCall, state, context, registry, workingFolder, projectId);
+                toolCall, state, context, registry, workingFolder, projectId, sshConnectionId);
 
             var completedAt = AgentLoop.NowMs();
 

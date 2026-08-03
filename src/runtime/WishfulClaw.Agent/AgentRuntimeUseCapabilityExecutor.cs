@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
@@ -48,6 +48,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         ToolRegistry? registry,
         string? workingFolder,
         string? projectId,
+        string? sshConnectionId,
         CancellationToken cancellationToken)
     {
         var action = (JsonHelpers.GetString(call.Input, "action") ?? "list").Trim().ToLowerInvariant();
@@ -57,7 +58,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         {
             "list" => await ListCapabilitiesAsync(context, registry, cancellationToken),
             "inspect" => await InspectCapabilityAsync(context, registry, capabilityId, cancellationToken),
-            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, projectId, capabilityId, cancellationToken),
+            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, projectId, sshConnectionId, capabilityId, cancellationToken),
             _ => EncodeError($"Unknown action: {action}. Use list, inspect, or call.")
         };
     }
@@ -175,6 +176,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         ToolRegistry? registry,
         string? workingFolder,
         string? projectId,
+        string? sshConnectionId,
         string capabilityId,
         CancellationToken cancellationToken)
     {
@@ -239,7 +241,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
                 arguments);
 
             var (output, isError) = await ToolDispatchRouter.DispatchAsync(
-                builtinCall, state, context, registry, workingFolder, projectId);
+                builtinCall, state, context, registry, workingFolder, projectId, sshConnectionId);
 
             return isError && IsJsonError(output) ? output : output;
         }

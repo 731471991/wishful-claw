@@ -40,9 +40,10 @@ internal static partial class AgentLoop
             var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
 
             string scope;
-            if (!string.IsNullOrWhiteSpace(sshConnectionId) && !string.IsNullOrWhiteSpace(projectId))
+            if (!string.IsNullOrWhiteSpace(sshConnectionId))
             {
-                scope = $"project:ssh:{projectId}";
+                var scopeId = !string.IsNullOrWhiteSpace(projectId) ? projectId : sshConnectionId;
+                scope = $"project:ssh:{scopeId}";
             }
             else if (!string.IsNullOrWhiteSpace(workingFolder))
             {
