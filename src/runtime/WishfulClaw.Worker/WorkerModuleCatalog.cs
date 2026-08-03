@@ -1,17 +1,19 @@
 using WishfulClaw.Contracts;
 using WishfulClaw.Agent;
 using WishfulClaw.Worker.Modules;
-using WishfulClaw.Worker.Modules.Db;
+using WishfulClaw.Infrastructure.Db;
+using WishfulClaw.Agent.Tools.AgentChanges;
 using WishfulClaw.Worker.Modules.AgentChanges;
-using WishfulClaw.Worker.Modules.Git;
-using WishfulClaw.Worker.Modules.Channels;
-using WishfulClaw.Worker.Modules.Media;
-using WishfulClaw.Worker.Modules.OpenAIAudio;
-using WishfulClaw.Worker.Modules.Extensions;
-using WishfulClaw.Worker.Modules.Skills;
-using WishfulClaw.Worker.Modules.Video;
+using WishfulClaw.Agent.Modules.Git;
+using WishfulClaw.Agent.Modules.Channels;
+using WishfulClaw.Agent.Modules.Media;
+using WishfulClaw.Agent.Modules.OpenAIAudio;
+using WishfulClaw.Agent.Modules.Extensions;
+using WishfulClaw.Agent.Modules.Skills;
+using WishfulClaw.Agent.Modules.Video;
 using WishfulClaw.Persona;
-using WishfulClaw.Worker.Tools;
+using WishfulClaw.Agent.Tools;
+using WishfulClaw.Agent.Modules;
 
 namespace WishfulClaw.Worker;
 

@@ -2,7 +2,7 @@ import type { BuiltinProviderPreset } from '@renderer/stores/providers/types'
 
 export const deepseekPreset: BuiltinProviderPreset = {
   builtinId: 'deepseek',
-  version: 1,
+  version: 2,
   name: 'DeepSeek',
   type: 'anthropic',
   defaultBaseUrl: 'https://api.deepseek.com/anthropic',
@@ -25,8 +25,8 @@ export const deepseekPreset: BuiltinProviderPreset = {
       cacheHitPrice: 0.0028,
       supportsThinking: true,
       thinkingConfig: {
-        bodyParams: { enable_thinking: true },
-        disabledBodyParams: { enable_thinking: false }
+        bodyParams: { thinking: { type: 'enabled' } },
+        disabledBodyParams: { thinking: { type: 'disabled' } }
       }
     },
     {
@@ -44,8 +44,8 @@ export const deepseekPreset: BuiltinProviderPreset = {
       cacheHitPrice: 0.003625,
       supportsThinking: true,
       thinkingConfig: {
-        bodyParams: { enable_thinking: true },
-        disabledBodyParams: { enable_thinking: false }
+        bodyParams: { thinking: { type: 'enabled' } },
+        disabledBodyParams: { thinking: { type: 'disabled' } }
       }
     }
   ],

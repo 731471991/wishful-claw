@@ -32,7 +32,12 @@ public sealed record AgentRuntimeTokenUsage(
     int? CacheCreationTokens = null,
     int? CacheCreation5mTokens = null,
     int? CacheCreation1hTokens = null,
-    double? CacheReadRatio = null);
+    double? CacheReadRatio = null,
+    // Session-cumulative cache tokens (filled by AgentLoop before emitting message_end)
+    int? SessionCacheHitTokens = null,
+    int? SessionCacheMissTokens = null,
+    // Source of this usage: "executor", "subagent", "compaction", etc.
+    string? UsageSource = null);
 
 /// <summary>
 /// Request timing metrics.

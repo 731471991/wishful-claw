@@ -193,11 +193,33 @@ export function ModelSettingsPopover({
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="inline-flex h-8 w-7 items-center justify-center rounded-r-lg border-l border-border/30 text-muted-foreground/50 transition-colors hover:bg-muted/50 hover:text-foreground"
-          aria-label={t('topbar.modelSettings')}
-          title={t('topbar.modelSettings')}
+          className={cn(
+            'inline-flex h-8 items-center justify-center rounded-r-lg border-l border-border/30 transition-colors hover:bg-muted/50',
+            supportsThinking && thinkingEnabled
+              ? 'gap-0.5 px-1.5 text-violet-600 dark:text-violet-400'
+              : 'w-7 text-muted-foreground/50 hover:text-foreground'
+          )}
+          aria-label={supportsThinking ? t('topbar.deepThinking') : t('topbar.modelSettings')}
+          title={
+            supportsThinking
+              ? t('topbar.deepThinking') + ': ' + (thinkingEnabled
+                  ? String(effectiveReasoningEffort).toUpperCase()
+                  : tChat('input.thinkingOff'))
+              : t('topbar.modelSettings')
+          }
         >
-          <Settings2 className="size-3" />
+          {supportsThinking ? (
+            <>
+              <Brain className="size-3.5" />
+              {thinkingEnabled && (
+                <span className="text-[10px] font-semibold leading-none">
+                  {String(effectiveReasoningEffort).toLowerCase()}
+                </span>
+              )}
+            </>
+          ) : (
+            <Settings2 className="size-3" />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent

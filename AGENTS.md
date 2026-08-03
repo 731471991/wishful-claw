@@ -4,7 +4,14 @@
 
 ## 项目概述
 
-Wishful Claw 是一个 Agent 编程软件，融合 OpenCowork 的 Agent Loop + 工具链、KodaClaw 的记忆与人格设计、OpenClaw.net 的记忆主动回忆机制。代码已从三个参考项目迁移并适配为 WishfulClaw 自有命名空间，参考项目仅作为历史溯源。
+Wishful Claw 是一个 Agent 编程软件，参考四个开源项目：
+
+- **OpenCowork** —— Agent Loop、工具链、Provider、流式协议。以该项目为基底迁移代码，经过拆分、适配和命名空间重组后纳入 WishfulClaw 架构。
+- **KodaClaw** —— 记忆系统、人格系统、PromptBuilder。借鉴设计思路，代码自行实现。
+- **OpenClaw.net** —— 记忆主动回忆、记忆工具、上下文预算。借鉴设计思路，代码自行实现。
+- **DeepSeek-Reasonix** —— 缓存命中率统计、工具注册发现。借鉴设计思路，代码自行实现。
+
+OpenCowork 的代码经迁移和重构后已成为 WishfulClaw 的一部分；其余三个项目主要借鉴设计思路和架构理念，代码由 WishfulClaw 自行实现。
 
 ## 技术栈
 
@@ -14,7 +21,7 @@ Wishful Claw 是一个 Agent 编程软件，融合 OpenCowork 的 Agent Loop + �
 
 ## 项目结构（7 层架构）
 
-> 当前状态：6 项目已落地（Contracts / Core / Workspace / Persona / Agent / Worker），Infrastructure 层计划在 v2-iter-3 中新建。
+> 当前状态：7 项目已落地（Contracts / Core / Infrastructure / Workspace / Persona / Agent / Worker）。
 
 ```
 src/
@@ -31,13 +38,13 @@ src/
     │   ├── Protocol/                     #   通信协议（MessagePack 编解码、流式事件、Worker 分发）
     │   └── Tools/                        #   工具框架（IToolExecutor / IToolProvider / ToolRegistry / ToolSchemaBuilder）
     │
-    ├── WishfulClaw.Infrastructure/       # 3. 基础设施（计划中，v2-iter-3 新建）
-    │   ├── Db/                           #   数据库（DbClient + Entities 从 Worker 搬入）
-    │   ├── Storage/                      #   配置存储（ConfigStore + ProviderStore + JsonFileNodeCache 从 Worker 搬入）
-    │   └── Http/                         #   HTTP 客户端（WorkerHttpClientFactory 从 Agent 搬入）
+    ├── WishfulClaw.Infrastructure/       # 3. 基础设施（Db / Storage / Http）
+    │   ├── Db/                           #   DbClient + Entities + Db*Tools（SQLite 持久化）
+    │   ├── Storage/                      #   ConfigStore + ProviderStore + JsonFileNodeCache（JSON 配置读写）
+    │   └── Http/                         #   WorkerHttpClientFactory（HTTP 客户端工厂）
     │
     ├── WishfulClaw.Workspace/            # 4. 记忆系统（业务层）
-    │   └── Memory/                       #   记忆读写/检索/分层流转/巩固/语义降级/FTS5
+    │   └── Memory/                       #   记忆读写/检索/分层流转/巩固/语义降级/FTS5 + MemoryFtsService
     │
     ├── WishfulClaw.Persona/              # 5. 人格系统
     │   ├── PromptBuilder.cs              #   分段组装 System Prompt + 字符预算
@@ -47,7 +54,7 @@ src/
     │
     ├── WishfulClaw.Agent/                # 6. Agent 运行时（核心业务逻辑）
     │   ├── AgentLoop*.cs                 #   Agent Loop 循环主体（partial class 拆分）
-    │   ├── SessionConversation.cs        #   per-session 会话状态管理（增量追加 + prefix cache 优化）
+    │   ├── SessionConversation.cs        #   per-session 会话状态管理（增量追加 + prefix cache 优化 + 缓存计数器）
     │   ├── ContextCompression.cs         #   LLM 总结式上下文压缩
     │   ├── ToolCallProcessor.cs          #   工具调用处理
     │   ├── ToolDispatchRouter.cs         #   工具分派路由
@@ -56,31 +63,16 @@ src/
     │   │   ├── AnthropicMessages*.cs
     │   │   ├── OpenAIChat*.cs
     │   │   └── ...
+    │   ├── Tools/                        #   工具实现（FileTools / SearchTools / ShellTools / MemoryTools / Providers / AgentChanges）
+    │   ├── Modules/                      #   业务模块（Git / Skills / Extensions / Channels / Video / Media / OpenAIAudio / ProviderTest / WebFetch）
     │   ├── *Executor.cs                  #   工具执行器（AskUser / Browser / ImageGenerate / SSH / Task / WebFetch / WebSearch ...）
     │   ├── ConversationCodec.cs          #   对话编解码
-    │   ├── StreamEventModels.cs          #   流式事件模型
-    │   └── WorkerHttpClientFactory.cs    #   ⚠️ 待搬到 Infrastructure
+    │   └── StreamEventModels.cs          #   流式事件模型
     │
     └── WishfulClaw.Worker/               # 7. 进程入口（薄层 IPC 宿主）
         ├── Program.cs                    #   入口
         ├── WorkerHost*.cs                #   宿主构建 + 模块装载
-        ├── Modules/                      #   模块注册（IWorkerModule 模式）
-        │   ├── Db/                       #   ⚠️ DbClient + Entities 待搬到 Infrastructure
-        │   ├── Git/                      #   Git 工具模块
-        │   ├── Skills/                   #   Skill 管理模块
-        │   ├── Extensions/               #   扩展模块
-        │   ├── Channels/                 #   渠道模块
-        │   ├── Video/                    #   视频生成模块
-        │   └── ...
-        ├── Tools/                        #   工具实现（FileTools / SearchTools / ShellTools / MemoryTools / Providers）
-        │   ├── FileTools/                #   ⚠️ 依赖 DbClient，待 Infrastructure 后可独立拆分
-        │   ├── SearchTools/
-        │   ├── ShellTools/
-        │   ├── MemoryTools/
-        │   └── Providers/                #   工具 Provider 注册（18 个 ToolProvider）
-        ├── ConfigStore.cs                #   ⚠️ 待搬到 Infrastructure
-        ├── ProviderStore.cs              #   ⚠️ 待搬到 Infrastructure
-        └── JsonFileNodeCache.cs          #   ⚠️ 待搬到 Infrastructure
+        └── WorkerModuleCatalog.cs        #   模块注册（引用 Agent / Infrastructure 中的实现）
 ```
 
 ### 各项目文件数（当前实际）
@@ -89,11 +81,11 @@ src/
 |------|--------|------|
 | Contracts | 4 | 纯接口契约 |
 | Core | 19 | Agent 通用框架（Protocol + Tools） |
-| Infrastructure | — | 计划中（v2-iter-3 新建） |
-| Workspace | 12 | 记忆系统 |
+| Infrastructure | 23 | 基础设施（Db / Storage / Http + Db Tools） |
+| Workspace | 12 | 记忆系统（含 MemoryFtsService） |
 | Persona | 9 | 人格系统 |
-| Agent | 65 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent） |
-| Worker | 101 | IPC 宿主 + 模块注册 + 工具实现 + Db/Storage（待瘦身至 ~30） |
+| Agent | 141 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools / Modules） |
+| Worker | 12 | IPC 宿主（Program + Host + Catalog + 5 核心 Module） |
 
 > 统计不含 obj/ 目录下的自动生成文件。
 
@@ -118,23 +110,21 @@ Agent 通用框架，不含任何业务逻辑。
 
 ### 3. Infrastructure 层（WishfulClaw.Infrastructure）
 
-> 计划中，v2-iter-3 新建。
-
 基础设施层，提供数据库、配置存储、HTTP 客户端等通用能力。
 
 - **依赖** Contracts + Core
 - **不依赖** Workspace / Persona / Agent / Worker
 - 包含：
-  - **Db**：DbClient + Entities（从 Worker 搬入）— SQLite 持久化
-  - **Storage**：ConfigStore + ProviderStore + JsonFileNodeCache（从 Worker 搬入）— JSON 配置文件读写
-  - **Http**：WorkerHttpClientFactory（从 Agent 搬入）— HTTP 客户端工厂
-- 目的：解耦 Worker 对基础设施的直接依赖，使 Worker 中的 Tools / Modules 能迁出
+  - **Db**：DbClient + Entities + Db*Tools — SQLite 持久化
+  - **Storage**：ConfigStore + ProviderStore + JsonFileNodeCache — JSON 配置文件读写
+  - **Http**：WorkerHttpClientFactory — HTTP 客户端工厂
+- 目的：解耦 Worker 对基础设施的直接依赖，使 Tools / Modules 能迁出到 Agent 层
 
 ### 4. Workspace 层（WishfulClaw.Workspace）
 
 记忆系统业务层。
 
-- **依赖** Contracts（+ Infrastructure，待 v2-iter-3 后）
+- **依赖** Contracts + Infrastructure
 - **不依赖** Persona / Agent / Worker
 - 包含：Memory（读写/检索/分层流转/巩固/语义降级/FTS5）
 
@@ -150,18 +140,18 @@ Agent 通用框架，不含任何业务逻辑。
 
 Agent 运行时核心业务逻辑。
 
-- **依赖** Contracts + Core（+ Infrastructure，待 v2-iter-3 后）+ Persona
+- **依赖** Contracts + Core + Infrastructure + Persona
 - **不依赖** Worker
-- 包含：AgentLoop / Provider 实现 / 工具执行器 / 上下文压缩 / SubAgent / SessionConversation
+- 包含：AgentLoop / Provider 实现 / 工具执行器 / 上下文压缩 / SubAgent / SessionConversation / Tools（FileTools / SearchTools / ShellTools / MemoryTools / Providers / AgentChanges）
 
 ### 7. Worker 层（WishfulClaw.Worker）
 
 进程入口，薄层 IPC 宿主。
 
-- **依赖** Agent + Persona + Workspace + Core + Contracts（+ Infrastructure，待 v2-iter-3 后）
+- **依赖** Agent + Persona + Workspace + Core + Contracts + Infrastructure
 - 负责模块注册、依赖注入、进程生命周期
 - 被 Electron Main 进程拉起
-- **目标**：瘦身后仅保留 Program.cs + WorkerHost + Module 注册 + 少量 Worker 专属逻辑（~30 文件）
+- 当前仅保留 Program.cs + WorkerHost + WorkerModuleCatalog（12 文件），其余已迁入 Agent / Infrastructure
 
 ### 依赖方向（严格单向）
 
@@ -170,7 +160,7 @@ Contracts
   ↑
 Core
   ↑
-Infrastructure  ←──── （计划中）
+Infrastructure
   ↑
 Workspace
   ↑
@@ -192,15 +182,16 @@ Worker
 5. **工具 Executor 模式**——每个工具自注册、自包含，加工具只需新建一个 Executor 文件
 6. **Infrastructure 下沉**——Db/Storage/Http 等通用能力下沉到独立层，Worker 保持薄层
 
-## 参考源码（历史溯源）
+## 参考源码
 
-> 以下项目代码已迁移并适配为 WishfulClaw 命名空间。参考项目仅作为历史溯源，开发时不再直接参考，除非需要理解原始设计意图。
+> 以下是 WishfulClaw 的设计思路来源。OpenCowork 的代码经迁移和重构后纳入 WishfulClaw 架构，其余项目主要借鉴设计思路，代码由 WishfulClaw 自行实现。
 
 | 项目 | 路径 | 参考内容 |
 |------|------|---------|
-| OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链、Provider、流式协议（已迁移） |
-| KodaClaw | `D:\claw\koda-claw` | 记忆系统、人格系统、PromptBuilder（已迁移） |
-| OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆、记忆工具、上下文预算（已迁移） |
+| OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链、Provider、流式协议（迁移+重构） |
+| KodaClaw | `D:\claw\koda-claw` | 记忆系统、人格系统、PromptBuilder（借鉴思路） |
+| OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆、记忆工具、上下文预算（借鉴思路） |
+| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现（借鉴思路） |
 
 ## 开发约定
 
@@ -263,6 +254,35 @@ Worker
 - **新分支必须从最新的 main 拆出**：开始新迭代前，先确保上一个迭代分支已合并到 main 并打 tag，然后从更新后的 main 创建新分支
 - **禁止从旧分支拆分支**：如果上一个分支未合并 main，新分支会缺少前序迭代的代码变更，导致编译错误或功能缺失
 - **标准流程**：`git checkout main` → `git pull origin main` → `git checkout -b dev/v2-iter-{N}` → 开发 → commit → push → 合并 main → 打 tag → 删除分支 → 下一个迭代从 main 重新拆出
+
+### 迭代完结收尾
+
+**迭代是否完结由用户确认，Agent 不得自行判定。**
+
+用户确认完结后，Agent 必须执行以下收尾步骤，确保 main 是最新的，下个会话可以直接从 main 开始新迭代：
+
+```bash
+# 1. 合并到 main
+ git checkout main
+git merge dev/v2-iter-{N} --no-ff -m "merge: v2-iter-{N} - {迭代名称}"
+
+# 2. 打 tag
+git tag -a v2.{N}.0 -m "v2-iter-{N}: {迭代名称} - 验证通过"
+
+# 3. 推送远程（需要代理）
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin v2.{N}.0
+
+# 4. 删除本地迭代分支
+git branch -d dev/v2-iter-{N}
+
+# 5. 删除远程迭代分支（如果之前 push 过）
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin --delete dev/v2-iter-{N}
+```
+
+收尾完成后更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）。
+
+**关键要求**：收尾完成后，当前会话结束。下个会话直接从 main 拉取最新代码开始新迭代，不需要关心旧分支。
 
 ## 异常日志
 

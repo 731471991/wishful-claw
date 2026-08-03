@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
 using WishfulClaw.Persona;
 
 namespace WishfulClaw.Agent;
@@ -37,36 +38,38 @@ internal static partial class AgentLoop
 
         ValidateProvider(provider);
 
-        // ── Session conversation state ──
-        // Use SessionConversation for per-session state management.
-        // First call (or messageCount mismatch): full init.
-        // Subsequent calls (messageCount matches): incremental append.
+        // -- Session conversation state (Reasonix pattern) --
+        // Backend is the single source of truth for the conversation.
+        // Frontend sends only the new user message each turn.
+        // First turn (empty session): Initialize with the user message.
+        // Subsequent turns: Append the new user message to the existing session.
         var sessionId = state.SessionId ?? "";
         var sessionConv = SessionConversationManager.GetOrCreate(sessionId);
-        var frontendMessageCount = JsonHelpers.GetInt(parameters, "messageCount", 0);
 
         List<AgentRuntimeChatMessage> conversation;
         List<JsonElement> wireConversation;
 
-        if (frontendMessageCount > 0 && frontendMessageCount == sessionConv.MessageCount)
+        if (sessionConv.MessageCount == 0)
         {
-            // Incremental mode: parameters contains only new messages.
-            var newWireMessages = ReadWireConversation(parameters);
-            var newConversation = ReadConversation(newWireMessages);
-            sessionConv.Append(newWireMessages, newConversation);
-            WorkerLog.Debug(
-                $"agent loop incremental session={FormatSessionId(sessionId)} " +
-                $"existing={frontendMessageCount} appended={newWireMessages.Count}");
-        }
-        else
-        {
-            // Full mode: initialize from scratch (first turn, session restore, or sync mismatch).
+            // First turn: initialize session with the user message.
             wireConversation = ReadWireConversation(parameters);
             conversation = ReadConversation(wireConversation);
             sessionConv.Initialize(wireConversation, conversation);
             WorkerLog.Debug(
-                $"agent loop full init session={FormatSessionId(sessionId)} " +
-                $"messages={wireConversation.Count} frontendCount={frontendMessageCount}");
+                $"agent loop init session={FormatSessionId(sessionId)} " +
+                $"messages={wireConversation.Count}");
+        }
+        else
+        {
+            // Subsequent turn: append the new user message.
+            var newWireMessages = ReadWireConversation(parameters);
+            var newConversation = ReadConversation(newWireMessages);
+            sessionConv.Append(newWireMessages, newConversation);
+            conversation = sessionConv.GetConversation();
+            wireConversation = sessionConv.GetWireConversation();
+            WorkerLog.Debug(
+                $"agent loop append session={FormatSessionId(sessionId)} " +
+                $"existing={sessionConv.MessageCount - newWireMessages.Count} appended={newWireMessages.Count}");
         }
 
         // Get live references from SessionConversation for the loop to use.
@@ -76,6 +79,27 @@ internal static partial class AgentLoop
         state.ReplaceParameters(runtimeParameters);
         parameters = runtimeParameters;
         provider = GetObject(parameters, "provider");
+
+        // ── Resolve tool definitions from backend registry ──
+        // Tools live in the backend (ToolModuleState.Registry); the frontend
+        // sends only a toolPreset string. This avoids a JSON round-trip that
+        // breaks prefix cache stability (Reasonix pattern: backend owns tools).
+        var toolPresetId = JsonHelpers.GetString(parameters, "toolPreset") ?? "full";
+        var toolPreset = ToolPreset.BuiltIn.TryGetValue(toolPresetId, out var tp)
+            ? tp
+            : ToolPreset.BuiltIn["full"];
+        var toolDefs = ToolModuleState.Registry?.GetToolDefinitions(toolPreset) ?? [];
+
+        // Filter out WebSearch/WebFetch when web search is not enabled.
+        // Previously done in the frontend; now handled backend-side since
+        // tools are resolved from the backend registry.
+        var webSearchEnabled = JsonHelpers.GetBool(parameters, "webSearchEnabled", true);
+        if (!webSearchEnabled)
+        {
+            toolDefs = toolDefs
+                .Where(t => t.Name != "WebSearch" && t.Name != "WebFetch")
+                .ToList();
+        }
 
         // ── Persona-aware system prompt ──
         var personaId = JsonHelpers.GetString(parameters, "personaId");
@@ -93,12 +117,12 @@ internal static partial class AgentLoop
             WorkerLog.Info($"persona system prompt (cached) id={personaId} length={builtPrompt.Length}");
         }
 
-        // Inject current timestamp as transient user-message prefix (cache-safe)
-        InjectTimestampPrefix(conversation);
-
-        // Drain pending memory-update notes and inject as transient user-message prefix (cache-safe)
-        // Mid-session memory changes ride the turn, not the cached system prefix.
-        InjectMemoryUpdatePrefix(conversation, state.SessionId ?? "");
+        // Inject timestamp + memory updates directly into the user message
+        // stored in SessionConversation. This makes the timestamp part of the
+        // permanent conversation history, so every turn sees the SAME bytes
+        // for historical messages → prefix cache stable.
+        // (Timestamp uses minute-level precision to stay stable within a turn.)
+        InjectTransientPrefix(conversation, state);
 
         var requestedMaxIterations = JsonHelpers.GetInt(parameters, "maxIterations", 0); // 0 = unlimited
         var hasIterationLimit = requestedMaxIterations > 0;
@@ -197,10 +221,18 @@ internal static partial class AgentLoop
             }
 
             // ── Execute provider turn (with retry policy for 429/5xx) ──
+            // Expose SessionConversation on state so providers can attach
+            // session-cumulative cache counters to message_end events.
+            state.SessionConversation = sessionConv;
+
             var turn = await ProviderRetryPolicy.ExecuteAsync(
-                () => ExecuteTurnAsync(parameters, provider, conversation, state, context),
+                () => ExecuteTurnAsync(parameters, provider, conversation, toolDefs, state, context),
                 state,
                 context);
+
+            // Clear transient memory recall after first API call — subsequent
+            // iterations within the same turn don't need it re-injected.
+            state.PendingMemoryRecall = null;
             conversation.Add(turn.AssistantMessage);
             var assistantWireMessage = CreateAssistantWireMessage(turn.AssistantMessage, turn.Usage);
             wireConversation.Add(assistantWireMessage);
@@ -209,6 +241,7 @@ internal static partial class AgentLoop
             {
                 lastInputTokens = turn.Usage.ContextTokens.Value;
             }
+
 
             // ── Emit text_phase if this turn has both text and tool calls ──
             // The text was streamed before tool execution — mark it as 'pre_tool'
@@ -350,6 +383,7 @@ internal static partial class AgentLoop
         JsonElement parameters,
         JsonElement provider,
         List<AgentRuntimeChatMessage> conversation,
+        IReadOnlyList<ToolDefinition> toolDefs,
         AgentRuntimeRunState state,
         IWorkerRequestContext context)
     {
@@ -358,12 +392,12 @@ internal static partial class AgentLoop
         if (providerType == "anthropic")
         {
             return await AnthropicMessagesProvider.ExecuteTurnAsync(
-                parameters, provider, conversation, state, context);
+                parameters, provider, conversation, toolDefs, state, context);
         }
 
         // Default: openai-chat
         return await OpenAIChatProvider.ExecuteTurnAsync(
-            parameters, provider, conversation, state, context);
+            parameters, provider, conversation, toolDefs, state, context);
     }
 
     // ── Provider validation ──

@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-0.11.0-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.2-orange" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/Status-Private-lightgrey" alt="Status">
 </p>
@@ -25,7 +25,7 @@
 
 ## 🚀 Why Wishful Claw?
 
-市面上的 Agent 编程工具各有短板：记忆差、人格粗糙、工具链不全。Wishful Claw 融合三个优秀开源项目的精华，从零构建一个**真正适合自己**的 Agent：
+市面上的 Agent 编程工具各有短板：记忆差、人格粗糙、工具链不全。Wishful Claw 参考四个优秀开源项目的设计，从零构建一个**真正适合自己**的 Agent：
 
 - **有记忆** — 对话前自动检索相关记忆注入，Agent 也能主动读写记忆。关掉重开，记忆还在
 - **有人格** — 6 套内置人格预设，切换后输出风格截然不同。人格只在输出层生效，不干扰 Agent 决策
@@ -72,35 +72,59 @@
 - **SQLite** — 项目注册、会话历史、消息记录、记忆条目、FTS5 搜索索引，实时写入，重启不丢
 - **Markdown 文件** — 人格数据（Identity/Soul）和 Hot 记忆（MEMORY.md）纯文件存储，人可读、可编辑、Git 友好
 
-### 🏗️ Architecture
+### 📊 缓存命中率统计
+
+- **后端维护** — SessionConversation 中以原子计数器累计 cache hit / miss tokens，整个会话只增不减
+- **全局展示** — 底部状态栏显示会话级全局累计命中率（`Σhit / (Σhit + Σmiss)`），而非单轮值
+- **Source 标记** — 每个 usage 事件携带 `usageSource`（executor / planner / subagent / compaction），为后续分拆统计预留
+
+## 🏗️ Architecture
 
 ```
 Renderer (React 19)  ←→  Preload (contextBridge)  ←→  Main Process  ←→  Native Worker (.NET 10)
      │                                                      │                    │
-  UI / 状态管理 / 工具调用展示                          IPC 桥接 / 窗口管理     Agent Loop / Provider 流式
-  SubAgentCard / 记忆面板 / 人格切换                     Worker 进程生命周期     SQLite (SqlSugarCore)
+  UI / 状态管理 / 工具调用展示                          IPC 桥接 / 窗口管理     7 层架构（见下方）
+  SubAgentCard / 记忆面板 / 人格切换                     Worker 进程生命周期     Agent Loop / Provider 流式
+                                                                               SQLite (SqlSugarCore)
                                                                                记忆检索 / FTS5 索引
                                                                                工具执行 / PromptBuilder
+                                                                               缓存计数器 / 上下文压缩
 ```
 
-### 分层设计
+### 分层设计（7 层架构）
 
 ```
-┌──────────────────────────────────────────────────┐
-│  WishfulClaw.Core      — Agent 通用框架          │
-│  AgentLoop / Providers / Tools / Protocol / Context│
-├──────────────────────────────────────────────────┤
-│  WishfulClaw.Workspace  — 业务层（记忆 + 人格）   │
-│  Memory / Persona / Files                         │
-├──────────────────────────────────────────────────┤
-│  WishfulClaw.Worker     — 进程入口，组装 Core+Workspace │
-│  Modules / Program.cs                             │
-├──────────────────────────────────────────────────┤
-│  WishfulClaw.Contracts  — 接口契约（Core ↔ Workspace）│
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Contracts   — 接口契约（纯接口，无实现）                         │
+│  IWorkerModule / IWorkerModuleContext / WorkerResponse            │
+├──────────────────────────────────────────────────────────────────┤
+│  Core        — Agent 通用框架（不含业务逻辑）                     │
+│  Protocol（MessagePack 通信）/ Tools（工具框架基类）              │
+├──────────────────────────────────────────────────────────────────┤
+│  Infrastructure — 基础设施（Db / Storage / Http）                 │
+│  DbClient + Entities / ConfigStore / ProviderStore / HttpClient  │
+├──────────────────────────────────────────────────────────────────┤
+│  Workspace   — 记忆系统（业务层）                                  │
+│  Memory 读写/检索/分层流转/巩固/语义降级/FTS5                      │
+├──────────────────────────────────────────────────────────────────┤
+│  Persona     — 人格系统                                           │
+│  PromptBuilder / PersonaGenerator / PersonaStore / Presets        │
+├──────────────────────────────────────────────────────────────────┤
+│  Agent       — Agent 运行时（核心业务逻辑）                        │
+│  AgentLoop / Provider / Tools / Modules / SubAgent / Compression │
+├──────────────────────────────────────────────────────────────────┤
+│  Worker      — 进程入口（薄层 IPC 宿主）                           │
+│  Program.cs / WorkerHost / WorkerModuleCatalog                    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-**核心原则**：Agent Runtime 和 Workspace 严格分离，通过 Contracts 接口交互，互不依赖实现细节。
+**核心原则**：
+
+- **分层严格分离** — 各层通过 Contracts 中的接口交互，依赖方向严格自上而下（Contracts → Core → Infrastructure → Workspace → Persona → Agent → Worker）
+- **Agent Runtime 和 Workspace 严格分离** — Agent 不直接操作记忆，通过工具调用读写
+- **Infrastructure 下沉** — Db/Storage/Http 等通用能力下沉到独立层，Worker 保持薄层（12 文件）
+- **记忆必须被用上** — 不靠 System Prompt 全量塞入，Agent 通过工具主动检索读取和实时写入
+- **人格在输出时体现** — 不介入 Agent Loop 决策，只在最终输出给用户时加工
 
 ## 🛠️ Quick Start
 
@@ -128,6 +152,8 @@ npm run dev
 
 ## 📈 Development Progress
 
+### MVP v1（已完成）
+
 | 迭代 | 版本 | 内容 | 状态 |
 |------|------|------|------|
 | 一 | v0.1.0 | 项目骨架（Electron + .NET 跑通，IPC 通信） | ✅ |
@@ -140,7 +166,19 @@ npm run dev
 | 八 | v0.8.0 | 集成验证（全链路修复 + 日志 + Worker 防崩溃） | ✅ |
 | 九 | v0.9.0 | 提示词优化器 + Token 统计修复 | ✅ |
 | 十 | v0.10.0 | 子 Agent（Task 工具 + 事件流 + 前端展示） | ✅ |
-| 十一 | v0.11.0 | 右侧面板动态 Tab 系统 + 5 个面板 | ✅ 待合并 main |
+| 十一 | v0.11.0 | 右侧面板动态 Tab 系统 + 5 个面板 | ✅ |
+| 十二 | v0.12.0 | Skill 系统 + 工具清理 | ✅ |
+| 十三 | v0.13.0 | 工具 Market + 中文快捷筛选标签 | ✅ |
+| 十四 | v0.14.0 | Skill 管理完善 | ✅ |
+| 十五 | v0.15.0 | MVP v1 完成（TS 零报错 + 缓存优化 + 工具清理） | ✅ |
+
+### MVP v2 — 架构重构（进行中）
+
+| 迭代 | 版本 | 内容 | 状态 |
+|------|------|------|------|
+| v2-iter-1 | v2.1.0 | Runtime 分层架构重构 — Agent / Persona 独立，Worker 瘦身 45% | ✅ |
+| v2-iter-2 | v2.2.0 | 缓存命中率修复 + LLM 上下文压缩 + 版本号统一 + 7 层架构文档 | ✅ |
+| v2-iter-3 | — | Infrastructure 层拆分（Db/Storage/Http 下沉）+ Worker 深度瘦身（12 文件）+ 后端缓存计数器（Reasonix 风格） | ✅ |
 
 ## 📁 Project Structure
 
@@ -151,24 +189,42 @@ wishful-claw/
 │   ├── renderer/               # React 前端（UI / 交互 / 状态管理）
 │   ├── preload/                # Electron Preload（安全桥接）
 │   ├── shared/                 # 前后端共享类型
-│   └── runtime/                # .NET 后端工程
+│   └── runtime/                # .NET 后端工程（7 层架构）
 │       ├── WishfulClaw.sln
-│       ├── WishfulClaw.Core/           # Agent 核心框架
-│       ├── WishfulClaw.Workspace/      # 记忆 + 人格业务
-│       ├── WishfulClaw.Worker/         # 进程入口
-│       └── WishfulClaw.Contracts/      # 接口契约
+│       ├── WishfulClaw.Contracts/        # 1. 接口契约（纯接口）
+│       ├── WishfulClaw.Core/             # 2. Agent 通用框架（Protocol + Tools）
+│       ├── WishfulClaw.Infrastructure/   # 3. 基础设施（Db / Storage / Http）
+│       ├── WishfulClaw.Workspace/        # 4. 记忆系统（Memory + FTS5）
+│       ├── WishfulClaw.Persona/          # 5. 人格系统（PromptBuilder + Presets）
+│       ├── WishfulClaw.Agent/            # 6. Agent 运行时（Loop / Provider / Tools / Modules）
+│       └── WishfulClaw.Worker/           # 7. 进程入口（Program + Host + Catalog）
 ├── docs/                       # 文档 + 迭代计划
 ├── scripts/                    # 辅助脚本
 └── README.md
 ```
 
+### 各项目文件数
+
+| 项目 | 文件数 | 职责 |
+|------|--------|------|
+| Contracts | 4 | 纯接口契约 |
+| Core | 19 | Agent 通用框架（Protocol + Tools） |
+| Infrastructure | 23 | 基础设施（Db / Storage / Http + Db Tools） |
+| Workspace | 12 | 记忆系统（含 MemoryFtsService） |
+| Persona | 9 | 人格系统 |
+| Agent | 141 | Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools / Modules） |
+| Worker | 12 | IPC 宿主（Program + Host + Catalog） |
+
 ## 📚 Reference Projects
 
 | 项目 | 参考内容 | 路径 |
 |------|---------|------|
-| [OpenCowork](https://github.com/AIDotNet/OpenCowork) | Agent Loop、工具链、模型 Provider、Electron + .NET 架构 | `D:\claw\OpenCowork` |
-| [KodaClaw](https://github.com/nekonako/koda-claw) | 记忆系统设计、人格系统设计（Identity + Soul 双层） | `D:\claw\koda-claw` |
-| [OpenClaw.net](https://github.com/nekonako/openclaw.net) | 记忆主动回忆（TryInjectRecall）、上下文本预算 | `D:\claw\openclaw.net` |
+| [OpenCowork](https://github.com/AIDotNet/OpenCowork) | Agent Loop、工具链、Provider、流式协议（迁移+重构） | `D:\claw\OpenCowork` |
+| [KodaClaw](https://github.com/nekonaka/koda-claw) | 记忆系统、人格系统、PromptBuilder（借鉴思路） | `D:\claw\koda-claw` |
+| [OpenClaw.net](https://github.com/nekonaka/openclaw.net) | 记忆主动回忆、记忆工具、上下文预算（借鉴思路） | `D:\claw\openclaw.net` |
+| [DeepSeek-Reasonix](https://github.com/deepseek-ai/DeepSeek-Reasonix) | 缓存命中率统计、工具注册发现（借鉴思路） | `D:\claw\DeepSeek-Reasonix` |
+
+> OpenCowork 以该项目为基底迁移代码，经过拆分、适配和命名空间重组后纳入 WishfulClaw 架构；其余三个项目主要借鉴设计思路和架构理念，代码由 WishfulClaw 自行实现。
 
 ## 💻 Tech Stack
 

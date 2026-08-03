@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WishfulClaw.Contracts\WishfulClaw.Contracts.csproj" />
+    <ProjectReference Include="..\WishfulClaw.Infrastructure\WishfulClaw.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

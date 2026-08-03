@@ -38,6 +38,32 @@ public sealed class AgentRuntimeRunState : IDisposable
     public bool SuppressTransportEvents { get; set; }
 
     /// <summary>
+    /// Identifies the source of usage events: "executor", "subagent", "compaction", etc.
+    /// Default is "executor". Set by the caller before executing a provider turn.
+    /// </summary>
+    public string UsageSource { get; set; } = "executor";
+
+    /// <summary>
+    /// The session conversation for this run. Set by AgentLoop before executing
+    /// provider turns so that providers can read session-level cache counters
+    /// and attach them to message_end events.
+    /// </summary>
+    public SessionConversation? SessionConversation { get; set; }
+
+    /// <summary>
+    /// Memory-update notes drained at the start of this turn.
+    /// Injected into the last user message by InjectTransientPrefix, becoming
+    /// part of the permanent conversation history.
+    /// </summary>
+    public List<string> PendingMemoryNotes { get; set; } = [];
+
+    /// <summary>
+    /// Memory-recall block injected into the last user message before the
+    /// timestamp prefix. Becomes part of the permanent conversation history.
+    /// </summary>
+    public string? PendingMemoryRecall { get; set; }
+
+    /// <summary>
     /// Optional callback invoked for every event when SuppressTransportEvents is true.
     /// The SubAgentExecutor uses this to collect text/tool events from the child loop.
     /// </summary>

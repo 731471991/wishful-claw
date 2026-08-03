@@ -1,9 +1,10 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Agent;
+using WishfulClaw.Infrastructure.Http;
 
 namespace WishfulClaw.Agent;
 

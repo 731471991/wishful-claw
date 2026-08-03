@@ -620,7 +620,8 @@ export function ModelSwitcher({
       {/* Quota Indicators */}
       {codexQuota && <CodexQuotaIndicator quota={codexQuota} tSettings={tSettings} />}
       {copilotQuota && <CopilotQuotaIndicator quota={copilotQuota as any} tSettings={tSettings} />}
-      {/* Settings icon — model config popover */}
+      {/* Settings / Thinking trigger — ModelSettingsPopover renders a brain icon
+          with effort label for thinking-capable models, or a gear icon otherwise */}
       <ModelSettingsPopover
         model={settingsModel}
         providerId={settingsProviderId}

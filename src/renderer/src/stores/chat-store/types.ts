@@ -82,6 +82,10 @@ export interface Session {
   providerId?: string
   modelId?: string
   personaId?: string
+  // Session-cumulative cache counters from backend (Reasonix-style).
+  // Updated on each message_end event, read directly by the status bar.
+  sessionCacheHit?: number
+  sessionCacheMiss?: number
 }
 
 // ─── Project ───
@@ -149,6 +153,8 @@ export function createRestorableSessionSnapshot(session: Session): Session {
     pluginSenderName: session.pluginSenderName,
     modelSelectionMode: session.modelSelectionMode,
     providerId: session.providerId,
-    modelId: session.modelId
+    modelId: session.modelId,
+    sessionCacheHit: session.sessionCacheHit,
+    sessionCacheMiss: session.sessionCacheMiss
   }
 }

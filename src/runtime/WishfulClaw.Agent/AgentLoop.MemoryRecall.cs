@@ -50,7 +50,19 @@ internal static partial class AgentLoop
 
             if (!string.IsNullOrWhiteSpace(injected))
             {
-                conversation.Insert(1, AgentRuntimeChatMessage.User(injected));
+                var recallBlock = $"<memory-recall>\n{injected}\n</memory-recall>\n\n";
+                state.PendingMemoryRecall = recallBlock;
+                
+                // Inject directly into the conversation's last user message,
+                // BEFORE the <current_time> block that InjectTransientPrefix added.
+                for (var i = conversation.Count - 1; i >= 0; i--)
+                {
+                    if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
+                    {
+                        conversation[i] = conversation[i] with { Text = recallBlock + conversation[i].Text };
+                        break;
+                    }
+                }
                 WorkerLog.Info($"memory recall injected runId={state.RunId} length={injected.Length}");
             }
             else

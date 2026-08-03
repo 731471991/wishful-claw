@@ -8,6 +8,7 @@ import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 
 import { isChatStreamEvent } from '@renderer/lib/agent/stream-event-adapter'
+import { accumulateUsageSnapshot } from '@renderer/lib/agent/usage-merge'
 
 import { createSessionSlice, type SessionSlice } from './session-slice'
 
@@ -53,7 +54,8 @@ export interface AgentActions {
 
     systemPrompt?: string
 
-    tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
+    toolPreset?: string
+    webSearchEnabled?: boolean
 
     workingFolder?: string
 
@@ -566,9 +568,17 @@ export const useChatStore = create<ChatStore>()(
 
                 if (msg) {
 
-                  msg.usage = event.usage
+                  msg.usage = accumulateUsageSnapshot(msg.usage, event.usage)
 
                   msg.timing = event.timing
+
+                  // Store session-cumulative cache counters from backend
+                  if (event.usage?.sessionCacheHitTokens != null) {
+                    session.sessionCacheHit = event.usage.sessionCacheHitTokens
+                  }
+                  if (event.usage?.sessionCacheMissTokens != null) {
+                    session.sessionCacheMiss = event.usage.sessionCacheMissTokens
+                  }
 
                   // Mark the last thinking segment as completed
 
@@ -1134,7 +1144,7 @@ export const useChatStore = create<ChatStore>()(
 
             // Desktop notification: only if the window is NOT focused
             // (user is away from the app). Skip if user is actively chatting.
-            if (!document.hasFocus() || document.visibilityState !== 'visible') {
+            if (!document.hasFocus() && document.visibilityState !== 'visible') {
               const sess = get().sessions.find((s) => s.id === targetSessionId)
               let notifyBody = '工作已完成。'
               if (sess) {

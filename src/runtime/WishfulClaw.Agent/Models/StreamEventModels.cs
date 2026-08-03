@@ -56,4 +56,9 @@ public sealed record AgentRuntimeStreamEvent(
     string? Status = null,
     JsonElement? Input = null,
     JsonElement? PromptMessage = null,
-    JsonElement? Result = null);
+    JsonElement? Result = null,
+    // Session-cumulative cache tokens (carried on message_end events)
+    int? SessionCacheHit = null,
+    int? SessionCacheMiss = null,
+    // Usage source: "executor", "subagent", "compaction", etc.
+    string? UsageSource = null);

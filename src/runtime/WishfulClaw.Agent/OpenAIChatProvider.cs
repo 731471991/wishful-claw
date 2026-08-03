@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent;
 
@@ -31,6 +32,7 @@ internal static partial class OpenAIChatProvider
         JsonElement parameters,
         JsonElement provider,
         List<AgentRuntimeChatMessage> conversation,
+        IReadOnlyList<ToolDefinition> toolDefs,
         AgentRuntimeRunState state,
         IWorkerRequestContext context)
     {
@@ -39,7 +41,8 @@ internal static partial class OpenAIChatProvider
             .Trim()
             .TrimEnd('/');
         var url = $"{baseUrl}/chat/completions";
-        var body = BuildRequestBody(parameters, provider, conversation);
+        var body = BuildRequestBody(parameters, provider, conversation, toolDefs, state);
+
         var debugHeaders = BuildDebugHeaders(provider);
 
         // Emit request_debug event
@@ -64,6 +67,7 @@ internal static partial class OpenAIChatProvider
         AgentRuntimeTokenUsage? finalUsage = null;
         var finalStopReason = "stop";
         var assistantText = new StringBuilder();
+        var reasoningContent = new StringBuilder();
         var toolBuffers = new Dictionary<int, ToolCallBuffer>();
         var toolCalls = new List<AgentRuntimeNativeToolCall>();
 
@@ -97,7 +101,7 @@ internal static partial class OpenAIChatProvider
                 {
                     var shouldStop = await ProcessSseDataAsync(
                         dataBuilder.ToString(),
-                        toolBuffers, toolCalls, assistantText,
+                        toolBuffers, toolCalls, assistantText, reasoningContent,
                         state, context, startedAt,
                         value => firstTokenMs ??= value,
                         value => estimatedOutputTokens += value,
@@ -129,7 +133,7 @@ internal static partial class OpenAIChatProvider
         {
             await ProcessSseDataAsync(
                 dataBuilder.ToString(),
-                toolBuffers, toolCalls, assistantText,
+                toolBuffers, toolCalls, assistantText, reasoningContent,
                 state, context, startedAt,
                 value => firstTokenMs ??= value,
                 value => estimatedOutputTokens += value,
@@ -140,7 +144,7 @@ internal static partial class OpenAIChatProvider
         {
             await ProcessJsonResponseAsync(
                 rawResponseBuilder.ToString(),
-                toolCalls, assistantText,
+                toolCalls, assistantText, reasoningContent,
                 state, context, startedAt,
                 value => firstTokenMs ??= value,
                 value => estimatedOutputTokens += value,
@@ -151,12 +155,30 @@ internal static partial class OpenAIChatProvider
         await FlushRemainingToolBuffersAsync(toolBuffers, toolCalls, state, context);
 
         var totalMs = AgentLoop.ElapsedMs(startedAt);
+        // Accumulate cache tokens and attach session-cumulative counters + usage source.
+        var emitUsage = finalUsage;
+        if (emitUsage is not null && state.SessionConversation is { } sessConv)
+        {
+            var cacheHit = emitUsage.CacheReadTokens ?? 0;
+            var billableInput = emitUsage.BillableInputTokens
+                ?? Math.Max(0, emitUsage.InputTokens - cacheHit);
+            var cacheCreation = emitUsage.CacheCreationTokens ?? 0;
+            var cacheMiss = billableInput + cacheCreation;
+            sessConv.AccumulateCacheTokens(cacheHit, cacheMiss);
+            emitUsage = emitUsage with
+            {
+                SessionCacheHitTokens = (int)sessConv.SessionCacheHit,
+                SessionCacheMissTokens = (int)sessConv.SessionCacheMiss,
+                UsageSource = state.UsageSource
+            };
+        }
+
         await AgentRuntimeTools.EmitAsync(
             state, context,
             new AgentRuntimeStreamEvent(
                 "message_end",
                 StopReason: finalStopReason,
-                Usage: finalUsage,
+                Usage: emitUsage,
                 Timing: new AgentRuntimeRequestTiming(
                     totalMs, firstTokenMs,
                     AgentLoop.ComputeTps(finalUsage?.OutputTokens ?? estimatedOutputTokens, firstTokenMs, totalMs))));
@@ -166,7 +188,7 @@ internal static partial class OpenAIChatProvider
             .ToList();
 
         return new AgentRuntimeProviderTurnResult(
-            new AgentRuntimeChatMessage("assistant", assistantText.ToString(), assistantToolUses, []),
+            new AgentRuntimeChatMessage("assistant", assistantText.ToString(), assistantToolUses, [], ReasoningContent: reasoningContent.Length > 0 ? reasoningContent.ToString() : null),
             toolCalls,
             finalStopReason,
             finalUsage);
@@ -179,6 +201,7 @@ internal static partial class OpenAIChatProvider
         Dictionary<int, ToolCallBuffer> toolBuffers,
         List<AgentRuntimeNativeToolCall> completedToolCalls,
         StringBuilder assistantText,
+        StringBuilder reasoningContent,
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
         long startedAt,
@@ -211,6 +234,7 @@ internal static partial class OpenAIChatProvider
                 AgentLoop.ReadString(delta, "reasoning");
             if (!string.IsNullOrEmpty(reasoning))
             {
+                reasoningContent.Append(reasoning);
                 markFirstTokenMs(AgentLoop.ElapsedMs(startedAt));
                 await AgentRuntimeTools.EmitAsync(
                     state, context,
@@ -266,6 +290,7 @@ internal static partial class OpenAIChatProvider
         string payload,
         List<AgentRuntimeNativeToolCall> completedToolCalls,
         StringBuilder assistantText,
+        StringBuilder reasoningContent,
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
         long startedAt,
@@ -294,6 +319,7 @@ internal static partial class OpenAIChatProvider
                 AgentLoop.ReadString(message, "reasoning");
             if (!string.IsNullOrEmpty(reasoning))
             {
+                reasoningContent.Append(reasoning);
                 markFirstTokenMs(AgentLoop.ElapsedMs(startedAt));
                 await AgentRuntimeTools.EmitAsync(
                     state, context,

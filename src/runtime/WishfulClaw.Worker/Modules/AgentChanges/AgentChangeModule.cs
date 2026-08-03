@@ -1,4 +1,5 @@
 using WishfulClaw.Contracts;
+using WishfulClaw.Agent.Tools.AgentChanges;
 
 namespace WishfulClaw.Worker.Modules.AgentChanges;
 

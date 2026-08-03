@@ -15,7 +15,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import {
   calculateCost, calculateCostBreakdown, estimateTokens,
   formatCacheHitRate, formatCost,
-  getCacheHitRate
+  formatSessionCacheHitRate, getCacheHitRate
 } from '@renderer/lib/format-tokens'
 import type { TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
@@ -58,7 +58,8 @@ export function ComposerRuntimeStatus({
     useShallow((s) => {
       const targetSessionId = sessionId
       const idx = s.sessionsById[targetSessionId]
-      const sessionMessages = idx !== undefined ? s.sessions[idx]?.messages : undefined
+      const session = idx !== undefined ? s.sessions[idx] : undefined
+      const sessionMessages = session?.messages
       const messages = messagesOverride ?? sessionMessages
       const streamingMessageId = messagesOverride
         ? (streamingMessageIdOverride ?? null)
@@ -132,7 +133,9 @@ export function ComposerRuntimeStatus({
           ? false
           : streamingMessageId
             ? Boolean(s.generatingImageMessages[streamingMessageId])
-            : false
+            : false,
+        sessionCacheHit: session?.sessionCacheHit,
+        sessionCacheMiss: session?.sessionCacheMiss
       }
     })
   )
@@ -203,14 +206,18 @@ export function ComposerRuntimeStatus({
   // Use cumulative API-returned values only. Draft input tokens (from typing)
   // are NOT included — they haven't been sent yet and would make metrics jump.
   // Per-request cache hit rate is shown in each message's token summary bar.
-  const inputTokens = live.cumulativeBillableInputTokens
+  const inputTokens = live.cumulativeInputTokens
   const cacheReadTokens = live.cumulativeCacheReadTokens
   const cacheCreationTokens = live.cumulativeCacheCreationTokens
-  const cacheHitRate = getCacheHitRate(
-    inputTokens,
-    cacheReadTokens,
-    cacheCreationTokens
-  )
+  // Session-level cache hit rate from backend (Reasonix-style: Σhit/Σ(hit+miss))
+  // Falls back to per-message traversal when session counters are unavailable.
+  const hasSessionCache = live.sessionCacheHit != null || live.sessionCacheMiss != null
+  const cacheHitRate = hasSessionCache
+    ? (live.sessionCacheHit ?? 0) / Math.max(1, (live.sessionCacheHit ?? 0) + (live.sessionCacheMiss ?? 0))
+    : getCacheHitRate(live.cumulativeBillableInputTokens, cacheReadTokens, cacheCreationTokens)
+  const sessionCacheRateLabel = hasSessionCache
+    ? formatSessionCacheHitRate(live.sessionCacheHit, live.sessionCacheMiss)
+    : null
   const streamingExtraUsage = React.useMemo<TokenUsage | null>(() => {
     if (!isStreaming || !model) return null
     const estimatedBillableInputTokens =
@@ -411,7 +418,7 @@ export function ComposerRuntimeStatus({
       [
         {
           key: 'input',
-          label: t('input.runtimeMetrics.input', { defaultValue: '未命中' }),
+          label: t('input.runtimeMetrics.total', { defaultValue: '总' }),
           color: '#38bdf8',
           value: totalInputCost
         },
@@ -449,29 +456,29 @@ export function ComposerRuntimeStatus({
       aria-live={isStreaming ? 'polite' : 'off'}
     >
       <RuntimeMetric
-        label={t('input.runtimeMetrics.input', { defaultValue: '未命中' })}
-        value={inputTokens}
-        tone="input"
-        animate={isStreaming}
-        duration={520}
-        title={buildCostTitle(
-          t('input.runtimeMetrics.input', { defaultValue: '未命中' }),
-          inputTokens,
-          metricPricing.inputPrice
-        )}
-      />
-      <span className="shrink-0 text-muted-foreground/35">/</span>
-      <RuntimeMetric
         label={t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' })}
         value={cacheReadTokens}
         tone="cacheHit"
         animate={isStreaming}
-        duration={620}
-        suffix={formatCacheHitRate(cacheHitRate)}
+        duration={520}
+        suffix={sessionCacheRateLabel ?? formatCacheHitRate(cacheHitRate)}
         title={buildCostTitle(
           t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' }),
           cacheReadTokens,
           metricPricing.cacheReadPrice
+        )}
+      />
+      <span className="shrink-0 text-muted-foreground/35">/</span>
+      <RuntimeMetric
+        label={t('input.runtimeMetrics.total', { defaultValue: '总' })}
+        value={inputTokens}
+        tone="input"
+        animate={isStreaming}
+        duration={620}
+        title={buildCostTitle(
+          t('input.runtimeMetrics.total', { defaultValue: '总' }),
+          live.cumulativeBillableInputTokens,
+          metricPricing.inputPrice
         )}
       />
 

@@ -20,7 +20,8 @@ public sealed record AgentRuntimeChatMessage(
     List<AgentRuntimeChatToolUse> ToolUses,
     List<AgentRuntimeToolResult> ToolResults,
     string? ProviderResponseId = null,
-    List<JsonElement>? ContentBlocks = null)
+    List<JsonElement>? ContentBlocks = null,
+    string? ReasoningContent = null)
 {
     public static AgentRuntimeChatMessage UserToolResults(List<AgentRuntimeToolResult> toolResults)
     {

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent;
 
@@ -16,7 +17,9 @@ internal static partial class AnthropicMessagesProvider
     private static string BuildRequestBody(
         JsonElement parameters,
         JsonElement provider,
-        IReadOnlyList<AgentRuntimeChatMessage> conversation)
+        IReadOnlyList<AgentRuntimeChatMessage> conversation,
+        IReadOnlyList<ToolDefinition> toolDefs,
+        AgentRuntimeRunState state)
     {
         var buffer = new ArrayBufferWriter<byte>();
         var omitted = ProviderRequestOverrides.GetOmittedBodyKeys(provider);
@@ -51,10 +54,10 @@ internal static partial class AnthropicMessagesProvider
 
             // Messages
             writer.WritePropertyName("messages");
-            WriteMessages(writer, conversation);
+            WriteMessages(writer, conversation, state);
 
-            // Tools
-            WriteTools(writer, parameters);
+            // Tools (from backend registry — no JSON round-trip)
+            WriteTools(writer, toolDefs);
 
             writer.WriteBoolean("stream", true);
 
@@ -75,11 +78,9 @@ internal static partial class AnthropicMessagesProvider
         return Encoding.UTF8.GetString(buffer.WrittenSpan);
     }
 
-    private static void WriteMessages(Utf8JsonWriter writer, IReadOnlyList<AgentRuntimeChatMessage> conversation)
+    private static void WriteMessages(Utf8JsonWriter writer, IReadOnlyList<AgentRuntimeChatMessage> conversation, AgentRuntimeRunState? state)
     {
         // Pre-compute which messages will be written (filter consecutive same-role).
-        // This allows us to know which message is last, so we can place the
-        // cache_control breakpoint on its final content block (Reasonix pattern).
         var messagesToWrite = new List<AgentRuntimeChatMessage>();
         string? lastRole = null;
 
@@ -93,18 +94,30 @@ internal static partial class AnthropicMessagesProvider
         }
 
         var needsContinueMessage = lastRole == "assistant";
+        var count = messagesToWrite.Count;
 
         writer.WriteStartArray();
 
-        for (var i = 0; i < messagesToWrite.Count; i++)
+        // Breakpoint strategy (Reasonix-aligned, max 4, we use 2):
+        // 1. System prompt (added in BuildRequestBody)
+        // 2. Last real message (current turn — cached for next turn)
+        // No breakpoint on second-to-last: it's already covered by the
+        // previous turn's last-message breakpoint.
+        for (var i = 0; i < count; i++)
         {
-            var isLastMessage = i == messagesToWrite.Count - 1 && !needsContinueMessage;
-            WriteSingleMessage(writer, messagesToWrite[i], isLastMessage);
+            var isLastReal = i == count - 1;
+
+            // Memory recall, memory-update notes, and timestamp are already
+            // injected into the conversation message by InjectTransientPrefix
+            // and TryInjectMemoryRecallAsync. No write-time suffix injection
+            // here - doing so would double-inject memory content.
+            var msg = messagesToWrite[i];
+
+            WriteSingleMessage(writer, msg, isLastReal);
         }
 
         if (needsContinueMessage)
         {
-            // Write "Continue." as the last message with cache_control breakpoint
             writer.WriteStartObject();
             writer.WriteString("role", "user");
             writer.WritePropertyName("content");
@@ -112,7 +125,6 @@ internal static partial class AnthropicMessagesProvider
             writer.WriteStartObject();
             writer.WriteString("type", "text");
             writer.WriteString("text", "Continue.");
-            WriteCacheControl(writer);
             writer.WriteEndObject();
             writer.WriteEndArray();
             writer.WriteEndObject();
@@ -234,60 +246,31 @@ internal static partial class AnthropicMessagesProvider
         writer.WriteEndObject();
     }
 
-    private static void WriteTools(Utf8JsonWriter writer, JsonElement parameters)
+    private static void WriteTools(Utf8JsonWriter writer, IReadOnlyList<ToolDefinition> toolDefs)
     {
-        if (!parameters.TryGetProperty("tools", out var tools) ||
-            tools.ValueKind != JsonValueKind.Array ||
-            tools.GetArrayLength() == 0)
-        {
-            return;
-        }
+        if (toolDefs.Count == 0) return;
 
-        // Collect and sort tools by name for stable byte ordering (prefix cache stability)
-        var toolList = new List<(string name, JsonElement tool)>();
-        foreach (var tool in tools.EnumerateArray())
-        {
-            if (tool.ValueKind != JsonValueKind.Object) continue;
-            var name = tool.TryGetProperty("name", out var nameProp)
-                ? nameProp.GetString() ?? ""
-                : "";
-            toolList.Add((name, tool));
-        }
-        toolList.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+        // Sort tools by name for stable byte ordering (prefix cache stability).
+        // ToolDefinition is a record — the registry may already canonicalize,
+        // but we sort here as a belt-and-suspenders measure.
+        var sorted = new List<ToolDefinition>(toolDefs);
+        sorted.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
 
         writer.WritePropertyName("tools");
         writer.WriteStartArray();
 
-        // cache_control breakpoint is on the last message (not tools),
-        // aligned with Reasonix pattern: system[last] + messages[last].
-        foreach (var (name, tool) in toolList)
+        // No cache_control on tools — breakpoints are on system[last] + messages[last].
+        // (Reasonix pattern: tools → system → messages, breakpoint on system and last message)
+        foreach (var def in sorted)
         {
-            // Anthropic format: { name, description, input_schema }
-            // Transform inputSchema -> input_schema if needed
-            if (tool.TryGetProperty("input_schema", out _))
-            {
-                tool.WriteTo(writer);
-                continue;
-            }
-
             writer.WriteStartObject();
-            if (tool.TryGetProperty("name", out var nameVal))
-            {
-                writer.WritePropertyName("name");
-                nameVal.WriteTo(writer);
-            }
-            if (tool.TryGetProperty("description", out var desc))
-            {
-                writer.WritePropertyName("description");
-                desc.WriteTo(writer);
-            }
-            if (tool.TryGetProperty("inputSchema", out var inputSchema))
-            {
-                writer.WritePropertyName("input_schema");
-                inputSchema.WriteTo(writer);
-            }
+            writer.WriteString("name", def.Name);
+            writer.WriteString("description", def.Description);
+            writer.WritePropertyName("input_schema");
+            def.InputSchema.WriteTo(writer);
             writer.WriteEndObject();
         }
+
         writer.WriteEndArray();
     }
 

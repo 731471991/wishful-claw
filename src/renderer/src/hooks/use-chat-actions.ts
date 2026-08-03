@@ -2,9 +2,8 @@ import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
-import { useSettingsStore } from '@renderer/stores/settings-store'
+import { useSettingsStore, resolveReasoningEffortForModel } from '@renderer/stores/settings-store'
 import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type CachedToolDef } from '@renderer/lib/tools/tool-cache'
-import { buildRuntimeReminder } from '@renderer/lib/agent/dynamic-context'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -50,53 +49,9 @@ export function useChatActions() {
       const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
       const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
 
-      // Build messages from session history — include tool call context
-      // so the LLM has full conversation history (text + tool_use + tool_result)
-      const historyMessages: Array<{ role: string; content: string | Array<Record<string, unknown>> }> = []
-      for (const m of (session?.messages ?? [])) {
-        if (m.isStreaming) continue
-        if (m.role !== 'user' && m.role !== 'assistant') continue
-
-        if (m.role === 'user') {
-          historyMessages.push({ role: 'user', content: m.text })
-          continue
-        }
-
-        // Assistant message — may have tool calls
-        if (m.toolCalls && m.toolCalls.length > 0) {
-          // Build content blocks: text + tool_use blocks
-          const blocks: Array<Record<string, unknown>> = []
-          if (m.text) {
-            blocks.push({ type: 'text', text: m.text })
-          }
-          for (const tc of m.toolCalls) {
-            blocks.push({
-              type: 'tool_use',
-              id: tc.id,
-              name: tc.name,
-              input: tc.input ?? {}
-            })
-          }
-          historyMessages.push({ role: 'assistant', content: blocks })
-
-          // Emit a user message with tool_result blocks for completed tool calls
-          const completedTools = m.toolCalls.filter(
-            (tc) => tc.status === 'completed' || tc.status === 'error'
-          )
-          if (completedTools.length > 0) {
-            const resultBlocks: Array<Record<string, unknown>> = completedTools.map((tc) => ({
-              type: 'tool_result',
-              toolUseId: tc.id,
-              content: tc.output ?? (tc.error ?? ''),
-              isError: tc.status === 'error'
-            }))
-            historyMessages.push({ role: 'user', content: resultBlocks })
-          }
-        } else {
-          // Plain assistant message with text only
-          historyMessages.push({ role: 'assistant', content: m.text })
-        }
-      }
+      // Backend manages the session conversation (Reasonix pattern).
+      // Frontend only sends the new user message; the backend appends
+      // it to the in-memory session and handles all history.
 
       // Tool definitions: use whatever is already cached/registered.
       // App startup (registerAllTools + ensureConversationReady) handles
@@ -124,21 +79,23 @@ export function useChatActions() {
       // (toolRegistry.get() works by name), but their definitions are NOT
       // sent to the LLM — this keeps the tool list lean and lets the Worker's
       // ToolPreset control what the LLM sees.
-      const tools = filteredWorkerTools
+      void filteredWorkerTools // tools now managed by backend via toolPreset
 
-      // Build runtime reminder (capability route, session state, selected files)
-      // and inject as user message prefix — NOT into system prompt — to keep
-      // the system prompt byte-stable for provider prefix cache hits.
-      // (Inspired by Reasonix's transient block approach.)
-      const userPromptText = typeof text === 'string' ? text : text.text
-      const runtimeReminder = await buildRuntimeReminder({
-        sessionId: targetSessionId,
-        modelConfig: activeProvider,
-        userPrompt: userPromptText
-      })
-      const userContent = runtimeReminder ? `${runtimeReminder}
+      const userContent = text
 
-${text}` : text
+      // Resolve thinking config from the model definition
+      const modelConfig = activeProvider.models.find((m: any) => m.id === modelId)
+      const thinkingConfig = modelConfig?.thinkingConfig
+      const thinkingEnabled = settings.thinkingEnabled && !!thinkingConfig
+      const reasoningEffort = thinkingConfig
+        ? resolveReasoningEffortForModel({
+            reasoningEffort: settings.reasoningEffort,
+            reasoningEffortByModel: settings.reasoningEffortByModel,
+            providerId: activeProvider.id,
+            modelId,
+            thinkingConfig
+          })
+        : undefined
 
       const provider = {
         id: activeProvider.id,
@@ -148,14 +105,18 @@ ${text}` : text
         baseUrl: activeProvider.baseUrl,
         model: modelId,
         temperature: settings.temperature ?? undefined,
-        maxTokens: settings.maxTokens ?? undefined
+        maxTokens: settings.maxTokens ?? undefined,
+        thinkingEnabled,
+        thinkingConfig: thinkingConfig ?? undefined,
+        reasoningEffort
       }
 
       await sendMessage({
         provider,
-        messages: [...historyMessages, { role: 'user', content: userContent }],
+        messages: [{ role: 'user', content: userContent }],
         sessionId: targetSessionId,
-        tools: tools ?? undefined,
+        toolPreset,
+        webSearchEnabled,
         workingFolder,
         maxIterations: 0, // 0 = unlimited, agent runs until no more tool calls
         maxParallelTools: settings.maxParallelToolCalls,
@@ -164,7 +125,6 @@ ${text}` : text
         personaId: session?.personaId ?? settings.defaultPersonaId ?? undefined,
         language: settings.language,
         userRules: settings.systemPrompt || undefined,
-        messageCount: historyMessages.length,
         contextCompressionEnabled: settings.contextCompressionEnabled,
         contextCompressionThreshold: settings.contextCompressionThreshold
       })
