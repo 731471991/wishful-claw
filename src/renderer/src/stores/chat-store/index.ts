@@ -75,6 +75,7 @@ export interface AgentActions {
     messageCount?: number
     contextCompressionEnabled?: boolean
     contextCompressionThreshold?: number
+    sshConnectionId?: string
 
   }) => Promise<void>
 

@@ -48,6 +48,7 @@ export function useChatActions() {
       const projectId = session?.projectId
       const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
       const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
+      const sshConnectionId = session?.sshConnectionId ?? project?.sshConnectionId ?? undefined
 
       // Backend manages the session conversation (Reasonix pattern).
       // Frontend only sends the new user message; the backend appends
@@ -126,7 +127,8 @@ export function useChatActions() {
         language: settings.language,
         userRules: settings.systemPrompt || undefined,
         contextCompressionEnabled: settings.contextCompressionEnabled,
-        contextCompressionThreshold: settings.contextCompressionThreshold
+        contextCompressionThreshold: settings.contextCompressionThreshold,
+        sshConnectionId
       })
 
       void opts
