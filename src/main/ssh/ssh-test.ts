@@ -1,6 +1,7 @@
 import { Client } from 'ssh2'
 import { getConnectionWithSecrets } from './repository'
 import { buildConnectConfig, errorMessage } from './auth'
+import { logInfo, logWarn, logError } from '../lib/logger'
 
 /**
  * Test SSH connection with a one-shot ssh2 Client.
@@ -18,21 +19,49 @@ export async function testSshConnection(
 ): Promise<{ success: boolean; error?: string }> {
   const connection = getConnectionWithSecrets(connectionId)
   if (!connection) {
+    logWarn('main', `[SSH Test] Connection not found: ${connectionId}`)
     return { success: false, error: 'Connection not found' }
   }
 
+  logInfo('main', `[SSH Test] Starting test for "${connection.name}"`, {
+    extra: {
+      connectionId,
+      host: connection.host,
+      port: connection.port,
+      username: connection.username,
+      authType: connection.authType,
+      hasPassword: !!connection.password,
+      hasPassphrase: !!connection.passphrase,
+      privateKeyPath: connection.privateKeyPath,
+      encryptedPasswordLength: connection.password?.length ?? 0
+    }
+  })
+
   let config
   try {
-    // No keepalive for a one-shot test
     config = await buildConnectConfig({
       ...connection,
       keepAliveInterval: 0
     })
-    // Remove keepalive settings for test connection
     delete config.keepaliveInterval
     delete config.keepaliveCountMax
+
+    logInfo('main', `[SSH Test] Connect config built`, {
+      extra: {
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        hasPasswordInConfig: !!config.password,
+        hasPrivateKeyInConfig: !!config.privateKey,
+        readyTimeout: config.readyTimeout
+      }
+    })
   } catch (err) {
-    return { success: false, error: errorMessage(err) }
+    const msg = errorMessage(err)
+    logError('main', `[SSH Test] Failed to build connect config: ${msg}`, {
+      stack: err instanceof Error ? err.stack : undefined
+    })
+    return { success: false, error: msg }
   }
 
   return new Promise<{ success: boolean; error?: string }>((resolve) => {
@@ -42,30 +71,35 @@ export async function testSshConnection(
     const finish = (success: boolean, error?: string): void => {
       if (settled) return
       settled = true
-      // Always destroy the client — no lingering connections
       try { client.end() } catch { /* ignore */ }
       try { client.destroy() } catch { /* ignore */ }
+
+      if (success) {
+        logInfo('main', `[SSH Test] SUCCESS for "${connection.name}"`)
+      } else {
+        logWarn('main', `[SSH Test] FAILED for "${connection.name}": ${error}`)
+      }
       resolve({ success, error })
     }
 
-    // Timeout: 15s for a test connection (shorter than exec's 30s)
     const timer = setTimeout(() => {
       finish(false, 'Connection timed out (15s)')
     }, 15_000)
 
     client.on('ready', () => {
       clearTimeout(timer)
-      // SSH handshake + auth succeeded — no need to exec anything
       finish(true)
     })
 
     client.on('error', (err: Error) => {
       clearTimeout(timer)
+      logError('main', `[SSH Test] ssh2 client error: ${err.message}`, {
+        stack: err.stack,
+        extra: { errName: err.constructor.name, errMsg: err.message }
+      })
       finish(false, errorMessage(err))
     })
 
-    // If the server closes the connection before we get 'ready',
-    // treat it as a failure
     client.on('close', () => {
       if (!settled) {
         clearTimeout(timer)
@@ -80,11 +114,19 @@ export async function testSshConnection(
       }
     })
 
+    // Enable ssh2 debug output for test connections
+    config.debug = (msg: string): void => {
+      logInfo('main', `[SSH Test] ssh2: ${msg}`)
+    }
+
     try {
+      logInfo('main', `[SSH Test] Connecting to ${connection.host}:${connection.port}...`)
       client.connect(config)
     } catch (err) {
       clearTimeout(timer)
-      finish(false, errorMessage(err))
+      const msg = errorMessage(err)
+      logError('main', `[SSH Test] client.connect() threw: ${msg}`)
+      finish(false, msg)
     }
   })
 }
