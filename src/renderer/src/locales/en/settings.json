@@ -32,6 +32,10 @@
     },
     "mcp": {
       "label": "MCP"
+    },
+    "ssh": {
+      "label": "SSH",
+      "desc": "Manage remote server SSH connections"
     }
   },
   "general": {
@@ -876,6 +880,34 @@
       "installFailed": "Install failed",
       "fillRequired": "Please fill required fields",
       "cannotInstall": "Cannot install this server"
+    }
+  },
+  "ssh": {
+    "title": "SSH Connections",
+    "description": "Manage SSH server connections for remote command execution.",
+    "add": "Add Connection",
+    "empty": "No SSH connections yet. Click \"Add Connection\" to create one.",
+    "test": "Test connection",
+    "edit": "Edit",
+    "delete": "Delete",
+    "createTitle": "New SSH Connection",
+    "editTitle": "Edit SSH Connection",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "fields": {
+      "name": "Name",
+      "host": "Host",
+      "port": "Port",
+      "username": "Username",
+      "authType": "Authentication",
+      "password": "Password",
+      "privateKey": "Private Key",
+      "agent": "SSH Agent",
+      "keyPath": "Private Key Path",
+      "passphrase": "Passphrase",
+      "leaveBlank": "leave blank to keep",
+      "defaultDir": "Default Directory"
     }
   }
 }
