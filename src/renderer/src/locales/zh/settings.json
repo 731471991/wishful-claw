@@ -1022,6 +1022,8 @@
       "passphrase": "密钥口令",
       "leaveBlank": "留空保持不变",
       "defaultDir": "默认目录"
-    }
+    },
+    "testSuccess": "连接测试成功",
+    "testFailed": "连接测试失败"
   }
 }

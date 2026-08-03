@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Plus, Pencil, Server, Trash2, Zap, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
@@ -53,8 +53,8 @@ export function SshPanel(): React.JSX.Element {
     setDialogOpen(true)
   }
 
-  const handleSave = async (): Promise<void> => {
-    if (!form.name.trim() || !form.host.trim() || !form.username.trim()) return
+  const doSave = async (): Promise<string | null> => {
+    if (!form.name.trim() || !form.host.trim() || !form.username.trim()) return null
     setSaving(true)
     try {
       if (editingId) {
@@ -70,8 +70,9 @@ export function SshPanel(): React.JSX.Element {
           defaultDirectory: form.defaultDirectory || null,
           keepAliveInterval: form.keepAliveInterval
         })
+        return editingId
       } else {
-        await createConnection({
+        const id = await createConnection({
           name: form.name.trim(),
           host: form.host.trim(),
           port: form.port,
@@ -83,13 +84,26 @@ export function SshPanel(): React.JSX.Element {
           defaultDirectory: form.defaultDirectory || undefined,
           keepAliveInterval: form.keepAliveInterval
         })
+        setEditingId(id)
+        return id
       }
-      setDialogOpen(false)
     } catch (err) {
       console.error('[SshPanel] Save failed:', err)
+      return null
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSave = async (): Promise<void> => {
+    const id = await doSave()
+    if (id) setDialogOpen(false)
+  }
+
+  const handleTestInDialog = async (): Promise<{ success: boolean; error?: string }> => {
+    const id = await doSave()
+    if (!id) return { success: false, error: 'Failed to save connection' }
+    return await testConnection(id)
   }
 
   const handleDelete = async (id: string): Promise<void> => {
@@ -227,6 +241,7 @@ export function SshPanel(): React.JSX.Element {
         form={form}
         onFormChange={setForm}
         onSave={handleSave}
+        onTest={handleTestInDialog}
         saving={saving}
       />
     </div>

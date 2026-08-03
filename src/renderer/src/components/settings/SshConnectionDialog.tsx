@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Zap, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import {
@@ -53,6 +53,7 @@ interface SshConnectionDialogProps {
   form: SshFormData
   onFormChange: (updater: (prev: SshFormData) => SshFormData) => void
   onSave: () => Promise<void>
+  onTest?: () => Promise<{ success: boolean; error?: string }>
   saving: boolean
 }
 
@@ -63,12 +64,39 @@ export function SshConnectionDialog({
   form,
   onFormChange,
   onSave,
+  onTest,
   saving
 }: SshConnectionDialogProps): React.JSX.Element {
   const { t } = useTranslation('settings')
+  const [showPassword, setShowPassword] = React.useState(false)
+  const [showPassphrase, setShowPassphrase] = React.useState(false)
+  const [testing, setTesting] = React.useState(false)
+  const [testResult, setTestResult] = React.useState<{ success: boolean; error?: string } | null>(null)
+
+  // Reset test result when dialog opens or form changes
+  React.useEffect(() => {
+    if (open) {
+      setTestResult(null)
+    }
+  }, [open])
 
   const set = <K extends keyof SshFormData>(key: K, value: SshFormData[K]): void => {
     onFormChange((prev) => ({ ...prev, [key]: value }))
+    setTestResult(null)
+  }
+
+  const handleTest = async (): Promise<void> => {
+    if (!onTest) return
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const result = await onTest()
+      setTestResult(result)
+    } catch (err) {
+      setTestResult({ success: false, error: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setTesting(false)
+    }
   }
 
   return (
@@ -163,12 +191,23 @@ export function SshConnectionDialog({
                   </span>
                 )}
               </label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => set('password', e.target.value)}
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => set('password', e.target.value)}
+                  placeholder="••••••••"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
           )}
 
@@ -193,12 +232,23 @@ export function SshConnectionDialog({
                     </span>
                   )}
                 </label>
-                <Input
-                  type="password"
-                  value={form.passphrase}
-                  onChange={(e) => set('passphrase', e.target.value)}
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassphrase ? 'text' : 'password'}
+                    value={form.passphrase}
+                    onChange={(e) => set('passphrase', e.target.value)}
+                    placeholder="••••••••"
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassphrase((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showPassphrase ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -213,23 +263,59 @@ export function SshConnectionDialog({
               placeholder="/home/user/project"
             />
           </div>
+
+          {/* Test result feedback */}
+          {testResult && (
+            <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${
+              testResult.success
+                ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600'
+                : 'border-red-500/30 bg-red-500/5 text-red-600'
+            }`}>
+              {testResult.success ? (
+                <CheckCircle2 className="size-4 shrink-0" />
+              ) : (
+                <XCircle className="size-4 shrink-0" />
+              )}
+              <span className="min-w-0 truncate">
+                {testResult.success
+                  ? t('ssh.testSuccess', { defaultValue: 'Connection test successful' })
+                  : testResult.error || t('ssh.testFailed', { defaultValue: 'Connection test failed' })}
+              </span>
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('ssh.cancel', { defaultValue: 'Cancel' })}
-          </Button>
+        <DialogFooter className="flex items-center justify-between gap-2 sm:justify-between">
           <Button
-            onClick={() => void onSave()}
-            disabled={saving || !form.name.trim() || !form.host.trim() || !form.username.trim()}
+            variant="outline"
+            size="sm"
+            onClick={() => void handleTest()}
+            disabled={testing || !form.host.trim() || !form.username.trim() || (form.authType === 'password' && !form.password && !editingId)}
+            className="gap-1.5"
           >
-            {saving ? (
-              <Loader2 className="mr-1.5 size-4 animate-spin" />
-            ) : null}
-            {editingId
-              ? t('ssh.save', { defaultValue: 'Save' })
-              : t('ssh.create', { defaultValue: 'Create' })}
+            {testing ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Zap className="size-4" />
+            )}
+            {t('ssh.test', { defaultValue: 'Test connection' })}
           </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              {t('ssh.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              onClick={() => void onSave()}
+              disabled={saving || !form.name.trim() || !form.host.trim() || !form.username.trim()}
+            >
+              {saving ? (
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+              ) : null}
+              {editingId
+                ? t('ssh.save', { defaultValue: 'Save' })
+                : t('ssh.create', { defaultValue: 'Create' })}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

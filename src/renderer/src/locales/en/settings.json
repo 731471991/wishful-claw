@@ -908,6 +908,8 @@
       "passphrase": "Passphrase",
       "leaveBlank": "leave blank to keep",
       "defaultDir": "Default Directory"
-    }
+    },
+    "testSuccess": "Connection test successful",
+    "testFailed": "Connection test failed"
   }
 }
