@@ -1,123 +1,137 @@
-# v2-iter-5 探索发现报告
+# v2-iter-5 探索报告：微信/飞书沟通渠道
 
-## 1. 后端 Provider 支持现状
+## 目标
 
-### 已支持的 Provider 类型
-- `openai-chat` — OpenAIChatProvider.cs (SSE 流式 + reasoning_content + tool calls)
-- `anthropic` — AnthropicMessagesProvider.cs
+跑通微信和飞书沟通渠道，让 Agent 能通过微信/飞书与用户对话。
+AI Provider 渠道已完全打通，本次不涉及。
 
-### 未支持但预设中存在的 Provider 类型
-- `openai-responses` — **后端未实现**，AgentLoop.cs 第 33 行明确拒绝
-- `gemini` — 后端未实现
-- `vertex-ai` — 后端未实现
+## Channel 系统架构概览
 
-### 前端能力检查
-`canSidecarHandle()` (agent-bridge.ts:127) 也只返回 `openai-chat` 和 `anthropic` 为 true。
+### 后端（main 进程，TypeScript/Electron）
 
-## 2. Provider 预设审计
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| `channel-manager.ts` | 110 | 工厂注册模式，管理 service 生命周期（start/stop/restart） |
+| `channel-types.ts` | 161 | 核心类型定义（ChannelInstance/ChannelEvent/MessagingChannelService） |
+| `channel-descriptors.ts` | 257 | 8 个内置渠道描述符（feishu/dingtalk/wecom/qq/weixin/telegram/discord/whatsapp） |
+| `register-providers.ts` | 65 | 懒注册 8 个渠道工厂到 ChannelManager |
+| `auto-reply.ts` | 136 | 自动回复流水线：路由消息 → 发 `plugin:session-task` 给前端 |
+| `base-plugin-service.ts` | 155 | 抽象基类，处理 WS 生命周期和事件发射 |
+| `channel-config-store.ts` | 52 | 通过 Worker DB 读写渠道配置 |
+| `ws-transport.ts` | 169 | WebSocket 传输层 |
+| `plugin-commands.ts` | 123 | 插件命令解析（/help /new /init /status） |
+| `plugin-command-handlers.ts` | 430 | 命令处理逻辑 |
+| `providers/weixin/` | ~984 | 微信服务（长轮询模式，不依赖外部 SDK） |
+| `providers/feishu/` | ~849 | 飞书服务（依赖 @larksuiteoapi/node-sdk） |
 
-### 22 个预设文件，26 个预设
+### 前端（renderer 进程）
 
-| 预设 | builtinId | type | authMode | 模型数 | openai-responses 模型 | 状态 |
-|------|-----------|------|----------|--------|----------------------|------|
-| OpenAI | openai | openai-chat | apiKey | 30+ | 17 | ⚠️ 大量模型 type override |
-| Anthropic | anthropic | anthropic | apiKey | 10 | 0 | ✅ 纯净 |
-| DeepSeek | deepseek | anthropic | apiKey | ~4 | 0 | ✅ 纯净 |
-| Google Gemini | google | openai-chat | apiKey | ~6 | 0 | ✅ 纯净 |
-| OpenRouter | openrouter | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| Ollama | ollama | openai-chat | apiKey | ~2 | 0 | ✅ 纯净 |
-| Azure OpenAI | azure-openai | openai-chat | apiKey | ~17 | 17 | ⚠️ 全部模型 openai-responses |
-| Codex (OAuth) | codex-oauth | openai-responses | oauth | ~7 | 7 | ❌ 后端不支持 + OAuth |
-| Copilot (OAuth) | copilot-oauth | openai-chat | oauth | ~10 | 8 | ❌ OAuth 不通 |
-| xAI | x-ai | openai-responses | apiKey | ~5 | 5 | ❌ 后端不支持 |
-| LongCat | longcat | openai-chat | apiKey | ~2 | 0 | ✅ 纯净 |
-| Moonshot | moonshot | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| Qwen | qwen | openai-chat | apiKey | ~4 | 0 | ✅ 纯净 |
-| Minimax | minimax | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| Baidu | baidu | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| SiliconFlow | siliconflow | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| Gitee AI | gitee-ai | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| Xiaomi | xiaomi | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| BigModel | bigmodel | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
-| Volcengine | volcengine | openai-chat | apiKey | ~3 | 0 | ✅ 纯净 |
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| `stores/channel-store.ts` | 138 | 渠道 store：loadChannels/updateChannel/startChannel/stopChannel |
+| `components/settings/PluginPanel.tsx` | 96 | 渠道配置面板（左列表 + 右详情） |
+| `components/settings/plugin-panel-detail.tsx` | 336 | 渠道详情：QR 绑定/API 凭据/功能设置三 Tab |
+| `components/settings/plugin-panel-qr.tsx` | 240 | QR 扫码绑定面板 |
 
-## 3. 关键问题
+### 后端（C# Worker）
 
-### 问题 1：`openai-responses` 模型类型覆盖是死代码
+| 文件 | 行数 | 职责 |
+|------|------|------|
+| `DbPluginSessionTools.cs` | 499 | 插件 session CRUD + 消息列表 |
+| `DbPluginSessionRouting.cs` | 195 | 按 pluginId+chatId 路由/创建 session |
+| `ChannelConfigModule.cs` | 22 | 渠道配置 IPC 模块 |
 
-**现象**：OpenAI 预设中 GPT-5 系列、o3、o4-mini 等模型有 `type: 'openai-responses'` 覆盖，但：
-- `mapSidecarProvider()` 只传 `provider.type`，不传 `model.type`
-- 后端 AgentLoop 只检查 `provider.type`，不检查 `model.type`
-- 结果：GPT-5 模型实际走 `openai-chat` 协议（`/chat/completions`），Responses API 类型覆盖被忽略
+## 6 个断裂点
 
-**影响**：
-- OpenAI 官方 API：GPT-5 系列同时支持 Chat Completions 和 Responses API，所以实际可能能跑通
-- Azure OpenAI：所有模型都是 `openai-responses`，但 provider type 是 `openai-chat`，实际走 Chat Completions
-- xAI：provider type 直接是 `openai-responses`，后端会直接拒绝
+### 1. Channel 系统未在 main/index.ts 初始化（根本原因）
 
-**结论**：model-level `type: 'openai-responses'` 覆盖在当前架构下无效。应清理为统一的 `openai-chat`，或移除覆盖。
+`src/main/index.ts`（508 行）中完全没有 Channel 相关代码：
+- 没有 `import ChannelManager`
+- 没有 `new ChannelManager()`
+- 没有 `registerBuiltInChannelProviders()`
+- 没有 `registerChannelHandlers()`
+- 没有 `setPluginManager()`（auto-reply.ts 需要）
+- 没有 `autoStartChannels()`
 
-### 问题 2：OAuth Provider 不可用
+**结果**：所有渠道 IPC 调用（`plugin:list`、`plugin:start` 等）都会失败，前端面板"什么都没显示出来"。
 
-**现象**：
-- `isProviderAuthReady()` (provider-store.ts:237) 只对 `authMode === 'apiKey'` 返回 true
-- `authMode === 'oauth'` 永远返回 false → OAuth Provider 永远显示为"未认证"状态
-- OAuth 流程文件存在（oauth.ts 519 行 + provider-auth.ts 417 行）但 auth readiness 检查阻断
+### 2. 飞书 SDK @larksuiteoapi/node-sdk 未安装
 
-**影响**：Codex OAuth 和 Copilot OAuth 两个预设不可用。
+`feishu-service.ts` 第 1 行 `import * as Lark from '@larksuiteoapi/node-sdk'`，但该包不在 package.json 也不在 node_modules。
+飞书渠道启动时会报 MODULE_NOT_FOUND。微信渠道不依赖外部 SDK，可独立工作。
 
-**结论**：OAuth 是 OpenCowork 遗留的复杂功能，当前不计划支持。应移除或标记为不可用。
+### 3. 前端无 plugin:session-task 事件监听
 
-### 问题 3：`useSystemProxy` 未在后端生效
+后端 `auto-reply.ts` 通过 `safeSendMessagePackToAllWindows('plugin:session-task', taskPayload)` 发送任务给前端，
+但前端没有任何地方监听这个事件。`PLUGIN_SESSION_TASK` 常量在 channels.ts 定义了，messagepack-channel-routing.ts 注册了路由，
+但没有 `ipcClient.on('plugin:session-task', ...)` 调用。
 
-**现象**：
-- 前端 `mapSidecarProvider` 传递 `useSystemProxy` 字段
-- 后端 `OpenAIChatProvider` 和 `ProviderTestService` 使用各自的 static HttpClient
-- `WorkerHttpClientFactory` 有 `UseProxy = true` 但未被 Provider 使用
-- Provider 不检查 `useSystemProxy` 参数
+**结果**：渠道消息到达后，auto-reply 路由到 session 成功，但前端不知道要触发 Agent Loop，消息石沉大海。
 
-**影响**：Provider 级别的代理控制不生效。系统代理通过 `SocketsHttpHandler.UseProxy = true` 默认启用（遵循系统代理设置），但 `useSystemProxy: false` 无法禁用。
+### 4. Agent 回复未发回渠道
 
-**结论**：需要让 Provider 读取 `useSystemProxy` 参数并决定是否使用代理。
+即使 Agent Loop 被触发并生成回复，回复文本也不会被发送回微信/飞书。
+需要：在 Agent Loop 结束（`loop_end` 事件）后，获取最终文本，通过 `plugin:exec` → `sendMessage` 发回渠道。
 
-### 问题 4：xAI 预设 provider type 为 `openai-responses`
+### 5. DB 方法名不匹配（4 处）
 
-**现象**：xAI 预设的 provider type 直接是 `openai-responses`，不像 OpenAI 那样是 provider-level `openai-chat` + model-level 覆盖。
+前端 `channel-plugin-handlers.ts` 调用的 DB 方法名与后端 `DbModule.cs` 注册的不一致：
 
-**影响**：选择 xAI 预设时，`canSidecarHandle('provider.openai-responses')` 返回 false，前端会报错。
+| 前端调用 | 后端注册 | 状态 |
+|---------|---------|------|
+| `db/plugin-sessions-messages` | `db/plugin-session-messages-list` | 不匹配 |
+| `db/plugin-sessions-clear` | `db/plugin-session-messages-clear` | 不匹配 |
+| `db/plugin-sessions-delete` | `db/plugin-session-delete` | 不匹配 |
+| `db/plugin-sessions-rename` | `db/plugin-session-rename` | 不匹配 |
 
-**结论**：xAI 的 provider type 应改为 `openai-chat`（Grok 模型支持 OpenAI 兼容的 `/chat/completions` 端点）。
+前 4 个方法（list/create/find-by-chat/list-all）名称匹配，只有后 4 个不匹配（复数 vs 单数）。
 
-### 问题 5：Azure OpenAI `defaultBaseUrl` 为空
+### 6. 增量模式适配
 
-**现象**：`defaultBaseUrl: ''` — 需要用户手动填写。
+OpenCowork 的 auto-reply hook（1512 行）是一个完全独立的 Agent Loop 调用路径（`runAgentViaSidecar`），
+自行构建 system prompt、provider config、tool definitions 等，与 UI 聊天完全分离。
 
-**结论**：这是正确的设计（每个 Azure 部署有不同端点），但 UI 应有更明确的提示。
+wishful-claw 已改为后端增量发送模式：`chat-store.sendMessage` → `agent/run` → AgentStreamReceiver。
+因此不能直接迁移 OpenCowork 的 auto-reply hook，需要适配为：
+- 监听 `plugin:session-task` → 构建 provider config → 调用 `chat-store.sendMessage`
+- 通过 `AgentStreamReceiver.subscribeAll` 监听 `loop_end` → 获取最终文本 → `plugin:exec` 发回渠道
 
-## 4. 中转商 stream_options.include_usage 验证
+## 与 OpenCowork 的三个核心差异
 
-`OpenAIChatRequestBuilder.cs` 第 80 行始终发送 `stream_options: { include_usage: true }`。
+1. **消息构建**：OpenCowork 纯前端构建 → wishful-claw 后端增量发送
+2. **渠道配置**：OpenCowork 针对单个项目 → wishful-claw 全局配置（已部分实现，auto-seed 逻辑在 `plugin:list` handler 中）
+3. **消息发送**：OpenCowork 使用 sidecar 独立路径 → wishful-claw 复用 `chat-store.sendMessage` + `agent/run`
 
-- OpenAI 官方 API：支持，返回 usage 统计
-- DeepSeek API：支持
-- 中转商：取决于实现，部分中转商可能不转发 usage 数据
-- 不支持的中转商：`stream_options` 字段会被忽略，不影响正常使用，只是 token 统计为 0
+## 渠道消息流转全链路
 
-**结论**：当前实现是合理的。对于不返回 usage 的中转商，前端已有 fallback 估算逻辑（`estimatedOutputTokens`）。
-
-## 5. ProviderTestService 分析
-
-- 连通性测试：对 `anthropic` 类型发 POST `/v1/messages`，对其他类型发 POST `/chat/completions`
-- 模型列表拉取：对 `anthropic` 类型 GET `/v1/models`，对其他类型 GET `/v1/models` 或 `/models`
-- 使用独立的 HttpClient（30s 超时，允许不安全 TLS）
-- **不使用系统代理**（问题同问题 3）
-
-## 6. 可清理项
-
-| 清理项 | 原因 | 优先级 |
-|--------|------|--------|
-| OAuth 预设 (codex-oauth, copilot-oauth) | OAuth 不通，死代码 | 高 |
-| xAI 预设 type 改为 openai-chat | 后端不支持 openai-responses | 高 |
-| OpenAI/Azure 模型的 openai-responses type 覆盖 | 死代码，误导 | 中 |
-| OAuth 相关前端文件 (auth/ 目录 2215 行) | 暂未使用 | 低（保留代码，不删） |
-| Channel 相关文件 (channel-store.ts, channel/ 目录) | 渠道功能未接入 | 低（保留代码，不删） |
+```
+微信/飞书用户发消息
+    ↓
+ChannelService.receiveMessage()
+    ↓
+notifyRenderer(event)  →  safeSendMessagePackToAllWindows('plugin:incoming-message', event)
+    ↓                       ↓
+前端收到 incoming-message    handleChannelAutoReply(event)
+（UI 可选处理）                  ↓
+                           db/plugin-route-session（路由到 session）
+                               ↓
+                           safeSendMessagePackToAllWindows('plugin:session-task', taskPayload)
+                               ↓
+                           前端 useChannelAutoReply 收到 task
+                               ↓
+                           chat-store.sendMessage({ sessionId, provider, messages, ... })
+                               ↓
+                           window.api.workerRequest('agent/run', { ...params, runId })
+                               ↓
+                           Agent Loop 运行，流式输出
+                               ↓
+                           AgentStreamReceiver → handleEnvelope → 更新 store
+                               ↓
+                           loop_end 事件 → auto-reply hook 获取最终文本
+                               ↓
+                           ipcClient.invoke('plugin:exec', { action: 'sendMessage', ... })
+                               ↓
+                           ChannelService.sendMessage(chatId, content)
+                               ↓
+                           微信/飞书用户收到回复
+```

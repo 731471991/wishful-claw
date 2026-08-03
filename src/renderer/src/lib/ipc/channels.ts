@@ -179,6 +179,8 @@ export const IPC = {
   PLUGIN_FEISHU_LIST_MEMBERS: 'plugin:feishu:list-members',
   PLUGIN_FEISHU_SEND_URGENT: 'plugin:feishu:send-urgent',
   PLUGIN_FEISHU_DOWNLOAD_RESOURCE: 'plugin:feishu:download-resource',
+  PLUGIN_FEISHU_INSTALL_START: 'plugin:feishu:install-start',
+  PLUGIN_FEISHU_INSTALL_POLL: 'plugin:feishu:install-poll',
   PLUGIN_FEISHU_BITABLE_LIST_APPS: 'plugin:feishu:bitable:list-apps',
   PLUGIN_FEISHU_BITABLE_LIST_TABLES: 'plugin:feishu:bitable:list-tables',
   PLUGIN_FEISHU_BITABLE_LIST_FIELDS: 'plugin:feishu:bitable:list-fields',

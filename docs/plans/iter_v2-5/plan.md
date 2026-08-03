@@ -1,53 +1,68 @@
-# Plan: v2-iter-5 渠道配置测试与完善
+# v2-iter-5 实施计划：微信/飞书沟通渠道
 
-## 目标
+## 概述
 
-OpenAI 兼容 + Anthropic 全链路验证通过，清理不兼容或过时的预设，修复测试中发现的问题。
+修复 6 个断裂点，跑通微信和飞书渠道的全链路：消息接收 → 路由 → Agent Loop → 回复发回。
 
-## 步骤清单
+## 实施步骤
 
-- [ ] 步骤1：清理 `openai-responses` 预设 — xAI provider type 改为 `openai-chat`；移除 OpenAI/Azure 模型的 `type: 'openai-responses'` 覆盖（改为继承 provider type）
-  - 验证：tsc --noEmit + dotnet build 零错误
+### Step 1: Channel 系统初始化（main/index.ts）
 
-- [ ] 步骤2：移除 OAuth 预设 — 从 `builtinProviderPresets` 数组中移除 `codexOAuthPreset` 和 `copilotOAuthPreset`；移除其 import。OAuth 相关代码文件保留不删（后续迭代可能启用）
-  - 验证：tsc --noEmit 零错误，应用启动后 Provider 列表不再出现 OAuth 预设
+在 `src/main/index.ts` 中添加 Channel 系统初始化代码：
 
-- [ ] 步骤3：修复 `useSystemProxy` 后端支持 — Provider 读取 `useSystemProxy` 参数，为 false 时禁用代理；ProviderTestService 同步修复
-  - 验证：dotnet build 零错误
+1. Import: `ChannelManager`, `registerBuiltInChannelProviders`, `registerChannelHandlers`, `setPluginManager`, `autoStartChannels`
+2. 在 `app.whenReady()` 回调中，IPC 注册区域之后：
+   - 创建 `ChannelManager` 实例
+   - `registerBuiltInChannelProviders(channelManager)` — 注册 8 个渠道工厂
+   - `registerChannelHandlers(channelManager)` — 注册所有渠道 IPC 处理器
+   - `setPluginManager(channelManager)` — 绑定 auto-reply 流水线
+3. 在 `createWindow()` 之后调用 `autoStartChannels(channelManager)` — 自动启动已启用的渠道
+4. 在 `app.on('before-quit')` 中调用 `channelManager.stopAll()` — 清理资源
 
-- [ ] 步骤4：ProviderTestService 改用 WorkerHttpClientFactory — 统一 HTTP 客户端创建，支持 `useSystemProxy` 和 `allowInsecureTls`
-  - 验证：dotnet build 零错误
+### Step 2: 修复 DB 方法名不匹配（4 处）
 
-- [ ] 步骤5：OpenAIChatProvider 支持动态代理 — 读取 `useSystemProxy` 和 `allowInsecureTls` 参数，按需创建 HttpClient
-  - 验证：dotnet build 零错误
+在 `src/main/ipc/channel-handlers/channel-plugin-handlers.ts` 中：
 
-- [ ] 步骤6：AnthropicMessagesProvider 同步修复 — 支持 `useSystemProxy` 和 `allowInsecureTls`
-  - 验证：dotnet build 零错误
+| 行号附近 | 修改前 | 修改后 |
+|---------|-------|-------|
+| ~400 | `db/plugin-sessions-messages` | `db/plugin-session-messages-list` |
+| ~409 | `db/plugin-sessions-clear` | `db/plugin-session-messages-clear` |
+| ~420 | `db/plugin-sessions-delete` | `db/plugin-session-delete` |
+| ~434 | `db/plugin-sessions-rename` | `db/plugin-session-rename` |
 
-- [ ] 步骤7：前端 isProviderAuthReady 修复 — `authMode === 'oauth'` 时检查 `oauthAccounts` 是否有有效 token，而非一律返回 false
-  - 验证：tsc --noEmit 零错误
+### Step 3: 安装飞书 SDK
 
-- [ ] 步骤8：Azure OpenAI 预设优化 — defaultBaseUrl 添加提示文案或 placeholder
-  - 验证：tsc --noEmit 零错误
+```bash
+npm install @larksuiteoapi/node-sdk
+```
 
-- [ ] 步骤9：全链路验证 — OpenAI 兼容渠道（API Key → 连通性测试 → 模型列表 → 实际对话）+ Anthropic 渠道同链路
-  - 验证：双编译通过，手动测试由用户确认
+### Step 4: 创建渠道自动回复 Hook
 
-## 涉及文件
+新建 `src/renderer/src/hooks/use-channel-auto-reply.ts`：
 
-### 前端
-- `src/renderer/src/stores/providers/index.ts` — 移除 OAuth 预设 import 和注册
-- `src/renderer/src/stores/providers/x-ai.ts` — provider type 改为 openai-chat
-- `src/renderer/src/stores/providers/openai.ts` — 移除模型 type: 'openai-responses' 覆盖
-- `src/renderer/src/stores/providers/azure-openai.ts` — 移除模型 type 覆盖 + defaultBaseUrl 优化
-- `src/renderer/src/stores/providers/copilot-oauth.ts` — 从 index 移除（文件保留）
-- `src/renderer/src/stores/providers/codex-oauth.ts` — 从 index 移除（文件保留）
-- `src/renderer/src/stores/provider-store.ts` — isProviderAuthReady 修复
+- 监听 `plugin:session-task` IPC 事件
+- 对每个任务：
+  1. 确保 session 存在于 chat store（如果不存在则创建）
+  2. 从 channel config 或全局默认获取 provider config
+  3. 调用 `chatStore.sendMessage()` 触发 Agent Loop
+  4. 通过 `agentStream.subscribeAll()` 监听 `loop_end` 事件
+  5. `loop_end` 时从 chat store 获取最终文本
+  6. 通过 `ipcClient.invoke(IPC.PLUGIN_EXEC, { action: 'sendMessage', ... })` 发回渠道
 
-### 后端
-- `src/runtime/WishfulClaw.Agent/OpenAIChatProvider.cs` — 支持 useSystemProxy / allowInsecureTls
-- `src/runtime/WishfulClaw.Agent/AnthropicMessagesProvider.cs` — 同步修复
-- `src/runtime/WishfulClaw.Agent/ProviderTestService.cs` — 改用动态 HttpClient 创建
+### Step 5: 在 App.tsx 中挂载 Hook
 
-## 参考源码
-- 无需参考外部项目，所有修复基于现有代码
+在 `App` 组件中添加 `useChannelAutoReply()` 调用。
+
+### Step 6: 编译验证
+
+- `npx tsc --noEmit` — TypeScript 零错误
+- `dotnet build src/runtime/WishfulClaw.sln` — C# 零错误
+
+### Step 7: 功能测试
+
+- 启动应用，进入设置 → 渠道面板
+- 确认 8 个渠道列表显示出来
+- 配置微信渠道（QR 扫码绑定）
+- 通过微信发消息，验证 Agent 自动回复
+- 配置飞书渠道（API 凭据）
+- 通过飞书发消息，验证 Agent 自动回复

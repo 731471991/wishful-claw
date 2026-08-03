@@ -13,6 +13,7 @@ import {
   registerChannelMessagePackHandler,
   readBinarySource
 } from './channel-handler-utils'
+import { startFeishuInstall, pollFeishuInstall } from '../../channels/providers/feishu/feishu-install'
 
 export function registerFeishuHandlers(): void {
   // Send image
@@ -313,6 +314,21 @@ export function registerFeishuHandlers(): void {
       return { error: err instanceof Error ? err.message : String(err) }
     }
   })
+
+  // -- Feishu OAuth Device Flow: scan-to-bind --
+  registerChannelMessagePackHandler<{ domain?: 'feishu' | 'lark' }>(
+    'plugin:feishu:install-start',
+    async (args) => {
+      return await startFeishuInstall(args?.domain ?? 'feishu')
+    }
+  )
+
+  registerChannelMessagePackHandler<string>(
+    'plugin:feishu:install-poll',
+    async (installId) => {
+      return await pollFeishuInstall(installId)
+    }
+  )
 }
 
 // ── Channel-specific tool executor (used by reverse-request dispatch) ──

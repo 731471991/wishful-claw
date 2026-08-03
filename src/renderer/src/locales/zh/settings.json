@@ -752,7 +752,11 @@
       "feishuHint": "扫描二维码在飞书中打开应用",
       "feishuPlaceholder": "填写 App ID 后生成二维码",
       "weixinInstructions": "1. 点击\"获取二维码\"按钮\n2. 使用微信扫描显示的二维码\n3. 在手机上确认授权\n4. 绑定成功后渠道将自动启用",
-      "feishuInstructions": "1. 先在\"API 凭据\"页填写 App ID 和 App Secret\n2. 返回此页面查看生成的二维码\n3. 扫描二维码可快速跳转到飞书应用管理页\n4. 确保机器人已发布并具有所需权限"
+      "feishuInstructions": "1. 使用飞书 App 扫描二维码\n2. 在飞书中确认授权创建应用\n3. 授权成功后自动获取 App ID 和 App Secret\n4. 绑定成功后渠道将自动启用",
+      "feishuWaiting": "请使用飞书扫描二维码完成授权",
+      "feishuConnected": "飞书授权成功!",
+      "rebind": "重新绑定",
+      "retry": "重试"
     },
     "credentials": {
       "title": "API 凭据",

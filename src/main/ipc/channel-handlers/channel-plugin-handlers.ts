@@ -26,6 +26,8 @@ import {
   type NativePluginSessionFindResult
 } from './channel-handler-utils'
 import { safeSendMessagePackToAllWindows } from '../../window-ipc'
+import { registerPluginSessionHandlers } from './channel-plugin-session-handlers'
+import { registerPluginStreamHandlers } from './channel-plugin-stream-handlers'
 import {
   startWeixinLoginWithQr,
   waitForWeixinLogin,
@@ -152,8 +154,26 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
 
   // List persisted plugin instances (global, not per-project)
   registerChannelMessagePackHandler<undefined>('plugin:list', async () => {
-    const plugins = await readPlugins()
+    let plugins = await readPlugins()
     let changed = false
+
+    // Deduplicate: keep only one instance per provider type (prefer projectId=null).
+    // Old OpenCowork data may have per-project instances that should be removed.
+    plugins.sort((a, b) => {
+      if (a.projectId && !b.projectId) return 1
+      if (!a.projectId && b.projectId) return -1
+      return 0
+    })
+    const _seenTypes = new Set<string>()
+    const _deduped = plugins.filter((p) => {
+      if (_seenTypes.has(p.type)) return false
+      _seenTypes.add(p.type)
+      return true
+    })
+    if (_deduped.length !== plugins.length) {
+      plugins = _deduped
+      changed = true
+    }
 
     // Auto-seed: ensure each provider type has exactly one global instance
     for (const descriptor of CHANNEL_PROVIDERS) {
@@ -244,6 +264,16 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
         changed = true
       }
     }
+
+    // Sort by CHANNEL_PROVIDERS order
+    plugins.sort((a, b) => {
+      const ai = CHANNEL_PROVIDERS.findIndex((d) => d.type === a.type)
+      const bi = CHANNEL_PROVIDERS.findIndex((d) => d.type === b.type)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
 
     if (changed) await writePlugins(plugins)
     return plugins
@@ -347,189 +377,9 @@ export function registerPluginHandlers(channelManager: ChannelManager): void {
     return await executePluginAction({ pluginId, action, params })
   })
 
-  // ── Plugin Session Management ──
+  // ── Plugin Session Management (extracted) ──
+  registerPluginSessionHandlers()
 
-  registerChannelMessagePackHandler<string>('plugin:sessions:list', async (pluginId) => {
-    return await requestNativeDb<NativePluginSessionRow[]>('db/plugin-sessions-list', { pluginId })
-  })
-
-  registerChannelMessagePackHandler<{
-    id: string
-    pluginId: string
-    title: string
-    mode: string
-    createdAt: number
-    updatedAt: number
-    externalChatId?: string
-  }>('plugin:sessions:create', async (args) => {
-    const plugin = (await readPlugins()).find((item) => item.id === args.pluginId)
-    const result = await requestNativeDb<NativePluginSessionMutationResult>(
-      'db/plugin-sessions-create',
-      {
-        ...args,
-        projectId: null,
-        providerId: plugin?.providerId ?? null,
-        modelId: plugin?.model ?? null
-      }
-    )
-    if (!result.success) {
-      return { success: false, error: result.error || 'Create plugin session failed' }
-    }
-    return { success: true }
-  })
-
-  registerChannelMessagePackHandler<string>('plugin:sessions:find-by-chat', async (externalChatId) => {
-    const result = await requestNativeDb<NativePluginSessionFindResult>(
-      'db/plugin-sessions-find-by-chat',
-      { externalChatId }
-    )
-    if (!result.success) {
-      throw new Error(result.error || 'Find plugin session failed')
-    }
-    return result.session ?? null
-  })
-
-  registerChannelMessagePackHandler<undefined>('plugin:sessions:list-all', async () => {
-    return await requestNativeDb<NativePluginSessionRow[]>('db/plugin-sessions-list-all')
-  })
-
-  registerChannelMessagePackHandler<{ sessionId: string; limit?: number; offset?: number }>(
-    'plugin:sessions:messages',
-    async (args) => {
-      return await requestNativeDb<NativePluginSessionMessageRow[]>(
-        'db/plugin-sessions-messages',
-        args as Record<string, unknown>
-      )
-    }
-  )
-
-  registerChannelMessagePackHandler<{ sessionId: string }>('plugin:sessions:clear', async (args) => {
-    const result = assertNativeMutation(
-      await requestNativeDb<NativePluginSessionMutationResult>(
-        'db/plugin-sessions-clear',
-        args as Record<string, unknown>
-      ),
-      'Clear plugin session'
-    )
-    return { deleted: result.deleted }
-  })
-
-  registerChannelMessagePackHandler<{ sessionId: string }>('plugin:sessions:delete', async (args) => {
-    assertNativeMutation(
-      await requestNativeDb<NativePluginSessionMutationResult>(
-        'db/plugin-sessions-delete',
-        args as Record<string, unknown>
-      ),
-      'Delete plugin session'
-    )
-    safeSendMessagePackToAllWindows('plugin:session-deleted', { sessionId: args.sessionId })
-    return { ok: true }
-  })
-
-  registerChannelMessagePackHandler<{ sessionId: string; title: string }>(
-    'plugin:sessions:rename',
-    async (args) => {
-      assertNativeMutation(
-        await requestNativeDb<NativePluginSessionMutationResult>(
-          'db/plugin-sessions-rename',
-          args as Record<string, unknown>
-        ),
-        'Rename plugin session'
-      )
-      return { ok: true }
-    }
-  )
-
-  // ── Streaming output IPC ──
-
-  const streamHandles = new Map<
-    string,
-    import('../../channels/channel-types').ChannelStreamingHandle
-  >()
-  const streamContents = new Map<string, string>()
-
-  registerChannelMessagePackHandler<{
-    pluginId: string
-    chatId: string
-    streamId?: string
-    initialContent: string
-    messageId?: string
-  }>('plugin:stream:start', async (args) => {
-    const service = channelManager.getService(args.pluginId)
-    if (!service || !service.supportsStreaming || !service.sendStreamingMessage) {
-      return { ok: false, supportsStreaming: false }
-    }
-    try {
-      const handle = await service.sendStreamingMessage(
-        args.chatId,
-        args.initialContent,
-        args.messageId
-      )
-      const key = args.streamId || `${args.pluginId}:${args.chatId}`
-      streamHandles.set(key, handle)
-      streamContents.set(key, args.initialContent ?? '')
-      return { ok: true, supportsStreaming: true }
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : String(err) }
-    }
-  })
-
-  registerChannelMessagePackHandler<{
-    pluginId: string
-    chatId: string
-    streamId?: string
-    content: string
-  }>('plugin:stream:update', async (args) => {
-    const key = args.streamId || `${args.pluginId}:${args.chatId}`
-    const handle = streamHandles.get(key)
-    if (!handle) return { ok: false }
-    try {
-      streamContents.set(key, args.content)
-      await handle.update(args.content)
-      return { ok: true }
-    } catch {
-      return { ok: false }
-    }
-  })
-
-  registerChannelMessagePackHandler<{
-    pluginId: string
-    chatId: string
-    streamId?: string
-    delta: string
-  }>('plugin:stream:append', async (args) => {
-    const key = args.streamId || `${args.pluginId}:${args.chatId}`
-    const handle = streamHandles.get(key)
-    if (!handle) return { ok: false }
-    try {
-      const nextContent = `${streamContents.get(key) ?? ''}${args.delta ?? ''}`
-      streamContents.set(key, nextContent)
-      await handle.update(nextContent)
-      return { ok: true }
-    } catch {
-      return { ok: false }
-    }
-  })
-
-  registerChannelMessagePackHandler<{
-    pluginId: string
-    chatId: string
-    streamId?: string
-    content: string
-  }>('plugin:stream:finish', async (args) => {
-    const key = args.streamId || `${args.pluginId}:${args.chatId}`
-    const handle = streamHandles.get(key)
-    if (!handle) return { ok: false }
-    try {
-      streamContents.set(key, args.content)
-      await handle.finish(args.content)
-      streamHandles.delete(key)
-      streamContents.delete(key)
-      return { ok: true }
-    } catch {
-      streamHandles.delete(key)
-      streamContents.delete(key)
-      return { ok: false }
-    }
-  })
+  // ── Streaming output IPC (extracted) ──
+  registerPluginStreamHandlers(channelManager)
 }

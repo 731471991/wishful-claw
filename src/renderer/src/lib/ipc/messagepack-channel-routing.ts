@@ -297,6 +297,8 @@ const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'plugin:feishu:list-members',
   'plugin:feishu:send-urgent',
   'plugin:feishu:download-resource',
+  'plugin:feishu:install-start',
+  'plugin:feishu:install-poll',
   'plugin:feishu:bitable:list-apps',
   'plugin:feishu:bitable:list-tables',
   'plugin:feishu:bitable:list-fields',

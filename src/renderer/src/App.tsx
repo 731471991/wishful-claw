@@ -17,6 +17,7 @@ import { fetchToolDefinitions } from '@renderer/lib/tools/tool-cache'
 import { useMcpStore } from '@renderer/stores/mcp-store'
 import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
 import { registerAllViewers } from '@renderer/lib/preview/register-viewers'
+import { useChannelAutoReply } from '@renderer/hooks/use-channel-auto-reply'
 
 // Initialize provider store — ensures builtin presets exist
 initProviderStore()
@@ -59,6 +60,9 @@ function App(): React.JSX.Element | null {
     // Pre-fetch tool definitions in background so first message doesn't wait
     fetchToolDefinitions('chat')
   }, [])
+
+  // Mount channel auto-reply listener (plugin:session-task → Agent Loop → reply)
+  useChannelAutoReply()
 
   // Sync language changes
   useEffect(() => {

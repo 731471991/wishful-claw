@@ -80,7 +80,19 @@ export const useChannelStore = create<ChannelStore>((set) => ({
     set({ loading: true, error: null })
     try {
       const channels = (await ipcClient.invoke(IPC.PLUGIN_LIST)) as PluginInstance[]
-      set({ channels, loading: false })
+      // Query running status for all channels
+      const statuses: Record<string, 'running' | 'stopped' | 'error'> = {}
+      await Promise.all(
+        channels.map(async (ch) => {
+          try {
+            const status = (await ipcClient.invoke(IPC.PLUGIN_STATUS, ch.id)) as string
+            statuses[ch.id] = (status as 'running' | 'stopped' | 'error') || 'stopped'
+          } catch {
+            statuses[ch.id] = 'stopped'
+          }
+        })
+      )
+      set({ channels, channelStatuses: statuses, loading: false })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err), loading: false })
     }

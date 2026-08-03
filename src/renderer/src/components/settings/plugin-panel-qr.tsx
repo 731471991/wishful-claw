@@ -1,17 +1,17 @@
 /**
- * Channel / Plugin configuration panel.
+ * QR Code binding panel.
  *
- * Tabbed configuration for messaging channel providers:
- *   Tab 1: QR Code binding (scan to connect)
- *   Tab 2: API credentials (descriptor-driven form)
- *   Tab 3: Features & permissions toggles
+ * Supports two scan-to-bind flows:
+ *   - WeChat: long-polling QR login (existing weixin-login.ts)
+ *   - Feishu: OAuth Device Flow registration (feishu-install.ts)
+ *     User scans QR → authorizes in Feishu app → App ID + Secret auto-obtained
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import QRCode from 'qrcode'
-import { RefreshCw, QrCode, Loader2 } from 'lucide-react'
+import { RefreshCw, QrCode, Loader2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Spinner } from '@renderer/components/ui/spinner'
 import {
@@ -21,21 +21,62 @@ import {
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { cn } from '@renderer/lib/utils'
+
+interface FeishuInstallResult {
+  ok: boolean
+  installId?: string
+  qrUrl?: string
+  userCode?: string
+  expireIn?: number
+  interval?: number
+  message?: string
+}
+
+interface FeishuPollResult {
+  done: boolean
+  status: 'pending' | 'connected' | 'error'
+  message?: string
+  error?: string
+  appId?: string
+  appSecret?: string
+  domain?: string
+  userId?: string
+}
+
 export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JSX.Element {
   const { t } = useTranslation('settings')
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'waiting' | 'connected' | 'error'>('idle')
   const [statusMessage, setStatusMessage] = useState('')
-  const [generatedQr, setGeneratedQr] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
   const pollRef = useRef<AbortController | null>(null)
+  const feishuInstallIdRef = useRef<string | null>(null)
+  const feishuPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const { updateChannel } = useChannelStore()
 
   const isWeixin = channel.type === 'weixin-official'
   const isFeishu = channel.type === 'feishu-bot'
 
+  const cleanup = useCallback(() => {
+    pollRef.current?.abort()
+    if (feishuPollTimerRef.current) {
+      clearTimeout(feishuPollTimerRef.current)
+      feishuPollTimerRef.current = null
+    }
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current)
+      countdownTimerRef.current = null
+    }
+  }, [])
+
+  // ── WeChat QR login ──
   const startWeixinLogin = useCallback(async () => {
+    cleanup()
     setLoginStatus('loading')
     setStatusMessage('')
+    setQrDataUrl(null)
+
     try {
       const result = (await ipcClient.invoke(IPC.PLUGIN_WEIXIN_LOGIN_START, {
         pluginId: channel.id,
@@ -50,7 +91,6 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
         setLoginStatus('waiting')
         setStatusMessage(t('channel.qr.waiting', { defaultValue: '请使用微信扫描二维码' }))
 
-        // Poll for login status
         pollRef.current = new AbortController()
         const poll = async (): Promise<void> => {
           try {
@@ -66,15 +106,14 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
               setLoginStatus('connected')
               setStatusMessage(t('channel.qr.connected', { defaultValue: '绑定成功!' }))
 
-              // Save token and user info to channel config
               const patch: Partial<PluginInstance> = {
                 config: {
                   ...channel.config,
-                  token: (waitResult as any).token || (channel.config as any).token,
+                  token: (waitResult as Record<string, unknown>).token as string || (channel.config as Record<string, unknown>).token as string,
                   userId: waitResult.userId || channel.config.userId,
                   baseUrl: waitResult.baseUrl || channel.config.baseUrl,
-                  accountId: (waitResult as any).accountId || (channel.config as any).accountId
-                } as any,
+                  accountId: (waitResult as Record<string, unknown>).accountId as string || (channel.config as Record<string, unknown>).accountId as string
+                } as Record<string, string>,
                 enabled: true
               }
               await updateChannel(channel.id, patch)
@@ -83,7 +122,6 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
             }
 
             if (pollRef.current?.signal.aborted) return
-            // Continue polling
             setStatusMessage(waitResult.message || t('channel.qr.waiting', { defaultValue: '等待扫描...' }))
             void poll()
           } catch {
@@ -102,37 +140,107 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
       setLoginStatus('error')
       setStatusMessage(err instanceof Error ? err.message : String(err))
     }
-  }, [channel, t, updateChannel])
+  }, [channel, t, updateChannel, cleanup])
 
-  // Generate QR code for Feishu (encodes bot info URL)
-  const generateFeishuQr = useCallback(async () => {
-    const appId = channel.config.appId
-    if (!appId) {
-      setStatusMessage(t('channel.qr.noAppId', { defaultValue: '请先在 API 凭据页填写 App ID' }))
-      return
-    }
+  // ── Feishu OAuth Device Flow ──
+  const startFeishuInstall = useCallback(async () => {
+    cleanup()
+    setLoginStatus('loading')
+    setStatusMessage('')
+    setQrDataUrl(null)
+    feishuInstallIdRef.current = null
+
     try {
-      const botUrl = `https://open.feishu.cn/app/${appId}`
-      const dataUrl = await QRCode.toDataURL(botUrl, { width: 240, margin: 2 })
-      setGeneratedQr(dataUrl)
-      setStatusMessage(t('channel.qr.feishuHint', { defaultValue: '扫描二维码在飞书中打开应用' }))
-    } catch {
-      setStatusMessage(t('channel.qr.failed', { defaultValue: '生成二维码失败' }))
-    }
-  }, [channel.config.appId, t])
+      const result = (await ipcClient.invoke(IPC.PLUGIN_FEISHU_INSTALL_START, {
+        domain: 'feishu'
+      })) as FeishuInstallResult
 
+      if (!result.ok || !result.qrUrl || !result.installId) {
+        setLoginStatus('error')
+        setStatusMessage(result.message || t('channel.qr.failed', { defaultValue: '获取二维码失败' }))
+        return
+      }
+
+      // Render QR code from the verification URL
+      const dataUrl = await QRCode.toDataURL(result.qrUrl, { width: 200, margin: 1 })
+      setQrDataUrl(dataUrl)
+      setLoginStatus('waiting')
+      setStatusMessage(t('channel.qr.feishuWaiting', { defaultValue: '请使用飞书扫描二维码完成授权' }))
+      feishuInstallIdRef.current = result.installId
+
+      // Start countdown
+      const expireIn = result.expireIn ?? 300
+      setTimeLeft(expireIn)
+      countdownTimerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            cleanup()
+            setLoginStatus('error')
+            setStatusMessage(t('channel.qr.expired', { defaultValue: '二维码已过期，请刷新' }))
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      // Start polling
+      const pollInterval = (result.interval ?? 5) * 1000
+      const poll = async (): Promise<void> => {
+        if (!feishuInstallIdRef.current) return
+
+        try {
+          const pollResult = (await ipcClient.invoke(
+            IPC.PLUGIN_FEISHU_INSTALL_POLL,
+            feishuInstallIdRef.current
+          )) as FeishuPollResult
+
+          if (pollResult.done && pollResult.appId && pollResult.appSecret) {
+            // Success — save credentials
+            cleanup()
+            setLoginStatus('connected')
+            setStatusMessage(t('channel.qr.feishuConnected', { defaultValue: '飞书授权成功!' }))
+
+            await updateChannel(channel.id, {
+              config: {
+                ...channel.config,
+                appId: pollResult.appId,
+                appSecret: pollResult.appSecret
+              },
+              enabled: true
+            })
+            toast.success(t('channel.qr.feishuConnected', { defaultValue: '飞书授权成功!' }))
+            return
+          }
+
+          if (pollResult.status === 'error') {
+            cleanup()
+            setLoginStatus('error')
+            setStatusMessage(pollResult.error || t('channel.qr.failed', { defaultValue: '授权失败' }))
+            return
+          }
+
+          // Still pending
+          setStatusMessage(pollResult.message || t('channel.qr.feishuWaiting', { defaultValue: '等待扫码授权...' }))
+          feishuPollTimerRef.current = setTimeout(() => void poll(), pollInterval)
+        } catch {
+          feishuPollTimerRef.current = setTimeout(() => void poll(), pollInterval)
+        }
+      }
+
+      feishuPollTimerRef.current = setTimeout(() => void poll(), pollInterval)
+    } catch (err) {
+      setLoginStatus('error')
+      setStatusMessage(err instanceof Error ? err.message : String(err))
+    }
+  }, [channel, t, updateChannel, cleanup])
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      pollRef.current?.abort()
+      cleanup()
     }
-  }, [])
+  }, [cleanup])
 
-  // Auto-generate Feishu QR if appId exists
-  useEffect(() => {
-    if (isFeishu && channel.config.appId && !generatedQr) {
-      void generateFeishuQr()
-    }
-  }, [isFeishu, channel.config.appId, generatedQr, generateFeishuQr])
 
   if (!isWeixin && !isFeishu) {
     return (
@@ -140,6 +248,12 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
         {t('channel.qr.notSupported', { defaultValue: '此渠道不支持扫码绑定，请使用 API 凭据配置' })}
       </div>
     )
+  }
+
+  const formatTime = (s: number): string => {
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${m}:${String(sec).padStart(2, '0')}`
   }
 
   return (
@@ -151,89 +265,74 @@ export function QrLoginPanel({ channel }: { channel: PluginInstance }): React.JS
       {/* QR Code display */}
       <div className="flex flex-col items-center gap-3">
         <div className="relative flex size-[240px] items-center justify-center rounded-lg border-2 border-dashed border-border bg-white p-2">
-          {isWeixin ? (
-            qrDataUrl ? (
-              <img src={qrDataUrl} alt="QR Code" className="size-full object-contain" />
-            ) : loginStatus === 'loading' ? (
-              <Spinner className="size-8" />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <QrCode className="size-12 opacity-30" />
-                <span className="text-xs">{t('channel.qr.placeholder', { defaultValue: '点击下方按钮获取二维码' })}</span>
-              </div>
-            )
-          ) : isFeishu ? (
-            generatedQr ? (
-              <img src={generatedQr} alt="Feishu Bot QR" className="size-full object-contain" />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <QrCode className="size-12 opacity-30" />
-                <span className="text-xs">{statusMessage || t('channel.qr.feishuPlaceholder', { defaultValue: '填写 App ID 后生成二维码' })}</span>
-              </div>
-            )
-          ) : null}
-
-          {/* Loading overlay */}
-          {loginStatus === 'waiting' && qrDataUrl && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
-              <Loader2 className="size-6 animate-spin text-primary" />
+          {loginStatus === 'connected' ? (
+            <div className="flex flex-col items-center gap-2 text-green-600">
+              <CheckCircle2 className="size-12" />
+              <span className="text-xs font-medium">
+                {t('channel.qr.connected', { defaultValue: '绑定成功!' })}
+              </span>
+            </div>
+          ) : qrDataUrl ? (
+            <img src={qrDataUrl} alt="QR Code" className="size-[200px] rounded-md bg-white p-2" />
+          ) : loginStatus === 'loading' ? (
+            <Spinner className="size-8" />
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <QrCode className="size-12 opacity-30" />
+              <span className="text-xs">
+                {t('channel.qr.placeholder', { defaultValue: '点击下方按钮获取二维码' })}
+              </span>
             </div>
           )}
+
+
         </div>
 
-        {/* Status message */}
+        {/* Status message + countdown */}
         {statusMessage && (
-          <p className={cn(
-            'text-xs',
-            loginStatus === 'connected' ? 'text-green-600' : loginStatus === 'error' ? 'text-red-500' : 'text-muted-foreground'
-          )}>
-            {statusMessage}
-          </p>
+          <div className="flex flex-col items-center gap-1">
+            <p className={cn(
+              'text-xs',
+              loginStatus === 'connected' ? 'text-green-600' : loginStatus === 'error' ? 'text-red-500' : 'text-muted-foreground'
+            )}>
+              {statusMessage}
+            </p>
+            {loginStatus === 'waiting' && timeLeft > 0 && (
+              <span className="text-[10px] text-muted-foreground/60">
+                {formatTime(timeLeft)}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-2">
-        {isWeixin && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void startWeixinLogin()}
-            disabled={loginStatus === 'loading'}
-          >
-            {loginStatus === 'loading' ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-1.5 size-3.5" />
-            )}
-            {loginStatus === 'waiting'
-              ? t('channel.qr.refresh', { defaultValue: '刷新二维码' })
-              : t('channel.qr.start', { defaultValue: '获取二维码' })}
-          </Button>
+      {/* Action button */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => void (isWeixin ? startWeixinLogin() : startFeishuInstall())}
+        disabled={loginStatus === 'loading' || loginStatus === 'waiting'}
+      >
+        {loginStatus === 'loading' ? (
+          <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+        ) : (
+          <RefreshCw className="mr-1.5 size-3.5" />
         )}
-        {isFeishu && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void generateFeishuQr()}
-          >
-            <RefreshCw className="mr-1.5 size-3.5" />
-            {t('channel.qr.regenerate', { defaultValue: '重新生成' })}
-          </Button>
-        )}
-      </div>
+        {loginStatus === 'connected'
+          ? t('channel.qr.rebind', { defaultValue: '重新绑定' })
+          : loginStatus === 'error'
+            ? t('channel.qr.retry', { defaultValue: '重试' })
+            : t('channel.qr.refresh', { defaultValue: '刷新二维码' })}
+      </Button>
 
       {/* Instructions */}
       <div className="max-w-sm rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
         {isWeixin ? (
-          <p>{t('channel.qr.weixinInstructions', { defaultValue: '1. 点击"获取二维码"按钮\n2. 使用微信扫描显示的二维码\n3. 在手机上确认授权\n4. 绑定成功后渠道将自动启用' })}</p>
+          <p>{t('channel.qr.weixinInstructions', { defaultValue: '1. 点击"刷新二维码"获取二维码\n2. 使用微信扫描显示的二维码\n3. 在手机上确认授权\n4. 绑定成功后渠道将自动启用' })}</p>
         ) : (
-          <p>{t('channel.qr.feishuInstructions', { defaultValue: '1. 先在"API 凭据"页填写 App ID 和 App Secret\n2. 返回此页面查看生成的二维码\n3. 扫描二维码可快速跳转到飞书应用管理页\n4. 确保机器人已发布并具有所需权限' })}</p>
+          <p>{t('channel.qr.feishuInstructions', { defaultValue: '1. 使用飞书 App 扫描二维码\n2. 在飞书中确认授权创建应用\n3. 授权成功后自动获取 App ID 和 App Secret\n4. 绑定成功后渠道将自动启用' })}</p>
         )}
       </div>
     </div>
   )
 }
-
-// ── API Credentials Form ──
-

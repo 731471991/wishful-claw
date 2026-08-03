@@ -18,14 +18,14 @@ interface QQGatewayPayload {
   t?: string
 }
 
-const INTENTS = {
+export const INTENTS = {
   GUILD_MEMBERS: 1 << 1,
   DIRECT_MESSAGE: 1 << 12,
   GROUP_AND_C2C: 1 << 25,
   PUBLIC_GUILD_MESSAGES: 1 << 30
 }
 
-const INTENT_LEVELS = [
+export const INTENT_LEVELS = [
   {
     name: 'full',
     intents: INTENTS.PUBLIC_GUILD_MESSAGES | INTENTS.DIRECT_MESSAGE | INTENTS.GROUP_AND_C2C,
@@ -43,10 +43,10 @@ const INTENT_LEVELS = [
   }
 ] as const
 
-const RECONNECT_DELAYS = [1000, 2000, 5000, 10000, 30000]
-const INVALID_SESSION_RECONNECT_DELAY = 3000
+export const RECONNECT_DELAYS = [1000, 2000, 5000, 10000, 30000]
+export const INVALID_SESSION_RECONNECT_DELAY = 3000
 
-function parseBooleanConfig(value: string | undefined): boolean {
+export function parseBooleanConfig(value: string | undefined): boolean {
   return /^(1|true|yes|on)$/i.test((value ?? '').trim())
 }
 
