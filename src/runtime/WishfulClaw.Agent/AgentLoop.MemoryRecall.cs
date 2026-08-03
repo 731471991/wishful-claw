@@ -35,10 +35,23 @@ internal static partial class AgentLoop
             if (string.IsNullOrWhiteSpace(userMessage))
                 return;
 
+            var projectId = JsonHelpers.GetString(parameters, "projectId");
+            var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
             var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
-            var scope = !string.IsNullOrWhiteSpace(workingFolder)
-                ? $"project:{workingFolder}"
-                : "global";
+
+            string scope;
+            if (!string.IsNullOrWhiteSpace(sshConnectionId) && !string.IsNullOrWhiteSpace(projectId))
+            {
+                scope = $"project:ssh:{projectId}";
+            }
+            else if (!string.IsNullOrWhiteSpace(workingFolder))
+            {
+                scope = $"project:{workingFolder}";
+            }
+            else
+            {
+                scope = "global";
+            }
 
             var recall = new MemoryRecallService(
                 memorySearch,

@@ -129,7 +129,8 @@ export function useChatActions() {
         userRules: settings.systemPrompt || undefined,
         contextCompressionEnabled: settings.contextCompressionEnabled,
         contextCompressionThreshold: settings.contextCompressionThreshold,
-        sshConnectionId
+        sshConnectionId,
+        projectId
       })
 
       void opts

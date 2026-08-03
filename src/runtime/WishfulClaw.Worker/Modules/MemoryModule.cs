@@ -159,14 +159,25 @@ private static IMemorySearch GetSearch() =>
         {
             if (scope == "project")
             {
+                var projectId = GetString(parameters, "projectId");
+                var sshConnectionId = GetString(parameters, "sshConnectionId");
                 var workingFolder = GetString(parameters, "workingFolder");
-                return !string.IsNullOrWhiteSpace(workingFolder) ? $"project:{workingFolder}" : "global";
+                if (!string.IsNullOrWhiteSpace(sshConnectionId) && !string.IsNullOrWhiteSpace(projectId))
+                    return $"project:ssh:{projectId}";
+                if (!string.IsNullOrWhiteSpace(workingFolder))
+                    return $"project:{workingFolder}";
+                return "global";
             }
             if (scope == "global")
                 return "global";
             return scope;
         }
+        // Auto-resolve from parameters
+        var sshConnId = GetString(parameters, "sshConnectionId");
+        var projId = GetString(parameters, "projectId");
         var wf = GetString(parameters, "workingFolder");
+        if (!string.IsNullOrWhiteSpace(sshConnId) && !string.IsNullOrWhiteSpace(projId))
+            return $"project:ssh:{projId}";
         if (!string.IsNullOrWhiteSpace(wf))
             return $"project:{wf}";
         return allowNull ? "global" : "global";

@@ -55,7 +55,7 @@ public static class PromptBuilder
         // ── Memory Context (MEMORY.md loaded into prompt) ──
         if (profile == PromptProfile.Main)
         {
-            parts.Add(BuildMemoryContext(workingFolder));
+            parts.Add(BuildMemoryContext(parameters));
         }
 
         // ── Tool Capability ──
@@ -165,13 +165,29 @@ Do not overstep your bounds or create unnecessary files.
         return string.Join('\n', parts);
     }
 
-    private static string BuildMemoryContext(string? workingFolder)
+    private static string BuildMemoryContext(JsonElement parameters)
     {
         const int memoryBudget = 6000;
 
-        var scope = !string.IsNullOrWhiteSpace(workingFolder)
-            ? $"project:{workingFolder}"
-            : "global";
+        var projectId = JsonHelpers.GetString(parameters, "projectId");
+        var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+        var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+
+        string scope;
+        if (!string.IsNullOrWhiteSpace(sshConnectionId) && !string.IsNullOrWhiteSpace(projectId))
+        {
+            // SSH project: memory stored locally under ~/.wishful-claw/projects/{projectId}/
+            scope = $"project:ssh:{projectId}";
+        }
+        else if (!string.IsNullOrWhiteSpace(workingFolder))
+        {
+            // Local project: memory stored under {workingFolder}/.wishful-claw/
+            scope = $"project:{workingFolder}";
+        }
+        else
+        {
+            scope = "global";
+        }
 
         try
         {

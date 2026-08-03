@@ -47,6 +47,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         IWorkerRequestContext context,
         ToolRegistry? registry,
         string? workingFolder,
+        string? projectId,
         CancellationToken cancellationToken)
     {
         var action = (JsonHelpers.GetString(call.Input, "action") ?? "list").Trim().ToLowerInvariant();
@@ -56,7 +57,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         {
             "list" => await ListCapabilitiesAsync(context, registry, cancellationToken),
             "inspect" => await InspectCapabilityAsync(context, registry, capabilityId, cancellationToken),
-            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, capabilityId, cancellationToken),
+            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, projectId, capabilityId, cancellationToken),
             _ => EncodeError($"Unknown action: {action}. Use list, inspect, or call.")
         };
     }
@@ -173,6 +174,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         IWorkerRequestContext context,
         ToolRegistry? registry,
         string? workingFolder,
+        string? projectId,
         string capabilityId,
         CancellationToken cancellationToken)
     {
@@ -237,7 +239,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
                 arguments);
 
             var (output, isError) = await ToolDispatchRouter.DispatchAsync(
-                builtinCall, state, context, registry, workingFolder);
+                builtinCall, state, context, registry, workingFolder, projectId);
 
             return isError && IsJsonError(output) ? output : output;
         }

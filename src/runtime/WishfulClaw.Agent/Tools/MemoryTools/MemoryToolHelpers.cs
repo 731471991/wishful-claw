@@ -1,4 +1,5 @@
-﻿using WishfulClaw.Core.Tools;
+﻿using System.IO;
+using WishfulClaw.Core.Tools;
 using WishfulClaw.Workspace.Memory;
 
 namespace WishfulClaw.Agent.Tools.MemoryTools;
@@ -11,14 +12,26 @@ internal static class MemoryToolHelpers
 {
     /// <summary>
     /// Resolves the memory scope from execution context only.
-    /// The Agent cannot choose scope — it is determined by the working folder.
-    /// Project scope when workingFolder is set, global otherwise.
+    /// The Agent cannot choose scope — it is determined by the project binding.
+    /// SSH project → project:ssh:{projectId}, local project → project:{workingFolder}, otherwise global.
     /// </summary>
     public static string ResolveScope(ToolExecutionContext context)
     {
-        return !string.IsNullOrWhiteSpace(context.WorkingFolder)
-            ? $"project:{context.WorkingFolder}"
-            : "global";
+        // SSH project: has projectId but workingFolder is a remote path
+        if (!string.IsNullOrWhiteSpace(context.ProjectId)
+            && !string.IsNullOrWhiteSpace(context.WorkingFolder)
+            && !Directory.Exists(context.WorkingFolder))
+        {
+            return $"project:ssh:{context.ProjectId}";
+        }
+
+        // Local project: workingFolder exists on local filesystem
+        if (!string.IsNullOrWhiteSpace(context.WorkingFolder))
+        {
+            return $"project:{context.WorkingFolder}";
+        }
+
+        return "global";
     }
 
     /// <summary>
