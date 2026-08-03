@@ -66,10 +66,34 @@ async function handleChannelAutoReplyAsync(event: ChannelEvent): Promise<void> {
     }
 
     const sessionId = routedSession.sessionId
-    const sessionTitle =
-      routedSession.sessionTitle || data.chatName || data.senderName || data.chatId
+    // Build a user-friendly title with channel prefix
+    const channelDisplayNames: Record<string, string> = {
+      'feishu-bot': '飞书',
+      'weixin-official': '微信',
+      'qq-bot': 'QQ',
+      'dingtalk-bot': '钉钉',
+      'wecom-bot': '企业微信',
+      'telegram-bot': 'Telegram',
+      'discord-bot': 'Discord',
+      'whatsapp-bot': 'WhatsApp'
+    }
+    const channelPrefix = channelDisplayNames[event.pluginType] ?? ''
+    const rawTitle = routedSession.sessionTitle || data.chatName || data.senderName || data.chatId
+    const sessionTitle = channelPrefix ? `${channelPrefix}: ${rawTitle}` : rawTitle
     const pluginWorkDir = routedSession.workingFolder ?? ''
     const pluginSshConnectionId = routedSession.sshConnectionId ?? null
+
+    // Persist the prefixed title to DB if it differs from the stored one
+    if (channelPrefix && sessionTitle !== routedSession.sessionTitle) {
+      try {
+        await getNativeWorker().request('db/sessions-update', {
+          id: sessionId,
+          patch: { title: sessionTitle }
+        })
+      } catch {
+        // non-fatal — the title is still passed to the renderer via taskPayload
+      }
+    }
 
     // ── Command interception: handle /help, /new, /init, /status etc. before agent loop ──
     // Always attempt command parsing — tryHandleCommand handles @mention stripping internally

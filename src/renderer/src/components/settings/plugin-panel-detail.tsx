@@ -261,6 +261,32 @@ export function ChannelDetailPanel({ channel }: { channel: PluginInstance }): Re
 
   const isRunning = status === 'running'
 
+  // Check if channel has been configured with required credentials
+  const isConfigured = (() => {
+    const cfg = channel.config as Record<string, string>
+    switch (channel.type) {
+      case 'feishu-bot':
+        return !!(cfg.appId && cfg.appSecret)
+      case 'dingtalk-bot':
+        return !!(cfg.appKey && cfg.appSecret)
+      case 'wecom-bot':
+        return !!(cfg.corpId && cfg.secret && cfg.agentId)
+      case 'qq-bot':
+        return !!(cfg.appId && cfg.clientSecret)
+      case 'weixin-official':
+        return !!cfg.token
+      case 'telegram-bot':
+        return !!cfg.botToken
+      case 'discord-bot':
+        return !!cfg.botToken
+      case 'whatsapp-bot':
+        return !!(cfg.phoneNumberId && cfg.accessToken)
+      default:
+        return false
+    }
+  })()
+  const isUnconfigured = !isConfigured
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Channel header */}
@@ -272,10 +298,12 @@ export function ChannelDetailPanel({ channel }: { channel: PluginInstance }): Re
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">{channel.name}</span>
-              <Badge variant={isRunning ? 'default' : 'secondary'} className="h-4 text-[10px]">
+              <Badge variant={isRunning ? 'default' : isUnconfigured ? 'outline' : 'secondary'} className="h-4 text-[10px]">
                 {isRunning
                   ? t('channel.status.running', { defaultValue: '运行中' })
-                  : t('channel.status.stopped', { defaultValue: '已停止' })}
+                  : isUnconfigured
+                    ? t('channel.status.unconfigured', { defaultValue: '未配置' })
+                    : t('channel.status.stopped', { defaultValue: '已停止' })}
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">{descriptor?.description ?? channel.type}</p>
@@ -284,6 +312,7 @@ export function ChannelDetailPanel({ channel }: { channel: PluginInstance }): Re
         <Button
           variant={isRunning ? 'outline' : 'default'}
           size="sm"
+          disabled={isUnconfigured}
           onClick={() => void (isRunning ? stopChannel(channel.id) : startChannel(channel.id))}
         >
           {isRunning ? (

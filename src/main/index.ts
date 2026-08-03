@@ -1,4 +1,4 @@
-﻿import { app, BrowserWindow, Notification, shell, dialog } from 'electron'
+import { app, BrowserWindow, Notification, shell, dialog } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -20,9 +20,14 @@ import { registerWebSearchHandlers } from './ipc/web-search-handlers'
 import { registerSshHandlers, cleanupSshHandlers } from './ipc/ssh-handlers'
 import { registerSkillHandlers } from './ipc/skill-handlers'
 import { registerSshFsHandlers } from './ipc/ssh-fs-handlers'
+import { ChannelManager } from './channels/channel-manager'
+import { registerBuiltInChannelProviders } from './channels/register-providers'
+import { registerChannelHandlers, autoStartChannels } from './ipc/channel-handlers'
+import { setPluginManager } from './channels/auto-reply'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
+let channelManager: ChannelManager | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -257,6 +262,13 @@ registerWebSearchHandlers()
   // ── Skills handlers ──
   registerSkillHandlers()
 
+  // -- Channel system initialization --
+  channelManager = new ChannelManager()
+  registerBuiltInChannelProviders(channelManager)
+  registerChannelHandlers(channelManager)
+  setPluginManager(channelManager)
+  logInfo('main', 'Channel system initialized')
+
   registerMessagePackHandler<unknown, unknown[]>(
     'agents:list',
     async () => []
@@ -485,6 +497,11 @@ registerWebSearchHandlers()
 
   createWindow()
 
+  // Auto-start enabled channels after window is ready
+  if (channelManager) {
+    void autoStartChannels(channelManager)
+  }
+
 function formatLocalDateFolderName(date = new Date()): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -505,4 +522,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   cleanupSshHandlers()
+  if (channelManager) {
+    void channelManager.stopAll()
+  }
 })

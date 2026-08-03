@@ -9,7 +9,13 @@ delete process.env.ELECTRON_RUN_AS_NODE
 delete process.env.ELECTRON_EXEC_PATH
 
 export default defineConfig({
-  main: {},
+  main: {
+    build: {
+      rollupOptions: {
+        external: ['dingtalk-stream']
+      }
+    }
+  },
   preload: {},
   renderer: {
     server: {
@@ -21,6 +27,9 @@ export default defineConfig({
         '@shared': resolve('src/shared')
       }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {}
+    }
   }
 })

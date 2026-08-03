@@ -440,8 +440,8 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       return
     }
 
-    // No messages to load
-    if (knownCount === 0) {
+    // No messages to load (only skip if we have already confirmed via DB)
+    if (knownCount === 0 && session.messagesLoaded) {
       set((state) => {
         const target = state.sessions.find((s) => s.id === sessionId)
         if (!target) return
