@@ -186,6 +186,7 @@ Do not overstep your bounds or create unnecessary files.
         {
             scope = "global";
         }
+        WorkerLog.Warn($"BuildMemoryContext scope={scope} projectId={projectId ?? "(null)"} sshConnectionId={sshConnectionId ?? "(null)"} workingFolder={workingFolder ?? "(null)"}");
 
         try
         {

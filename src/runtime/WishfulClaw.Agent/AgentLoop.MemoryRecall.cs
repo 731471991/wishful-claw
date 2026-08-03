@@ -76,11 +76,11 @@ internal static partial class AgentLoop
                         break;
                     }
                 }
-                WorkerLog.Info($"memory recall injected runId={state.RunId} length={injected.Length}");
+                WorkerLog.Warn($"memory recall injected runId={state.RunId} length={injected.Length}");
             }
             else
             {
-                WorkerLog.Debug($"memory recall: no relevant memories found runId={state.RunId}");
+                WorkerLog.Warn($"memory recall: no relevant memories found runId={state.RunId}");
             }
         }
         catch (OperationCanceledException) when (state.CancellationToken.IsCancellationRequested)

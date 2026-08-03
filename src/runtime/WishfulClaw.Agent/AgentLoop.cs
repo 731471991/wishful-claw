@@ -110,7 +110,7 @@ internal static partial class AgentLoop
             var userRules = JsonHelpers.GetString(parameters, "userRules");
             var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
             var projectId = JsonHelpers.GetString(parameters, "projectId");
-            WorkerLog.Info($"agent run sshConnectionId={sshConnectionId ?? "(null)"} personaId={personaId} projectId={projectId ?? "(null)"}");
+            WorkerLog.Warn($"agent run sshConnectionId={sshConnectionId ?? "(null)"} personaId={personaId} projectId={projectId ?? "(null)"}");
             var cacheKey = SystemPromptCache.ComputeKey(personaId, workingFolder, language, userRules, sshConnectionId, projectId);
             var builtPrompt = SystemPromptCache.GetOrBuild(cacheKey, () =>
                 PromptBuilder.Build(
