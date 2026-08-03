@@ -255,6 +255,35 @@ Worker
 - **禁止从旧分支拆分支**：如果上一个分支未合并 main，新分支会缺少前序迭代的代码变更，导致编译错误或功能缺失
 - **标准流程**：`git checkout main` → `git pull origin main` → `git checkout -b dev/v2-iter-{N}` → 开发 → commit → push → 合并 main → 打 tag → 删除分支 → 下一个迭代从 main 重新拆出
 
+### 迭代完结收尾
+
+**迭代是否完结由用户确认，Agent 不得自行判定。**
+
+用户确认完结后，Agent 必须执行以下收尾步骤，确保 main 是最新的，下个会话可以直接从 main 开始新迭代：
+
+```bash
+# 1. 合并到 main
+ git checkout main
+git merge dev/v2-iter-{N} --no-ff -m "merge: v2-iter-{N} - {迭代名称}"
+
+# 2. 打 tag
+git tag -a v2.{N}.0 -m "v2-iter-{N}: {迭代名称} - 验证通过"
+
+# 3. 推送远程（需要代理）
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin v2.{N}.0
+
+# 4. 删除本地迭代分支
+git branch -d dev/v2-iter-{N}
+
+# 5. 删除远程迭代分支（如果之前 push 过）
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin --delete dev/v2-iter-{N}
+```
+
+收尾完成后更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）。
+
+**关键要求**：收尾完成后，当前会话结束。下个会话直接从 main 拉取最新代码开始新迭代，不需要关心旧分支。
+
 ## 异常日志
 
 项目运行时的所有异常（主进程、渲染进程、Worker、IPC 通道）会自动写入日志文件。

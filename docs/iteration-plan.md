@@ -26,25 +26,29 @@
 
 当迭代内所有 Plan 都完成后，Agent 输出迭代总结（做了什么、验证结果、遗留问题），然后**停下来等用户确认**。
 
-**用户确认完结后，Agent 执行收尾**：
+**用户确认完结后，Agent 执行收尾**（详见 `AGENTS.md` 迭代完结收尾小节）：
 ```bash
-# 打 tag
-git tag -a v0.{N}.0 -m "迭代{N}: {迭代名称} - 验证通过"
-
-# 合并到 main
+# 1. 合并到 main
 git checkout main
-git merge dev/iter-{N} --no-ff -m "merge: 迭代{N} - {迭代名称}"
+git merge dev/v2-iter-{N} --no-ff -m "merge: v2-iter-{N} - {迭代名称}"
 
-# 推送远程
-git push origin main
-git push origin v0.{N}.0
+# 2. 打 tag
+git tag -a v2.{N}.0 -m "v2-iter-{N}: {迭代名称} - 验证通过"
 
-# 删除迭代分支
-git branch -d dev/iter-{N}
-git push origin --delete dev/iter-{N}
+# 3. 推送远程（需要代理）
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin v2.{N}.0
+
+# 4. 删除本地迭代分支
+git branch -d dev/v2-iter-{N}
+
+# 5. 删除远程迭代分支（如果之前 push 过）
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin --delete dev/v2-iter-{N}
 ```
 
-**更新 `docs/PROGRESS.md`**（状态 + VERDICT + Commit ID + Tag + 日期）
+收尾完成后更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）。
+
+**关键要求**：收尾完成后，当前会话结束。下个会话直接从 main 拉取最新代码开始新迭代，不需要关心旧分支。
 
 **用户确认未完结**：根据用户反馈继续补充，开启新的 Plan
 
