@@ -2,9 +2,8 @@ import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
-import { useSettingsStore } from '@renderer/stores/settings-store'
+import { useSettingsStore, resolveReasoningEffortForModel } from '@renderer/stores/settings-store'
 import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type CachedToolDef } from '@renderer/lib/tools/tool-cache'
-import { buildRuntimeReminder } from '@renderer/lib/agent/dynamic-context'
 
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
@@ -80,21 +79,23 @@ export function useChatActions() {
       // (toolRegistry.get() works by name), but their definitions are NOT
       // sent to the LLM — this keeps the tool list lean and lets the Worker's
       // ToolPreset control what the LLM sees.
-      const tools = filteredWorkerTools
+      void filteredWorkerTools // tools now managed by backend via toolPreset
 
-      // Build runtime reminder (capability route, session state, selected files)
-      // and inject as user message prefix — NOT into system prompt — to keep
-      // the system prompt byte-stable for provider prefix cache hits.
-      // (Inspired by Reasonix's transient block approach.)
-      const userPromptText = typeof text === 'string' ? text : text.text
-      const runtimeReminder = await buildRuntimeReminder({
-        sessionId: targetSessionId,
-        modelConfig: activeProvider,
-        userPrompt: userPromptText
-      })
-      const userContent = runtimeReminder ? `${runtimeReminder}
+      const userContent = text
 
-${text}` : text
+      // Resolve thinking config from the model definition
+      const modelConfig = activeProvider.models.find((m: any) => m.id === modelId)
+      const thinkingConfig = modelConfig?.thinkingConfig
+      const thinkingEnabled = settings.thinkingEnabled && !!thinkingConfig
+      const reasoningEffort = thinkingConfig
+        ? resolveReasoningEffortForModel({
+            reasoningEffort: settings.reasoningEffort,
+            reasoningEffortByModel: settings.reasoningEffortByModel,
+            providerId: activeProvider.id,
+            modelId,
+            thinkingConfig
+          })
+        : undefined
 
       const provider = {
         id: activeProvider.id,
@@ -104,14 +105,18 @@ ${text}` : text
         baseUrl: activeProvider.baseUrl,
         model: modelId,
         temperature: settings.temperature ?? undefined,
-        maxTokens: settings.maxTokens ?? undefined
+        maxTokens: settings.maxTokens ?? undefined,
+        thinkingEnabled,
+        thinkingConfig: thinkingConfig ?? undefined,
+        reasoningEffort
       }
 
       await sendMessage({
         provider,
         messages: [{ role: 'user', content: userContent }],
         sessionId: targetSessionId,
-        tools: tools ?? undefined,
+        toolPreset,
+        webSearchEnabled,
         workingFolder,
         maxIterations: 0, // 0 = unlimited, agent runs until no more tool calls
         maxParallelTools: settings.maxParallelToolCalls,

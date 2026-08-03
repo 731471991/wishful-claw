@@ -51,6 +51,19 @@ public sealed class AgentRuntimeRunState : IDisposable
     public SessionConversation? SessionConversation { get; set; }
 
     /// <summary>
+    /// Memory-update notes drained at the start of this turn.
+    /// Injected into the last user message by InjectTransientPrefix, becoming
+    /// part of the permanent conversation history.
+    /// </summary>
+    public List<string> PendingMemoryNotes { get; set; } = [];
+
+    /// <summary>
+    /// Memory-recall block injected into the last user message before the
+    /// timestamp prefix. Becomes part of the permanent conversation history.
+    /// </summary>
+    public string? PendingMemoryRecall { get; set; }
+
+    /// <summary>
     /// Optional callback invoked for every event when SuppressTransportEvents is true.
     /// The SubAgentExecutor uses this to collect text/tool events from the child loop.
     /// </summary>

@@ -1,7 +1,6 @@
 using System.Buffers;
 using System.Text.Json;
 using WishfulClaw.Contracts;
-using WishfulClaw.Core.Tools;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
 
@@ -14,6 +13,30 @@ namespace WishfulClaw.Agent;
 /// </summary>
 public static class ToolCallProcessor
 {
+    /// <summary>
+    /// Maximum tool output size in bytes before head+tail truncation kicks in.
+    /// Aligned with Reasonix's maxToolOutputBytes (32KB). Prevents giant tool
+    /// results (e.g. WebFetch of a full webpage) from blowing the context window
+    /// and destroying prefix cache hit rates.
+    /// </summary>
+    private const int MaxToolOutputChars = 16 * 1024; // ~16K chars (~16-48KB UTF-8)
+
+    /// <summary>
+    /// Truncate tool output to MaxToolOutputChars using head+tail strategy
+    /// (preserves beginning and end, elides the middle). Slices on char boundary.
+    /// Uses char count directly for simplicity and allocation-free slicing.
+    /// </summary>
+    private static string TruncateToolOutput(string output)
+    {
+        if (string.IsNullOrEmpty(output) || output.Length <= MaxToolOutputChars)
+            return output;
+
+        var keep = MaxToolOutputChars / 2; // 8K chars per half
+        var head = output[..keep];
+        var tail = output[^(keep)..];
+        var omitted = output.Length - head.Length - tail.Length;
+        return head + "\n\n[truncated " + omitted + " of " + output.Length + " chars — rerun with narrower args to see the middle]\n\n" + tail;
+    }
     /// <summary>
     /// Executes a batch of tool calls with concurrency control and per-turn capping.
     /// Returns the collected tool results in completion order.
@@ -279,13 +302,22 @@ public static class ToolCallProcessor
                         startedAt,
                         completedAt)));
 
+            // Truncate oversized tool output (Reasonix-aligned head+tail strategy)
+            var truncatedOutput = TruncateToolOutput(toolOutput);
+            if (truncatedOutput.Length < toolOutput.Length)
+            {
+                WorkerLog.Warn(
+                    $"agent tool output truncated runId={state.RunId} tool={toolCall.Name} " +
+                    $"original={toolOutput.Length} truncated={truncatedOutput.Length}");
+            }
+
             WorkerLog.Debug(
                 $"agent tool executed runId={state.RunId} tool={toolCall.Name} " +
-                $"id={toolCall.Id} error={isToolError} outputLen={toolOutput.Length}");
+                $"id={toolCall.Id} error={isToolError} outputLen={truncatedOutput.Length}");
 
             return new AgentRuntimeToolResult(
                 toolCall.Id,
-                AgentRuntimeProviderSupport.CreateStringElement(toolOutput),
+                AgentRuntimeProviderSupport.CreateStringElement(truncatedOutput),
                 isToolError ? true : null);
         }
         finally

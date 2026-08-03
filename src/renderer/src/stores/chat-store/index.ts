@@ -54,7 +54,8 @@ export interface AgentActions {
 
     systemPrompt?: string
 
-    tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
+    toolPreset?: string
+    webSearchEnabled?: boolean
 
     workingFolder?: string
 

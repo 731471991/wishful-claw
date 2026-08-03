@@ -172,52 +172,70 @@ internal static partial class AgentLoop
     /// The agent gets fresh time context every turn without churning the cached prefix.
     /// Design follows Reasonix's transient turn-injection pattern.
     /// </summary>
-    internal static void InjectTimestampPrefix(List<AgentRuntimeChatMessage> conversation)
-    {
-        // Find the last user message (the current turn's input)
-        for (var i = conversation.Count - 1; i >= 0; i--)
-        {
-            if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
-            {
-                var now = DateTimeOffset.Now;
-                var timestampBlock = $"<current_time>\n{now:yyyy-MM-dd HH:mm zzz} ({now:dddd})\n</current_time>\n\n";
-                conversation[i] = conversation[i] with { Text = timestampBlock + conversation[i].Text };
-                break;
-            }
-        }
-    }
-
     /// <summary>
-    /// Drains pending memory-update notes and injects them as a transient
-    /// prefix to the last user message. Like InjectTimestampPrefix, this stays
-    /// OUT of the system prompt to preserve prefix cache stability.
-    /// Design follows Reasonix's turn-tail note pattern (memory.Queue).
+    /// Injects timestamp + memory-update notes into the LAST user message
+    /// in the conversation. This modifies the SessionConversation's live list
+    /// directly — the timestamp becomes part of the permanent history, so
+    /// every subsequent turn sees byte-identical historical messages.
+    /// 
+    /// Key insight: the timestamp is injected ONCE when the user message
+    /// arrives, and never changes after that. The next turn's user message
+    /// gets its own timestamp. Historical messages keep their original
+    /// timestamps unchanged → prefix cache stable.
     /// </summary>
-    internal static void InjectMemoryUpdatePrefix(List<AgentRuntimeChatMessage> conversation, string sessionId)
+    internal static void InjectTransientPrefix(List<AgentRuntimeChatMessage> conversation, AgentRuntimeRunState state)
     {
-        var notes = MemoryUpdateQueue.Drain(sessionId);
-        if (notes.Count == 0) return;
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("<memory-update>");
-        sb.AppendLine("The following memory changes were just made and apply from now on:");
-        foreach (var note in notes)
-        {
-            sb.Append("- ").AppendLine(note);
-        }
-        sb.AppendLine("</memory-update>");
-        sb.AppendLine();
-
-        var block = sb.ToString();
-
         // Find the last user message (the current turn's input)
         for (var i = conversation.Count - 1; i >= 0; i--)
         {
             if (conversation[i].Role == "user" && conversation[i].ToolResults.Count == 0)
             {
-                conversation[i] = conversation[i] with { Text = block + conversation[i].Text };
-                break;
+                var msg = conversation[i];
+                
+                // Skip if already injected (e.g. re-entry on retry).
+                // Use Contains instead of StartsWith because memory recall /
+                // memory-update prefixes are prepended BEFORE <current_time>,
+                // so the tag may not be at position 0 on messages injected with memory context.
+                if (msg.Text.Contains("<current_time>", StringComparison.Ordinal))
+                    return;
+
+                var parts = new System.Text.StringBuilder();
+
+                // Memory recall (first iteration only)
+                if (!string.IsNullOrEmpty(state.PendingMemoryRecall))
+                {
+                    parts.Append(state.PendingMemoryRecall);
+                }
+
+                // Memory updates (drained at turn start)
+                var memNotes = MemoryUpdateQueue.Drain(state.SessionId ?? "");
+                state.PendingMemoryNotes = memNotes;
+                if (memNotes.Count > 0)
+                {
+                    parts.AppendLine("<memory-update>");
+                    parts.AppendLine("The following memory changes were just made and apply from now on:");
+                    foreach (var note in memNotes)
+                    {
+                        parts.Append("- ").AppendLine(note);
+                    }
+                    parts.AppendLine("</memory-update>");
+                    parts.AppendLine();
+                }
+
+                // Current timestamp (minute-level precision for stability)
+                var now = DateTimeOffset.Now;
+                parts.Append("<current_time>\n");
+                parts.Append(now.ToString("yyyy-MM-dd HH:mm zzz"));
+                parts.Append(" (");
+                parts.Append(now.ToString("dddd"));
+                parts.Append(")\n</current_time>\n\n");
+
+                conversation[i] = msg with { Text = parts.ToString() + msg.Text };
+                return;
             }
         }
+
+        // No user message found — still drain memory queue
+        state.PendingMemoryNotes = MemoryUpdateQueue.Drain(state.SessionId ?? "");
     }
 }

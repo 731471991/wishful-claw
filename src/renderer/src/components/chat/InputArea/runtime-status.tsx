@@ -214,7 +214,7 @@ export function ComposerRuntimeStatus({
   const hasSessionCache = live.sessionCacheHit != null || live.sessionCacheMiss != null
   const cacheHitRate = hasSessionCache
     ? (live.sessionCacheHit ?? 0) / Math.max(1, (live.sessionCacheHit ?? 0) + (live.sessionCacheMiss ?? 0))
-    : getCacheHitRate(inputTokens, cacheReadTokens, cacheCreationTokens)
+    : getCacheHitRate(live.cumulativeBillableInputTokens, cacheReadTokens, cacheCreationTokens)
   const sessionCacheRateLabel = hasSessionCache
     ? formatSessionCacheHitRate(live.sessionCacheHit, live.sessionCacheMiss)
     : null

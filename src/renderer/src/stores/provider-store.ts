@@ -154,10 +154,12 @@ export const useProviderStore = create<ProviderState>()(
             const merged = models.map((m) => {
               const existing = existingById.get(m.id)
               if (existing) {
-                // Merge thinkingConfig: preserve user customizations but fill in missing
-                // fields (e.g. reasoningEffortLevels) from the enriched version
+                // Merge thinkingConfig: use the enriched/builtin config as the base
+                // (so bodyParams/disabledBodyParams stay in sync with preset updates),
+                // then fill in user-only fields (reasoningEffortLevels, defaultReasoningEffort)
+                // that the enriched version may not carry.
                 const mergedThinking = existing.thinkingConfig
-                  ? { ...m.thinkingConfig, ...existing.thinkingConfig }
+                  ? { ...existing.thinkingConfig, ...m.thinkingConfig }
                   : m.thinkingConfig
                 return { ...existing, ...m, thinkingConfig: mergedThinking }
               }

@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent;
 
@@ -32,6 +33,7 @@ internal static partial class AnthropicMessagesProvider
         JsonElement parameters,
         JsonElement provider,
         List<AgentRuntimeChatMessage> conversation,
+        IReadOnlyList<ToolDefinition> toolDefs,
         AgentRuntimeRunState state,
         IWorkerRequestContext context)
     {
@@ -40,7 +42,7 @@ internal static partial class AnthropicMessagesProvider
             .Trim()
             .TrimEnd('/');
         var url = $"{baseUrl}/v1/messages";
-        var body = BuildRequestBody(parameters, provider, conversation);
+        var body = BuildRequestBody(parameters, provider, conversation, toolDefs, state);
 
         await AgentRuntimeTools.EmitAsync(
             state, context,

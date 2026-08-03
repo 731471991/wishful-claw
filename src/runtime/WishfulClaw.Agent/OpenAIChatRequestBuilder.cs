@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Net.Http;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent;
 
@@ -13,7 +14,9 @@ internal static partial class OpenAIChatProvider
     private static string BuildRequestBody(
         JsonElement parameters,
         JsonElement provider,
-        IReadOnlyList<AgentRuntimeChatMessage> conversation)
+        IReadOnlyList<AgentRuntimeChatMessage> conversation,
+        IReadOnlyList<ToolDefinition> toolDefs,
+        AgentRuntimeRunState state)
     {
         var buffer = new ArrayBufferWriter<byte>();
         var omitted = ProviderRequestOverrides.GetOmittedBodyKeys(provider);
@@ -21,6 +24,8 @@ internal static partial class OpenAIChatProvider
         {
             writer.WriteStartObject();
 
+            // Field order aligned with Reasonix chatRequest struct:
+            // model → messages → tools → stream → stream_options → temperature → max_tokens → ...
             if (!omitted.Contains("model"))
             {
                 writer.WriteString("model", JsonHelpers.GetString(provider, "model") ?? string.Empty);
@@ -29,7 +34,12 @@ internal static partial class OpenAIChatProvider
             if (!omitted.Contains("messages"))
             {
                 writer.WritePropertyName("messages");
-                WriteMessages(writer, conversation, provider);
+                WriteMessages(writer, conversation, provider, state);
+            }
+
+            if (!omitted.Contains("tools"))
+            {
+                WriteTools(writer, toolDefs);
             }
 
             if (!omitted.Contains("stream"))
@@ -43,11 +53,6 @@ internal static partial class OpenAIChatProvider
                 writer.WriteStartObject();
                 writer.WriteBoolean("include_usage", true);
                 writer.WriteEndObject();
-            }
-
-            if (!omitted.Contains("tools"))
-            {
-                WriteTools(writer, parameters);
             }
 
             if (!omitted.Contains("temperature") &&
@@ -78,7 +83,8 @@ internal static partial class OpenAIChatProvider
     private static void WriteMessages(
         Utf8JsonWriter writer,
         IReadOnlyList<AgentRuntimeChatMessage> messages,
-        JsonElement provider)
+        JsonElement provider,
+        AgentRuntimeRunState? state)
     {
         writer.WriteStartArray();
 
@@ -90,8 +96,9 @@ internal static partial class OpenAIChatProvider
             writer.WriteEndObject();
         }
 
-        foreach (var message in messages)
+        for (var i = 0; i < messages.Count; i++)
         {
+            var message = messages[i];
             if (message.Role == "system") continue;
 
             // Tool results → role: tool messages
@@ -119,6 +126,13 @@ internal static partial class OpenAIChatProvider
                     continue; // Already written as tool messages
                 }
 
+                // Memory recall, memory-update notes, and timestamp are already
+                // injected into the conversation message by InjectTransientPrefix
+                // and TryInjectMemoryRecallAsync (called before/at iteration 1 of
+                // the agent loop). No write-time suffix injection here - doing so
+                // would double-inject memory content and break byte consistency
+                // between the stored conversation and the API request.
+
                 writer.WriteStartObject();
                 writer.WriteString("role", "user");
                 writer.WriteString("content", message.Text);
@@ -135,6 +149,13 @@ internal static partial class OpenAIChatProvider
                     if (!string.IsNullOrEmpty(message.Text))
                     {
                         writer.WriteString("content", message.Text);
+                    }
+                    // DeepSeek thinking mode requires reasoning_content key on
+                    // assistant tool_calls messages. Write it when available
+                    // (matches Reasonix behavior for prefix cache stability).
+                    if (message.ReasoningContent is not null)
+                    {
+                        writer.WriteString("reasoning_content", message.ReasoningContent);
                     }
                     writer.WritePropertyName("tool_calls");
                     writer.WriteStartArray();
@@ -164,61 +185,27 @@ internal static partial class OpenAIChatProvider
         writer.WriteEndArray();
     }
 
-    private static void WriteTools(Utf8JsonWriter writer, JsonElement parameters)
+    private static void WriteTools(Utf8JsonWriter writer, IReadOnlyList<ToolDefinition> toolDefs)
     {
-        if (!parameters.TryGetProperty("tools", out var tools) ||
-            tools.ValueKind != JsonValueKind.Array ||
-            tools.GetArrayLength() == 0)
-        {
-            return;
-        }
+        if (toolDefs.Count == 0) return;
 
         // Sort tools by name for stable byte ordering (prefix cache stability)
-        var toolList = new List<(string name, JsonElement tool)>();
-        foreach (var tool in tools.EnumerateArray())
-        {
-            if (tool.ValueKind != JsonValueKind.Object) continue;
-            var name = tool.TryGetProperty("name", out var nameProp)
-                ? nameProp.GetString() ?? ""
-                : "";
-            toolList.Add((name, tool));
-        }
-        toolList.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+        var sorted = new List<ToolDefinition>(toolDefs);
+        sorted.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
 
         writer.WritePropertyName("tools");
         writer.WriteStartArray();
-        foreach (var (toolName, tool) in toolList)
+        foreach (var def in sorted)
         {
-            // Transform from { name, description, inputSchema } to OpenAI format:
-            // { type: "function", function: { name, description, parameters: inputSchema } }
-            // If the tool already has "type" field, it's already in the correct format.
-            if (tool.TryGetProperty("type", out _) && tool.TryGetProperty("function", out _))
-            {
-                tool.WriteTo(writer);
-                continue;
-            }
-
+            // OpenAI format: { type: "function", function: { name, description, parameters } }
             writer.WriteStartObject();
             writer.WriteString("type", "function");
             writer.WritePropertyName("function");
             writer.WriteStartObject();
-
-            if (tool.TryGetProperty("name", out var name))
-            {
-                writer.WritePropertyName("name");
-                name.WriteTo(writer);
-            }
-            if (tool.TryGetProperty("description", out var desc))
-            {
-                writer.WritePropertyName("description");
-                desc.WriteTo(writer);
-            }
-            if (tool.TryGetProperty("inputSchema", out var inputSchema))
-            {
-                writer.WritePropertyName("parameters");
-                inputSchema.WriteTo(writer);
-            }
-
+            writer.WriteString("name", def.Name);
+            writer.WriteString("description", def.Description);
+            writer.WritePropertyName("parameters");
+            def.InputSchema.WriteTo(writer);
             writer.WriteEndObject(); // function
             writer.WriteEndObject(); // tool
         }
@@ -233,15 +220,46 @@ internal static partial class OpenAIChatProvider
             return;
         }
 
-        var reasoningEffort = JsonHelpers.GetString(thinkingConfig, "defaultReasoningEffort");
-        if (string.IsNullOrEmpty(reasoningEffort)) return;
+        var thinkingEnabled = JsonHelpers.GetBool(provider, "thinkingEnabled", false);
 
-        var effectiveEffort = JsonHelpers.ResolveEffectiveReasoningEffort(reasoningEffort, thinkingConfig);
-        if (string.IsNullOrEmpty(effectiveEffort)) return;
-
-        if (!omitted.Contains("reasoning_effort"))
+        // When thinking is enabled, merge bodyParams from thinkingConfig into the request body.
+        // This writes provider-specific fields like { "thinking": { "type": "enabled" } } or
+        // { "enable_thinking": true } depending on the model's configuration.
+        if (thinkingEnabled &&
+            thinkingConfig.TryGetProperty("bodyParams", out var bodyParams) &&
+            bodyParams.ValueKind == JsonValueKind.Object)
         {
-            writer.WriteString("reasoning_effort", effectiveEffort);
+            foreach (var prop in bodyParams.EnumerateObject())
+            {
+                if (!omitted.Contains(prop.Name))
+                {
+                    prop.WriteTo(writer);
+                }
+            }
+        }
+        else if (!thinkingEnabled &&
+                 thinkingConfig.TryGetProperty("disabledBodyParams", out var disabledParams) &&
+                 disabledParams.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in disabledParams.EnumerateObject())
+            {
+                if (!omitted.Contains(prop.Name))
+                {
+                    prop.WriteTo(writer);
+                }
+            }
+        }
+
+        // Write reasoning_effort: prefer the resolved value from provider, fall back to default
+        var reasoningEffort = JsonHelpers.GetString(provider, "reasoningEffort") ??
+                              JsonHelpers.GetString(thinkingConfig, "defaultReasoningEffort");
+        if (!string.IsNullOrEmpty(reasoningEffort) && !omitted.Contains("reasoning_effort"))
+        {
+            var effectiveEffort = JsonHelpers.ResolveEffectiveReasoningEffort(reasoningEffort, thinkingConfig);
+            if (!string.IsNullOrEmpty(effectiveEffort))
+            {
+                writer.WriteString("reasoning_effort", effectiveEffort);
+            }
         }
     }
 }
