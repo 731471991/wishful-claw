@@ -16,16 +16,16 @@ const enterPlanModeHandler: ToolHandler = {
   definition: {
     name: 'EnterPlanMode',
     description:
-      'Enter Plan Mode to explore the codebase and create a detailed implementation plan before writing code. ' +
-      'In plan mode, prioritize read/search tools for investigation and write the plan into the current plan file returned by this tool. ' +
-      'Write operations remain available when the planning work needs them.',
+      'Enter Plan Mode to explore the codebase and create a detailed implementation plan. ' +
+      'In plan mode, all tools remain available — Read, Write, Edit, Bash, Glob, Grep etc. ' +
+      'Write the plan into the current plan file returned by this tool, then call ExitPlanMode.',
     inputSchema: {
       type: 'object',
       properties: {
         reason: {
           type: 'string',
           description:
-            'Brief reason in English for entering plan mode. This becomes the initial plan title if no plan exists (e.g. "add-user-authentication").'
+            'Brief reason for entering plan mode. This becomes the initial plan title (e.g. "add-user-authentication").'
         }
       }
     }
@@ -48,48 +48,6 @@ const exitPlanModeHandler: ToolHandler = {
   execute: async () => nativeOnlyPlanResult('ExitPlanMode'),
   requiresApproval: () => false
 }
-
-export const PLAN_MODE_ALLOWED_TOOLS = new Set([
-  'Read',
-  'LS',
-  'Glob',
-  'Grep',
-  'Write',
-  'Edit',
-  'EnterPlanMode',
-  'ExitPlanMode',
-  'AskUserQuestion',
-  'TaskCreate',
-  'TaskGet',
-  'TaskUpdate',
-  'TaskList',
-  'Task',
-  'Agent',
-  'get_goal',
-  'create_goal',
-  'update_goal',
-  'visualize_show_widget'
-])
-
-export const ACP_MODE_ALLOWED_TOOLS = new Set([
-  'Read',
-  'LS',
-  'Glob',
-  'Grep',
-  'EnterPlanMode',
-  'ExitPlanMode',
-  'AskUserQuestion',
-  'TaskCreate',
-  'TaskGet',
-  'TaskUpdate',
-  'TaskList',
-  'Task',
-  'Agent',
-  'get_goal',
-  'create_goal',
-  'update_goal',
-  'visualize_show_widget'
-])
 
 export function registerPlanTools(): void {
   toolRegistry.register(enterPlanModeHandler)
