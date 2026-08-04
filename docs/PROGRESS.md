@@ -139,6 +139,23 @@
 - 日期: 2026-07-2?
 - 备注：Infrastructure 层 Db/Storage/Http 下沉、Worker 深度瘦身（Modules 迁入 Agent/Infrastructure，Worker 降至 12 文件）、缓存命中率深度修复
 
+### v2-iter-7：主聊天折叠块模式
+- 状态：已完成
+- 分支：dev/v2-iter-7（已合并 main）
+- VERDICT: PASS
+- Tag: v2.7.0
+- Commit: a36f392
+- 日期: 2026-08-04
+- 备注：
+  - ExecutionProcessBlock 折叠块组件 — 执行中展开，结束后自动折叠成摘要，用户可手动 toggle
+  - 过程/最终文本拆分 — 从 render items 末尾向前扫描，执行过程（thinking/tool_use）包裹在折叠块内，最终输出（text/image）在折叠块之外
+  - 按工具分类摘要 — 细分 commands/reads/edits/browser/desktop/orchestration/mcp/interactive/visual/skill/other
+  - collapsible 动态计算 — 只有存在工具调用时才折叠，纯思考+回复不折叠
+  - 取消执行处理 — 取消时也折叠过程，最终回复区域显示固定文本
+  - 缓存命中率修复 — 从 session 级请求计数改为 token 级口径（cacheRead/input），修复 session 恢复后后端计数器丢失导致百分比不准
+  - 原计划含右侧工作台 tab + ToolCallCard compact 模式，开发中决策去掉（折叠块内 ToolCallCard 本身有展开预览能力，compact 模式去掉再补工作台是绕圈子）
+  - content-renderer.tsx 从 525 行拆分至 494 行（提取 splitProcessAndFinal 到 process-summary.ts）
+
 ### v2-iter-6：SSH 远程执行 + Agent 终端旁观 + 项目档案
 - 状态：已完成
 - 分支：dev/v2-iter-6（已合并 main）
@@ -229,9 +246,12 @@
 - 备注：已完成，详见上方 v2-iter-6 条目
 
 ### 迭代十三：聊天窗渲染调整（参考灵犀）
-- 状态：未开始
-- 优先级：中 — 可与迭代十二穿插进行
-- 目标：优化聊天交互的视觉和交互体验
+- 状态：已完成（v2-iter-7）
+- VERDICT: PASS
+- Tag: v2.7.0
+- 日期: 2026-08-04
+- 目标：借鉴灵犀工作台模式，聊天窗统一用折叠块组件渲染 Agent 回复
+- 备注：已完成，详见上方 v2-iter-7 条目
 
 ### 迭代十四：Skill 市场
 - 状态：未开始
