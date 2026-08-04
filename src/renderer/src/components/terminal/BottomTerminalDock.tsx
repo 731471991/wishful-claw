@@ -231,22 +231,6 @@ export function BottomTerminalDock({
 
       {/* Tab bar */}
       <div className="flex h-9 shrink-0 items-center gap-1 border-b bg-background/70 px-2">
-        {/* New terminal button (left side) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              onClick={handleCreate}
-              title={t('terminal.newTerminal', { defaultValue: 'New terminal' })}
-            >
-              <Plus className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t('terminal.newTerminal', { defaultValue: 'New terminal' })}</TooltipContent>
-        </Tooltip>
-
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden pb-0.5 [scrollbar-width:none]">
           {projectTabs.length === 0 ? (
             <span className="px-2 text-[11px] text-muted-foreground">
@@ -298,6 +282,21 @@ export function BottomTerminalDock({
               )
             })
           )}
+          {/* New terminal button (right after tabs) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                onClick={handleCreate}
+                title={t('terminal.newTerminal', { defaultValue: 'New terminal' })}
+              >
+                <Plus className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('terminal.newTerminal', { defaultValue: 'New terminal' })}</TooltipContent>
+          </Tooltip>
         </div>
 
 
