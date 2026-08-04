@@ -198,7 +198,7 @@ export async function sendImplementPlan(sessionId: string, planId: string): Prom
   // Send implementation message
   await chatStore.sendMessage({
     provider: activeProvider as unknown as Record<string, unknown>,
-    messages: [{ role: 'user', content: 'Implement the approved plan.' }],
+    messages: [{ role: 'user', content: 'The plan has been approved. Read the plan file and execute it step by step using the Task tool to dispatch sub-agents — do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type "custom" to dispatch a sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.' }],
     sessionId,
     workingFolder,
     sshConnectionId,
