@@ -50,8 +50,6 @@ export interface ToolBlockRendererProps {
   liveFadeInClassName: string
   sessionId?: string | null
   trackedChangeByToolUseId: Map<string, AgentRunFileChange>
-  mode?: 'compact' | 'full'
-  onCompactClick?: () => void
   t: TFunction
 }
 
@@ -70,8 +68,6 @@ export function ToolBlockRenderer({
   liveFadeInClassName,
   sessionId,
   trackedChangeByToolUseId,
-  mode,
-  onCompactClick,
 }: ToolBlockRendererProps): React.JSX.Element | null {
   const executionItem = toolExecutionOutline.itemByToolUseId.get(block.id)
   if (
@@ -298,8 +294,6 @@ export function ToolBlockRenderer({
           startedAt={toolCallState.startedAt}
           completedAt={toolCallState.completedAt}
           forceOpen={executionItem?.forceExpanded}
-          mode={mode}
-          onCompactClick={onCompactClick}
         />
       </ScaleIn>
     )
@@ -324,8 +318,6 @@ export function ToolBlockRenderer({
           startedAt={toolCallState.startedAt}
           completedAt={toolCallState.completedAt}
           forceOpen={executionItem?.forceExpanded}
-          mode={mode}
-          onCompactClick={onCompactClick}
         />
         {bashArtifacts ? (
           <BashArtifactsCard

@@ -61,7 +61,6 @@ export type RightPanelTabKind =
   | 'browser'
   | 'subagent'
   | 'terminal'
-  | 'workbench'
 
 export interface RightPanelTabInstance {
   id: string

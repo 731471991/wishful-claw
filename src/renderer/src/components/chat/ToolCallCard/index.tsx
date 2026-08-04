@@ -57,11 +57,8 @@ function ToolCallCardInner({
   error,
   startedAt,
   completedAt,
-  forceOpen = false,
-  mode = 'full',
-  onCompactClick
+  forceOpen = false
 }: ToolCallCardProps): React.JSX.Element {
-  const isCompact = mode === 'compact'
   const { t } = useTranslation('chat')
   const isProcessing = status === 'streaming' || status === 'running'
   const isActive = isProcessing || status === 'pending_approval'
@@ -82,7 +79,7 @@ function ToolCallCardInner({
   const prevIsActiveRef = React.useRef(isActive)
   const wasLiveCommandToolRef = React.useRef(isLiveCommandTool)
   const toggleOpen = React.useCallback(() => {
-    if (forceOpen || isCompact) return
+    if (forceOpen) return
     if (isLiveCommandTool) return
     if (name === 'Read' && !open) {
       setReadTextOutputRevealed(true)
@@ -252,7 +249,7 @@ function ToolCallCardInner({
       )}
     >
       <button
-        onClick={isCompact && onCompactClick ? onCompactClick : toggleOpen}
+        onClick={toggleOpen}
         className={cn(
           useCompactToolHeader
             ? 'group w-full rounded-lg p-0 text-left transition-colors'
@@ -358,7 +355,6 @@ function ToolCallCardInner({
         )}
       </button>
 
-      {!isCompact && (
       <CollapsibleHeightPanel
         open={open}
         className={cn(
@@ -563,7 +559,6 @@ function ToolCallCardInner({
           </>
         )}
       </CollapsibleHeightPanel>
-      )}
     </div>
   )
 }

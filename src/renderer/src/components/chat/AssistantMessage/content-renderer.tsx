@@ -237,11 +237,7 @@ export function ContentRenderer({
     liveFadeInClassName,
     sessionId,
     trackedChangeByToolUseId,
-    mode: 'compact',
     t,
-    onCompactClick: () => {
-      window.dispatchEvent(new CustomEvent('workbench:focus-tool', { detail: { sessionId } }))
-    }
   }
 
   const renderToolRun = (runId: string): React.JSX.Element | null => {
