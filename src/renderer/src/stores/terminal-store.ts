@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { useChatStore } from '@renderer/stores/chat-store'
 
 // ─── Types ───
 
@@ -67,9 +68,26 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       const event = payload as { execId?: string; stream?: string; data?: string }
       if (!event.execId) return
 
+      console.log('[terminal-store] SSH_EXEC_OUTPUT received', {
+        execId: event.execId,
+        stream: event.stream,
+        dataLength: event.data?.length ?? 0,
+        dataPreview: event.data?.slice(0, 100)
+      })
+
       // Auto-create a tab for this execId if it doesn't exist yet
       if (!get().hasSshAgentTab(event.execId)) {
-        get().createSshAgentTab(event.execId)
+        // Associate with the active project so it shows in the bottom dock
+        const chatState = useChatStore.getState()
+        const activeSession = chatState.sessions.find(
+          (s: any) => s.id === chatState.activeSessionId
+        )
+        const projectId = activeSession?.projectId ?? null
+        console.log('[terminal-store] Creating SSH agent tab', {
+          execId: event.execId,
+          projectId
+        })
+        get().createSshAgentTab(event.execId, undefined, projectId)
       }
     })
   },

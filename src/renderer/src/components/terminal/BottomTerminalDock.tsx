@@ -106,18 +106,15 @@ export function BottomTerminalDock({
 
   const handleAutoCreateTerminal = useCallback(async (): Promise<void> => {
     if (sshConnectionId) {
-      // For SSH projects, create an agent SSH observation tab
-      // Interactive SSH terminal not yet implemented; the agent tab shows
-      // real-time output from Agent-executed remote commands.
-      useTerminalStore.getState().createSshAgentTab(
-        `auto-${projectId}-${Date.now()}`,
-        projectName || 'SSH',
-        projectId
-      )
+      // For SSH projects, don't auto-create a synthetic tab.
+      // Real agent SSH output events will create tabs with matching execIds.
+      // Just show the placeholder; tabs appear automatically when agent runs commands.
+      console.log('[BottomTerminalDock] SSH project — skipping auto-create, waiting for agent output')
       return
     }
 
     if (workingFolder) {
+      console.log('[BottomTerminalDock] Auto-creating local terminal', { workingFolder, projectId })
       await createTab(workingFolder ?? undefined, projectId, projectName || 'Terminal')
       return
     }
@@ -193,17 +190,11 @@ export function BottomTerminalDock({
   }, [projectId, setBottomTerminalDockHeight, setBottomTerminalDockOpen, fullscreen])
 
   const handleCreate = useCallback((): void => {
-    if (sshConnectionId) {
-      // For SSH projects, create a new agent observation tab
-      useTerminalStore.getState().createSshAgentTab(
-        `manual-${projectId}-${Date.now()}`,
-        projectName || 'SSH',
-        projectId
-      )
-      return
-    }
+    // For both local and SSH projects, create a local terminal.
+    // SSH agent tabs are auto-created by the SSH_EXEC_OUTPUT event listener
+    // when the agent executes remote commands.
     void createTab(workingFolder ?? undefined, projectId, projectName || 'Terminal')
-  }, [sshConnectionId, projectId, projectName, workingFolder, createTab])
+  }, [workingFolder, projectId, projectName, createTab])
 
   const handleClose = useCallback(
     async (tab: TerminalTab): Promise<void> => {
@@ -240,6 +231,22 @@ export function BottomTerminalDock({
 
       {/* Tab bar */}
       <div className="flex h-9 shrink-0 items-center gap-1 border-b bg-background/70 px-2">
+        {/* New terminal button (left side) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              onClick={handleCreate}
+              title={t('terminal.newTerminal', { defaultValue: 'New terminal' })}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('terminal.newTerminal', { defaultValue: 'New terminal' })}</TooltipContent>
+        </Tooltip>
+
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden pb-0.5 [scrollbar-width:none]">
           {projectTabs.length === 0 ? (
             <span className="px-2 text-[11px] text-muted-foreground">
@@ -293,20 +300,6 @@ export function BottomTerminalDock({
           )}
         </div>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 shrink-0 rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              onClick={handleCreate}
-              title={t('terminal.newTerminal', { defaultValue: 'New terminal' })}
-            >
-              <Plus className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t('terminal.newTerminal', { defaultValue: 'New terminal' })}</TooltipContent>
-        </Tooltip>
 
         <div className="ml-auto flex items-center gap-1">
           <Tooltip>

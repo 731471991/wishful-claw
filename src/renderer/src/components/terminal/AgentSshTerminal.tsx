@@ -65,6 +65,7 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     // Write a header line indicating this is an agent SSH session
     term.writeln(`\x1b[36m[${t('terminal.agentSshSession', { defaultValue: 'Agent SSH Session' })}]\x1b[0m execId: ${execId.slice(0, 8)}...`)
     term.writeln('')
+    console.log('[AgentSshTerminal] mounted', { execId })
 
     const scheduleFit = (): void => {
       requestAnimationFrame(() => {
@@ -80,6 +81,7 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     // Listen for SSH exec output events matching this execId
     const outputCleanup = ipcClient.on(IPC.SSH_EXEC_OUTPUT, (payload) => {
       const event = payload as SshExecOutputEvent
+      console.log('[AgentSshTerminal] SSH_EXEC_OUTPUT', { eventExecId: event.execId, tabExecId: execId, match: event.execId === execId, hasData: Boolean(event.data), stream: event.stream })
       if (event.execId !== execId || !event.data) return
 
       if (event.stream === 'stderr') {
