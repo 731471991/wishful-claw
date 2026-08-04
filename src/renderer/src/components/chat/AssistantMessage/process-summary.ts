@@ -5,6 +5,8 @@
 // With other tools: "运行了1个命令，2个浏览器操作"
 
 import type { ToolExecutionOutline, ToolExecutionItem } from '../execution-outline'
+import type { ContentBlock } from '@renderer/lib/api/types'
+import type { AssistantRenderItemWithInlineSummary } from './types'
 import type { TFunction } from 'i18next'
 
 interface CategoryCount {
@@ -88,4 +90,57 @@ export function buildProcessSummary(
     parts.push(t('workbench.summaryOther', { count: counts.other, defaultValue: `执行了${counts.other}个操作` }))
 
   return parts.length > 0 ? parts.join('，') : null
+}
+
+
+/**
+ * Split render items into "process" (thinking/tool_use/tool-run/compact-summary)
+ * and "final output" (text/image/image_error/agent_error) segments.
+ *
+ * From the end, skip text/image/image_error/agent_error blocks to find
+ * the first "process" item. Items before and including that = process.
+ * Items after = final output.
+ *
+ * hasProcessContent is true only when there are tool calls in the process —
+ * thinking-only without tools is too simple to collapse.
+ */
+export function splitProcessAndFinal(
+  items: AssistantRenderItemWithInlineSummary[],
+  normalizedContent: ContentBlock[] | null
+): {
+  processItems: AssistantRenderItemWithInlineSummary[]
+  finalItems: AssistantRenderItemWithInlineSummary[]
+  hasProcessContent: boolean
+} {
+  const finalOutputStartIndex = (() => {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i]
+      if (item.kind === 'block') {
+        const block = normalizedContent?.[item.index]
+        if (block && (block.type === 'text' || block.type === 'image' || block.type === 'image_error' || block.type === 'agent_error')) {
+          continue
+        }
+      }
+      return i + 1
+    }
+    return 0
+  })()
+
+  const processItems = items.slice(0, finalOutputStartIndex)
+  const finalItems = items.slice(finalOutputStartIndex)
+
+  const hasToolCallsInProcess = processItems.some((item) => {
+    if (item.kind === 'tool-run') return true
+    if (item.kind === 'block') {
+      const block = normalizedContent?.[item.index]
+      return block?.type === 'tool_use'
+    }
+    return false
+  })
+
+  return {
+    processItems,
+    finalItems,
+    hasProcessContent: hasToolCallsInProcess
+  }
 }
