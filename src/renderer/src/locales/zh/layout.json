@@ -238,7 +238,12 @@
     "translate": "翻译",
     "codegraph": "代码图",
     "comingSoon": "即将推出",
-    "moreActions": "更多操作"
+    "moreActions": "更多操作",
+    "projectSortTitle": "排序项目",
+    "projectSortBy": "排序方式",
+    "projectSortRecentlyUpdated": "最近更新",
+    "projectSortName": "名称",
+    "projectSortCreatedAt": "创建时间"
   },
   "sectionExecution": {
     "title": "执行"

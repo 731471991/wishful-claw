@@ -299,28 +299,38 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
   navigateToProject: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
+    if (resolvedProjectId) {
+      useChatStore.getState().setActiveProjectHome(resolvedProjectId)
+    }
     set({ activeNavItem: 'chat', chatView: 'project', ...CHAT_SURFACE_NAV_RESET })
-    void resolvedProjectId
   },
   navigateToArchive: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
+    if (resolvedProjectId) {
+      useChatStore.getState().setActiveProjectHome(resolvedProjectId)
+    }
     set({ activeNavItem: 'chat', chatView: 'archive', ...CHAT_SURFACE_NAV_RESET })
-    void resolvedProjectId
   },
   navigateToChannels: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
+    if (resolvedProjectId) {
+      useChatStore.getState().setActiveProjectHome(resolvedProjectId)
+    }
     set({ activeNavItem: 'chat', chatView: 'channels', ...CHAT_SURFACE_NAV_RESET })
-    void resolvedProjectId
   },
   navigateToGit: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
+    if (resolvedProjectId) {
+      useChatStore.getState().setActiveProjectHome(resolvedProjectId)
+    }
     set({ activeNavItem: 'chat', chatView: 'git', ...CHAT_SURFACE_NAV_RESET })
-    void resolvedProjectId
   },
   navigateToPersona: (projectId: any) => {
     const resolvedProjectId = projectId ?? useChatStore.getState().activeProjectId ?? null
+    if (resolvedProjectId) {
+      useChatStore.getState().setActiveProjectHome(resolvedProjectId)
+    }
     set({ activeNavItem: 'chat', chatView: 'persona', ...CHAT_SURFACE_NAV_RESET })
-    void resolvedProjectId
   },
   navigateToSession: (sessionId: any) => {
     const store = useChatStore.getState()

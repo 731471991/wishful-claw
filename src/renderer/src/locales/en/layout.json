@@ -238,7 +238,12 @@
     "translate": "Translate",
     "codegraph": "Code Graph",
     "comingSoon": "coming soon",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "projectSortTitle": "Sort projects",
+    "projectSortBy": "Sort by",
+    "projectSortRecentlyUpdated": "Recently updated",
+    "projectSortName": "Name",
+    "projectSortCreatedAt": "Date created"
   },
   "sectionExecution": {
     "title": "Execution"

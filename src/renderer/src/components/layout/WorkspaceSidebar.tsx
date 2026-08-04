@@ -1,8 +1,8 @@
 ﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, PanelLeftClose, Image, CalendarDays } from 'lucide-react'
+import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, PanelLeftClose, Image, CalendarDays, ArrowDownAZ, ListFilter } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@renderer/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuLabel } from '@renderer/components/ui/dropdown-menu'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Session } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
 
 // ─── Helpers ───
-import { SessionItem, ProjectItem, sortProjects, sortSessions } from './workspace-sidebar-items'
+import { SessionItem, ProjectItem, sortProjects, sortSessions, readProjectSortMode, writeProjectSortMode, PROJECT_SORT_MODES, type ProjectSortMode } from './workspace-sidebar-items'
 import { ResizeHandle, renderNavItem, NavButtonItem } from './workspace-sidebar-nav'
 
 export function WorkspaceSidebar(): React.JSX.Element | null {
@@ -82,7 +82,16 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
     return { projectSessions: byProject, unassignedSessions: unassigned }
   }, [sessions, searchQuery])
 
-  const sortedProjects = useMemo(() => sortProjects(projects), [projects])
+  const [projectSortMode, setProjectSortMode] = useState<ProjectSortMode>(readProjectSortMode)
+  const sortedProjects = useMemo(
+    () => sortProjects(projects, projectSortMode),
+    [projects, projectSortMode]
+  )
+  const handleProjectSortModeChange = useCallback((value: string) => {
+    const mode = value as ProjectSortMode
+    setProjectSortMode(mode)
+    writeProjectSortMode(mode)
+  }, [])
   const sortedUnassigned = useMemo(() => sortSessions(unassignedSessions), [unassignedSessions])
 
   const toggleProjectExpand = useCallback((projectId: string) => {
@@ -254,6 +263,40 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
         </span>
 
         <div className="flex items-center gap-0.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex size-5 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                title={t('sidebar.projectSortTitle', { defaultValue: 'Sort projects' })}
+              >
+                <ListFilter className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="px-2 py-1 text-[11px] text-muted-foreground">
+                {t('sidebar.projectSortBy', { defaultValue: 'Sort by' })}
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={projectSortMode}
+                onValueChange={handleProjectSortModeChange}
+              >
+                {PROJECT_SORT_MODES.map((mode) => {
+                  const Icon = mode === 'name' ? ArrowDownAZ : mode === 'createdAt' ? CalendarDays : ListFilter
+                  const labelKey = mode === 'name'
+                    ? 'sidebar.projectSortName'
+                    : mode === 'createdAt'
+                      ? 'sidebar.projectSortCreatedAt'
+                      : 'sidebar.projectSortRecentlyUpdated'
+                  return (
+                    <DropdownMenuRadioItem key={mode} value={mode}>
+                      <Icon className="size-4" />
+                      {t(labelKey, { defaultValue: mode })}
+                    </DropdownMenuRadioItem>
+                  )
+                })}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
