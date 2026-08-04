@@ -389,6 +389,7 @@ const MESSAGEPACK_EVENT_CHANNELS = new Set<string>([
   'terminal:output',
   'terminal:exit',
   'ssh:output',
+  'ssh:exec-output',
   'cron:run-started',
   'cron:run-progress',
   'cron:run-log-appended',
