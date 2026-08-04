@@ -244,7 +244,7 @@ public static class AgentRuntimePlanExecutor
             writer.WriteString("plan_file_path", plan.FilePath);
             writer.WriteString("title", title);
             writer.WriteString("content", content);
-            writer.WriteString("message", "Plan finalized and ready for user review. STOP and wait for user approval. Do NOT start implementing until the user approves the plan. Once approved, use the Task tool to dispatch sub-agents for each plan step — do NOT implement steps yourself. After each sub-agent completes, call UpdatePlanStep to mark the step status, then dispatch the next step's sub-agent. If a step fails, update its status and adjust the remaining plan before continuing.");
+            writer.WriteString("message", "Plan finalized and ready for user review. STOP and wait for user approval. Do NOT start implementing until the user approves the plan. Once approved, use the Task tool with background=false to dispatch foreground sub-agents for each plan step — do NOT implement steps yourself. After each sub-agent completes, call UpdatePlanStep to mark the step status, then dispatch the next step's sub-agent. If a step fails, update its status and adjust the remaining plan before continuing.");
         });
     }
 
