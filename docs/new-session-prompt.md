@@ -40,6 +40,7 @@
 | v2-iter-3 | Infrastructure 层拆分 + DeepSeek 缓存命中率深度修复 | ✅ 已完成，tag v2.3.0 |
 | v2-iter-5 | 渠道配置测试与完善 — Channel 系统 + 飞书/微信扫码绑定 + auto-reply hook + 全局渠道设置 | ✅ 已完成，tag v2.5.0 |
 | v2-iter-6 | SSH 远程执行 + Agent 终端旁观 + 项目档案 + 终端面板重构（session 级可见性、auto-create、i18n、node-pty 打包修复） | ✅ 已完成，tag v2.6.0 |
+| v2-iter-7 | 主聊天折叠块模式 — ExecutionProcessBlock 折叠块组件 + 过程/最终文本拆分 + 按工具分类摘要 + 缓存命中率 token 级修复 | ✅ 已完成，tag v2.7.0 |
 
 ## 当前项目架构（7 层）
 
@@ -61,32 +62,39 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，最新 tag：`v2.6.0`
-- v2-iter-6 已合并 main 并打 tag，开发分支已清理
-- TypeScript 编译零错误：`npx tsc --noEmit`
+- 当前分支：`main`，最新 tag：`v2.7.0`
+- v2-iter-7 已合并 main 并打 tag，开发分支已清理
+- TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
 
-## 下一步：v2-iter-7 主聊天接入工作台模式
+## v2-iter-7 实际实现（与原计划差异说明）
 
-**目标**：借鉴灵犀的工作台模式——聊天窗统一用折叠块组件渲染 Agent 回复，工具调用预览移至右侧面板"工作台" tab，实现聊天流清爽 + 执行详情分离。
+原计划包含右侧工作台 tab + ToolCallCard compact 模式。开发过程中用户决策去掉右侧工作台——折叠块内的 ToolCallCard 本身就有展开/折叠预览能力（CollapsibleHeightPanel），compact 模式去掉这个能力再搞工作台补回来是绕圈子。最终保留的改动：
 
-**核心设计**：所有 Agent 回复都走同一个折叠块组件，通过动态值 `collapsible` 区分行为——执行过程中动态计算，一旦有工具调用或 Agent Loop 超过 2 轮即变为 `true`。
+- **ExecutionProcessBlock**（`execution-process-block.tsx`）— 折叠块组件，执行中展开，结束后自动折叠成摘要，用户可手动 toggle
+- **过程/最终文本拆分**（`content-renderer.tsx` + `process-summary.ts`）— 从 render items 末尾向前扫描，区分"执行过程"（thinking/tool_use/tool-run）和"最终输出"（text/image），过程包裹在折叠块内，最终输出在折叠块之外
+- **按工具分类摘要**（`process-summary.ts`）— 细分 commands/reads/edits/browser/desktop/orchestration/mcp/interactive/visual/skill/other，每类独立摘要文本
+- **collapsible 动态计算** — 只有存在工具调用时才折叠，纯思考+回复不折叠
+- **取消执行处理** — 取消时也折叠过程，最终回复区域显示"用户取消，中断执行"固定文本
+- **缓存命中率修复**（`runtime-status.tsx`）— 从 session 级请求计数改为 token 级口径（cacheRead/input），修复 session 恢复后后端计数器丢失导致百分比与显示数字不一致的问题
+
+## 下一步：v2-iter-8 Global 全局模式接入
+
+**目标**：不绑定项目的通用助手模式，Agent 以通用身份工作。
 
 | 步骤 | 内容 |
 |------|------|
-| 1 | 新建折叠块组件 — 统一渲染所有 Agent 回复，通过 `collapsible` 动态值控制行为：`false`（一问一答 ≤2 轮无工具）默认展开不可折叠；`true`（有工具调用或 >2 轮）执行中展开、结束后自动折叠成摘要（"运行了X个命令，查看了X个文件，编辑了X个文件"），点击可展开看精简列表（ToolCallCard 去掉预览部分，保留工具名/参数摘要/状态），完整预览只去右侧工作台 |
-| 2 | ToolCallCard 预览迁移至右侧工作台 — 完整的工具调用预览（命令输出、文件 diff、搜索结果等）从聊天流移到 RightPanel 新增的"工作台" tab，执行中实时更新 |
-| 3 | 工作台会话级隔离 — 切换会话时工作台内容跟随切换，按 sessionId 存储，排序按当前时间线 |
-| 4 | 用户交互保留在折叠块 — 选项选择、输入回复等需要用户操作的交互留在折叠块内，不迁移到工作台 |
-| 5 | 保留现有执行后操作按钮（debug 等） |
+| 1 | 全局模式定义 — 不绑定特定项目/工作区，Agent 以通用助手身份工作 |
+| 2 | 新建会话时可选"全局模式"或"项目模式" |
+| 3 | 全局模式下工具调用不受工作区限制 |
+| 4 | 前端 UI 提供模式切换入口 |
+| 5 | 与工作台模式的切换逻辑复用 |
 
-**验证标准**：纯聊天 → 折叠块展开不可折叠（一问一答）；发送消息触发工具 → `collapsible` 变为 `true`，执行中展开实时更新，结束后自动折叠成摘要 → 右侧工作台展示完整预览 → 切换会话工作台跟随隔离 → 点击摘要可展开看精简列表。
-
-详见 `docs/iteration-plan.md` 中 v2-iter-7 定义。
+详见 `docs/iteration-plan.md` 中 v2-iter-8 定义。
 
 ## 关键技术备忘
 
-- **编译验证命令**：C# `dotnet build src/runtime/WishfulClaw.sln`（可加 `-o` 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit -p tsconfig.web.json`
+- **编译验证命令**：C# `dotnet build src/runtime/WishfulClaw.sln`（可加 `-o` 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit -p tsconfig.web.json`（必须带 `-p`！）
 - **TS 零报错规则**：每次写完代码必须跑 tsc 验证，不允许用 @ts-ignore 偷懒（可选依赖 mammoth/react-pdf/xlsx 除外）
 - **Git push 需要代理**：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin <branch>`
 - **分支管理规则**：新分支必须从最新 main 拆出，前一个迭代分支必须已合并 main 并打 tag
@@ -96,7 +104,7 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## Git 工作流
 
-- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-7`
+- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-8`
 - **功能单元测试通过后才 commit**，不要改一点就提交
 - Plan 执行期间只 commit 不 push，Plan 完成后才 push
 - 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
@@ -113,10 +121,10 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.6.0`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.7.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` — 查看 v2-iter-7 定义
-4. 从 main 创建分支：`git checkout -b dev/v2-iter-7`
-5. 开始执行 v2-iter-7 工作台模式开发
+3. 读 `docs/iteration-plan.md` — 查看 v2-iter-8 定义
+4. 从 main 创建分支：`git checkout -b dev/v2-iter-8`
+5. 开始执行 v2-iter-8 Global 全局模式开发
 
 叫老大，我们是并肩协作的兄弟。

@@ -35,6 +35,8 @@ import { StreamingMarkdownContent } from './markdown-renderer'
 import { ModelThinkingIndicator, GenerationProcessLine } from './ui-buttons'
 import { ToolBlockRenderer } from './tool-block-renderer'
 import type { ToolBlockRendererProps } from './tool-block-renderer'
+import { ExecutionProcessBlock } from './execution-process-block'
+import { buildProcessSummary, splitProcessAndFinal } from './process-summary'
 
 export interface ContentRendererProps {
   content: string | ContentBlock[]
@@ -235,7 +237,7 @@ export function ContentRenderer({
     liveFadeInClassName,
     sessionId,
     trackedChangeByToolUseId,
-    t
+    t,
   }
 
   const renderToolRun = (runId: string): React.JSX.Element | null => {
@@ -290,164 +292,193 @@ export function ContentRenderer({
     )
   }
 
+  // Split items into process (thinking/tool_use) and final output (text/image).
+  // hasProcessContent is true only when there are tool calls — thinking-only won't collapse.
+  const { processItems, finalItems, hasProcessContent } =
+    splitProcessAndFinal(renderItemsWithInlineSummaries, normalizedContent)
+
+  // Count thinking blocks for summary
+  const thinkingBlockCount = normalizedContent?.filter((b) => b.type === 'thinking').length ?? 0
+  const processSummary = buildProcessSummary(toolExecutionOutline, thinkingBlockCount, t)
+
+  const renderItem = (item: AssistantRenderItemWithInlineSummary): React.JSX.Element | null => {
+    if (item.kind === 'compact-summary') {
+      return (
+        <ContextCompressionMessage
+          key={`compact-summary-${item.message.id}`}
+          message={item.message}
+        />
+      )
+    }
+
+    if (item.kind === 'block') {
+      const block = normalizedContent![item.index]
+      switch (block.type) {
+        case 'thinking':
+          return (
+            <ThinkingBlock
+              key={`${item.index}-${block.completedAt ? 'settled' : 'active'}`}
+              thinking={block.thinking}
+              isStreaming={isStreaming}
+              startedAt={block.startedAt}
+              completedAt={block.completedAt}
+            />
+          )
+        case 'text': {
+          if (hasStructuredThinkingBlocks) {
+            const visibleText = stripThinkTags(block.text)
+            if (!visibleText.trim()) return null
+            return (
+              <div key={item.index} className={MD_CLASS}>
+                <StreamingMarkdownContent
+                  text={visibleText}
+                  isStreaming={!!isStreaming && item.index === lastStructuredTextIdx}
+                />
+              </div>
+            )
+          }
+
+          const textSegments = parseThinkTags(block.text)
+          const hasThinkInBlock = textSegments.some((s) => s.type === 'think')
+          if (!hasThinkInBlock) {
+            return (
+              <div key={item.index} className={MD_CLASS}>
+                <StreamingMarkdownContent
+                  text={block.text}
+                  isStreaming={!!isStreaming && item.index === lastStructuredTextIdx}
+                />
+              </div>
+            )
+          }
+          const isBlockStreaming = !!(isStreaming && item.index === lastStructuredTextIdx)
+          const lastTxtSeg = textSegments.reduce(
+            (acc: number, s, j) => (s.type === 'text' ? j : acc),
+            -1
+          )
+          return (
+            <div key={item.index}>
+              {textSegments.map((seg, j) => {
+                if (seg.type === 'think') {
+                  return (
+                    <ThinkingBlock
+                      key={`${item.index}-${j}-${seg.closed ? 'settled' : 'active'}`}
+                      thinking={seg.content}
+                      isStreaming={isBlockStreaming && !seg.closed}
+                    />
+                  )
+                }
+                return (
+                  <div key={j} className={MD_CLASS}>
+                    <StreamingMarkdownContent
+                      text={seg.content}
+                      isStreaming={isBlockStreaming && j === lastTxtSeg}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+        case 'image': {
+          const imgBlock = block as Extract<ContentBlock, { type: 'image' }>
+          const imgSrc =
+            imgBlock.source.type === 'base64' && imgBlock.source.data
+              ? `data:${imgBlock.source.mediaType || 'image/png'};base64,${imgBlock.source.data}`
+              : (imgBlock.source.url ?? '')
+          if (!imgSrc && !imgBlock.source.filePath) return null
+          const editableImage = imageBlockToAttachment(imgBlock)
+          const actions =
+            canEditGeneratedImages && sessionId && editableImage
+              ? [
+                  {
+                    key: 'edit',
+                    label: t('assistantMessage.editImage', { defaultValue: 'Edit image' }),
+                    icon: <Pencil className="size-4" />,
+                    onClick: () => openImageEditor({ sessionId, image: editableImage, mode: 'edit' })
+                  },
+                  {
+                    key: 'mask',
+                    label: t('assistantMessage.maskEditImage', { defaultValue: 'Mask edit' }),
+                    icon: <Eraser className="size-4" />,
+                    onClick: () => openImageEditor({ sessionId, image: editableImage, mode: 'mask' })
+                  }
+                ]
+              : undefined
+          return (
+            <ScaleIn key={item.index} className={liveScaleInClassName}>
+              <ImagePreview
+                src={imgSrc}
+                alt="Generated image"
+                filePath={imgBlock.source.filePath}
+                actions={actions}
+              />
+            </ScaleIn>
+          )
+        }
+        case 'image_error': {
+          const imageError = block as Extract<ContentBlock, { type: 'image_error' }>
+          return (
+            <ScaleIn key={item.index} className={liveScaleInClassName}>
+              <ImageGenerationErrorCard code={imageError.code} message={imageError.message} />
+            </ScaleIn>
+          )
+        }
+        case 'agent_error': {
+          const agentError = block as Extract<ContentBlock, { type: 'agent_error' }>
+          return (
+            <ScaleIn key={item.index} className={liveScaleInClassName}>
+              <AgentErrorCard
+                code={agentError.code}
+                message={agentError.message}
+                errorType={agentError.errorType}
+                details={agentError.details}
+                stackTrace={agentError.stackTrace}
+              />
+            </ScaleIn>
+          )
+        }
+        case 'tool_use':
+          return <ToolBlockRenderer key={block.id} block={block} blockIndex={item.index} {...toolBlockProps} />
+        case 'web_search': {
+          const webSearch = block as Extract<ContentBlock, { type: 'web_search' }>
+          return (
+            <ScaleIn key={item.index} className={liveScaleInClassName}>
+              <WebSearchBlock block={webSearch} />
+            </ScaleIn>
+          )
+        }
+        default:
+          return null
+      }
+    }
+
+    return renderToolRun(item.runId)
+  }
+
   return (
     <div className="space-y-2">
       {orchestrationRun?.kind === 'team' && orchestrationAnchorIndex < 0 ? (
         <OrchestrationBlock run={orchestrationRun} />
       ) : null}
-      {renderItemsWithInlineSummaries.map((item) => {
-        if (item.kind === 'compact-summary') {
-          return (
-            <ContextCompressionMessage
-              key={`compact-summary-${item.message.id}`}
-              message={item.message}
-            />
-          )
-        }
-
-        if (item.kind === 'block') {
-          const block = normalizedContent[item.index]
-          switch (block.type) {
-            case 'thinking':
-              return (
-                <ThinkingBlock
-                  key={`${item.index}-${block.completedAt ? 'settled' : 'active'}`}
-                  thinking={block.thinking}
-                  isStreaming={isStreaming}
-                  startedAt={block.startedAt}
-                  completedAt={block.completedAt}
-                />
-              )
-            case 'text': {
-              if (hasStructuredThinkingBlocks) {
-                const visibleText = stripThinkTags(block.text)
-                if (!visibleText.trim()) return null
-                return (
-                  <div key={item.index} className={MD_CLASS}>
-                    <StreamingMarkdownContent
-                      text={visibleText}
-                      isStreaming={!!isStreaming && item.index === lastStructuredTextIdx}
-                    />
-                  </div>
-                )
-              }
-
-              const textSegments = parseThinkTags(block.text)
-              const hasThinkInBlock = textSegments.some((s) => s.type === 'think')
-              if (!hasThinkInBlock) {
-                return (
-                  <div key={item.index} className={MD_CLASS}>
-                    <StreamingMarkdownContent
-                      text={block.text}
-                      isStreaming={!!isStreaming && item.index === lastStructuredTextIdx}
-                    />
-                  </div>
-                )
-              }
-              const isBlockStreaming = !!(isStreaming && item.index === lastStructuredTextIdx)
-              const lastTxtSeg = textSegments.reduce(
-                (acc: number, s, j) => (s.type === 'text' ? j : acc),
-                -1
-              )
-              return (
-                <div key={item.index}>
-                  {textSegments.map((seg, j) => {
-                    if (seg.type === 'think') {
-                      return (
-                        <ThinkingBlock
-                          key={`${item.index}-${j}-${seg.closed ? 'settled' : 'active'}`}
-                          thinking={seg.content}
-                          isStreaming={isBlockStreaming && !seg.closed}
-                        />
-                      )
-                    }
-                    return (
-                      <div key={j} className={MD_CLASS}>
-                        <StreamingMarkdownContent
-                          text={seg.content}
-                          isStreaming={isBlockStreaming && j === lastTxtSeg}
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            }
-            case 'image': {
-              const imgBlock = block as Extract<ContentBlock, { type: 'image' }>
-              const imgSrc =
-                imgBlock.source.type === 'base64' && imgBlock.source.data
-                  ? `data:${imgBlock.source.mediaType || 'image/png'};base64,${imgBlock.source.data}`
-                  : (imgBlock.source.url ?? '')
-              if (!imgSrc && !imgBlock.source.filePath) return null
-              const editableImage = imageBlockToAttachment(imgBlock)
-              const actions =
-                canEditGeneratedImages && sessionId && editableImage
-                  ? [
-                      {
-                        key: 'edit',
-                        label: t('assistantMessage.editImage', { defaultValue: 'Edit image' }),
-                        icon: <Pencil className="size-4" />,
-                        onClick: () => openImageEditor({ sessionId, image: editableImage, mode: 'edit' })
-                      },
-                      {
-                        key: 'mask',
-                        label: t('assistantMessage.maskEditImage', { defaultValue: 'Mask edit' }),
-                        icon: <Eraser className="size-4" />,
-                        onClick: () => openImageEditor({ sessionId, image: editableImage, mode: 'mask' })
-                      }
-                    ]
-                  : undefined
-              return (
-                <ScaleIn key={item.index} className={liveScaleInClassName}>
-                  <ImagePreview
-                    src={imgSrc}
-                    alt="Generated image"
-                    filePath={imgBlock.source.filePath}
-                    actions={actions}
-                  />
-                </ScaleIn>
-              )
-            }
-            case 'image_error': {
-              const imageError = block as Extract<ContentBlock, { type: 'image_error' }>
-              return (
-                <ScaleIn key={item.index} className={liveScaleInClassName}>
-                  <ImageGenerationErrorCard code={imageError.code} message={imageError.message} />
-                </ScaleIn>
-              )
-            }
-            case 'agent_error': {
-              const agentError = block as Extract<ContentBlock, { type: 'agent_error' }>
-              return (
-                <ScaleIn key={item.index} className={liveScaleInClassName}>
-                  <AgentErrorCard
-                    code={agentError.code}
-                    message={agentError.message}
-                    errorType={agentError.errorType}
-                    details={agentError.details}
-                    stackTrace={agentError.stackTrace}
-                  />
-                </ScaleIn>
-              )
-            }
-            case 'tool_use':
-              return <ToolBlockRenderer key={block.id} block={block} blockIndex={item.index} {...toolBlockProps} />
-            case 'web_search': {
-              const webSearch = block as Extract<ContentBlock, { type: 'web_search' }>
-              return (
-                <ScaleIn key={item.index} className={liveScaleInClassName}>
-                  <WebSearchBlock block={webSearch} />
-                </ScaleIn>
-              )
-            }
-            default:
-              return null
-          }
-        }
-
-        return renderToolRun(item.runId)
-      })}
+      {hasProcessContent ? (
+        <ExecutionProcessBlock
+          collapsible={true}
+          isStreaming={!!isStreaming}
+          summary={processSummary}
+          activeDetail={toolExecutionOutline.activeSummary}
+        >
+          {processItems.map((item) => renderItem(item))}
+        </ExecutionProcessBlock>
+      ) : (
+        processItems.map((item) => renderItem(item))
+      )}
+      {finalItems.length > 0 ? (
+        finalItems.map((item) => renderItem(item))
+      ) : hasProcessContent && !isStreaming ? (
+        <div className={MD_CLASS}>
+          <p className="text-muted-foreground">{t('assistantMessage.cancelledExecution', { defaultValue: '用户取消，中断执行' })}</p>
+        </div>
+      ) : null}
       {isStreaming && <span className={getLiveOutputCursorClass(liveOutputAnimationStyle)} />}
       {shouldShowImageGeneratingLoader && (
         <div className={`pt-3${liveComponentClassName ? ` ${liveComponentClassName}` : ''}`}>

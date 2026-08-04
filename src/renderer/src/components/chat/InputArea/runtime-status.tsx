@@ -15,7 +15,7 @@ import { useProviderStore } from '@renderer/stores/provider-store'
 import {
   calculateCost, calculateCostBreakdown, estimateTokens,
   formatCacheHitRate, formatCost,
-  formatSessionCacheHitRate, getCacheHitRate
+  getCacheReadRatio
 } from '@renderer/lib/format-tokens'
 import type { TokenUsage, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatMessage } from '@renderer/stores/chat-store/types'
@@ -208,16 +208,11 @@ export function ComposerRuntimeStatus({
   // Per-request cache hit rate is shown in each message's token summary bar.
   const inputTokens = live.cumulativeInputTokens
   const cacheReadTokens = live.cumulativeCacheReadTokens
-  const cacheCreationTokens = live.cumulativeCacheCreationTokens
   // Session-level cache hit rate from backend (Reasonix-style: Σhit/Σ(hit+miss))
   // Falls back to per-message traversal when session counters are unavailable.
-  const hasSessionCache = live.sessionCacheHit != null || live.sessionCacheMiss != null
-  const cacheHitRate = hasSessionCache
-    ? (live.sessionCacheHit ?? 0) / Math.max(1, (live.sessionCacheHit ?? 0) + (live.sessionCacheMiss ?? 0))
-    : getCacheHitRate(live.cumulativeBillableInputTokens, cacheReadTokens, cacheCreationTokens)
-  const sessionCacheRateLabel = hasSessionCache
-    ? formatSessionCacheHitRate(live.sessionCacheHit, live.sessionCacheMiss)
-    : null
+  // Token-level cache hit rate: cacheReadTokens / inputTokens
+  // Matches the displayed numbers (缓存 / 总) for consistent UX
+  const cacheHitRate = getCacheReadRatio(inputTokens, cacheReadTokens)
   const streamingExtraUsage = React.useMemo<TokenUsage | null>(() => {
     if (!isStreaming || !model) return null
     const estimatedBillableInputTokens =
@@ -461,7 +456,7 @@ export function ComposerRuntimeStatus({
         tone="cacheHit"
         animate={isStreaming}
         duration={520}
-        suffix={sessionCacheRateLabel ?? formatCacheHitRate(cacheHitRate)}
+        suffix={formatCacheHitRate(cacheHitRate)}
         title={buildCostTitle(
           t('input.runtimeMetrics.cacheHit', { defaultValue: '缓存' }),
           cacheReadTokens,
