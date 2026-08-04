@@ -202,7 +202,7 @@ export function BottomTerminalDock({
     async (tab: TerminalTab): Promise<void> => {
       await closeTab(tab.id)
       const remaining = useTerminalStore.getState().tabs.filter(
-        (t) => t.kind === 'ssh-agent' ? t.sessionId === sessionId : t.projectId === projectId
+        (t) => t.sessionId === sessionId
       )
       if (remaining.length === 0) {
         if (sessionId) setBottomTerminalDockOpen(sessionId, false)
