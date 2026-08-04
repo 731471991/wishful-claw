@@ -1,52 +1,19 @@
-# Plan 3: ToolCallCard compact 模式
+# Plan 3 — ~~ToolCallCard compact 模式~~ (已废弃)
 
-## 目标
+> **状态：已废弃** — 用户决策去掉右侧工作台，compact 模式不再需要。
+> 折叠块内的 ToolCallCard 保留原有可展开预览能力 (CollapsibleHeightPanel)，无需 compact 模式。
 
-给 ToolCallCard 新增 `mode: 'compact' | 'full'` prop。compact 模式去掉 output-blocks 渲染，只保留 compact-header + input-summary + status。聊天流折叠块内用 compact，右侧工作台用 full。
+## 废弃原因
 
-## 前置依赖
+compact 模式的初衷是为右侧工作台提供简化版工具卡片。用户发现：
+1. 折叠块内的 ToolCallCard 本身就有展开/折叠预览能力
+2. compact 模式去掉了这个能力，再搞工作台补回来是绕圈子
+3. 历史消息的工作台数据会断裂（sessionToolCallsCache 不被填充）
 
-Plan 2（折叠块内已有精简列表渲染位置）
+## 已回退的文件
 
-## 步骤清单
-
-- [ ] 步骤1：ToolCallCard types 新增 mode 字段 — `ToolCallCardProps` 新增 `mode?: 'compact' | 'full'`，默认 `'full'` 保持向后兼容
-  - 验证：类型定义正确，现有使用不受影响
-- [ ] 步骤2：compact 模式渲染逻辑 — `mode === 'compact'` 时：只渲染 CompactToolCallHeader + StructuredInput（折叠），不渲染 output-blocks。去掉 CollapsibleHeightPanel 包裹的输出预览区域
-  - 验证：compact 模式不渲染输出预览；full 模式行为不变
-- [ ] 步骤3：content-renderer 中折叠块内工具调用传 compact mode — ExecutionProcessBlock 内的 ToolBlockRenderer 接收 mode 参数，传给 ToolCallCard
-  - 验证：折叠块内工具卡片只显示精简信息
-- [ ] 步骤4：双编译验证 — `npx tsc --noEmit -p tsconfig.web.json` 零错误
-  - 验证：TypeScript 编译通过
-
-## 涉及文件
-
-- `src/renderer/src/components/chat/ToolCallCard/types.ts` — 修改，新增 mode 字段
-- `src/renderer/src/components/chat/ToolCallCard/index.tsx` — 修改，compact 模式渲染分支
-- `src/renderer/src/components/chat/AssistantMessage/tool-block-renderer.tsx` — 修改，透传 mode
-- `src/renderer/src/components/chat/AssistantMessage/content-renderer.tsx` — 修改，过程组传 compact mode
-
-## 设计细节
-
-### compact 模式渲染
-
-```tsx
-{mode === 'compact' ? (
-  <>
-    <CompactToolCallHeader ... />
-    {/* 不渲染 output-blocks */}
-  </>
-) : (
-  // 现有 full 模式渲染
-  <>
-    <CompactToolCallHeader ... />
-    <CollapsibleHeightPanel open={...}>
-      {/* output-blocks */}
-    </CollapsibleHeightPanel>
-  </>
-)}
-```
-
-### ToolBlockRenderer 透传
-
-`ToolBlockRendererProps` 新增 `mode?: 'compact' | 'full'`，透传到 `ToolCallCard`。
+- ToolCallCard/types.ts — 移除 mode/onCompactClick 属性
+- ToolCallCard/index.tsx — 移除 compact 渲染分支
+- ToolCallCard/utils.ts — 移除 mode 比较
+- tool-block-renderer.tsx — 移除 mode/onCompactClick 透传
+- content-renderer.tsx — 移除 toolBlockProps 中的 mode='compact' 和 onCompactClick
