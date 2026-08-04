@@ -232,16 +232,8 @@ Do not overstep your bounds or create unnecessary files.
 
         if (string.IsNullOrWhiteSpace(sshConnectionId))
         {
-            // No SSH connection bound — still inform the Agent about the capability
-            return """
-<ssh_capability>
-**SSH Remote Execution:**
-- The Bash tool supports an optional `sshConnectionId` parameter to execute commands on a remote SSH server.
-- Use `SshListConnections` to discover available SSH connection IDs.
-- When `sshConnectionId` is provided, the command runs remotely via a persistent SSH connection and returns structured stdout, stderr, and exitCode.
-- Real-time output is displayed in the terminal panel for the user to observe.
-</ssh_capability>
-""";
+            // No SSH connection bound — no SSH context needed
+            return string.Empty;
         }
 
         var cwdLine = string.IsNullOrWhiteSpace(workingFolder)
