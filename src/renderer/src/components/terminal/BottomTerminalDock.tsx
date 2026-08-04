@@ -52,6 +52,7 @@ export interface BottomTerminalDockProps {
   projectName?: string | null
   workingFolder?: string | null
   sshConnectionId?: string | null
+  dockOpen?: boolean
 }
 
 export function BottomTerminalDock({
@@ -59,7 +60,8 @@ export function BottomTerminalDock({
   sessionId,
   projectName,
   workingFolder,
-  sshConnectionId
+  sshConnectionId,
+  dockOpen
 }: BottomTerminalDockProps): React.JSX.Element {
   const { t } = useTranslation('layout')
 
@@ -95,6 +97,7 @@ export function BottomTerminalDock({
 
   // Auto-create a terminal when dock opens and there are no session tabs
   useEffect(() => {
+    if (!dockOpen) return
     if (sessionTabs.length === 0 && !hasAutoCreatedRef.current) {
       hasAutoCreatedRef.current = true
       void handleAutoCreateTerminal()
@@ -105,7 +108,7 @@ export function BottomTerminalDock({
       hasAutoCreatedRef.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionTabs.length])
+  }, [sessionTabs.length, dockOpen])
 
   const handleAutoCreateTerminal = useCallback(async (): Promise<void> => {
     if (sshConnectionId) {

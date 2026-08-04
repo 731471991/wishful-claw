@@ -203,6 +203,7 @@ export function SessionConversationPane({
               projectName={projectName}
               workingFolder={projectWorkingFolder ?? null}
               sshConnectionId={sshConnectionId}
+              dockOpen={bottomTerminalDockOpen}
             />
           </div>
         )}
