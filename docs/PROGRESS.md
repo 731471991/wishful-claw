@@ -139,6 +139,26 @@
 - 日期: 2026-07-2?
 - 备注：Infrastructure 层 Db/Storage/Http 下沉、Worker 深度瘦身（Modules 迁入 Agent/Infrastructure，Worker 降至 12 文件）、缓存命中率深度修复
 
+### v2-iter-6：SSH 远程执行 + Agent 终端旁观 + 项目档案
+- 状态：已完成
+- 分支：dev/v2-iter-6（已合并 main）
+- VERDICT: PASS
+- Tag: v2.6.0
+- Commit: e1529ee
+- 日期: 2026-08-04
+- 备注：
+  - Agent SSH 输出不自动展开终端面板，输出在面板隐藏时仍写入 xterm 缓冲
+  - 终端面板可见性从 project 级改为 session 级（bottomTerminalDockOpenBySessionId）
+  - 非 SSH 项目无 ssh_capability 提示块（BuildSshContext 返回 Empty）
+  - BuildSshContext 只在 SSH 项目时调用（sshConnectionId 检查）
+  - Bash 工具加 `local: true` 逃生口，SSH 项目中 Agent 可操作本地
+  - ShellExecuteTool.cs 901 行拆分为 4 个 partial class（AGENTS.md 规范）
+  - ProjectArchivePage.tsx 765 行拆分为 3 个文件
+  - 终端关闭不自动收起面板，用户手动控制
+  - 终端 i18n 补全（16 个 key 加到 zh/en layout.json）
+  - 本地项目首次打开终端面板自动创建终端（dockOpen 时触发）
+  - node-pty native module 打包修复（electron.vite.config.ts external）
+
 ### v2-iter-5：渠道配置测试与完善
 - 状态：已完成
 - 分支：dev/v2-iter-5（已合并 main）
@@ -200,16 +220,13 @@
   - Agent Loop 多轮迭代的展示方式（当前平铺在一条消息内，可能调整为分段展示）
 
 ### 迭代十二：SSH 远程执行 + Agent 终端旁观
-- 状态：未开始
-- 优先级：最高 — 用户核心需求
+- 状态：已完成（v2-iter-6）
+- VERDICT: PASS
+- Tag: v2.6.0
+- Commit: e1529ee
+- 日期: 2026-08-04
 - 目标：Agent 通过 SSH 长连接远程执行命令，执行过程实时输出到终端面板供用户旁观
-- Plan：12-1 连接管理基础设施 → 12-2 Agent SSH 工具执行器 → 12-3 终端旁观模式 → 12-4 连接管理 UI
-- 参考来源：OpenCowork `src/main/ssh/` + `AgentRuntimeSshToolExecutor.cs`
-- 前端已有骨架：`SkillsMenu` 组件、`skills-store`
-- 技术要点：
-  - SKILL.md 解析和工具注册
-  - Skill 安装/卸载/列表管理
-  - 在线 Skill 市场浏览和安装
+- 备注：已完成，详见上方 v2-iter-6 条目
 
 ### 迭代十三：聊天窗渲染调整（参考灵犀）
 - 状态：未开始
