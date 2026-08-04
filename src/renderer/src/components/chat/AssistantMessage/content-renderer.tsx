@@ -297,23 +297,41 @@ export function ContentRenderer({
   }
 
   // ─── Process / Final-output split ───
-  // Find the boundary: the last item whose block is text/image/image_error/agent_error.
-  // Items before it = process (thinking + tool_use + intermediate text + compact-summary).
-  // Items at or after it = final output (last text reply, generated images, errors).
+  // From the end, skip text/image/image_error/agent_error blocks to find
+  // the first "process" item (tool-run/thinking/compact-summary/tool_use).
+  // Items before and including that = process. Items after = final output.
   const finalOutputStartIndex = (() => {
     for (let i = renderItemsWithInlineSummaries.length - 1; i >= 0; i--) {
       const item = renderItemsWithInlineSummaries[i]
       if (item.kind === 'block') {
         const block = normalizedContent?.[item.index]
         if (block && (block.type === 'text' || block.type === 'image' || block.type === 'image_error' || block.type === 'agent_error')) {
-          return i
+          continue
         }
       }
+      // Found a non-final item — final output starts after this
+      return i + 1
     }
-    return renderItemsWithInlineSummaries.length
+    // All items are text/image/error → no process content
+    return 0
   })()
 
-  const hasProcessContent = finalOutputStartIndex > 0
+  const processItems = renderItemsWithInlineSummaries.slice(0, finalOutputStartIndex)
+  const finalItems = renderItemsWithInlineSummaries.slice(finalOutputStartIndex)
+
+  // Only collapse when there are tool calls in the process AND there is final output.
+  // - Thinking-only without tools: too simple, don't collapse
+  // - Cancelled execution without final text: don't collapse, user needs to see content
+  const hasToolCallsInProcess = processItems.some((item) => {
+    if (item.kind === 'tool-run') return true
+    if (item.kind === 'block') {
+      const block = normalizedContent?.[item.index]
+      return block?.type === 'tool_use'
+    }
+    return false
+  })
+  const hasFinalOutput = finalItems.length > 0
+  const hasProcessContent = hasToolCallsInProcess && hasFinalOutput
 
   // Count thinking blocks for summary
   const thinkingBlockCount = normalizedContent?.filter((b) => b.type === 'thinking').length ?? 0
@@ -473,22 +491,23 @@ export function ContentRenderer({
     return renderToolRun(item.runId)
   }
 
-  const processItems = renderItemsWithInlineSummaries.slice(0, finalOutputStartIndex)
-  const finalItems = renderItemsWithInlineSummaries.slice(finalOutputStartIndex)
-
   return (
     <div className="space-y-2">
       {orchestrationRun?.kind === 'team' && orchestrationAnchorIndex < 0 ? (
         <OrchestrationBlock run={orchestrationRun} />
       ) : null}
-      <ExecutionProcessBlock
-        collapsible={hasProcessContent}
-        isStreaming={!!isStreaming}
-        summary={processSummary}
-        activeDetail={toolExecutionOutline.activeSummary}
-      >
-        {processItems.map((item) => renderItem(item))}
-      </ExecutionProcessBlock>
+      {hasProcessContent ? (
+        <ExecutionProcessBlock
+          collapsible={true}
+          isStreaming={!!isStreaming}
+          summary={processSummary}
+          activeDetail={toolExecutionOutline.activeSummary}
+        >
+          {processItems.map((item) => renderItem(item))}
+        </ExecutionProcessBlock>
+      ) : (
+        processItems.map((item) => renderItem(item))
+      )}
       {finalItems.map((item) => renderItem(item))}
       {isStreaming && <span className={getLiveOutputCursorClass(liveOutputAnimationStyle)} />}
       {shouldShowImageGeneratingLoader && (
