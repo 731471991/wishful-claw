@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { useUIStore, type RightPanelTabInstance } from '@renderer/stores/ui-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useAppPluginStore } from '@renderer/stores/app-plugin-store'
+import { useAgentStore } from '@renderer/stores/agent-store'
 import { BROWSER_PLUGIN_ID } from '@renderer/lib/app-plugin/types'
 import { cn } from '@renderer/lib/utils'
 import { RightPanelHeader } from './RightPanelHeader'
@@ -15,6 +16,7 @@ import { BrowserPanel } from '@renderer/components/layout/BrowserPanel'
 import { PreviewPanel } from '@renderer/components/layout/PreviewPanel'
 import { AgentFilesPanel } from '@renderer/components/layout/AgentFilesPanel'
 import { SessionChangeReviewPanel } from '@renderer/components/layout/SessionChangeReviewPanel'
+import { WorkbenchPanel } from '@renderer/components/layout/WorkbenchPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
 
@@ -40,6 +42,22 @@ export function RightPanel(): React.JSX.Element {
   })
   const activeSessionId = useChatStore((state) => state.activeSessionId)
   const panelSessionId = activeScopedSessionId ?? activeSessionId ?? null
+  const ensureWorkbenchTab = useUIStore((state) => state.ensureWorkbenchTab)
+
+  // Auto-create workbench tab when this session has tool calls
+  const sessionToolCallCount = useAgentStore((s) => {
+    if (!panelSessionId) return 0
+    const cache = s.sessionToolCallsCache[panelSessionId]
+    if (cache) return cache.pending.length + cache.executed.length
+    return s.pendingToolCalls.filter(tc => tc.sessionId === panelSessionId).length +
+           s.executedToolCalls.filter(tc => tc.sessionId === panelSessionId).length
+  })
+
+  useEffect(() => {
+    if (sessionToolCallCount > 0) {
+      ensureWorkbenchTab(panelSessionId)
+    }
+  }, [sessionToolCallCount, panelSessionId, ensureWorkbenchTab])
   const workingFolder = useChatStore((state) => {
     const project = state.projects.find((p) => p.id === state.activeProjectId)
     return project?.workingFolder ?? null
@@ -60,6 +78,9 @@ export function RightPanel(): React.JSX.Element {
       }
       if (tab.kind === 'browser') {
         return { ...tab, title: t('rightPanel.browser', { defaultValue: 'Browser' }) }
+      }
+      if (tab.kind === 'workbench') {
+        return { ...tab, title: t('rightPanel.workbench', { defaultValue: 'Workbench' }) }
       }
       // subagent tabs keep their own title (set from task description)
       return tab
@@ -140,6 +161,7 @@ export function RightPanel(): React.JSX.Element {
     if (tab.kind === 'preview') return <PreviewPanel embedded />
     if (tab.kind === 'files') return <AgentFilesPanel sessionId={tab.sessionId ?? panelSessionId} />
     if (tab.kind === 'review') return <SessionChangeReviewPanel sessionId={tab.sessionId ?? panelSessionId} />
+    if (tab.kind === 'workbench') return <WorkbenchPanel sessionId={tab.sessionId ?? panelSessionId} />
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         <Loader2 className="mr-2 size-4 animate-spin" />

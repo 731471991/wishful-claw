@@ -440,6 +440,30 @@ export const useUIStore = create<UIStore>((set, get) => ({
   openSubAgentsPanel: (toolUseId: any, sessionId: any) =>
     get().ensureSubAgentTab(toolUseId ?? null, null, null, sessionId),
 
+  ensureWorkbenchTab: (sessionId: any) =>
+    set((state: any) => {
+      const existing = state.rightPanelTabs.find((tab: any) => tab.kind === 'workbench')
+      if (existing) {
+        if (sessionId && existing.sessionId !== sessionId) {
+          const rightPanelTabs = state.rightPanelTabs.map((tab: any) =>
+            tab.id === existing.id ? { ...tab, sessionId } : tab
+          )
+          return { rightPanelTabs }
+        }
+        return {}
+      }
+      const tab: RightPanelTabInstance = {
+        id: 'workbench',
+        kind: 'workbench',
+        title: 'Workbench',
+        closable: true,
+        sessionId: sessionId ?? null,
+        createdAt: Date.now(),
+      }
+      return {
+        rightPanelTabs: ensureRightPanelTabs([...state.rightPanelTabs, tab]),
+      }
+    }),
   ensureTerminalTab: () =>
     set((state: any) => {
       const existing = state.rightPanelTabs.find((tab: any) => tab.kind === 'terminal')
