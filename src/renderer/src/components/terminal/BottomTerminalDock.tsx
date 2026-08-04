@@ -201,14 +201,8 @@ export function BottomTerminalDock({
   const handleClose = useCallback(
     async (tab: TerminalTab): Promise<void> => {
       await closeTab(tab.id)
-      const remaining = useTerminalStore.getState().tabs.filter(
-        (t) => t.sessionId === sessionId
-      )
-      if (remaining.length === 0) {
-        if (sessionId) setBottomTerminalDockOpen(sessionId, false)
-      }
     },
-    [closeTab, sessionId, setBottomTerminalDockOpen]
+    [closeTab]
   )
 
   const dockHeight = fullscreen
