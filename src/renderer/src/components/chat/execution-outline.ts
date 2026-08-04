@@ -107,7 +107,7 @@ const ORDINARY_CONTEXT_TOOL_NAMES = new Set([
   'BrowserSearch',
 ])
 const FILE_CHANGE_TOOL_NAMES = new Set(['Write', 'Edit', 'Delete', 'NotebookEdit', 'SavePlan'])
-const INTERACTIVE_TOOL_NAMES = new Set([
+export const INTERACTIVE_TOOL_NAMES = new Set([
   'AskUserQuestion',
   'EnterPlanMode',
   'ExitPlanMode',
@@ -324,8 +324,11 @@ export function buildToolExecutionOutline({
 
     // A Task owns a visible SubAgent card at this exact content position. Isolate it from
     // adjacent ordinary tools so a collapsed Read/Edit run can never hide or move the card.
+    // Interactive tools (ExitPlanMode, AskUserQuestion) are also isolated -- they must
+    // always be visible and never folded into a collapsed tool run.
     const isSubAgentTask = block.name === TASK_TOOL_NAME
-    if (isSubAgentTask) closePendingRun()
+    const isInteractiveTool = INTERACTIVE_TOOL_NAMES.has(block.name)
+    if (isSubAgentTask || isInteractiveTool) closePendingRun()
 
     const result = toolResults?.get(block.id)
     const liveToolCall = liveToolCallMap?.get(block.id)
@@ -388,6 +391,7 @@ export function buildToolExecutionOutline({
 
     if (
       isSubAgentTask ||
+      isInteractiveTool ||
       boundaryAfterToolUseIds?.has(block.id) ||
       boundaryAfterBlockIndices?.has(blockIndex)
     ) {

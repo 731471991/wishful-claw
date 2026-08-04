@@ -63,7 +63,7 @@ export function ComposerBanners({
 
       {/* Plan mode banner */}
       {planMode && projectScoped && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-1.5">
+        <div className={cn(composerWidthClass, 'mb-2 flex items-center justify-between gap-2 rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-1.5')}>
           <div className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
             <ClipboardList className="size-3.5 shrink-0" />
             <span>
