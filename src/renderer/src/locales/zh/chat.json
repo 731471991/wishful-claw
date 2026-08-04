@@ -899,46 +899,34 @@
     "openPersona": "人格管理"
   },
   "projectArchive": {
-    "noChannelSummary": "查看项目协作频道与连接状态。",
-    "loadFailed": "加载项目记忆档案失败",
-    "saved": "项目记忆档案已保存",
-    "saveFailed": "保存项目记忆档案失败",
+    "title": "项目档案",
+    "sessions": "个会话",
+    "loadFailed": "加载项目档案失败",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "notCreated": "尚未创建",
     "noProjectTitle": "未选择项目",
-    "noProjectDesc": "请先返回首页选择一个项目，然后再查看项目记忆档案。",
+    "noProjectDesc": "请先选择一个项目，再查看项目档案。",
     "backHome": "返回首页",
-    "backProject": "返回项目主页",
-    "loading": "正在加载项目记忆档案...",
-    "unsavedState": "有未保存更改",
+    "backProject": "返回项目",
+    "loading": "加载中...",
+    "unsavedState": "有未保存的更改",
     "savedState": "内容已同步",
     "pathUnavailable": "路径不可用",
-    "reloadAction": "重新加载",
-    "effectiveHint": "优先使用工作目录下的 .agents；如果工作目录根部仍有旧位置文件，也会继续兼容读取并写回原位置。",
-    "memoryRootTitle": "项目记忆根目录",
-    "lastSavedAt": "保存于 {{time}}",
-    "upToDate": "已是最新",
-    "missingFileHint": "{{file}} 尚不存在。已加载初始模板，点击保存即可创建文件。",
-    "legacyLocationHint": "当前文件来自工作目录根部的旧位置，保存时会继续写回原位置以保持兼容。",
-    "placeholder": "在这里编辑 {{file}} ...",
-    "savingAction": "保存中...",
+    "missingFileHint": "文件尚不存在。已加载初始模板，点击保存即可创建。",
+    "placeholder": "在这里编辑内容...",
     "resetAction": "重置",
     "errorLabel": "错误：",
-    "files": {
-      "agents": {
-        "description": "项目级工作约定、边界与协作规范。"
-      },
-      "soul": {
-        "description": "项目专属的人格与风格补充，会覆盖全局 SOUL.md 的对应部分。"
-      },
-      "user": {
-        "description": "你在这个项目里的偏好、目标与协作方式。"
-      },
-      "memory": {
-        "description": "这个项目的长期记忆、决策与上下文。"
-      },
-      "daily": {
-        "title": "每日记忆",
-        "description": "记录今天的项目临时上下文，后续再整理进 MEMORY.md。"
-      }
+    "tabs": {
+      "memory": "项目记忆",
+      "daily": "每日记忆",
+      "persona": "项目人格",
+      "dormant": "记忆归档"
+    },
+    "persona": {
+      "noPersonas": "暂无项目专属人格，请通过人格设置页面添加。",
+      "goToSettings": "人格设置",
+      "selectFile": "选择一个人格文件预览"
     }
   },
   "skills": {

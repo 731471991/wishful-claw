@@ -43,13 +43,15 @@ public static class SystemPromptCache
         string? workingFolder,
         string? language,
         string? userRules,
-        string? sshConnectionId)
+        string? sshConnectionId,
+        string? projectId)
     {
         return string.Join('|',
             personaId ?? string.Empty,
             workingFolder ?? string.Empty,
             language ?? string.Empty,
             userRules ?? string.Empty,
-            sshConnectionId ?? string.Empty);
+            sshConnectionId ?? string.Empty,
+            projectId ?? string.Empty);
     }
 }

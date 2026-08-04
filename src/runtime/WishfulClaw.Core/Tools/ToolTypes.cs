@@ -26,4 +26,5 @@ public sealed record ToolExecutionContext(
     string? SessionId = null,
     string? RunId = null,
     string? ProjectId = null,
+    string? SshConnectionId = null,
     CancellationToken CancellationToken = default);

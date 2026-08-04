@@ -3,7 +3,8 @@ namespace WishfulClaw.Workspace.Memory;
 /// <summary>
 /// Resolves file paths for memory storage based on scope.
 /// Global scope: ~/.wishful-claw/
-/// Project scope: {workingFolder}/.wishful-claw/
+/// Local project scope: {workingFolder}/.wishful-claw/
+/// SSH project scope: ~/.wishful-claw/projects/{projectId}/
 /// </summary>
 public static class MemoryPathResolver
 {
@@ -18,13 +19,20 @@ public static class MemoryPathResolver
     /// <summary>
     /// Resolve the memory root path for a given scope.
     /// </summary>
-    /// <param name="scope">"global" or "project:{workingFolder}"</param>
+    /// <param name="scope">"global", "project:{workingFolder}" (local), or "project:ssh:{projectId}" (SSH)</param>
     public static string ResolveRoot(string? scope)
     {
         if (string.IsNullOrWhiteSpace(scope) || scope == "global")
             return GlobalRoot;
 
-        // Project scope: "project:{workingFolder}"
+        // SSH project scope: "project:ssh:{projectId}" → ~/.wishful-claw/projects/{projectId}/
+        if (scope.StartsWith("project:ssh:", StringComparison.OrdinalIgnoreCase))
+        {
+            var projectId = scope["project:ssh:".Length..];
+            return Path.Combine(GlobalRoot, "projects", projectId);
+        }
+
+        // Local project scope: "project:{workingFolder}" → {workingFolder}/.wishful-claw/
         if (scope.StartsWith("project:", StringComparison.OrdinalIgnoreCase))
         {
             var workingFolder = scope["project:".Length..];

@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { getTerminalTheme, resolveAppThemeMode } from '@renderer/lib/theme-presets'
+import { useTranslation } from 'react-i18next'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 
 interface SshExecOutputEvent {
@@ -18,17 +19,20 @@ interface SshExecOutputEvent {
 
 /**
  * Read-only xterm terminal that displays real-time SSH command output
- * from Agent-executed remote commands. Listens to ssh:exec-output IPC events
- * matching the given execId and writes them to the terminal.
+ * from Agent-executed remote commands.
  *
- * This component does NOT support input — it is purely for observation.
+ * Unlike the previous version, this listens to ALL ssh:exec-output events
+ * (not filtered by a single execId) so that multiple agent commands
+ * stream into the same terminal session sequentially.
  */
-export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Element {
+export function AgentSshTerminal({ connectionName }: { connectionName?: string }): React.JSX.Element {
+  const { t } = useTranslation('settings')
   const { resolvedTheme } = useTheme()
-  const themePreset = useSettingsStore((state) => state.themePreset)
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const lastExecIdRef = useRef<string>('')
+  const themePreset = useSettingsStore((state) => state.themePreset)
   const initialThemeRef = useRef(getTerminalTheme(themePreset, resolveAppThemeMode(resolvedTheme)))
   const terminalTheme = getTerminalTheme(themePreset, resolveAppThemeMode(resolvedTheme))
 
@@ -60,8 +64,11 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     termRef.current = term
     fitAddonRef.current = fitAddon
 
-    // Write a header line indicating this is an agent SSH session
-    term.writeln(`\x1b[36m[Agent SSH Session]\x1b[0m execId: ${execId.slice(0, 8)}...`)
+    // Write a header line
+    term.writeln(`\x1b[36m[${t('terminal.agentSshSession', { defaultValue: 'Agent SSH Session' })}]\x1b[0m`)
+    if (connectionName) {
+      term.writeln(`\x1b[90mConnection: ${connectionName}\x1b[0m`)
+    }
     term.writeln('')
 
     const scheduleFit = (): void => {
@@ -75,10 +82,21 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
     }
     scheduleFit()
 
-    // Listen for SSH exec output events matching this execId
+    // Listen for ALL SSH exec output events — not filtered by execId.
+    // All agent commands for this project stream into the same terminal.
+    // A separator line is written when the execId changes (new command).
     const outputCleanup = ipcClient.on(IPC.SSH_EXEC_OUTPUT, (payload) => {
       const event = payload as SshExecOutputEvent
-      if (event.execId !== execId || !event.data) return
+      if (!event.data) return
+
+      // Write a separator when a new command starts (execId changes)
+      if (event.execId && event.execId !== lastExecIdRef.current) {
+        if (lastExecIdRef.current !== '') {
+          // Add spacing between commands
+          term.writeln('')
+        }
+        lastExecIdRef.current = event.execId
+      }
 
       if (event.stream === 'stderr') {
         // Write stderr in red
@@ -107,7 +125,7 @@ export function AgentSshTerminal({ execId }: { execId: string }): React.JSX.Elem
       termRef.current = null
       fitAddonRef.current = null
     }
-  }, [execId])
+  }, [connectionName])
 
   useEffect(() => {
     const term = termRef.current

@@ -367,6 +367,7 @@ export const IPC = {
   SSH_CONNECTION_UPDATE: 'ssh:connection:update',
   SSH_CONNECTION_DELETE: 'ssh:connection:delete',
   SSH_CONNECTION_TEST: 'ssh:connection:test',
+  SSH_CONNECTION_GET_SECRETS: 'ssh:connection:get-secrets',
 
   // SSH Terminal Sessions
   SSH_CONNECT: 'ssh:connect',

@@ -215,7 +215,7 @@
     "deleteProject": "Delete project",
     "newSessionInProject": "New session here",
     "changeFolder": "Change working folder",
-    "archive": "Archive",
+    "archive": "Project Archive",
     "git": "Git",
     "conversationCleared": "Conversation cleared",
     "sessionDuplicated": "Session duplicated",
@@ -238,7 +238,12 @@
     "translate": "Translate",
     "codegraph": "Code Graph",
     "comingSoon": "coming soon",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "projectSortTitle": "Sort projects",
+    "projectSortBy": "Sort by",
+    "projectSortRecentlyUpdated": "Recently updated",
+    "projectSortName": "Name",
+    "projectSortCreatedAt": "Date created"
   },
   "sectionExecution": {
     "title": "Execution"
@@ -437,5 +442,23 @@
     "unableToRead": "(Unable to read file)",
     "empty": "Empty folder",
     "stats": "{{folders}} folders · {{files}} files"
+  },
+  "terminal": {
+    "noSessions": "No terminal sessions",
+    "newTerminal": "New terminal",
+    "collapse": "Collapse",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "exited": "Terminal exited",
+    "ended": "Terminal ended",
+    "selectToStart": "Select a terminal to get started",
+    "copy": "Copy",
+    "paste": "Paste",
+    "clear": "Clear",
+    "selectAll": "Select All",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "pasteFailed": "Paste failed",
+    "agentSshSession": "Agent SSH Session"
   }
 }

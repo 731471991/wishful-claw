@@ -339,8 +339,8 @@ export function useFileTreeActions(state: FileTreeState, options: UseFileTreeAct
         return
       }
 
-      if (sessionView.projectId) {
-        useUIStore.getState().setBottomTerminalDockOpen(sessionView.projectId, true)
+      if (sessionView.sessionId) {
+        useUIStore.getState().setBottomTerminalDockOpen(sessionView.sessionId, true)
       }
     },
     [sep, sessionView, sshConnectionId, workingFolder, t]

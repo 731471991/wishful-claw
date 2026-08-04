@@ -16,9 +16,7 @@ export function ProjectHomePage(): React.JSX.Element {
   const activeProjectId = useChatStore((state) => state.activeProjectId)
   const projects = useChatStore((state) => state.projects)
   const mode = useUIStore((state) => state.mode)
-  const terminalDockOpen = useUIStore((state) =>
-    activeProjectId ? Boolean(state.bottomTerminalDockOpenByProjectId[activeProjectId]) : false
-  )
+  const terminalDockOpen = false  // Project home has no session; dock state is session-level now
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? null
   const workingFolder = activeProject?.workingFolder
   const sshConnectionId = activeProject?.sshConnectionId

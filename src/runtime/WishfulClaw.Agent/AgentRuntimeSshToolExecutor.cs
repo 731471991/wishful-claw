@@ -68,6 +68,10 @@ public static class AgentRuntimeSshToolExecutor
         if (!IsSshCapableTool(toolName))
             return false;
 
+        // Agent can force local execution by passing local: true
+        if (JsonHelpers.GetBool(toolInput, "local", false))
+            return false;
+
         // Check tool input first (Agent explicitly passes sshConnectionId)
         var connId = JsonHelpers.GetString(toolInput, "sshConnectionId");
         if (!string.IsNullOrWhiteSpace(connId))

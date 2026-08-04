@@ -35,10 +35,24 @@ internal static partial class AgentLoop
             if (string.IsNullOrWhiteSpace(userMessage))
                 return;
 
+            var projectId = JsonHelpers.GetString(parameters, "projectId");
+            var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
             var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
-            var scope = !string.IsNullOrWhiteSpace(workingFolder)
-                ? $"project:{workingFolder}"
-                : "global";
+
+            string scope;
+            if (!string.IsNullOrWhiteSpace(sshConnectionId))
+            {
+                var scopeId = !string.IsNullOrWhiteSpace(projectId) ? projectId : sshConnectionId;
+                scope = $"project:ssh:{scopeId}";
+            }
+            else if (!string.IsNullOrWhiteSpace(workingFolder))
+            {
+                scope = $"project:{workingFolder}";
+            }
+            else
+            {
+                scope = "global";
+            }
 
             var recall = new MemoryRecallService(
                 memorySearch,
@@ -63,11 +77,11 @@ internal static partial class AgentLoop
                         break;
                     }
                 }
-                WorkerLog.Info($"memory recall injected runId={state.RunId} length={injected.Length}");
+                WorkerLog.Warn($"memory recall injected runId={state.RunId} length={injected.Length}");
             }
             else
             {
-                WorkerLog.Debug($"memory recall: no relevant memories found runId={state.RunId}");
+                WorkerLog.Warn($"memory recall: no relevant memories found runId={state.RunId}");
             }
         }
         catch (OperationCanceledException) when (state.CancellationToken.IsCancellationRequested)

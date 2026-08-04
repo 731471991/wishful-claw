@@ -44,6 +44,17 @@ public static class PromptBuilder
         // ── Session Context ──
         parts.Add(BuildSessionContext(language));
 
+        // ── SSH Context + Project Context (high priority — put early so Agent doesn't miss it) ──
+        var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+        if (!string.IsNullOrWhiteSpace(sshConnectionId))
+        {
+            parts.Add(BuildSshContext(parameters));
+        }
+        if (!string.IsNullOrWhiteSpace(workingFolder))
+        {
+            parts.Add(BuildProjectContext(workingFolder, JsonHelpers.GetString(parameters, "sshConnectionId")));
+        }
+
         // ── Context Documents (Persona) ──
         if (profile == PromptProfile.Main && !string.IsNullOrWhiteSpace(personaId))
         {
@@ -55,24 +66,11 @@ public static class PromptBuilder
         // ── Memory Context (MEMORY.md loaded into prompt) ──
         if (profile == PromptProfile.Main)
         {
-            parts.Add(BuildMemoryContext(workingFolder));
+            parts.Add(BuildMemoryContext(parameters));
         }
 
         // ── Tool Capability ──
         parts.Add(BuildToolCapability(parameters));
-
-        // ── SSH Context ──
-        var sshContext = BuildSshContext(parameters);
-        if (!string.IsNullOrWhiteSpace(sshContext))
-        {
-            parts.Add(sshContext);
-        }
-
-        // ── Project Context ──
-        if (!string.IsNullOrWhiteSpace(workingFolder))
-        {
-            parts.Add(BuildProjectContext(workingFolder));
-        }
 
         // ── User Rules ──
         if (!string.IsNullOrWhiteSpace(userRules))
@@ -165,13 +163,32 @@ Do not overstep your bounds or create unnecessary files.
         return string.Join('\n', parts);
     }
 
-    private static string BuildMemoryContext(string? workingFolder)
+    private static string BuildMemoryContext(JsonElement parameters)
     {
         const int memoryBudget = 6000;
 
-        var scope = !string.IsNullOrWhiteSpace(workingFolder)
-            ? $"project:{workingFolder}"
-            : "global";
+        var projectId = JsonHelpers.GetString(parameters, "projectId");
+        var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+        var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+
+        string scope;
+        if (!string.IsNullOrWhiteSpace(sshConnectionId))
+        {
+            // SSH project: memory stored locally under ~/.wishful-claw/projects/{id}/
+            // Use projectId if available, otherwise fall back to sshConnectionId
+            var scopeId = !string.IsNullOrWhiteSpace(projectId) ? projectId : sshConnectionId;
+            scope = $"project:ssh:{scopeId}";
+        }
+        else if (!string.IsNullOrWhiteSpace(workingFolder))
+        {
+            // Local project: memory stored under {workingFolder}/.wishful-claw/
+            scope = $"project:{workingFolder}";
+        }
+        else
+        {
+            scope = "global";
+        }
+        WorkerLog.Warn($"BuildMemoryContext scope={scope} projectId={projectId ?? "(null)"} sshConnectionId={sshConnectionId ?? "(null)"} workingFolder={workingFolder ?? "(null)"}");
 
         try
         {
@@ -211,38 +228,45 @@ Do not overstep your bounds or create unnecessary files.
     private static string BuildSshContext(JsonElement parameters)
     {
         var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+        var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
 
         if (string.IsNullOrWhiteSpace(sshConnectionId))
         {
-            // No SSH connection bound — still inform the Agent about the capability
-            return """
-<ssh_capability>
-**SSH Remote Execution:**
-- The Bash tool supports an optional `sshConnectionId` parameter to execute commands on a remote SSH server.
-- Use `SshListConnections` to discover available SSH connection IDs.
-- When `sshConnectionId` is provided, the command runs remotely via a persistent SSH connection and returns structured stdout, stderr, and exitCode.
-- Real-time output is displayed in the terminal panel for the user to observe.
-</ssh_capability>
-""";
+            // No SSH connection bound — no SSH context needed
+            return string.Empty;
         }
+
+        var cwdLine = string.IsNullOrWhiteSpace(workingFolder)
+            ? ""
+            : $"\n- Remote working directory: `{workingFolder}` — all Bash commands default to this directory on the remote server.";
 
         return $"""
 <ssh_capability>
-**SSH Remote Execution:**
-- The Bash tool supports an optional `sshConnectionId` parameter to execute commands on a remote SSH server.
-- Use `SshListConnections` to discover available SSH connection IDs.
-- When `sshConnectionId` is provided, the command runs remotely via a persistent SSH connection and returns structured stdout, stderr, and exitCode.
-- Real-time output is displayed in the terminal panel for the user to observe.
-
-**Current SSH Binding:**
-- This session has a bound SSH connection: `{sshConnectionId}`
-- All Bash commands will automatically use this connection unless you explicitly pass a different `sshConnectionId` or omit it for local execution.
+**This project has a bound SSH connection.**
+- SSH connection ID: `{sshConnectionId}`{cwdLine}
+- **Bash/Shell commands default to the remote server** — no need to pass `sshConnectionId` manually.
+- **To run a command on the LOCAL machine instead**, pass `"local": true` in the Bash tool call. This bypasses SSH routing.
+- **File tools (LS, Read, Write, Edit, Glob, Grep) always operate on the LOCAL filesystem** — they cannot access remote files. This is by design, not a limitation.
+  - Use them freely for local tasks (reading local configs, editing local files, etc.).
+  - For remote file operations, use Bash commands: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mkdir`, `rm`, `sed`, `echo > file`, etc.
+- The working folder `{workingFolder}` is a remote path. Use `cd {workingFolder} && <command>` or rely on the default cwd.
+- Use `SshListConnections` if you need to inspect available connections.
+- Real-time command output is displayed in the terminal panel for the user to observe.
 </ssh_capability>
 """;
     }
 
-    private static string BuildProjectContext(string workingFolder)
+    private static string BuildProjectContext(string workingFolder, string? sshConnectionId)
     {
+        if (!string.IsNullOrWhiteSpace(sshConnectionId))
+        {
+            return $"""
+## Project
+- Remote Working Folder: `{workingFolder}`
+This is a remote path on the SSH server. Bash commands default to this directory. For remote file operations, use Bash (ls, cat, grep, etc.) — local file tools (LS/Read/Write/Edit) operate on the LOCAL filesystem only. Pass `"local": true` to Bash to run a command on the local machine instead.
+""";
+        }
+
         return $"""
 ## Project
 - Working Folder: `{workingFolder}`

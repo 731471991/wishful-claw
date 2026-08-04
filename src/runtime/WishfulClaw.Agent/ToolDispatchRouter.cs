@@ -20,7 +20,9 @@ public static class ToolDispatchRouter
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
         ToolRegistry? registry,
-        string? workingFolder)
+        string? workingFolder,
+        string? projectId,
+        string? sshConnectionId)
     {
         var toolOutput = string.Empty;
         var isToolError = false;
@@ -75,7 +77,7 @@ public static class ToolDispatchRouter
             try
             {
                 toolOutput = await AgentRuntimeUseCapabilityExecutor.ExecuteAsync(
-                    toolCall, state, context, registry, workingFolder, state.CancellationToken);
+                    toolCall, state, context, registry, workingFolder, projectId, sshConnectionId, state.CancellationToken);
                 isToolError = IsJsonError(toolOutput);
             }
             catch (OperationCanceledException) { throw; }
@@ -440,7 +442,7 @@ public static class ToolDispatchRouter
             try
             {
                 var toolContext = new ToolExecutionContext(
-                workingFolder, state.SessionId, state.RunId, null, state.CancellationToken);
+                workingFolder, state.SessionId, state.RunId, projectId, sshConnectionId, state.CancellationToken);
                 var result = await executor!.ExecuteAsync(toolCall.Input, toolContext);
                 toolOutput = result.Content;
                 isToolError = result.IsError;

@@ -37,6 +37,10 @@
     },
     "mcp": {
       "label": "MCP"
+    },
+    "ssh": {
+      "label": "SSH 连接",
+      "desc": "管理远程服务器 SSH 连接"
     }
   },
   "general": {
@@ -991,5 +995,45 @@
       "fillRequired": "请填写必填字段",
       "cannotInstall": "无法安装此服务器"
     }
+  },
+  "ssh": {
+    "title": "SSH 连接",
+    "description": "管理 SSH 服务器连接，用于远程命令执行",
+    "add": "添加连接",
+    "empty": "暂无 SSH 连接，点击「添加连接」创建",
+    "test": "测试连接",
+    "edit": "编辑",
+    "delete": "删除",
+    "createTitle": "新建 SSH 连接",
+    "editTitle": "编辑 SSH 连接",
+    "cancel": "取消",
+    "save": "保存",
+    "create": "创建",
+    "fields": {
+      "name": "名称",
+      "host": "主机地址",
+      "port": "端口",
+      "username": "用户名",
+      "authType": "认证方式",
+      "password": "密码",
+      "privateKey": "密钥",
+      "agent": "SSH Agent",
+      "keyPath": "密钥路径",
+      "passphrase": "密钥口令",
+      "leaveBlank": "留空保持不变",
+      "defaultDir": "默认目录"
+    },
+    "testSuccess": "连接测试成功",
+    "testFailed": "连接测试失败"
+  },
+  "terminal": {
+    "noSessions": "暂无终端会话",
+    "newTerminal": "新建终端",
+    "closeTerminal": "关闭终端",
+    "exited": "终端已退出",
+    "exitCode": "退出码：{code}",
+    "ended": "终端已结束",
+    "selectToStart": "选择一个终端开始",
+    "agentSshSession": "Agent SSH 会话"
   }
 }

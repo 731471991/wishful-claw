@@ -28,6 +28,8 @@ export interface SshConnection {
   updatedAt: number
   hasPassword: boolean
   hasPassphrase: boolean
+  password: string | null
+  passphrase: string | null
 }
 
 export interface SshSession {
@@ -208,6 +210,8 @@ export interface SshConnectionRow {
   updated_at: number
   has_password?: boolean
   has_passphrase?: boolean
+  password?: string | null
+  passphrase?: string | null
 }
 
 export function rowToGroup(row: SshGroupRow): SshGroup {
@@ -239,7 +243,9 @@ export function rowToConnection(row: SshConnectionRow): SshConnection {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     hasPassword: row.has_password === true,
-    hasPassphrase: row.has_passphrase === true
+    hasPassphrase: row.has_passphrase === true,
+    password: row.password ?? null,
+    passphrase: row.passphrase ?? null
   }
 }
 

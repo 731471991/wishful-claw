@@ -15,6 +15,7 @@ import { attachRendererToolBridge } from '@renderer/lib/ipc/renderer-tool-bridge
 import { registerAllTools, refreshDynamicToolCatalog } from '@renderer/lib/tools'
 import { fetchToolDefinitions } from '@renderer/lib/tools/tool-cache'
 import { useMcpStore } from '@renderer/stores/mcp-store'
+import { useTerminalStore } from '@renderer/stores/terminal-store'
 import { registerBrowserTool } from '@renderer/lib/tools/browser-tool'
 import { registerAllViewers } from '@renderer/lib/preview/register-viewers'
 import { useChannelAutoReply } from '@renderer/hooks/use-channel-auto-reply'
@@ -57,6 +58,10 @@ function App(): React.JSX.Element | null {
       .catch((err) => {
         console.warn('MCP initialization failed:', err)
       })
+    // Initialize terminal store early — registers SSH exec output listener
+    // so Agent SSH commands show in terminal even before user opens the panel
+    useTerminalStore.getState().init()
+
     // Pre-fetch tool definitions in background so first message doesn't wait
     fetchToolDefinitions('chat')
   }, [])

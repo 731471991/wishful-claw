@@ -12,10 +12,11 @@ import {
   type SshConnectionInput,
   type SshConnectionPatch
 } from '../ssh/repository'
-import { execSshCommand, testSshConnection, type SshExecResult } from '../ssh/ssh-exec'
-import { closeAllSshConnections } from '../ssh/connection-pool'
+import { execSshCommand, type SshExecResult } from '../ssh/ssh-exec'
+import { testSshConnection } from '../ssh/ssh-test'
+import { closeConnection, closeAllSshConnections } from '../ssh/connection-pool'
 
-// SSH IPC handlers: connection CRUD + exec.
+// SSH IPC handlers: connection CRUD + exec + group stubs + misc.
 
 let sshInitialized = false
 
@@ -32,25 +33,29 @@ async function ensureSshInitialized(): Promise<void> {
   }
 }
 
-function toMeta(meta: SshConnectionMeta): Record<string, unknown> {
+function toMeta(meta: SshConnectionMeta, password?: string | null, passphrase?: string | null): Record<string, unknown> {
+  // Returns snake_case fields to match SshConnectionRow / rowToConnection in frontend
   return {
     id: meta.id,
-    groupId: meta.groupId,
+    group_id: meta.groupId,
     name: meta.name,
     host: meta.host,
     port: meta.port,
     username: meta.username,
-    authType: meta.authType,
-    privateKeyPath: meta.privateKeyPath,
-    startupCommand: meta.startupCommand,
-    defaultDirectory: meta.defaultDirectory,
-    keepAliveInterval: meta.keepAliveInterval,
-    sortOrder: meta.sortOrder,
-    lastConnectedAt: meta.lastConnectedAt,
-    createdAt: meta.createdAt,
-    updatedAt: meta.updatedAt,
-    hasPassword: meta.hasPassword,
-    hasPassphrase: meta.hasPassphrase
+    auth_type: meta.authType,
+    private_key_path: meta.privateKeyPath,
+    startup_command: meta.startupCommand,
+    default_directory: meta.defaultDirectory,
+    proxy_jump: null,
+    keep_alive_interval: meta.keepAliveInterval,
+    sort_order: meta.sortOrder,
+    last_connected_at: meta.lastConnectedAt,
+    created_at: meta.createdAt,
+    updated_at: meta.updatedAt,
+    has_password: meta.hasPassword,
+    has_passphrase: meta.hasPassphrase,
+    password: password ?? null,
+    passphrase: passphrase ?? null
   }
 }
 
@@ -59,7 +64,10 @@ export function registerSshHandlers(): void {
 
   registerMessagePackHandler('ssh:connection:list', async () => {
     await ensureSshInitialized()
-    return listConnections().map(toMeta)
+    return listConnections().map((meta) => {
+      const withSecrets = getConnectionWithSecrets(meta.id)
+      return toMeta(meta, withSecrets?.password, withSecrets?.passphrase)
+    })
   })
 
   registerMessagePackHandler('ssh:connection:create', async (args) => {
@@ -67,16 +75,16 @@ export function registerSshHandlers(): void {
     const input = args as SshConnectionInput
     if (!input.id) input.id = randomUUID()
     await createConnection(input)
-    const meta = getConnectionMeta(input.id)
-    return meta ? toMeta(meta) : null
+    const withSecrets = getConnectionWithSecrets(input.id)
+    return withSecrets ? toMeta(withSecrets, withSecrets.password, withSecrets.passphrase) : null
   })
 
   registerMessagePackHandler('ssh:connection:update', async (args) => {
     await ensureSshInitialized()
     const { id, ...patch } = args as { id: string } & SshConnectionPatch
     await updateConnection(id, patch)
-    const meta = getConnectionMeta(id)
-    return meta ? toMeta(meta) : null
+    const withSecrets = getConnectionWithSecrets(id)
+    return withSecrets ? toMeta(withSecrets, withSecrets.password, withSecrets.passphrase) : null
   })
 
   registerMessagePackHandler('ssh:connection:delete', async (args) => {
@@ -125,16 +133,108 @@ export function registerSshHandlers(): void {
 
   registerMessagePackHandler('ssh:disconnect', async (args) => {
     const { connectionId } = args as { connectionId: string }
-    // The connection manager auto-closes idle connections after LINGER_MS.
-    // For explicit disconnect, we just close the handle.
-    // This is handled by the linger mechanism for now.
+    closeConnection(connectionId)
     return { success: true }
   })
 
-  // ── Session list (stub — no terminal sessions in this version) ──
+  // ── Session list (stub — no interactive terminal sessions) ──
 
   registerMessagePackHandler('ssh:session:list', async () => {
     return []
+  })
+
+  // ── Group stubs (groups not implemented — return empty) ──
+
+  registerMessagePackHandler('ssh:group:list', async () => {
+    return []
+  })
+
+  registerMessagePackHandler('ssh:group:create', async () => {
+    return { success: false, error: 'SSH groups not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:group:update', async () => {
+    return { success: false, error: 'SSH groups not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:group:delete', async () => {
+    return { success: false, error: 'SSH groups not implemented' }
+  })
+
+  // ── Auth stubs ──
+
+  registerMessagePackHandler('ssh:auth:install-public-key', async () => {
+    return { success: false, error: 'Public key installation not implemented' }
+  })
+
+  // ── Import / Export stubs ──
+
+  registerMessagePackHandler('ssh:export', async () => {
+    return { connections: [] }
+  })
+
+  registerMessagePackHandler('ssh:import:preview', async () => {
+    return { connections: [], groups: [] }
+  })
+
+  registerMessagePackHandler('ssh:import:apply', async () => {
+    return { success: false, error: 'SSH import not implemented' }
+  })
+
+  // ── Terminal session stubs (interactive SSH terminal not implemented) ──
+
+  registerMessagePackHandler('ssh:output:buffer', async () => {
+    return { data: '' }
+  })
+
+  registerMessagePackHandler('ssh:data', async () => {
+    return { success: false, error: 'Interactive SSH terminal not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:resize', async () => {
+    return { success: false }
+  })
+
+  registerMessagePackHandler('ssh:output', async () => {
+    return { data: '' }
+  })
+
+  registerMessagePackHandler('ssh:status', async () => {
+    return { status: 'disconnected' }
+  })
+
+  registerMessagePackHandler('ssh:connect:log', async () => {
+    return { entries: [] }
+  })
+
+  registerMessagePackHandler('ssh:config:changed', async () => {
+    return { success: true }
+  })
+
+  // ── SFTP upload/transfer stubs ──
+
+  registerMessagePackHandler('ssh:fs:zip-dir', async () => {
+    return { success: false, error: 'SSH zip-dir not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:fs:download', async () => {
+    return { success: false, error: 'SSH download not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:fs:upload:start', async () => {
+    return { success: false, error: 'SSH upload not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:fs:upload:cancel', async () => {
+    return { success: true }
+  })
+
+  registerMessagePackHandler('ssh:fs:transfer:start', async () => {
+    return { success: false, error: 'SSH transfer not implemented' }
+  })
+
+  registerMessagePackHandler('ssh:fs:transfer:cancel', async () => {
+    return { success: true }
   })
 }
 

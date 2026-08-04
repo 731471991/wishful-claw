@@ -1,8 +1,9 @@
 import { withSshConnection } from './connection-pool'
 import { errorMessage } from './auth'
 
-// SSH command execution and connection testing.
+// SSH command execution.
 // Depends on connection-pool for long-lived connection reuse.
+// Test connection is in ssh-test.ts (one-shot, no pool, no retry).
 
 export interface SshExecResult {
   success: boolean
@@ -98,20 +99,5 @@ export async function execSshCommand(
       error: message,
       timing: { totalMs: Date.now() - startedAt, spawnMs: 0, timedOut: false, engine: 'ssh2' }
     }
-  }
-}
-
-/**
- * Test that a connection can be established.
- * Does not execute any command — just verifies the SSH handshake.
- */
-export async function testSshConnection(
-  connectionId: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    await withSshConnection(connectionId, async () => undefined)
-    return { success: true }
-  } catch (err) {
-    return { success: false, error: errorMessage(err) }
   }
 }

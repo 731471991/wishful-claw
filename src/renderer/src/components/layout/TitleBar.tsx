@@ -21,7 +21,13 @@ export function TitleBar({
   const rightPanelOpen = useUIStore((s) => s.rightPanelOpen)
   const toggleRightPanel = useUIStore((s) => s.toggleRightPanel)
   const ensureFilesTab = useUIStore((s) => s.ensureFilesTab)
-  const ensureTerminalTab = useUIStore((s) => s.ensureTerminalTab)
+  const toggleBottomTerminalDock = useUIStore((s) => s.toggleBottomTerminalDock)
+
+  // Get current session ID and terminal dock state
+  const currentSessionId = useChatStore((s) => s.activeSessionId)
+  const bottomTerminalDockOpen = useUIStore((s) =>
+    currentSessionId ? Boolean(s.bottomTerminalDockOpenBySessionId[currentSessionId]) : false
+  )
 
   // Only show file/terminal buttons in project-level sessions (has workingFolder)
   const hasProject = useChatStore((s) => {
@@ -30,7 +36,7 @@ export function TitleBar({
     // Inherit from project if session doesn't have its own workingFolder
     if (session?.projectId) {
       const project = s.projects.find((p) => p.id === session.projectId)
-      return Boolean(project?.workingFolder)
+      return Boolean(project?.workingFolder) || Boolean(project?.sshConnectionId)
     }
     return false
   })
@@ -73,8 +79,8 @@ export function TitleBar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => ensureTerminalTab()}
-                  className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={() => currentSessionId && toggleBottomTerminalDock(currentSessionId)}
+                  className={`titlebar-no-drag flex size-7 items-center justify-center rounded-md transition-colors ${bottomTerminalDockOpen ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                 >
                   <SquareTerminal className="size-4" />
                 </button>

@@ -47,6 +47,31 @@ export function formatRelativeTime(timestamp: number): string {
   return date.toLocaleDateString()
 }
 
+// --- Project sort ---
+
+export const PROJECT_SORT_MODES = ['updatedAt', 'name', 'createdAt'] as const
+export type ProjectSortMode = (typeof PROJECT_SORT_MODES)[number]
+
+const PROJECT_SORT_STORAGE_KEY = 'wishfulClaw.workspaceSidebar.projectSortMode'
+
+export function readProjectSortMode(): ProjectSortMode {
+  try {
+    const stored = window.localStorage.getItem(PROJECT_SORT_STORAGE_KEY)
+    if (stored === 'updatedAt' || stored === 'name' || stored === 'createdAt') return stored
+  } catch {
+    // ignore
+  }
+  return 'updatedAt'
+}
+
+export function writeProjectSortMode(mode: ProjectSortMode): void {
+  try {
+    window.localStorage.setItem(PROJECT_SORT_STORAGE_KEY, mode)
+  } catch {
+    // ignore
+  }
+}
+
 export function sortSessions(sessions: Session[]): Session[] {
   return [...sessions].sort((a, b) => {
     if (a.pinned && !b.pinned) return -1
@@ -55,11 +80,36 @@ export function sortSessions(sessions: Session[]): Session[] {
   })
 }
 
-export function sortProjects(projects: Project[]): Project[] {
+export function sortProjects(
+  projects: Project[],
+  mode: ProjectSortMode = 'updatedAt',
+  collator?: Intl.Collator
+): Project[] {
+  const nameCollator = collator ?? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
   return [...projects].sort((a, b) => {
-    if (a.pinned && !b.pinned) return -1
-    if (!a.pinned && b.pinned) return 1
-    return b.updatedAt - a.updatedAt
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1
+    if (mode === 'name') {
+      return (
+        nameCollator.compare(a.name, b.name) ||
+        b.updatedAt - a.updatedAt ||
+        b.createdAt - a.createdAt ||
+        a.id.localeCompare(b.id)
+      )
+    }
+    if (mode === 'createdAt') {
+      return (
+        b.createdAt - a.createdAt ||
+        nameCollator.compare(a.name, b.name) ||
+        b.updatedAt - a.updatedAt ||
+        a.id.localeCompare(b.id)
+      )
+    }
+    return (
+      b.updatedAt - a.updatedAt ||
+      nameCollator.compare(a.name, b.name) ||
+      b.createdAt - a.createdAt ||
+      a.id.localeCompare(b.id)
+    )
   })
 }
 

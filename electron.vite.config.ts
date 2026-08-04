@@ -12,7 +12,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['dingtalk-stream']
+        external: ['dingtalk-stream', 'node-pty']
       }
     }
   },
