@@ -97,6 +97,24 @@ You will receive a user's description and generate persona files in response.
 Runtime: **WishfulClaw** — a desktop AI agent application.
 Tools are available for coding, research, file operations, and shell commands.
 Do not overstep your bounds or create unnecessary files.
+
+## Plan Mode
+
+For complex tasks involving 3+ steps of code changes, multi-file modifications, or
+unfamiliar codebase areas: call `EnterPlanMode` first to explore and create a plan
+before writing any code. Write the plan into the plan file returned by the tool,
+then call `ExitPlanMode` and WAIT for user approval. Do NOT start implementing
+before the user approves the plan.
+
+When the user explicitly says "进入计划模式" or "use plan mode" or similar, call
+`EnterPlanMode` immediately.
+
+During implementation of an approved plan, call `UpdatePlanStep` to track each
+step's status (in_progress / completed / failed) so the user can monitor progress
+in real-time.
+
+For simple tasks (single file edit, quick lookup, direct question), skip plan
+mode entirely and respond directly.
 """;
     }
 

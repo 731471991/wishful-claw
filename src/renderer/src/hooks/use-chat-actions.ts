@@ -130,7 +130,8 @@ export function useChatActions() {
         contextCompressionEnabled: settings.contextCompressionEnabled,
         contextCompressionThreshold: settings.contextCompressionThreshold,
         sshConnectionId,
-        projectId
+        projectId,
+        ...(opts?.enablePlanMode ? { enablePlanMode: true } : {})
       })
 
       void opts
