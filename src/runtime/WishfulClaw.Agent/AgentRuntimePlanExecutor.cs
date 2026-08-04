@@ -161,8 +161,8 @@ public static class AgentRuntimePlanExecutor
             writer.WriteString(
                 "message",
                 status == "resumed"
-                    ? "Resumed existing plan draft. Update the current plan file with Write/Edit, then call ExitPlanMode."
-                    : "Plan mode activated. Write the plan into the current plan file with Write/Edit, then call ExitPlanMode.");
+                    ? "Resumed existing plan draft. You are in planning phase: do NOT write implementation code. You can read files (Read/Glob/Grep), write and edit documents (Write/Edit), and run read-only commands. Write the plan into the plan file, then call ExitPlanMode."
+                    : "Plan mode activated. You are in planning phase: do NOT write implementation code. You can read files (Read/Glob/Grep), write and edit documents (Write/Edit), and run read-only commands. Write the plan into the plan file, then call ExitPlanMode.");
         });
     }
 
@@ -244,7 +244,7 @@ public static class AgentRuntimePlanExecutor
             writer.WriteString("plan_file_path", plan.FilePath);
             writer.WriteString("title", title);
             writer.WriteString("content", content);
-            writer.WriteString("message", "Plan finalized and ready for user review. Wait for approval before implementing.");
+            writer.WriteString("message", "Plan finalized and ready for user review. STOP and wait for user approval. Do NOT start implementing until the user approves the plan. Once approved, you may write implementation code, run commands, and use all tools freely. Use UpdatePlanStep to track each step's progress during execution.");
         });
     }
 
