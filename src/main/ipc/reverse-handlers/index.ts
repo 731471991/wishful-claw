@@ -36,6 +36,9 @@ const directHandlers = new Map<string, ReverseHandler>([
     if (!connectionId || !command) {
       return { success: false, exitCode: 1, stdout: '', stderr: 'connectionId and command are required', error: 'connectionId and command are required' }
     }
+    // Ensure SSH repository is initialized - cache might be empty
+    // if the app just started and no SSH UI has been used yet.
+    await initializeSshRepository()
     return await execSshCommand(connectionId, command, timeoutMs ?? 60_000, (chunk) => {
       // Broadcast output chunk to renderer for real-time terminal display
       safeSendMessagePackToAllWindows('ssh:exec-output', {
