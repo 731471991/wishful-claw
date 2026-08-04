@@ -73,15 +73,10 @@ export function BottomTerminalDock({
   const setBottomTerminalDockHeight = useUIStore((s) => s.setBottomTerminalDockHeight)
   const setBottomTerminalDockOpen = useUIStore((s) => s.setBottomTerminalDockOpen)
 
-  // Filter tabs: local terminals by project, agent SSH tabs by session
-  const projectTabs = useMemo(
-    () => allTabs.filter((tab) => {
-      if (tab.kind === 'ssh-agent') {
-        return tab.sessionId === sessionId
-      }
-      return tab.projectId === projectId
-    }),
-    [allTabs, projectId, sessionId]
+  // Filter tabs by session
+  const sessionTabs = useMemo(
+    () => allTabs.filter((tab) => tab.sessionId === sessionId),
+    [allTabs, sessionId]
   )
 
   const [isResizing, setIsResizing] = useState(false)
@@ -93,23 +88,23 @@ export function BottomTerminalDock({
   const hasAutoCreatedRef = useRef(false)
 
   // Determine effective active tab (must be in project tabs)
-  const effectiveActiveTabId = projectTabs.some((t) => t.id === activeTabId)
+  const effectiveActiveTabId = sessionTabs.some((t) => t.id === activeTabId)
     ? activeTabId
-    : projectTabs[0]?.id ?? null
-  const activeTab = projectTabs.find((t) => t.id === effectiveActiveTabId) ?? null
+    : sessionTabs[0]?.id ?? null
+  const activeTab = sessionTabs.find((t) => t.id === effectiveActiveTabId) ?? null
 
   // Auto-create a terminal when dock opens and there are no project tabs
   useEffect(() => {
-    if (projectTabs.length === 0 && !hasAutoCreatedRef.current) {
+    if (sessionTabs.length === 0 && !hasAutoCreatedRef.current) {
       hasAutoCreatedRef.current = true
       void handleAutoCreateTerminal()
     }
     // Reset auto-created flag when tabs become empty again (e.g., after closing all)
-    if (projectTabs.length === 0) {
+    if (sessionTabs.length === 0) {
       hasAutoCreatedRef.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectTabs.length, projectId])
+  }, [sessionTabs.length, projectId])
 
   const handleAutoCreateTerminal = useCallback(async (): Promise<void> => {
     if (sshConnectionId) {
@@ -239,12 +234,12 @@ export function BottomTerminalDock({
       {/* Tab bar */}
       <div className="flex h-9 shrink-0 items-center gap-1 border-b bg-background/70 px-2">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden pb-0.5 [scrollbar-width:none]">
-          {projectTabs.length === 0 ? (
+          {sessionTabs.length === 0 ? (
             <span className="px-2 text-[11px] text-muted-foreground">
               {t('terminal.noSessions', { defaultValue: 'No terminal sessions' })}
             </span>
           ) : (
-            projectTabs.map((tab) => {
+            sessionTabs.map((tab) => {
               const isActive = tab.id === activeTab?.id
               return (
                 <button
@@ -342,7 +337,7 @@ export function BottomTerminalDock({
       {/* Terminal content */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {activeTab ? (
-          projectTabs.map((tab) => (
+          sessionTabs.map((tab) => (
             <div
               key={tab.id}
               className="absolute inset-0"
