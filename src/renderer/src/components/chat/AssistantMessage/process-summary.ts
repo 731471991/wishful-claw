@@ -120,6 +120,11 @@ export function splitProcessAndFinal(
         if (block && (block.type === 'text' || block.type === 'image' || block.type === 'image_error' || block.type === 'agent_error')) {
           continue
         }
+        // Interactive tool cards (PlanReviewCard, AskUserQuestionCard) should
+        // always be visible — treat them as final output, not process.
+        if (block?.type === 'tool_use' && (block.name === 'ExitPlanMode' || block.name === 'AskUserQuestion')) {
+          continue
+        }
       }
       return i + 1
     }

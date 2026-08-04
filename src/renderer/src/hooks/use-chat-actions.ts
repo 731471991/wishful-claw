@@ -198,7 +198,7 @@ export async function sendImplementPlan(sessionId: string, planId: string): Prom
   // Send implementation message
   await chatStore.sendMessage({
     provider: activeProvider as unknown as Record<string, unknown>,
-    messages: [{ role: 'user', content: 'The plan has been approved. Read the plan file and execute it step by step using the Task tool to dispatch sub-agents — do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type "custom" and background=false to dispatch a foreground work sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.' }],
+    messages: [{ role: 'user', content: `The plan has been approved. The plan file is at: ${plan.filePath ?? '(unknown path)'}. Read the plan file, then execute it step by step using the Task tool to dispatch sub-agents — do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type "custom" and background=false to dispatch a foreground work sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.` }],
     sessionId,
     workingFolder,
     sshConnectionId,
@@ -241,7 +241,7 @@ export async function sendPlanRevision(sessionId: string, planId: string, feedba
   // Send rejection feedback
   await chatStore.sendMessage({
     provider: activeProvider as unknown as Record<string, unknown>,
-    messages: [{ role: 'user', content: `The plan was rejected. Please revise the plan based on this feedback: ${feedback}` }],
+    messages: [{ role: 'user', content: `The plan was rejected. The plan file is at: ${plan.filePath ?? '(unknown path)'}. Please revise the plan in the plan file based on this feedback: ${feedback}` }],
     sessionId,
     workingFolder,
     sshConnectionId,
