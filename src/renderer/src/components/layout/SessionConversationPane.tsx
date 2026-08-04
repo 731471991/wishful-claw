@@ -199,6 +199,7 @@ export function SessionConversationPane({
           <div className="shrink-0 border-t">
             <BottomTerminalDock
               projectId={projectId}
+              sessionId={resolvedSessionId}
               projectName={projectName}
               workingFolder={projectWorkingFolder ?? null}
               sshConnectionId={sshConnectionId}

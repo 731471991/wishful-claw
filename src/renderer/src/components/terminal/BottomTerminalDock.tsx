@@ -48,6 +48,7 @@ function StatusDot({ status }: { status: TerminalTab['status'] }): React.JSX.Ele
 
 export interface BottomTerminalDockProps {
   projectId: string
+  sessionId?: string | null
   projectName?: string | null
   workingFolder?: string | null
   sshConnectionId?: string | null
@@ -55,6 +56,7 @@ export interface BottomTerminalDockProps {
 
 export function BottomTerminalDock({
   projectId,
+  sessionId,
   projectName,
   workingFolder,
   sshConnectionId
@@ -71,10 +73,15 @@ export function BottomTerminalDock({
   const setBottomTerminalDockHeight = useUIStore((s) => s.setBottomTerminalDockHeight)
   const setBottomTerminalDockOpen = useUIStore((s) => s.setBottomTerminalDockOpen)
 
-  // Filter tabs by project
+  // Filter tabs: local terminals by project, agent SSH tabs by session
   const projectTabs = useMemo(
-    () => allTabs.filter((tab) => tab.projectId === projectId),
-    [allTabs, projectId]
+    () => allTabs.filter((tab) => {
+      if (tab.kind === 'ssh-agent') {
+        return tab.sessionId === sessionId
+      }
+      return tab.projectId === projectId
+    }),
+    [allTabs, projectId, sessionId]
   )
 
   const [isResizing, setIsResizing] = useState(false)
@@ -193,14 +200,14 @@ export function BottomTerminalDock({
     // For both local and SSH projects, create a local terminal.
     // SSH agent tabs are auto-created by the SSH_EXEC_OUTPUT event listener
     // when the agent executes remote commands.
-    void createTab(workingFolder ?? undefined, projectId, projectName || 'Terminal')
-  }, [workingFolder, projectId, projectName, createTab])
+    void createTab(workingFolder ?? undefined, projectId, projectName || 'Terminal', sessionId)
+  }, [workingFolder, projectId, projectName, sessionId, createTab])
 
   const handleClose = useCallback(
     async (tab: TerminalTab): Promise<void> => {
       await closeTab(tab.id)
       const remaining = useTerminalStore.getState().tabs.filter(
-        (t) => t.projectId === projectId
+        (t) => t.kind === 'ssh-agent' ? t.sessionId === sessionId : t.projectId === projectId
       )
       if (remaining.length === 0) {
         setBottomTerminalDockOpen(projectId, false)
