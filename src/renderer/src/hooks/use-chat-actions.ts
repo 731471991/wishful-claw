@@ -170,6 +170,42 @@ export function subscribePendingSessionMessages(onStoreChange: () => void): () =
   return () => { _pendingListeners.delete(onStoreChange) }
 }
 
+// Build a complete provider object matching handleSendMessage's logic.
+// Both sendImplementPlan and sendPlanRevision need this -- they bypass
+// handleSendMessage but must send the same provider shape to agent/run.
+function buildProviderPayload(
+  activeProvider: ReturnType<ReturnType<typeof useProviderStore.getState>['getActiveProvider']>,
+  modelId: string,
+  settings: ReturnType<typeof useSettingsStore.getState>
+): Record<string, unknown> {
+  const modelConfig = activeProvider!.models.find((m: any) => m.id === modelId)
+  const thinkingConfig = modelConfig?.thinkingConfig
+  const thinkingEnabled = settings.thinkingEnabled && !!thinkingConfig
+  const reasoningEffort = thinkingConfig
+    ? resolveReasoningEffortForModel({
+        reasoningEffort: settings.reasoningEffort,
+        reasoningEffortByModel: settings.reasoningEffortByModel,
+        providerId: activeProvider!.id,
+        modelId,
+        thinkingConfig
+      })
+    : undefined
+
+  return {
+    id: activeProvider!.id,
+    name: activeProvider!.name,
+    type: activeProvider!.type,
+    apiKey: activeProvider!.apiKey,
+    baseUrl: activeProvider!.baseUrl,
+    model: modelId,
+    temperature: settings.temperature ?? undefined,
+    maxTokens: settings.maxTokens ?? undefined,
+    thinkingEnabled,
+    thinkingConfig: thinkingConfig ?? undefined,
+    reasoningEffort
+  }
+}
+
 export async function sendImplementPlan(sessionId: string, planId: string): Promise<void> {
   const planStore = (await import('@renderer/stores/plan-store')).usePlanStore.getState()
   const uiStore = (await import('@renderer/stores/ui-store')).useUIStore.getState()
@@ -190,16 +226,26 @@ export async function sendImplementPlan(sessionId: string, planId: string): Prom
   // Get provider and session info
   const activeProvider = providerStore.getActiveProvider()
   if (!activeProvider) return
+  const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m: any) => m.enabled)?.id
+  if (!modelId) return
   const session = chatStore.sessions.find((s) => s.id === sessionId)
   const workingFolder = session?.workingFolder ?? undefined
   const sshConnectionId = session?.sshConnectionId ?? undefined
   const projectId = session?.projectId ?? undefined
 
+  // Clear activities for new turn
+  useActivityStore.getState().clearActivities()
+
+  // Build provider the same way handleSendMessage does
+  const provider = buildProviderPayload(activeProvider, modelId, settingsStore)
+
   // Send implementation message
   await chatStore.sendMessage({
-    provider: activeProvider as unknown as Record<string, unknown>,
-    messages: [{ role: 'user', content: `The plan has been approved. The plan file is at: ${plan.filePath ?? '(unknown path)'}. Read the plan file, then execute it step by step using the Task tool to dispatch sub-agents — do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type "custom" and background=false to dispatch a foreground work sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.` }],
+    provider,
+    messages: [{ role: 'user', content: `The plan has been approved. The plan file is at: ${plan.filePath ?? '(unknown path)'}. Read the plan file, then execute it step by step using the Task tool to dispatch sub-agents -- do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type "custom" and background=false to dispatch a foreground work sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.` }],
     sessionId,
+    toolPreset: workingFolder ? 'coding' : 'chat',
+    webSearchEnabled: settingsStore.webSearchEnabled,
     workingFolder,
     sshConnectionId,
     projectId,
@@ -209,6 +255,7 @@ export async function sendImplementPlan(sessionId: string, planId: string): Prom
     maxConcurrentSubAgents: settingsStore.maxConcurrentSubAgents,
     personaId: session?.personaId ?? settingsStore.defaultPersonaId ?? undefined,
     language: settingsStore.language,
+    userRules: settingsStore.systemPrompt || undefined,
     contextCompressionEnabled: settingsStore.contextCompressionEnabled,
     contextCompressionThreshold: settingsStore.contextCompressionThreshold
   })
@@ -233,16 +280,26 @@ export async function sendPlanRevision(sessionId: string, planId: string, feedba
   // Get provider and session info
   const activeProvider = providerStore.getActiveProvider()
   if (!activeProvider) return
+  const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m: any) => m.enabled)?.id
+  if (!modelId) return
   const session = chatStore.sessions.find((s) => s.id === sessionId)
   const workingFolder = session?.workingFolder ?? undefined
   const sshConnectionId = session?.sshConnectionId ?? undefined
   const projectId = session?.projectId ?? undefined
 
+  // Clear activities for new turn
+  useActivityStore.getState().clearActivities()
+
+  // Build provider the same way handleSendMessage does
+  const provider = buildProviderPayload(activeProvider, modelId, settingsStore)
+
   // Send rejection feedback
   await chatStore.sendMessage({
-    provider: activeProvider as unknown as Record<string, unknown>,
+    provider,
     messages: [{ role: 'user', content: `The plan was rejected. The plan file is at: ${plan.filePath ?? '(unknown path)'}. Please revise the plan in the plan file based on this feedback: ${feedback}` }],
     sessionId,
+    toolPreset: workingFolder ? 'coding' : 'chat',
+    webSearchEnabled: settingsStore.webSearchEnabled,
     workingFolder,
     sshConnectionId,
     projectId,
@@ -252,8 +309,10 @@ export async function sendPlanRevision(sessionId: string, planId: string, feedba
     maxConcurrentSubAgents: settingsStore.maxConcurrentSubAgents,
     personaId: session?.personaId ?? settingsStore.defaultPersonaId ?? undefined,
     language: settingsStore.language,
+    userRules: settingsStore.systemPrompt || undefined,
     contextCompressionEnabled: settingsStore.contextCompressionEnabled,
-    contextCompressionThreshold: settingsStore.contextCompressionThreshold
+    contextCompressionThreshold: settingsStore.contextCompressionThreshold,
+    enablePlanMode: true
   })
 }
 
