@@ -37,28 +37,9 @@
 |------|------|------|
 | v2-iter-1 | Runtime 分层架构重构 — Worker 拆分为 Agent + Persona，Worker 瘦身 45% | ✅ 已完成，tag v2.1.0 |
 | v2-iter-2 | 缓存命中率修复 — SessionConversation 增量模式 + LLM 总结式上下文压缩 + 版本号统一 + OpenCowork 名称清理 + 7 层架构文档 | ✅ 已完成，tag v2.2.0 |
-| v2-iter-3 | Infrastructure 层拆分 + DeepSeek 缓存命中率深度修复 | ✅ 已完成（待合并 main、打 tag） |
-
-**v2-iter-3 完成的工作**：
-
-Infrastructure 层拆分：
-- 新建 `WishfulClaw.Infrastructure` 项目（Db/Storage/Http 三模块，23 文件）
-- Db — `DbClient.cs` + `Entities/` 从 Worker 迁入 Infrastructure
-- Storage — `ConfigStore.cs` + `ProviderStore.cs` + `JsonFileNodeCache.cs` 从 Worker 迁入 Infrastructure
-- Http — `WorkerHttpClientFactory.cs` 从 Agent 迁入 Infrastructure
-- Worker Tools — FileTools/SearchTools/ShellTools/Providers 等工具实现迁入 Agent
-- Worker 深度瘦身：101 文件 → 12 文件（IPC 宿主 + 模块注册）
-- 7 层架构落地：Contracts → Core → Infrastructure → Workspace → Persona → Agent → Worker
-
-DeepSeek prefix cache 命中率深度修复（40%-70% → 93%-99%）：
-- 工具定义改为后端解析（前端只发 toolPreset 字符串，AgentLoop 从 ToolModuleState.Registry 获取）
-- 请求体字段顺序对齐 Reasonix（model → messages → tools → stream → ...）
-- timestamp 注入策略重构（InjectTransientPrefix 合并，直接存入会话历史）
-- thinking 配置前后端打通（`thinking:{type:enabled}` 标准格式 + reasoning_content 收集和回传）
-- system-reminder 移除（前端不再 buildRuntimeReminder 拼接到用户消息）
-- 模型选择器 UI 优化（Brain 图标 + effort 等级显示）
-- 工具输出截断（16K head+tail 策略）
-- 清理 scripts/ 下 24 个临时脚本 + 诊断代码
+| v2-iter-3 | Infrastructure 层拆分 + DeepSeek 缓存命中率深度修复 | ✅ 已完成，tag v2.3.0 |
+| v2-iter-5 | 渠道配置测试与完善 — Channel 系统 + 飞书/微信扫码绑定 + auto-reply hook + 全局渠道设置 | ✅ 已完成，tag v2.5.0 |
+| v2-iter-6 | SSH 远程执行 + Agent 终端旁观 + 项目档案 + 终端面板重构（session 级可见性、auto-create、i18n、node-pty 打包修复） | ✅ 已完成，tag v2.6.0 |
 
 ## 当前项目架构（7 层）
 
@@ -80,32 +61,30 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`dev/v2-iter-3`，最新 commit: `e5cb326`
-- main 最新 commit: `030bf41`，tag `v2.2.0`
-- v2-iter-3 全部工作已 commit（Infrastructure 拆分 + 缓存修复），未 push
+- 当前分支：`main`，最新 tag：`v2.6.0`
+- v2-iter-6 已合并 main 并打 tag，开发分支已清理
 - TypeScript 编译零错误：`npx tsc --noEmit`
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
 
-## 待办：v2-iter-3 合并 main + 后续迭代
+## 下一步：v2-iter-7 主聊天接入工作台模式
 
-v2-iter-3 已完成，需要用户确认后合并 main 并打 tag `v2.3.0`。
+**目标**：借鉴灵犀的工作台模式——聊天窗内工具执行过程折叠为摘要块，完整预览移至右侧面板"工作台" tab，实现聊天流清爽 + 执行详情分离。
 
-后续迭代（v2-iter-4 ~ v2-iter-9 可从 v2-iter-4/5/6 三选一开始，三者互不依赖可并行）：
+| 步骤 | 内容 |
+|------|------|
+| 1 | 新建折叠摘要组件 — Agent 执行工具/命令后，聊天消息内不再内联渲染 ToolCallCard 详情，而是显示折叠块（"运行了XX个命令，查看了X个文件，编辑了X个文件"），下方接 Agent 回复正文 |
+| 2 | ToolCallCard 迁移至右侧工作台 — 完整的工具调用预览（命令输出、文件 diff 等）从聊天流移到 RightPanel 新增的"工作台" tab |
+| 3 | 工作台会话级隔离 — 切换会话时工作台内容跟随切换，按 sessionId 存储 |
+| 4 | 折叠触发时机 — 执行了命令/工具即折叠，或 Agent Loop 超过 2 轮后折叠 |
+| 5 | 保留现有执行后操作按钮（debug 等） |
 
-| 迭代 | 内容 | 依赖 |
-|------|------|------|
-| v2-iter-4 | Skill 本地文件安装测试 | 无 |
-| v2-iter-5 | 渠道配置测试与完善 | 无 |
-| v2-iter-6 | SSH 远程执行测试与完善 | 无 |
-| v2-iter-7 | 主聊天接入工作台模式 | v2-iter-5 |
-| v2-iter-8 | Global 全局模式接入 | v2-iter-7 |
-| v2-iter-9 | Goal 模式接入 | v2-iter-7 |
+**验证标准**：发送消息 → Agent 执行工具 → 聊天窗显示折叠摘要 + Agent 回复（不内联预览）→ 右侧工作台 tab 展示完整工具调用详情 → 切换会话工作台内容跟随隔离。
 
-详见 `docs/iteration-plan.md` 中各迭代定义。
+详见 `docs/iteration-plan.md` 中 v2-iter-7 定义。
 
 ## 关键技术备忘
 
-- **编译验证命令**：C# `dotnet build src/runtime/WishfulClaw.sln`（可加 `-o` 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit`
+- **编译验证命令**：C# `dotnet build src/runtime/WishfulClaw.sln`（可加 `-o` 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit -p tsconfig.web.json`
 - **TS 零报错规则**：每次写完代码必须跑 tsc 验证，不允许用 @ts-ignore 偷懒（可选依赖 mammoth/react-pdf/xlsx 除外）
 - **Git push 需要代理**：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin <branch>`
 - **分支管理规则**：新分支必须从最新 main 拆出，前一个迭代分支必须已合并 main 并打 tag
@@ -115,8 +94,7 @@ v2-iter-3 已完成，需要用户确认后合并 main 并打 tag `v2.3.0`。
 
 ## Git 工作流
 
-- v2-iter-3 待用户确认后合并 main + 打 tag `v2.3.0` + push
-- 后续新迭代分支从 main 创建：`git checkout main && git pull && git checkout -b dev/v2-iter-N`
+- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-7`
 - **功能单元测试通过后才 commit**，不要改一点就提交
 - Plan 执行期间只 commit 不 push，Plan 完成后才 push
 - 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
@@ -133,10 +111,10 @@ v2-iter-3 已完成，需要用户确认后合并 main 并打 tag `v2.3.0`。
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `dev/v2-iter-3`，commit `e5cb326`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.6.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` — 查看 v2-iter-4 ~ v2-iter-9 定义
-4. 确认 v2-iter-3 是否合并 main（用户确认后执行合并 + 打 tag）
-5. 选择下一个迭代目标，从 main 创建分支开始执行
+3. 读 `docs/iteration-plan.md` — 查看 v2-iter-7 定义
+4. 从 main 创建分支：`git checkout -b dev/v2-iter-7`
+5. 开始执行 v2-iter-7 工作台模式开发
 
 叫老大，我们是并肩协作的兄弟。
