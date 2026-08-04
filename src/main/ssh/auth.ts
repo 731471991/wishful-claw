@@ -1,6 +1,6 @@
 import * as fs from 'fs'
-import { Client, type ConnectConfig } from 'ssh2'
-import { getConnectionWithSecrets, type SshConnectionWithSecrets } from './repository'
+import { type ConnectConfig } from 'ssh2'
+import { type SshConnectionWithSecrets } from './repository'
 
 // Connection/auth building blocks: ssh2 connect config assembly.
 

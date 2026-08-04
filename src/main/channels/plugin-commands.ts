@@ -8,8 +8,6 @@
  * Handler implementations live in plugin-command-handlers.ts.
  */
 
-import type { ChannelManager } from './channel-manager'
-import type { ChannelIncomingMessageData } from './channel-types'
 import {
   type CommandContext,
   type CommandHandler,

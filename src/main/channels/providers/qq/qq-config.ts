@@ -1,17 +1,4 @@
-import WebSocket from 'ws'
-import { markQqWakeupSent, resolveQqWakeupEligibility } from '../../../db/qq-wakeup-dao'
-import type {
-  ChannelEvent,
-  ChannelGroup,
-  ChannelInstance,
-  ChannelMessage,
-  MessagingChannelService
-} from '../../channel-types'
-import { QQApi, parseQQChatId } from './qq-api'
-import { decodeQQReplyReference, parseQQWsMessage } from './parse-ws-message'
-import { clearSession, loadSession, saveSession } from './session-store'
-
-interface QQGatewayPayload {
+export interface QQGatewayPayload {
   op?: number
   d?: unknown
   s?: number

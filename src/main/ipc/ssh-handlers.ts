@@ -3,7 +3,6 @@ import { registerMessagePackHandler } from './messagepack-handler'
 import {
   initializeSshRepository,
   listConnections,
-  getConnectionMeta,
   getConnectionWithSecrets,
   createConnection,
   updateConnection,

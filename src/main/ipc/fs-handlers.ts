@@ -3,6 +3,15 @@
 import * as fs from 'fs'
 import { registerMessagePackHandler } from './messagepack-handler'
 import AdmZip from 'adm-zip'
+import { join } from 'path'
+import { app } from 'electron'
+
+function formatLocalDateFolderName(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 function extractDocxText(filePath: string): string {
   const zip = new AdmZip(filePath)
@@ -44,12 +53,6 @@ function extractTextFromDocxXml(xml: string): string {
       .replace(/&apos;/g, "'")
   }
 
-  // Insert paragraph breaks at </w:p> boundaries
-  const pRegex = /<\/w:p>/g
-  const segments: string[] = []
-  let lastIdx = 0
-  let pMatch: RegExpExecArray | null
-  // Rebuild with paragraph breaks by scanning the original text positions
   // Simpler approach: just add newlines between text runs based on paragraph end markers
   
   return result.trim()
@@ -154,7 +157,7 @@ export function registerFsHandlers(): void {
       }
     )
 
-    registerMessagePackHandler<{ path: string }, ArrayBuffer | null>(
+    registerMessagePackHandler<{ path: string }, { data: string } | { error: string }>(
       'fs:read-file-binary',
       async (args) => {
         try {

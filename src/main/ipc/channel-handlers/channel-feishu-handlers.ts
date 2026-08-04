@@ -6,7 +6,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { FeishuApi, FeishuMediaApi } from '../../channels/providers/feishu/feishu-api'
+import { FeishuMediaApi } from '../../channels/providers/feishu/feishu-api'
 import type { FeishuService } from '../../channels/providers/feishu/feishu-service'
 import {
   activeChannelManager,

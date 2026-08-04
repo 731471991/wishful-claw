@@ -1,5 +1,4 @@
-import * as https from 'https'
-import { request, BASE_URL } from './feishu-http'
+import { request } from './feishu-http'
 import { FeishuBitableApi } from './feishu-bitable-api'
 import { FeishuMediaApi } from './feishu-media-api'
 

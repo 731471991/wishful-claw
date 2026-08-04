@@ -438,22 +438,6 @@ registerWebSearchHandlers()
     return dir
   }
 
-  function guessMimeTypeFromExtension(ext: string): string {
-    switch (ext.toLowerCase()) {
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg'
-      case '.webp':
-        return 'image/webp'
-      case '.gif':
-        return 'image/gif'
-      case '.bmp':
-        return 'image/bmp'
-      default:
-        return 'image/png'
-    }
-  }
-
   function guessExtensionFromMimeType(mediaType?: string): string {
     switch ((mediaType || '').toLowerCase()) {
       case 'image/jpeg':
@@ -501,13 +485,6 @@ registerWebSearchHandlers()
   if (channelManager) {
     void autoStartChannels(channelManager)
   }
-
-function formatLocalDateFolderName(date = new Date()): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

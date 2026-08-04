@@ -1,7 +1,6 @@
 import { safeStorage } from 'electron'
 import {
   listSshConnections as daoListConnections,
-  getSshConnection as daoGetConnection,
   createSshConnection as daoCreateConnection,
   updateSshConnection as daoUpdateConnection,
   deleteSshConnection as daoDeleteConnection,

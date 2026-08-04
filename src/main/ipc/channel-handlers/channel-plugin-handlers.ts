@@ -20,12 +20,8 @@ import {
   isPluginToolEnabledHandler,
   nanoid,
   CHANNEL_PROVIDERS,
-  type NativePluginSessionRow,
-  type NativePluginSessionMessageRow,
   type NativePluginSessionMutationResult,
-  type NativePluginSessionFindResult
 } from './channel-handler-utils'
-import { safeSendMessagePackToAllWindows } from '../../window-ipc'
 import { registerPluginSessionHandlers } from './channel-plugin-session-handlers'
 import { registerPluginStreamHandlers } from './channel-plugin-stream-handlers'
 import {

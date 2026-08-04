@@ -1,15 +1,8 @@
-import { ipcMain } from 'electron'
-import {
-  decodeMessagePackPayload,
-  encodeMessagePackPayload,
-  toMessagePackChannel
-} from '../../shared/messagepack/binary-ipc'
 import {
   type GitTarget,
   type ScanRepositoriesArgs,
   type GitRepositorySummary,
-  type GitExecResult,
-  type GitQueryResult,
+  type GitRepoSummary,
   type GitStatusDetailedResult,
   DEFAULT_SCAN_DEPTH,
   registerGitMessagePackHandler,
@@ -18,9 +11,7 @@ import {
   ok,
   okMutation,
   fail,
-  failFromError,
   execGit,
-  invalidateGitQueryCache
 } from './git-cache'
 
 export function registerGitHandlers(): void {

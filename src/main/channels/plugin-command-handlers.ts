@@ -61,7 +61,7 @@ interface NativeSessionStatusResult {
   error?: string | null
 }
 
-interface NativeMessageUsageStatsResult {
+export interface NativeMessageUsageStatsResult {
   success: boolean
   hasUsage: boolean
   totalInput: number
@@ -80,7 +80,7 @@ interface NativeMessageUsageStatsResult {
 // ── Workspace Memory Template Helpers ──
 
 const WORKSPACE_MEMORY_TEMPLATE_FILES = ['AGENTS.md', 'SOUL.md', 'USER.md', 'MEMORY.md'] as const
-type WorkspaceMemoryTemplateFile = (typeof WORKSPACE_MEMORY_TEMPLATE_FILES)[number]
+export type WorkspaceMemoryTemplateFile = (typeof WORKSPACE_MEMORY_TEMPLATE_FILES)[number]
 
 function getBundledAgentTemplatesDir(): string {
   const isDev = !app.isPackaged

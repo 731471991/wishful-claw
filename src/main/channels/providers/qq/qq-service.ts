@@ -1,6 +1,17 @@
 import WebSocket from 'ws'
 import { markQqWakeupSent, resolveQqWakeupEligibility } from '../../../db/qq-wakeup-dao'
-import { INTENTS, INTENT_LEVELS, RECONNECT_DELAYS, INVALID_SESSION_RECONNECT_DELAY, parseBooleanConfig } from './qq-config'
+import { INTENT_LEVELS, RECONNECT_DELAYS, INVALID_SESSION_RECONNECT_DELAY, parseBooleanConfig } from './qq-config'
+import type {
+  ChannelEvent,
+  ChannelGroup,
+  ChannelInstance,
+  ChannelMessage,
+  MessagingChannelService
+} from '../../channel-types'
+import { QQApi, parseQQChatId } from './qq-api'
+import { decodeQQReplyReference, parseQQWsMessage } from './parse-ws-message'
+import { clearSession, loadSession, saveSession } from './session-store'
+import type { QQGatewayPayload } from './qq-config'
 
 export class QQService implements MessagingChannelService {
   readonly pluginId: string
@@ -100,13 +111,7 @@ export class QQService implements MessagingChannelService {
       isWakeup: wakeup.enabled
     })
     if (wakeup.enabled && wakeup.periodKey) {
-      await markQqWakeupSent({
-        pluginId: this.pluginId,
-        openId: target.id,
-        periodKey: wakeup.periodKey,
-        sourceMessageId: wakeup.sourceMessageId,
-        sourceTimestamp: wakeup.sourceTimestamp
-      })
+      await markQqWakeupSent(this.pluginId, target.id, wakeup.periodKey)
     }
     return result
   }
@@ -491,3 +496,9 @@ export class QQService implements MessagingChannelService {
   }
 }
 
+export function createQQService(
+  instance: ChannelInstance,
+  notify: (event: ChannelEvent) => void
+): QQService {
+  return new QQService(instance, notify)
+}

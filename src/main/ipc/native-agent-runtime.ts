@@ -5,7 +5,6 @@ import {
   SIDECAR_RENDERER_TOOL_REQUEST_MSGPACK_CHANNEL,
   SIDECAR_RENDERER_TOOL_RESPONSE_MSGPACK_CHANNEL,
   decodeMessagePackPayload,
-  encodeMessagePackPayload,
   toMessagePackChannel
 } from '../../shared/messagepack/binary-ipc'
 import { ipcMain } from 'electron'

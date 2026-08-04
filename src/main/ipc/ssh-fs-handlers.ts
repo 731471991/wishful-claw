@@ -3,7 +3,7 @@
 
 import { registerMessagePackHandler } from './messagepack-handler'
 import { withSftp } from '../ssh/connection-pool'
-import type { SFTPWrapper, Stats, FileEntryWithStats } from 'ssh2'
+import type { Stats, FileEntryWithStats } from 'ssh2'
 
 // ── Helpers ──
 
@@ -121,7 +121,7 @@ export function registerSshFsHandlers(): void {
           return await new Promise((resolve, reject) => {
             sftp.stat(args.path, (err, stats) => {
               if (err) {
-                if (err.code === 2 || err.code === 4) {
+                if ((err as Error & { code?: number }).code === 2 || (err as Error & { code?: number }).code === 4) {
                   // ENOENT or ENOTDIR equivalent
                   resolve({ exists: false, isDirectory: false, isFile: false, size: 0, mtime: 0 })
                 } else {
@@ -364,7 +364,7 @@ export function registerSshFsHandlers(): void {
               else resolve(data)
             })
           })
-          return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+          return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
         })
       } catch {
         return null

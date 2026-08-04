@@ -3,14 +3,13 @@
  *
  * Each handler receives CommandContext + raw args string and returns a CommandResult.
  */
-import * as path from 'path'
-import * as fs from 'fs'
-import * as os from 'os'
-import { app } from 'electron'
 import { getNativeWorker } from '../lib/native-worker'
-import { readChannelPlugins } from './channel-config-store'
-import type { ChannelManager } from './channel-manager'
-import type { ChannelIncomingMessageData, ChannelInstance } from './channel-types'
+import type {
+  CommandContext,
+  CommandResult,
+  NativeMessageUsageStatsResult,
+  WorkspaceMemoryTemplateFile
+} from './plugin-command-handlers'
 
 // ── Shared Types (re-exported from plugin-commands) ──
 

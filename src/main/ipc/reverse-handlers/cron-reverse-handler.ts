@@ -49,7 +49,7 @@ interface CronJob {
 const jobs = new Map<string, CronJob>()
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 const intervals = new Map<string, ReturnType<typeof setInterval>>()
-const cronTasks = new Map<string, cron.ScheduledTask>()
+const cronTasks = new Map<string, ReturnType<typeof cron.schedule>>()
 
 let idCounter = 0
 function generateId(): string {
@@ -181,7 +181,7 @@ export async function handleCronAdd(params: Record<string, unknown>): Promise<un
   if (!name) return { error: 'name (or title) is required' }
   if (!prompt) return { error: 'prompt is required' }
 
-  const schedErr = validateSchedule(schedule)
+  const schedErr = validateSchedule(schedule!)
   if (schedErr) return { error: schedErr }
 
   const id = generateId()
@@ -274,7 +274,7 @@ export async function handleCronList(params: Record<string, unknown>): Promise<u
   const sessionId = params?.sessionId as string | undefined
   const includeDeleted = params?.includeDeleted as boolean | undefined
 
-  const result = []
+  const result: CronJob[] = []
   for (const job of jobs.values()) {
     if (job.deletedAt && !includeDeleted) continue
     if (sessionId && job.sessionId !== sessionId) continue
