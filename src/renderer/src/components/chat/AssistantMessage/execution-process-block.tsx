@@ -9,7 +9,8 @@
 
 import * as React from 'react'
 import { useState, useEffect, useCallback } from 'react'
-import { GenerationProcessLine } from './ui-buttons'
+import { ChevronDown } from 'lucide-react'
+import { cn } from '@renderer/lib/utils'
 import { CollapsibleHeightPanel } from '../CollapsibleHeightPanel'
 
 export interface ExecutionProcessBlockProps {
@@ -58,22 +59,31 @@ export function ExecutionProcessBlock({
 
   if (!collapsible) return null
 
-  const detail = isStreaming
+  // Determine display text: streaming shows activeDetail, done shows summary
+  const displayText = isStreaming
     ? (activeDetail ?? undefined)
     : (summary ?? undefined)
 
   return (
     <div className="space-y-1">
-      <GenerationProcessLine
-        active={isStreaming}
-        label={isStreaming ? 'Executing' : 'Executed'}
-        detail={detail}
-        collapsible={true}
-        expanded={expanded}
+      <button
+        type="button"
         onClick={handleToggle}
-      />
+        aria-expanded={expanded}
+        className="group flex items-center gap-1.5 rounded-md py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {displayText && (
+          <span className="shrink-0">{displayText}</span>
+        )}
+        <ChevronDown
+          className={cn(
+            'size-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-200 group-hover:text-foreground',
+            !expanded && '-rotate-90'
+          )}
+        />
+      </button>
       <CollapsibleHeightPanel open={expanded} className="overflow-hidden">
-        <div className="space-y-2 border-l border-border/40 ml-2.5 pl-2.5">
+        <div className="space-y-2 border-l border-border/40 ml-2 pl-3">
           {children}
         </div>
       </CollapsibleHeightPanel>

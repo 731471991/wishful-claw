@@ -10,9 +10,6 @@ interface CategoryCount {
   commands: number
   reads: number
   edits: number
-  searches: number
-  other: number
-  thinking: number
 }
 
 function classifyItem(item: ToolExecutionItem): keyof CategoryCount | null {
@@ -23,68 +20,33 @@ function classifyItem(item: ToolExecutionItem): keyof CategoryCount | null {
       return 'reads'
     case 'file-change':
       return 'edits'
-    case 'attention':
-    case 'interactive':
-    case 'mcp':
-    case 'orchestration':
-    case 'skill':
-    case 'visual':
-    case 'browser':
-    case 'desktop':
-    case 'unknown':
-      return 'other'
-    case 'hidden':
-      return null
     default:
       return null
   }
 }
 
-function countByCategory(items: ToolExecutionItem[]): CategoryCount {
-  const counts: CategoryCount = {
-    commands: 0,
-    reads: 0,
-    edits: 0,
-    searches: 0,
-    other: 0,
-    thinking: 0,
-  }
-  for (const item of items) {
-    const key = classifyItem(item)
-    if (key) counts[key] += 1
-  }
-  return counts
-}
-
 /**
  * Generate a compact summary string from the tool execution outline.
- *
- * @param outline - The tool execution outline containing all items
- * @param thinkingBlockCount - Number of thinking blocks in the process (for "思考了X轮")
- * @param t - i18n translation function
- * @returns Summary string like "运行了3个命令，查看了2个文件，编辑了1个文件"
+ * Only counts commands, reads, and edits — other tool types are omitted
+ * to keep the summary concise and meaningful.
  */
 export function buildProcessSummary(
   outline: ToolExecutionOutline | null,
-  thinkingBlockCount: number,
+  _thinkingBlockCount: number,
   t: TFunction
 ): string | null {
   if (!outline) return null
 
   const visibleItems = outline.items.filter((item) => item.visibility !== 'hidden')
-  if (visibleItems.length === 0 && thinkingBlockCount === 0) return null
+  if (visibleItems.length === 0) return null
 
-  const counts = countByCategory(visibleItems)
-  const parts: string[] = []
-
-  if (thinkingBlockCount > 0) {
-    parts.push(
-      t('workbench.summaryThinking', {
-        count: thinkingBlockCount,
-        defaultValue: `思考了${thinkingBlockCount}轮`,
-      })
-    )
+  const counts: CategoryCount = { commands: 0, reads: 0, edits: 0 }
+  for (const item of visibleItems) {
+    const key = classifyItem(item)
+    if (key) counts[key] += 1
   }
+
+  const parts: string[] = []
 
   if (counts.commands > 0) {
     parts.push(
@@ -109,15 +71,6 @@ export function buildProcessSummary(
       t('workbench.summaryEdits', {
         count: counts.edits,
         defaultValue: `编辑了${counts.edits}个文件`,
-      })
-    )
-  }
-
-  if (counts.other > 0) {
-    parts.push(
-      t('workbench.summaryOther', {
-        count: counts.other,
-        defaultValue: `执行了${counts.other}个操作`,
       })
     )
   }
