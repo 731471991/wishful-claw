@@ -1,7 +1,7 @@
 ﻿import { nanoid } from 'nanoid'
 import type { StateCreator } from 'zustand'
 import type { Session, CreateSessionOptions, ChatMessage } from './types'
-import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage, dbGetMessageCount } from './db-helpers'
+import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage, dbGetMessageCount, dbUpdateProject } from './db-helpers'
 
 export interface SessionSlice {
   sessions: Session[]
@@ -113,9 +113,16 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       state.sessions.push(newSession)
       syncSessionsById(state)
       state.activeSessionId = id
+      if (targetProjectId) {
+        const proj = (state as unknown as { projects: Array<{ id: string; updatedAt: number }> }).projects.find((p) => p.id === targetProjectId)
+        if (proj) proj.updatedAt = now
+      }
     })
 
     void dbCreateSession(newSession)
+    if (targetProjectId) {
+      void dbUpdateProject(targetProjectId, { updatedAt: now })
+    }
     return id
   },
 
@@ -267,9 +274,12 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
   },
 
   beginUserTurn: (sessionId, userMsg, assistantMsg, streamingMessageId) => {
+    const now = Date.now()
+    let sessionProjectId: string | undefined
     set((state) => {
       const session = state.sessions.find((s) => s.id === sessionId)
       if (!session) return
+      sessionProjectId = session.projectId
       if (userMsg) {
         session.messages.push(userMsg)
       }
@@ -277,12 +287,19 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         session.messages.push(assistantMsg)
       }
       session.messageCount = session.messages.length
-      session.updatedAt = Date.now()
+      session.updatedAt = now
+      if (sessionProjectId) {
+        const proj = (state as unknown as { projects: Array<{ id: string; updatedAt: number }> }).projects.find((p) => p.id === sessionProjectId)
+        if (proj) proj.updatedAt = now
+      }
       if (streamingMessageId) {
         ;(state as unknown as { streamingMessages: Record<string, string> }).streamingMessages[sessionId] = streamingMessageId
         ;(state as unknown as { streamingMessageId: string | null }).streamingMessageId = streamingMessageId
       }
     })
+    if (sessionProjectId) {
+      void dbUpdateProject(sessionProjectId, { updatedAt: now })
+    }
   },
 
   updateMessage: (sessionId, msgId, patch) => {
