@@ -237,6 +237,7 @@ export function ContentRenderer({
     liveFadeInClassName,
     sessionId,
     trackedChangeByToolUseId,
+    mode: 'compact',
     t
   }
 

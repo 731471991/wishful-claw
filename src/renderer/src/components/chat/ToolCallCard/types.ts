@@ -11,6 +11,7 @@ export interface ToolCallCardProps {
   startedAt?: number
   completedAt?: number
   forceOpen?: boolean
+  mode?: 'compact' | 'full'
 }
 
 export interface WidgetToolPayload {
