@@ -31,7 +31,6 @@ interface RightPanelHeaderProps {
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
   onAddBrowser: () => void
-  onAddTerminal: () => void
   onOpenFile: () => void
   onClosePanel: () => void
   t: (key: string, options?: Record<string, unknown>) => string
@@ -144,7 +143,6 @@ export function RightPanelHeader({
   onSelectTab,
   onCloseTab,
   onAddBrowser,
-  onAddTerminal,
   onOpenFile,
   onClosePanel,
   t
@@ -197,10 +195,6 @@ export function RightPanelHeader({
           <DropdownMenuItem disabled={!browserEnabled} onSelect={onAddBrowser}>
             <Globe className="size-4" />
             {t('rightPanel.browser', { defaultValue: 'Browser' })}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onAddTerminal}>
-            <SquareTerminal className="size-4" />
-            {t('rightPanel.terminal', { defaultValue: 'Terminal' })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

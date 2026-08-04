@@ -16,6 +16,8 @@ export interface TerminalTab {
   status: 'running' | 'exited' | 'error'
   exitCode?: number
   createdAt: number
+  /** Project this tab belongs to (for filtering in the bottom dock) */
+  projectId?: string | null
   /** For ssh-agent tabs: the tool call execId used to correlate ssh:exec-output events */
   execId?: string
   /** For ssh-agent tabs: the connection name for display */
@@ -28,12 +30,12 @@ interface TerminalStore {
   _initialized: boolean
 
   init: () => void
-  createTab: (cwd?: string) => Promise<string | null>
+  createTab: (cwd?: string, projectId?: string | null, titleOverride?: string) => Promise<string | null>
   closeTab: (id: string) => Promise<void>
   setActiveTab: (id: string | null) => void
 
   /** Create a read-only SSH agent observation tab */
-  createSshAgentTab: (execId: string, connectionName?: string) => void
+  createSshAgentTab: (execId: string, connectionName?: string, projectId?: string | null) => void
   /** Mark an SSH agent tab as completed */
   completeSshAgentTab: (execId: string, exitCode: number) => void
   /** Check if a tab with the given execId exists */
@@ -54,7 +56,6 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     if (get()._initialized) return
     set({ _initialized: true })
 
-    // Listen for terminal output (handled per-component via ipcClient.on)
     // Listen for terminal exit to update tab status
     ipcClient.on(IPC.TERMINAL_EXIT, (payload) => {
       const event = payload as { id?: string; exitCode?: number; signal?: number }
@@ -73,7 +74,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     })
   },
 
-  createTab: async (cwd?: string) => {
+  createTab: async (cwd, projectId, titleOverride) => {
     try {
       const result = (await ipcClient.invoke(IPC.TERMINAL_CREATE, {
         cwd,
@@ -96,11 +97,12 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       const tab: TerminalTab = {
         id: result.id,
         kind: 'local',
-        title: result.title || result.shell || 'Terminal',
+        title: titleOverride || result.title || result.shell || 'Terminal',
         shell: result.shell || 'shell',
         cwd: result.cwd || cwd || '~',
         status: 'running',
-        createdAt: result.createdAt || Date.now()
+        createdAt: result.createdAt || Date.now(),
+        projectId: projectId ?? null
       }
 
       set((state) => ({
@@ -141,7 +143,7 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   setActiveTab: (id) => set({ activeTabId: id }),
 
-  createSshAgentTab: (execId, connectionName) => {
+  createSshAgentTab: (execId, connectionName, projectId) => {
     // Don't create duplicate tabs for the same execId
     if (get().hasSshAgentTab(execId)) return
 
@@ -154,7 +156,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       status: 'running',
       createdAt: Date.now(),
       execId,
-      connectionName
+      connectionName,
+      projectId: projectId ?? null
     }
 
     set((state) => ({
@@ -162,8 +165,11 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       activeTabId: tab.id
     }))
 
-    // Auto-open the right panel and switch to terminal tab so user can see the output
-    useUIStore.getState().ensureTerminalTab()
+    // Auto-open the bottom terminal dock so user can see the output
+    const state = useUIStore.getState()
+    if (projectId) {
+      state.setBottomTerminalDockOpen(projectId, true)
+    }
   },
 
   completeSshAgentTab: (execId, exitCode) => {

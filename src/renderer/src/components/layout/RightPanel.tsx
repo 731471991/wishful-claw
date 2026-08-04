@@ -14,7 +14,6 @@ import { SubAgentsPanel } from '@renderer/components/layout/SubAgentsPanel'
 import { BrowserPanel } from '@renderer/components/layout/BrowserPanel'
 import { PreviewPanel } from '@renderer/components/layout/PreviewPanel'
 import { AgentFilesPanel } from '@renderer/components/layout/AgentFilesPanel'
-import { TerminalPanel } from '@renderer/components/terminal/TerminalPanel'
 import { SessionChangeReviewPanel } from '@renderer/components/layout/SessionChangeReviewPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
@@ -30,7 +29,6 @@ export function RightPanel(): React.JSX.Element {
   const setRightPanelActiveTab = useUIStore((state) => state.setRightPanelActiveTab)
   const closeRightPanelTab = useUIStore((state) => state.closeRightPanelTab)
   const ensureBrowserTab = useUIStore((state) => state.ensureBrowserTab)
-  const ensureTerminalTab = useUIStore((state) => state.ensureTerminalTab)
   const activeScopedSessionId = useUIStore((state) => state.activeScopedSessionId)
 
   const activeProjectId = useChatStore((state) => {
@@ -142,7 +140,6 @@ export function RightPanel(): React.JSX.Element {
     if (tab.kind === 'preview') return <PreviewPanel embedded />
     if (tab.kind === 'files') return <AgentFilesPanel sessionId={tab.sessionId ?? panelSessionId} />
     if (tab.kind === 'review') return <SessionChangeReviewPanel sessionId={tab.sessionId ?? panelSessionId} />
-    if (tab.kind === 'terminal') return <TerminalPanel />
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         <Loader2 className="mr-2 size-4 animate-spin" />
@@ -174,7 +171,6 @@ export function RightPanel(): React.JSX.Element {
               onSelectTab={setRightPanelActiveTab}
               onCloseTab={closeRightPanelTab}
               onAddBrowser={() => ensureBrowserTab(undefined, panelSessionId)}
-              onAddTerminal={() => ensureTerminalTab()}
               onOpenFile={() => {
                 import('@renderer/lib/ipc/ipc-client').then(({ ipcClient }) => {
                   ipcClient.invoke('fs:select-file', { multiSelections: true }).then((result) => {

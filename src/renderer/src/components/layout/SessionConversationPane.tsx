@@ -1,6 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Eraser, MoreHorizontal, Trash2, Pencil } from 'lucide-react'
+import { Eraser, MoreHorizontal, Trash2, Pencil, SquareTerminal } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatActions } from '@renderer/hooks/use-chat-actions'
 import { ActivityPanel } from '@renderer/components/activity/ActivityPanel'
 import { useActivityStore } from '@renderer/stores/activity-store'
+import { useTerminalStore } from '@renderer/stores/terminal-store'
+import { BottomTerminalDock } from '@renderer/components/terminal/BottomTerminalDock'
 import { toast } from 'sonner'
 
 interface SessionConversationPaneProps {
@@ -39,9 +41,27 @@ export function SessionConversationPane({
     resolvedSessionId ? Boolean(s.streamingMessages[resolvedSessionId]) : false
   )
   const activities = useActivityStore((s) => s.activities)
-  const projectWorkingFolder = useChatStore((s) => {
+
+  // Project info for terminal dock
+  const project = useChatStore((s) => {
     if (!session?.projectId) return undefined
-    return s.projects.find((p) => p.id === session.projectId)?.workingFolder
+    return s.projects.find((p) => p.id === session.projectId)
+  })
+  const projectWorkingFolder = project?.workingFolder
+  const projectId = session?.projectId ?? null
+  const projectName = project?.name
+  const sshConnectionId = project?.sshConnectionId ?? null
+
+  // Bottom terminal dock state
+  const bottomTerminalDockOpen = useUIStore((s) =>
+    projectId ? Boolean(s.bottomTerminalDockOpenByProjectId[projectId]) : false
+  )
+  const toggleBottomTerminalDock = useUIStore((s) => s.toggleBottomTerminalDock)
+  const initTerminal = useTerminalStore((s) => s.init)
+
+  // Ensure terminal store is initialized (also done in App.tsx, but safe to double-init)
+  useState(() => {
+    initTerminal()
   })
 
   const handleSend = useCallback(
@@ -74,6 +94,12 @@ export function SessionConversationPane({
     }
   }, [resolvedSessionId, session, renameSession, t])
 
+  const handleToggleTerminal = useCallback((): void => {
+    if (projectId) {
+      toggleBottomTerminalDock(projectId)
+    }
+  }, [projectId, toggleBottomTerminalDock])
+
   if (!session) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -91,6 +117,28 @@ export function SessionConversationPane({
         {/* Session action bar (no title — TitleBar already shows it) */}
         <div className="flex shrink-0 items-center justify-end gap-1 px-3 py-1.5">
           <div className="flex items-center rounded-lg border border-border/60 bg-background/70 p-0.5 shadow-sm backdrop-blur-sm">
+            {/* Terminal toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleToggleTerminal}
+                  className={`
+                    flex size-7 items-center justify-center rounded-md transition-colors
+                    ${bottomTerminalDockOpen
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground/80 hover:bg-accent hover:text-foreground'}
+                  `}
+                >
+                  <SquareTerminal className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {bottomTerminalDockOpen ? 'Hide terminal' : 'Show terminal'}
+              </TooltipContent>
+            </Tooltip>
+
+            <div className="mx-0.5 h-4 w-px bg-border/60" />
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -145,6 +193,18 @@ export function SessionConversationPane({
           workingFolder={session?.workingFolder ?? projectWorkingFolder}
           hideWorkingFolderIndicator
         />
+
+        {/* Bottom terminal dock */}
+        {bottomTerminalDockOpen && projectId && (
+          <div className="shrink-0 border-t">
+            <BottomTerminalDock
+              projectId={projectId}
+              projectName={projectName}
+              workingFolder={projectWorkingFolder ?? null}
+              sshConnectionId={sshConnectionId}
+            />
+          </div>
+        )}
       </div>
 
       {/* Right: Activity panel (only show if activities exist) */}
