@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
-import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore } from '@renderer/stores/chat-store'
 
 // ─── Types ───
@@ -181,10 +180,11 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       activeTabId: tab.id
     }))
 
-    // Auto-open the bottom terminal dock
-    if (projectId) {
-      useUIStore.getState().setBottomTerminalDockOpen(projectId, true)
-    }
+    // Do NOT auto-open the bottom terminal dock.
+    // The tab is created and the AgentSshTerminal component is mounted
+    // (the dock stays hidden via CSS 'hidden' which keeps the component alive).
+    // Output continues to stream into the xterm buffer; when the user
+    // manually opens the dock, all accumulated output is visible.
   },
 
   hasSshAgentTabForSession: (sessionId) => {
