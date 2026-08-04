@@ -194,9 +194,9 @@ export function SessionConversationPane({
           hideWorkingFolderIndicator
         />
 
-        {/* Bottom terminal dock */}
-        {bottomTerminalDockOpen && projectId && (
-          <div className="shrink-0 border-t">
+        {/* Bottom terminal dock - keep mounted, hide via CSS to preserve state */}
+        {projectId && (
+          <div className={bottomTerminalDockOpen ? "shrink-0 border-t" : "hidden"}>
             <BottomTerminalDock
               projectId={projectId}
               sessionId={resolvedSessionId}
