@@ -36,6 +36,7 @@ import { ModelThinkingIndicator, GenerationProcessLine } from './ui-buttons'
 import { ToolBlockRenderer } from './tool-block-renderer'
 import type { ToolBlockRendererProps } from './tool-block-renderer'
 import { ExecutionProcessBlock } from './execution-process-block'
+import { buildProcessSummary } from './process-summary'
 
 export interface ContentRendererProps {
   content: string | ContentBlock[]
@@ -310,6 +311,10 @@ export function ContentRenderer({
 
   const hasProcessContent = finalOutputStartIndex > 0
 
+  // Count thinking blocks for summary
+  const thinkingBlockCount = normalizedContent?.filter((b) => b.type === 'thinking').length ?? 0
+  const processSummary = buildProcessSummary(toolExecutionOutline, thinkingBlockCount, t)
+
   const renderItem = (item: AssistantRenderItemWithInlineSummary): React.JSX.Element | null => {
     if (item.kind === 'compact-summary') {
       return (
@@ -475,7 +480,7 @@ export function ContentRenderer({
       <ExecutionProcessBlock
         collapsible={hasProcessContent}
         isStreaming={!!isStreaming}
-        summary={undefined}
+        summary={processSummary}
         activeDetail={toolExecutionOutline.activeSummary}
       >
         {processItems.map((item) => renderItem(item))}
