@@ -45,10 +45,10 @@ public static class PromptBuilder
         parts.Add(BuildSessionContext(language));
 
         // ── SSH Context + Project Context (high priority — put early so Agent doesn't miss it) ──
-        var sshContext = BuildSshContext(parameters);
-        if (!string.IsNullOrWhiteSpace(sshContext))
+        var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
+        if (!string.IsNullOrWhiteSpace(sshConnectionId))
         {
-            parts.Add(sshContext);
+            parts.Add(BuildSshContext(parameters));
         }
         if (!string.IsNullOrWhiteSpace(workingFolder))
         {
