@@ -21,206 +21,30 @@ import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { cn } from '@renderer/lib/utils'
 
-// ─── Types ───
+import {
+  type ArchiveTabId,
+  type FileState,
+  type PersonaSummary,
+  type SshConnectionInfo,
+  WISHFUL_CLAW_DIR,
+  PERSONA_FILE_NAMES,
+  DEFAULT_MEMORY_TEMPLATE,
+  DEFAULT_DAILY_TEMPLATE,
+  joinFsPath,
+  getTodayDate,
+  getHomeDir,
+  readTextFile,
+  writeTextFile,
+  listDir
+} from './project-archive-helpers'
+import { PersonaFilePreview } from './PersonaFilePreview'
 
-type ArchiveTabId = 'memory' | 'daily' | 'persona'
 
-interface FileState {
-  path: string
-  savedContent: string
-  draftContent: string
-  loading: boolean
-  saving: boolean
-  missingFile: boolean
-  error: string | null
-}
-
-interface DirEntry {
-  name: string
-  path: string
-  type: 'file' | 'directory'
-}
-
-interface PersonaSummary {
-  id: string
-  name: string
-  files: { name: string; path: string; content?: string }[]
-}
-
-interface SshConnectionInfo {
-  name: string
-  host: string
-  port: number
-  username: string
-  defaultDirectory?: string | null
-  lastConnectedAt?: number | null
-}
-
-// ─── Constants ───
-
-const WISHFUL_CLAW_DIR = '.wishful-claw'
 const MEMORY_TABS: { id: ArchiveTabId; icon: typeof FileText; i18nKey: string }[] = [
   { id: 'memory', icon: FileText, i18nKey: 'projectArchive.tabs.memory' },
   { id: 'daily', icon: Clock, i18nKey: 'projectArchive.tabs.daily' },
   { id: 'persona', icon: User, i18nKey: 'projectArchive.tabs.persona' }
 ]
-
-const PERSONA_FILE_NAMES = ['IDENTITY.md', 'SOUL.md', 'ONTOLOGY.md', 'AGENTS.md']
-
-const DEFAULT_MEMORY_TEMPLATE = `# MEMORY.md
-
-Project-level durable memory. Record stable decisions, context, and long-lived information here.
-
-## Decisions
-
-## Context
-
-## Notes
-`
-
-const DEFAULT_DAILY_TEMPLATE = `# Daily Memory — ${new Date().toISOString().slice(0, 10)}
-
-Temporary context for today. Can be consolidated into MEMORY.md later.
-
-`
-
-// ─── Path helpers ───
-
-function joinFsPath(...segments: string[]): string {
-  return segments.join('/')
-}
-
-function getTodayDate(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function getHomeDir(): string {
-  const env = window.electron?.process?.env
-  return env?.USERPROFILE || env?.HOME || ''
-}
-
-// ─── IPC helpers ───
-
-interface ReadFileResult {
-  content?: string
-  error?: string
-}
-
-/** Always local — SSH project memory is stored locally at ~/.wishful-claw/projects/{id}/ */
-async function readTextFile(path: string): Promise<ReadFileResult> {
-  try {
-    const result = await ipcClient.invoke(IPC.FS_READ_FILE, { path })
-    if (typeof result === 'string') return { content: result }
-    if (result && typeof result === 'object' && 'error' in result) {
-      return { error: String((result as { error: unknown }).error ?? 'Unknown error') }
-    }
-    return { content: String(result ?? '') }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-async function writeTextFile(path: string, content: string): Promise<string | null> {
-  try {
-    const result = await ipcClient.invoke(IPC.FS_WRITE_FILE, { path, content })
-    if (result && typeof result === 'object' && 'error' in result) {
-      return String((result as { error: unknown }).error ?? 'Unknown error')
-    }
-    return null
-  } catch (err) {
-    return err instanceof Error ? err.message : String(err)
-  }
-}
-
-async function listDir(path: string): Promise<DirEntry[]> {
-  try {
-    const result = await ipcClient.invoke(IPC.FS_LIST_DIR, { path })
-    if (result && typeof result === 'object' && 'error' in result) {
-      return []
-    }
-    if (Array.isArray(result)) {
-      return result as DirEntry[]
-    }
-    return []
-  } catch {
-    return []
-  }
-}
-
-// ─── Sub-components ───
-
-function PersonaFilePreview({
-  persona,
-}: {
-  persona: PersonaSummary
-}): React.JSX.Element {
-  const { t } = useTranslation('chat')
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
-  const [fileContent, setFileContent] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  const handleSelectFile = useCallback(
-    async (fileName: string) => {
-      setSelectedFile(fileName)
-      setLoading(true)
-      const filePath = joinFsPath(persona.files.find((f) => f.name === fileName)?.path ?? '')
-      if (!filePath) {
-        setFileContent('(file not found)')
-        setLoading(false)
-        return
-      }
-      const result = await readTextFile(filePath)
-      setFileContent(result.content ?? `(error: ${result.error})`)
-      setLoading(false)
-    },
-    [persona.files]
-  )
-
-  return (
-    <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-      <div className="w-48 shrink-0 space-y-1">
-        {PERSONA_FILE_NAMES.map((name) => {
-          const exists = persona.files.some((f) => f.name === name)
-          return (
-            <Button
-              key={name}
-              variant={selectedFile === name ? 'default' : 'ghost'}
-              size="sm"
-              className={cn(
-                'w-full justify-start text-xs',
-                !exists && 'opacity-40'
-              )}
-              onClick={() => handleSelectFile(name)}
-              disabled={!exists}
-            >
-              {name}
-            </Button>
-          )
-        })}
-      </div>
-      <div className="min-w-0 flex-1 overflow-auto">
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 size-4 animate-spin" />
-            {t('projectArchive.loading', { defaultValue: 'Loading...' })}
-          </div>
-        ) : fileContent !== null ? (
-          <pre className="whitespace-pre-wrap rounded-md border border-border/60 bg-muted/30 p-4 font-mono text-xs leading-5">
-            {fileContent}
-          </pre>
-        ) : (
-          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-            {t('projectArchive.persona.selectFile', {
-              defaultValue: 'Select a persona file to preview'
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Main component ───
 
 export function ProjectArchivePage(): React.JSX.Element {
   const { t } = useTranslation('chat')
