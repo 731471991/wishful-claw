@@ -47,6 +47,15 @@ interface PersonaSummary {
   files: { name: string; path: string; content?: string }[]
 }
 
+interface SshConnectionInfo {
+  name: string
+  host: string
+  port: number
+  username: string
+  defaultDirectory?: string | null
+  lastConnectedAt?: number | null
+}
+
 // ─── Constants ───
 
 const WISHFUL_CLAW_DIR = '.wishful-claw'
@@ -85,6 +94,11 @@ function getTodayDate(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+function getHomeDir(): string {
+  const env = window.electron?.process?.env
+  return env?.USERPROFILE || env?.HOME || ''
+}
+
 // ─── IPC helpers ───
 
 interface ReadFileResult {
@@ -92,12 +106,10 @@ interface ReadFileResult {
   error?: string
 }
 
-async function readTextFile(path: string, sshConnectionId?: string): Promise<ReadFileResult> {
+/** Always local — SSH project memory is stored locally at ~/.wishful-claw/projects/{id}/ */
+async function readTextFile(path: string): Promise<ReadFileResult> {
   try {
-    const result = sshConnectionId
-      ? await ipcClient.invoke(IPC.SSH_FS_READ_FILE, { connectionId: sshConnectionId, path })
-      : await ipcClient.invoke(IPC.FS_READ_FILE, { path })
-
+    const result = await ipcClient.invoke(IPC.FS_READ_FILE, { path })
     if (typeof result === 'string') return { content: result }
     if (result && typeof result === 'object' && 'error' in result) {
       return { error: String((result as { error: unknown }).error ?? 'Unknown error') }
@@ -108,16 +120,9 @@ async function readTextFile(path: string, sshConnectionId?: string): Promise<Rea
   }
 }
 
-async function writeTextFile(
-  path: string,
-  content: string,
-  sshConnectionId?: string
-): Promise<string | null> {
+async function writeTextFile(path: string, content: string): Promise<string | null> {
   try {
-    const result = sshConnectionId
-      ? await ipcClient.invoke(IPC.SSH_FS_WRITE_FILE, { connectionId: sshConnectionId, path, content })
-      : await ipcClient.invoke(IPC.FS_WRITE_FILE, { path, content })
-
+    const result = await ipcClient.invoke(IPC.FS_WRITE_FILE, { path, content })
     if (result && typeof result === 'object' && 'error' in result) {
       return String((result as { error: unknown }).error ?? 'Unknown error')
     }
@@ -127,12 +132,9 @@ async function writeTextFile(
   }
 }
 
-async function listDir(path: string, sshConnectionId?: string): Promise<DirEntry[]> {
+async function listDir(path: string): Promise<DirEntry[]> {
   try {
-    const result = sshConnectionId
-      ? await ipcClient.invoke(IPC.SSH_FS_LIST_DIR, { connectionId: sshConnectionId, path })
-      : await ipcClient.invoke(IPC.FS_LIST_DIR, { path })
-
+    const result = await ipcClient.invoke(IPC.FS_LIST_DIR, { path })
     if (result && typeof result === 'object' && 'error' in result) {
       return []
     }
@@ -149,10 +151,8 @@ async function listDir(path: string, sshConnectionId?: string): Promise<DirEntry
 
 function PersonaFilePreview({
   persona,
-  sshConnectionId
 }: {
   persona: PersonaSummary
-  sshConnectionId?: string
 }): React.JSX.Element {
   const { t } = useTranslation('chat')
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -169,11 +169,11 @@ function PersonaFilePreview({
         setLoading(false)
         return
       }
-      const result = await readTextFile(filePath, sshConnectionId)
+      const result = await readTextFile(filePath)
       setFileContent(result.content ?? `(error: ${result.error})`)
       setLoading(false)
     },
-    [persona.files, sshConnectionId]
+    [persona.files]
   )
 
   return (
@@ -254,13 +254,21 @@ export function ProjectArchivePage(): React.JSX.Element {
   // unused: dormant files are stored in SQLite, not filesystem
 
   const sshConnectionId = activeProject?.sshConnectionId
+  const isSshProject = !!sshConnectionId
+  const [sshConnectionInfo, setSshConnectionInfo] = useState<SshConnectionInfo | null>(null)
 
   // ─── Paths ───
-
+  // Local project: {workingFolder}/.wishful-claw/
+  // SSH project: ~/.wishful-claw/projects/{projectId}/ (local storage, not remote)
   const memoryRoot = useMemo(() => {
+    if (isSshProject) {
+      const home = getHomeDir()
+      if (!home || !activeProjectId) return ''
+      return joinFsPath(home, WISHFUL_CLAW_DIR, 'projects', activeProjectId)
+    }
     if (!activeProject?.workingFolder) return ''
     return joinFsPath(activeProject.workingFolder, WISHFUL_CLAW_DIR)
-  }, [activeProject?.workingFolder])
+  }, [isSshProject, activeProject?.workingFolder, activeProjectId])
 
   const memoryPath = useMemo(
     () => (memoryRoot ? joinFsPath(memoryRoot, 'MEMORY.md') : ''),
@@ -284,7 +292,7 @@ export function ProjectArchivePage(): React.JSX.Element {
       return
     }
     setMemoryFile((prev) => ({ ...prev, loading: true, path: memoryPath, error: null }))
-    const result = await readTextFile(memoryPath, sshConnectionId)
+    const result = await readTextFile(memoryPath)
     if (result.error) {
       // ENOENT — file doesn't exist yet
       const isMissing = result.error.toLowerCase().includes('no such') || result.error.toLowerCase().includes('enotfound') || result.error.toLowerCase().includes('找不到')
@@ -308,7 +316,7 @@ export function ProjectArchivePage(): React.JSX.Element {
         error: null
       })
     }
-  }, [memoryPath, sshConnectionId])
+  }, [memoryPath])
 
   // ─── Load daily file ───
 
@@ -318,7 +326,7 @@ export function ProjectArchivePage(): React.JSX.Element {
       return
     }
     setDailyFile((prev) => ({ ...prev, loading: true, path: dailyPath, error: null }))
-    const result = await readTextFile(dailyPath, sshConnectionId)
+    const result = await readTextFile(dailyPath)
     if (result.error) {
       const isMissing = result.error.toLowerCase().includes('no such') || result.error.toLowerCase().includes('enotfound') || result.error.toLowerCase().includes('找不到')
       setDailyFile({
@@ -341,7 +349,7 @@ export function ProjectArchivePage(): React.JSX.Element {
         error: null
       })
     }
-  }, [dailyPath, sshConnectionId])
+  }, [dailyPath])
 
   // ─── Load personas ───
 
@@ -353,13 +361,13 @@ export function ProjectArchivePage(): React.JSX.Element {
     }
     setPersonasLoading(true)
     // List persona directories
-    const entries = await listDir(personasDir, sshConnectionId)
+    const entries = await listDir(personasDir)
     const personaDirs = entries.filter((e) => e.type === 'directory')
 
     const results: PersonaSummary[] = []
     for (const dir of personaDirs) {
       const dirPath = joinFsPath(personasDir, dir.name)
-      const fileEntries = await listDir(dirPath, sshConnectionId)
+      const fileEntries = await listDir(dirPath)
       const files = fileEntries
         .filter((e) => e.type === 'file' && PERSONA_FILE_NAMES.includes(e.name))
         .map((e) => ({ name: e.name, path: joinFsPath(dirPath, e.name) }))
@@ -367,11 +375,40 @@ export function ProjectArchivePage(): React.JSX.Element {
     }
     setPersonas(results)
     setPersonasLoading(false)
-  }, [personasDir, sshConnectionId])
+  }, [personasDir])
 
   // ─── Load dormant files ───
 
   // Cold memory loaded via memory/stats IPC (SQLite), not file system
+
+  // ─── Load SSH connection info ───
+
+  useEffect(() => {
+    if (!isSshProject || !sshConnectionId) {
+      setSshConnectionInfo(null)
+      return
+    }
+    void (async () => {
+      try {
+        const list = await ipcClient.invoke(IPC.SSH_CONNECTION_LIST)
+        if (Array.isArray(list)) {
+          const conn = list.find((c: Record<string, unknown>) => c.id === sshConnectionId)
+          if (conn) {
+            setSshConnectionInfo({
+              name: String(conn.name ?? ''),
+              host: String(conn.host ?? ''),
+              port: Number(conn.port ?? 22),
+              username: String(conn.username ?? ''),
+              defaultDirectory: conn.default_directory ?? null,
+              lastConnectedAt: conn.last_connected_at ?? null
+            })
+          }
+        }
+      } catch {
+        // ignore
+      }
+    })()
+  }, [isSshProject, sshConnectionId])
 
   // ─── Initial load ───
 
@@ -398,7 +435,7 @@ export function ProjectArchivePage(): React.JSX.Element {
     const setter = activeTab === 'memory' ? setMemoryFile : setDailyFile
     setter((prev) => ({ ...prev, saving: true, error: null }))
 
-    const err = await writeTextFile(file.path, file.draftContent, sshConnectionId)
+    const err = await writeTextFile(file.path, file.draftContent)
     if (err) {
       setter((prev) => ({ ...prev, saving: false, error: err }))
       toast.error(t('projectArchive.saveFailed', { defaultValue: 'Failed to save' }), {
@@ -414,7 +451,7 @@ export function ProjectArchivePage(): React.JSX.Element {
       }))
       toast.success(t('projectArchive.saved', { defaultValue: 'Saved' }))
     }
-  }, [activeTab, memoryFile, dailyFile, sshConnectionId, t])
+  }, [activeTab, memoryFile, dailyFile, t])
 
   // ─── Reset handler ───
 
@@ -501,7 +538,21 @@ export function ProjectArchivePage(): React.JSX.Element {
                   <span className="truncate max-w-[400px]">{activeProject.workingFolder}</span>
                 </span>
               )}
-              {activeProject.sshConnectionId && (
+              {isSshProject && sshConnectionInfo?.defaultDirectory && (
+                <span className="flex items-center gap-1">
+                  <FolderOpen className="size-3" />
+                  <span className="truncate max-w-[300px]" title={sshConnectionInfo.defaultDirectory}>
+                    {sshConnectionInfo.defaultDirectory}
+                  </span>
+                </span>
+              )}
+              {isSshProject && sshConnectionInfo && (
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400" title={sshConnectionInfo.name}>
+                  <Terminal className="size-3" />
+                  {sshConnectionInfo.username}@{sshConnectionInfo.host}:{sshConnectionInfo.port}
+                </span>
+              )}
+              {isSshProject && !sshConnectionInfo && (
                 <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                   <Terminal className="size-3" />
                   SSH
@@ -699,7 +750,6 @@ export function ProjectArchivePage(): React.JSX.Element {
                     {personas.length > 0 && (
                       <PersonaFilePreview
                         persona={personas[0]}
-                        sshConnectionId={sshConnectionId ?? undefined}
                       />
                     )}
                   </div>
