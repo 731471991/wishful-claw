@@ -319,9 +319,9 @@ export function ContentRenderer({
   const processItems = renderItemsWithInlineSummaries.slice(0, finalOutputStartIndex)
   const finalItems = renderItemsWithInlineSummaries.slice(finalOutputStartIndex)
 
-  // Only collapse when there are tool calls in the process AND there is final output.
+  // Collapse when there are tool calls in the process.
   // - Thinking-only without tools: too simple, don't collapse
-  // - Cancelled execution without final text: don't collapse, user needs to see content
+  // - Cancelled execution: still collapse, show fixed text in final area
   const hasToolCallsInProcess = processItems.some((item) => {
     if (item.kind === 'tool-run') return true
     if (item.kind === 'block') {
@@ -330,8 +330,7 @@ export function ContentRenderer({
     }
     return false
   })
-  const hasFinalOutput = finalItems.length > 0
-  const hasProcessContent = hasToolCallsInProcess && hasFinalOutput
+  const hasProcessContent = hasToolCallsInProcess
 
   // Count thinking blocks for summary
   const thinkingBlockCount = normalizedContent?.filter((b) => b.type === 'thinking').length ?? 0
@@ -508,7 +507,13 @@ export function ContentRenderer({
       ) : (
         processItems.map((item) => renderItem(item))
       )}
-      {finalItems.map((item) => renderItem(item))}
+      {finalItems.length > 0 ? (
+        finalItems.map((item) => renderItem(item))
+      ) : hasProcessContent && !isStreaming ? (
+        <div className={MD_CLASS}>
+          <p className="text-muted-foreground">{t('assistantMessage.cancelledExecution', { defaultValue: '用户取消，中断执行' })}</p>
+        </div>
+      ) : null}
       {isStreaming && <span className={getLiveOutputCursorClass(liveOutputAnimationStyle)} />}
       {shouldShowImageGeneratingLoader && (
         <div className={`pt-3${liveComponentClassName ? ` ${liveComponentClassName}` : ''}`}>
