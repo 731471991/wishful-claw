@@ -249,7 +249,9 @@ fs_read(plan.md) → 找到 [ ] 步骤 → 执行 → Mini 验证 → 标记 [�
 
 **执行规则**：
 - 每次只执行一个步骤
-- 执行完立即做 Mini 验证（能编译？能跑？符合预期？）
+- 执行完立即做 Mini 验证：
+  - **TS 编译零错误**：`npx tsc --noEmit -p tsconfig.web.json` + `npx tsc --noEmit -p tsconfig.node.json`（两个配置都必须零错误，不允许留坑）
+  - 能跑？符合预期？
 - 验证通过标记 [✓]，**立即 commit**
 - 验证失败标记 [✗]，记录原因，`git reset --hard` 回上一个 [✓] 的 commit，修复后重试
 - 从 OpenCowork / KodaClaw / OpenClaw.net 搬代码时，必须适配项目命名空间和分层约定
@@ -316,7 +318,9 @@ git commit -m "docs(review): 迭代{N}审查报告"
 独立验证，避免自欺欺人。能跑必须跑，必须有工具证据。
 
 **验证方式**：
-- 编译通过（dotnet build / npm run build）
+- 编译通过：
+  - C#：`dotnet build src/runtime/WishfulClaw.sln`
+  - TypeScript：`npx tsc --noEmit -p tsconfig.web.json` + `npx tsc --noEmit -p tsconfig.node.json` + `npx tsc --noEmit -p tsconfig.json` **三个配置必须全部零错误**
 - 运行通过（启动应用，执行对应迭代的验证标准）
 - 产出截图或日志作为证据
 

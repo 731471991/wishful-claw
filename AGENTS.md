@@ -234,7 +234,11 @@ Worker
 每次写完代码必须确保零报错：
 
 - **C#**：`dotnet build`（可加 `-o` 临时输出路径避免文件锁定）
-- **TypeScript**：`npx tsc --noEmit -p tsconfig.web.json`（必须带 `-p`！不带 `-p` 只走 references 不检查文件内容，等于没验证）
+- **TypeScript**：三个配置必须全部零错误（缺一不可）：
+  - `npx tsc --noEmit -p tsconfig.web.json`（渲染进程）
+  - `npx tsc --noEmit -p tsconfig.node.json`（主进程）
+  - `npx tsc --noEmit -p tsconfig.json`（根配置）
+  - 必须带 `-p`！不带 `-p` 只走 references 不检查文件内容，等于没验证
 - **不允许用 `@ts-ignore` 偷懒**（可选依赖除外）
 
 ## Git 提交规范
