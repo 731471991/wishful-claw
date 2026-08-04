@@ -64,7 +64,9 @@ public sealed class ShellExecuteTool : IToolExecutor
 
         "When sshConnectionId is provided, the command executes on the remote SSH server instead of locally. " +
 
-        "Use SshListConnections to discover available connection IDs." +
+        "Use SshListConnections to discover available connection IDs. " +
+
+        "When the project has a bound SSH connection, pass \"local\": true to force local execution instead." +
         "IMPORTANT: When using the default PowerShell engine, do NOT use '&&' to chain commands \u2014 " +
         "PowerShell does not support it. Use ';' to separate commands instead. " +
         "If you need bash syntax (&&, ||, $()), set shell to 'bash' explicitly.";
@@ -130,6 +132,16 @@ public sealed class ShellExecuteTool : IToolExecutor
               "type": "string",
 
               "description": "SSH connection ID. When provided, the command executes on the remote server via SSH instead of locally. Use SshListConnections to get available IDs. If the project has a bound SSH connection, this parameter is auto-filled."
+
+            },
+
+            "local": {
+
+              "type": "boolean",
+
+              "description": "Force local execution. Set to true to run the command on the LOCAL machine instead of the remote SSH server, even when the project has a bound SSH connection. Useful for local file operations, local git, and other local tasks.",
+
+              "default": false
 
             }
 

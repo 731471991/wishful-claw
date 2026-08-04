@@ -250,11 +250,13 @@ Do not overstep your bounds or create unnecessary files.
 
         return $"""
 <ssh_capability>
-**Current project is a remote SSH project.**
+**This project has a bound SSH connection.**
 - SSH connection ID: `{sshConnectionId}`{cwdLine}
-- **Bash/Shell** commands run on the remote server automatically — no need to pass `sshConnectionId` manually.
-- **Important: LS, Read, Write, Edit tools operate on your LOCAL filesystem, NOT the remote SSH server.** They cannot access remote files.
-- To work with files on the remote server, use Bash commands: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mkdir`, `rm`, `sed`, `echo > file`, etc.
+- **Bash/Shell commands default to the remote server** — no need to pass `sshConnectionId` manually.
+- **To run a command on the LOCAL machine instead**, pass `"local": true` in the Bash tool call. This bypasses SSH routing.
+- **File tools (LS, Read, Write, Edit, Glob, Grep) always operate on the LOCAL filesystem** — they cannot access remote files. This is by design, not a limitation.
+  - Use them freely for local tasks (reading local configs, editing local files, etc.).
+  - For remote file operations, use Bash commands: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mkdir`, `rm`, `sed`, `echo > file`, etc.
 - The working folder `{workingFolder}` is a remote path. Use `cd {workingFolder} && <command>` or rely on the default cwd.
 - Use `SshListConnections` if you need to inspect available connections.
 - Real-time command output is displayed in the terminal panel for the user to observe.
@@ -269,7 +271,7 @@ Do not overstep your bounds or create unnecessary files.
             return $"""
 ## Project
 - Remote Working Folder: `{workingFolder}`
-This is a remote path on the SSH server. All Bash commands default to this directory. Use Bash (not LS/Read/Write) for file operations on the remote server — local file tools cannot access it.
+This is a remote path on the SSH server. Bash commands default to this directory. For remote file operations, use Bash (ls, cat, grep, etc.) — local file tools (LS/Read/Write/Edit) operate on the LOCAL filesystem only. Pass `"local": true` to Bash to run a command on the local machine instead.
 """;
         }
 
