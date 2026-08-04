@@ -61,6 +61,14 @@ public sealed class DbModule : IWorkerModule
         context.Register("db/ssh-connections-update", DbSshTools.Update);
         context.Register("db/ssh-connections-delete", DbSshTools.Delete);
 
+        // ── Plans ──
+        context.Register("db/plans-list", DbPlanTools.List);
+        context.Register("db/plans-get", DbPlanTools.Get);
+        context.Register("db/plans-get-by-session", DbPlanTools.GetBySession);
+        context.Register("db/plans-create", DbPlanTools.Create);
+        context.Register("db/plans-update", DbPlanTools.Update);
+        context.Register("db/plans-delete", DbPlanTools.Delete);
+
         // ── Plugin Sessions ──
         context.Register("db/plugin-normal-projects", DbPluginSessionTools.ListNormalProjects);
         context.Register("db/plugin-sync-session-models", DbPluginSessionTools.SyncPluginSessionModels);

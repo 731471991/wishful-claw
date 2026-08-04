@@ -169,8 +169,91 @@ export function subscribePendingSessionMessages(onStoreChange: () => void): () =
   return () => { _pendingListeners.delete(onStoreChange) }
 }
 
-export async function sendImplementPlan(_sessionId: string, _planId: string): Promise<void> {
-  // TODO: implement plan execution
+export async function sendImplementPlan(sessionId: string, planId: string): Promise<void> {
+  const planStore = (await import('@renderer/stores/plan-store')).usePlanStore.getState()
+  const uiStore = (await import('@renderer/stores/ui-store')).useUIStore.getState()
+  const chatStore = useChatStore.getState()
+  const providerStore = (await import('@renderer/stores/provider-store')).useProviderStore.getState()
+  const settingsStore = (await import('@renderer/stores/settings-store')).useSettingsStore.getState()
+
+  const plan = planStore.plans[planId]
+  if (!plan || plan.status !== 'awaiting_review') return
+
+  // Approve plan
+  planStore.approvePlan(planId)
+  planStore.beginImplementation(planId)
+
+  // Exit plan mode
+  uiStore.exitPlanMode(sessionId)
+
+  // Get provider and session info
+  const activeProvider = providerStore.getActiveProvider()
+  if (!activeProvider) return
+  const session = chatStore.sessions.find((s) => s.id === sessionId)
+  const workingFolder = session?.workingFolder ?? undefined
+  const sshConnectionId = session?.sshConnectionId ?? undefined
+  const projectId = session?.projectId ?? undefined
+
+  // Send implementation message
+  await chatStore.sendMessage({
+    provider: activeProvider as unknown as Record<string, unknown>,
+    messages: [{ role: 'user', content: 'Implement the approved plan.' }],
+    sessionId,
+    workingFolder,
+    sshConnectionId,
+    projectId,
+    maxIterations: 0,
+    maxParallelTools: settingsStore.maxParallelToolCalls,
+    maxToolCallsPerTurn: settingsStore.maxToolCallsPerTurn,
+    maxConcurrentSubAgents: settingsStore.maxConcurrentSubAgents,
+    personaId: session?.personaId ?? settingsStore.defaultPersonaId ?? undefined,
+    language: settingsStore.language,
+    contextCompressionEnabled: settingsStore.contextCompressionEnabled,
+    contextCompressionThreshold: settingsStore.contextCompressionThreshold
+  })
+}
+
+export async function sendPlanRevision(sessionId: string, planId: string, feedback: string): Promise<void> {
+  const planStore = (await import('@renderer/stores/plan-store')).usePlanStore.getState()
+  const uiStore = (await import('@renderer/stores/ui-store')).useUIStore.getState()
+  const chatStore = useChatStore.getState()
+  const providerStore = (await import('@renderer/stores/provider-store')).useProviderStore.getState()
+  const settingsStore = (await import('@renderer/stores/settings-store')).useSettingsStore.getState()
+
+  const plan = planStore.plans[planId]
+  if (!plan) return
+
+  // Reject plan
+  planStore.rejectPlan(planId)
+
+  // Re-enter plan mode for revision
+  uiStore.enterPlanMode(sessionId)
+
+  // Get provider and session info
+  const activeProvider = providerStore.getActiveProvider()
+  if (!activeProvider) return
+  const session = chatStore.sessions.find((s) => s.id === sessionId)
+  const workingFolder = session?.workingFolder ?? undefined
+  const sshConnectionId = session?.sshConnectionId ?? undefined
+  const projectId = session?.projectId ?? undefined
+
+  // Send rejection feedback
+  await chatStore.sendMessage({
+    provider: activeProvider as unknown as Record<string, unknown>,
+    messages: [{ role: 'user', content: `The plan was rejected. Please revise the plan based on this feedback: ${feedback}` }],
+    sessionId,
+    workingFolder,
+    sshConnectionId,
+    projectId,
+    maxIterations: 0,
+    maxParallelTools: settingsStore.maxParallelToolCalls,
+    maxToolCallsPerTurn: settingsStore.maxToolCallsPerTurn,
+    maxConcurrentSubAgents: settingsStore.maxConcurrentSubAgents,
+    personaId: session?.personaId ?? settingsStore.defaultPersonaId ?? undefined,
+    language: settingsStore.language,
+    contextCompressionEnabled: settingsStore.contextCompressionEnabled,
+    contextCompressionThreshold: settingsStore.contextCompressionThreshold
+  })
 }
 
 export async function sendImplementPlanInNewSession(_projectId: string | null, _planId: string): Promise<void> {

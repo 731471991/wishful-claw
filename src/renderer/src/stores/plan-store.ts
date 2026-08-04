@@ -1,14 +1,6 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { nanoid } from 'nanoid'
-import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
-import {
-  DB_PLANS_CREATE_MSGPACK_CHANNEL,
-  DB_PLANS_DELETE_MSGPACK_CHANNEL,
-  DB_PLANS_GET_BY_SESSION_MSGPACK_CHANNEL,
-  DB_PLANS_LIST_MSGPACK_CHANNEL,
-  DB_PLANS_UPDATE_MSGPACK_CHANNEL
-} from '../../../shared/messagepack/binary-ipc'
 import { useChatStore } from './chat-store'
 
 // --- Types ---
@@ -21,6 +13,15 @@ export type PlanStatus =
   | 'completed'
   | 'rejected'
 
+export type PlanStepStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
+
+export interface PlanStep {
+  id: number
+  title: string
+  status: PlanStepStatus
+  result?: string | null
+}
+
 export interface Plan {
   id: string
   sessionId: string
@@ -29,6 +30,7 @@ export interface Plan {
   filePath?: string
   content?: string
   specJson?: string
+  steps?: PlanStep[]
   createdAt: number
   updatedAt: number
 }
@@ -36,12 +38,12 @@ export interface Plan {
 // --- DB persistence helpers (fire-and-forget) ---
 
 function dbCreatePlan(plan: Plan): void {
-  invokeMessagePackBinary(DB_PLANS_CREATE_MSGPACK_CHANNEL, {
+  window.api.workerRequest('db/plans-create', {
     id: plan.id,
     sessionId: plan.sessionId,
     title: plan.title,
     status: plan.status,
-    filePath: plan.filePath,
+    filePath: plan.filePath ?? null,
     content: plan.content ?? null,
     specJson: plan.specJson ?? null,
     createdAt: plan.createdAt,
@@ -50,11 +52,11 @@ function dbCreatePlan(plan: Plan): void {
 }
 
 function dbUpdatePlan(id: string, patch: Record<string, unknown>): void {
-  invokeMessagePackBinary(DB_PLANS_UPDATE_MSGPACK_CHANNEL, { id, patch }).catch(() => {})
+  window.api.workerRequest('db/plans-update', { id, patch }).catch(() => {})
 }
 
 function dbDeletePlan(id: string): void {
-  invokeMessagePackBinary(DB_PLANS_DELETE_MSGPACK_CHANNEL, id).catch(() => {})
+  window.api.workerRequest('db/plans-delete', { id }).catch(() => {})
 }
 
 // --- Row → Plan conversion ---
@@ -164,7 +166,7 @@ export const usePlanStore = create<PlanStore>()(
 
     loadPlansFromDb: async () => {
       try {
-        const rows = await invokeMessagePackBinary<PlanRow[]>(DB_PLANS_LIST_MSGPACK_CHANNEL, {})
+        const rows = await window.api.workerRequest<PlanRow[]>('db/plans-list', {})
         const plansBySession: Record<string, Plan> = {}
         const plans: Record<string, Plan> = {}
 
@@ -207,11 +209,11 @@ export const usePlanStore = create<PlanStore>()(
       }
 
       try {
-        const row = await invokeMessagePackBinary<PlanRow | null>(
-          DB_PLANS_GET_BY_SESSION_MSGPACK_CHANNEL,
-          sessionId
+        const result = await window.api.workerRequest<{ success: boolean; plan?: PlanRow | null; error?: string | null }>(
+          'db/plans-get-by-session',
+          { sessionId }
         )
-        if (!row) {
+        if (!result.success || !result.plan) {
           set((state) => {
             const existing = state.plansBySession[sessionId]
             if (existing) {
@@ -226,7 +228,7 @@ export const usePlanStore = create<PlanStore>()(
           return undefined
         }
 
-        const plan = rowToPlan(row)
+        const plan = rowToPlan(result.plan)
         set((state) => {
           state.plansBySession[sessionId] = stripPlanPayload(plan)
           state.plans[plan.id] = plan
