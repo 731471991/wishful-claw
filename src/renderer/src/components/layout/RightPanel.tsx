@@ -58,6 +58,19 @@ export function RightPanel(): React.JSX.Element {
       ensureWorkbenchTab(panelSessionId)
     }
   }, [sessionToolCallCount, panelSessionId, ensureWorkbenchTab])
+
+  // Listen for compact tool card click -> open workbench tab
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      ensureWorkbenchTab(detail?.sessionId ?? panelSessionId)
+      setRightPanelOpen(true)
+      const workbenchTab = useUIStore.getState().rightPanelTabs.find((t: any) => t.kind === 'workbench')
+      if (workbenchTab) setRightPanelActiveTab(workbenchTab.id)
+    }
+    window.addEventListener('workbench:focus-tool', handler)
+    return () => window.removeEventListener('workbench:focus-tool', handler)
+  }, [panelSessionId, ensureWorkbenchTab, setRightPanelOpen, setRightPanelActiveTab])
   const workingFolder = useChatStore((state) => {
     const project = state.projects.find((p) => p.id === state.activeProjectId)
     return project?.workingFolder ?? null

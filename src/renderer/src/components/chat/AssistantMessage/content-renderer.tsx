@@ -238,7 +238,10 @@ export function ContentRenderer({
     sessionId,
     trackedChangeByToolUseId,
     mode: 'compact',
-    t
+    t,
+    onCompactClick: () => {
+      window.dispatchEvent(new CustomEvent('workbench:focus-tool', { detail: { sessionId } }))
+    }
   }
 
   const renderToolRun = (runId: string): React.JSX.Element | null => {

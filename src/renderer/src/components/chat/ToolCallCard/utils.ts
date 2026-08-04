@@ -69,6 +69,7 @@ export function areToolCallCardPropsEqual(prev: ToolCallCardProps, next: ToolCal
     prev.completedAt === next.completedAt &&
     prev.forceOpen === next.forceOpen &&
     prev.mode === next.mode &&
+    prev.onCompactClick === next.onCompactClick &&
     shallowEqualRecord(prev.input, next.input) &&
     toolResultContentEqual(prev.output, next.output)
   )

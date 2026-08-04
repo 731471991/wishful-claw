@@ -12,6 +12,7 @@ export interface ToolCallCardProps {
   completedAt?: number
   forceOpen?: boolean
   mode?: 'compact' | 'full'
+  onCompactClick?: () => void
 }
 
 export interface WidgetToolPayload {

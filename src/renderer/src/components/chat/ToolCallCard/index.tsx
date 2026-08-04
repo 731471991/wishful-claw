@@ -58,7 +58,8 @@ function ToolCallCardInner({
   startedAt,
   completedAt,
   forceOpen = false,
-  mode = 'full'
+  mode = 'full',
+  onCompactClick
 }: ToolCallCardProps): React.JSX.Element {
   const isCompact = mode === 'compact'
   const { t } = useTranslation('chat')
@@ -251,7 +252,7 @@ function ToolCallCardInner({
       )}
     >
       <button
-        onClick={toggleOpen}
+        onClick={isCompact && onCompactClick ? onCompactClick : toggleOpen}
         className={cn(
           useCompactToolHeader
             ? 'group w-full rounded-lg p-0 text-left transition-colors'
