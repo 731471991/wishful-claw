@@ -19,8 +19,6 @@ export interface TerminalTab {
   createdAt: number
   /** Project this tab belongs to (for filtering in the bottom dock) */
   projectId?: string | null
-  /** For ssh-agent tabs: the tool call execId used to correlate ssh:exec-output events */
-  execId?: string
   /** For ssh-agent tabs: the connection name for display */
   connectionName?: string
 }
@@ -35,12 +33,10 @@ interface TerminalStore {
   closeTab: (id: string) => Promise<void>
   setActiveTab: (id: string | null) => void
 
-  /** Create a read-only SSH agent observation tab */
-  createSshAgentTab: (execId: string, connectionName?: string, projectId?: string | null) => void
-  /** Mark an SSH agent tab as completed */
-  completeSshAgentTab: (execId: string, exitCode: number) => void
-  /** Check if a tab with the given execId exists */
-  hasSshAgentTab: (execId: string) => boolean
+  /** Create or reuse an SSH agent observation tab for a project */
+  ensureSshAgentTab: (projectId: string, connectionName?: string) => void
+  /** Check if an agent tab exists for a project */
+  hasSshAgentTabForProject: (projectId: string) => boolean
 
   _onOutput: (event: { id?: string; data?: string; seq?: number }) => void
   _onExit: (event: { id?: string; exitCode?: number; signal?: number }) => void
@@ -63,31 +59,25 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       get()._onExit(event)
     })
 
-    // Listen for SSH exec output to auto-create agent tabs
+    // Listen for SSH exec output — ensure a single agent tab per project
     ipcClient.on(IPC.SSH_EXEC_OUTPUT, (payload) => {
       const event = payload as { execId?: string; stream?: string; data?: string }
       if (!event.execId) return
 
-      console.log('[terminal-store] SSH_EXEC_OUTPUT received', {
-        execId: event.execId,
-        stream: event.stream,
-        dataLength: event.data?.length ?? 0,
-        dataPreview: event.data?.slice(0, 100)
-      })
+      // Look up the active project ID
+      const chatState = useChatStore.getState()
+      const activeSession = chatState.sessions.find(
+        (s: any) => s.id === chatState.activeSessionId
+      )
+      const projectId = activeSession?.projectId ?? null
 
-      // Auto-create a tab for this execId if it doesn't exist yet
-      if (!get().hasSshAgentTab(event.execId)) {
-        // Associate with the active project so it shows in the bottom dock
-        const chatState = useChatStore.getState()
-        const activeSession = chatState.sessions.find(
-          (s: any) => s.id === chatState.activeSessionId
-        )
-        const projectId = activeSession?.projectId ?? null
-        console.log('[terminal-store] Creating SSH agent tab', {
-          execId: event.execId,
-          projectId
-        })
-        get().createSshAgentTab(event.execId, undefined, projectId)
+      if (!projectId) return
+
+      // Create a tab for this project if one doesn't exist yet
+      // (reuses the same tab for all subsequent commands)
+      if (!get().hasSshAgentTabForProject(projectId)) {
+        const project = chatState.projects.find((p: any) => p.id === projectId)
+        get().ensureSshAgentTab(projectId, project?.name)
       }
     })
   },
@@ -161,21 +151,27 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   setActiveTab: (id) => set({ activeTabId: id }),
 
-  createSshAgentTab: (execId, connectionName, projectId) => {
-    // Don't create duplicate tabs for the same execId
-    if (get().hasSshAgentTab(execId)) return
+  ensureSshAgentTab: (projectId, connectionName) => {
+    // Reuse existing tab for this project — one agent tab per project
+    const existing = get().tabs.find(
+      (t) => t.kind === 'ssh-agent' && t.projectId === projectId
+    )
+    if (existing) {
+      // Make it active
+      set({ activeTabId: existing.id })
+      return
+    }
 
     const tab: TerminalTab = {
-      id: `ssh-agent-${execId}`,
+      id: `ssh-agent-${projectId}`,
       kind: 'ssh-agent',
-      title: connectionName ? `SSH: ${connectionName}` : 'Agent SSH',
+      title: connectionName ? `Agent: ${connectionName}` : 'Agent SSH',
       shell: 'ssh',
       cwd: '~',
       status: 'running',
       createdAt: Date.now(),
-      execId,
       connectionName,
-      projectId: projectId ?? null
+      projectId
     }
 
     set((state) => ({
@@ -183,30 +179,14 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       activeTabId: tab.id
     }))
 
-    // Auto-open the bottom terminal dock so user can see the output
-    const state = useUIStore.getState()
-    if (projectId) {
-      state.setBottomTerminalDockOpen(projectId, true)
-    }
+    // Auto-open the bottom terminal dock
+    useUIStore.getState().setBottomTerminalDockOpen(projectId, true)
   },
 
-  completeSshAgentTab: (execId, exitCode) => {
-    const tabId = `ssh-agent-${execId}`
-    set((state) => ({
-      tabs: state.tabs.map((tab) =>
-        tab.id === tabId
-          ? {
-              ...tab,
-              status: exitCode === 0 ? 'exited' : 'error',
-              exitCode
-            }
-          : tab
-      )
-    }))
-  },
-
-  hasSshAgentTab: (execId) => {
-    return get().tabs.some((t) => t.id === `ssh-agent-${execId}`)
+  hasSshAgentTabForProject: (projectId) => {
+    return get().tabs.some(
+      (t) => t.kind === 'ssh-agent' && t.projectId === projectId
+    )
   },
 
   _onOutput: (_event) => {
