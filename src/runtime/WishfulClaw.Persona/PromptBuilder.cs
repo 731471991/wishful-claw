@@ -252,8 +252,10 @@ Do not overstep your bounds or create unnecessary files.
 <ssh_capability>
 **Current project is a remote SSH project.**
 - SSH connection ID: `{sshConnectionId}`{cwdLine}
-- All Bash/Shell commands you execute will automatically run on the remote server via this SSH connection. You do NOT need to manually pass `sshConnectionId` in tool calls — the system routes them automatically.
-- The working folder above is a **remote path** on the SSH server, not a local path. Do not attempt to read it with local file tools.
+- **Bash/Shell** commands run on the remote server automatically — no need to pass `sshConnectionId` manually.
+- **Important: LS, Read, Write, Edit tools operate on your LOCAL filesystem, NOT the remote SSH server.** They cannot access remote files.
+- To work with files on the remote server, use Bash commands: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mkdir`, `rm`, `sed`, `echo > file`, etc.
+- The working folder `{workingFolder}` is a remote path. Use `cd {workingFolder} && <command>` or rely on the default cwd.
 - Use `SshListConnections` if you need to inspect available connections.
 - Real-time command output is displayed in the terminal panel for the user to observe.
 </ssh_capability>
@@ -267,7 +269,7 @@ Do not overstep your bounds or create unnecessary files.
             return $"""
 ## Project
 - Remote Working Folder: `{workingFolder}`
-This is a remote path on the SSH server. All Bash commands default to this directory. Use SSH file tools (not local file tools) to read or write files on the remote server.
+This is a remote path on the SSH server. All Bash commands default to this directory. Use Bash (not LS/Read/Write) for file operations on the remote server — local file tools cannot access it.
 """;
         }
 
