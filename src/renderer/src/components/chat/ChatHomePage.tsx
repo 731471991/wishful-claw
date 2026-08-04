@@ -117,10 +117,7 @@ export function ChatHomePage(): React.JSX.Element {
     selectedProject?.workingFolder ?? (mode === 'chat' ? undefined : workingFolder)
   const homeSshConnectionId =
     selectedProject?.sshConnectionId ?? (mode === 'chat' ? null : sshConnectionId)
-  const terminalProjectId = homeProject?.id ?? null
-  const terminalDockOpen = useUIStore((s) =>
-    terminalProjectId ? Boolean(s.bottomTerminalDockOpenByProjectId[terminalProjectId]) : false
-  )
+  const terminalDockOpen = false  // Home page has no session; dock state is session-level now
   const { sendMessage } = useChatActions()
   const [folderDialogOpen, setFolderDialogOpen] = React.useState(false)
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = React.useState(false)

@@ -188,8 +188,8 @@ export function BottomTerminalDock({
       setFullscreen(false)
       setBottomTerminalDockHeight(clampHeight(previousHeightRef.current))
     }
-    setBottomTerminalDockOpen(projectId, false)
-  }, [projectId, setBottomTerminalDockHeight, setBottomTerminalDockOpen, fullscreen])
+    if (sessionId) setBottomTerminalDockOpen(sessionId, false)
+  }, [sessionId, setBottomTerminalDockHeight, setBottomTerminalDockOpen, fullscreen])
 
   const handleCreate = useCallback((): void => {
     // For both local and SSH projects, create a local terminal.
@@ -205,10 +205,10 @@ export function BottomTerminalDock({
         (t) => t.kind === 'ssh-agent' ? t.sessionId === sessionId : t.projectId === projectId
       )
       if (remaining.length === 0) {
-        setBottomTerminalDockOpen(projectId, false)
+        if (sessionId) setBottomTerminalDockOpen(sessionId, false)
       }
     },
-    [closeTab, projectId, setBottomTerminalDockOpen]
+    [closeTab, sessionId, setBottomTerminalDockOpen]
   )
 
   const dockHeight = fullscreen

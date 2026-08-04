@@ -170,19 +170,19 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setAgentFilesChangeSource: (source: any) => set({ agentFilesChangeSource: source }),
 
   // Bottom terminal dock
-  bottomTerminalDockOpenByProjectId: {},
-  setBottomTerminalDockOpen: (projectId: any, open: any) =>
-    set((state: any) => ({ bottomTerminalDockOpenByProjectId: { ...state.bottomTerminalDockOpenByProjectId, [projectId]: open } })),
-  toggleBottomTerminalDock: (projectId: any) =>
+  bottomTerminalDockOpenBySessionId: {},
+  setBottomTerminalDockOpen: (sessionId: any, open: any) =>
+    set((state: any) => ({ bottomTerminalDockOpenBySessionId: { ...state.bottomTerminalDockOpenBySessionId, [sessionId]: open } })),
+  toggleBottomTerminalDock: (sessionId: any) =>
     set((state: any) => ({
-      bottomTerminalDockOpenByProjectId: {
-        ...state.bottomTerminalDockOpenByProjectId,
-        [projectId]: !state.bottomTerminalDockOpenByProjectId[projectId]
+      bottomTerminalDockOpenBySessionId: {
+        ...state.bottomTerminalDockOpenBySessionId,
+        [sessionId]: !state.bottomTerminalDockOpenBySessionId[sessionId]
       }
     })),
-  isBottomTerminalDockOpen: (projectId: any) => {
-    if (!projectId) return false
-    return !!get().bottomTerminalDockOpenByProjectId[projectId]
+  isBottomTerminalDockOpen: (sessionId: any) => {
+    if (!sessionId) return false
+    return !!get().bottomTerminalDockOpenBySessionId[sessionId]
   },
   bottomTerminalDockHeight: 220,
   setBottomTerminalDockHeight: (height: any) => set({ bottomTerminalDockHeight: Math.min(560, Math.max(160, height)) }),

@@ -136,10 +136,10 @@ export interface UIStore {
   setAgentFilesChangeSource: (source: AgentFilesChangeSource) => void
 
   // Bottom terminal dock
-  bottomTerminalDockOpenByProjectId: Record<string, boolean>
-  setBottomTerminalDockOpen: (projectId: string, open: boolean) => void
-  toggleBottomTerminalDock: (projectId: string) => void
-  isBottomTerminalDockOpen: (projectId?: string | null) => boolean
+  bottomTerminalDockOpenBySessionId: Record<string, boolean>
+  setBottomTerminalDockOpen: (sessionId: string, open: boolean) => void
+  toggleBottomTerminalDock: (sessionId: string) => void
+  isBottomTerminalDockOpen: (sessionId?: string | null) => boolean
   bottomTerminalDockHeight: number
   setBottomTerminalDockHeight: (height: number) => void
 

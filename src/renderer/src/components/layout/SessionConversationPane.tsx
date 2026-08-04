@@ -54,7 +54,7 @@ export function SessionConversationPane({
 
   // Bottom terminal dock state
   const bottomTerminalDockOpen = useUIStore((s) =>
-    projectId ? Boolean(s.bottomTerminalDockOpenByProjectId[projectId]) : false
+    resolvedSessionId ? Boolean(s.bottomTerminalDockOpenBySessionId[resolvedSessionId]) : false
   )
   const toggleBottomTerminalDock = useUIStore((s) => s.toggleBottomTerminalDock)
   const initTerminal = useTerminalStore((s) => s.init)
@@ -95,10 +95,10 @@ export function SessionConversationPane({
   }, [resolvedSessionId, session, renameSession, t])
 
   const handleToggleTerminal = useCallback((): void => {
-    if (projectId) {
-      toggleBottomTerminalDock(projectId)
+    if (resolvedSessionId) {
+      toggleBottomTerminalDock(resolvedSessionId)
     }
-  }, [projectId, toggleBottomTerminalDock])
+  }, [resolvedSessionId, toggleBottomTerminalDock])
 
   if (!session) {
     return (
@@ -195,7 +195,7 @@ export function SessionConversationPane({
         />
 
         {/* Bottom terminal dock - keep mounted, hide via CSS to preserve state */}
-        {projectId && (
+        {resolvedSessionId && projectId && (
           <div className={bottomTerminalDockOpen ? "shrink-0 border-t" : "hidden"}>
             <BottomTerminalDock
               projectId={projectId}

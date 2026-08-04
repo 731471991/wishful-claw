@@ -23,13 +23,10 @@ export function TitleBar({
   const ensureFilesTab = useUIStore((s) => s.ensureFilesTab)
   const toggleBottomTerminalDock = useUIStore((s) => s.toggleBottomTerminalDock)
 
-  // Get current project ID and terminal dock state
-  const currentProjectId = useChatStore((s) => {
-    const session = s.sessions.find((item) => item.id === s.activeSessionId)
-    return session?.projectId ?? null
-  })
+  // Get current session ID and terminal dock state
+  const currentSessionId = useChatStore((s) => s.activeSessionId)
   const bottomTerminalDockOpen = useUIStore((s) =>
-    currentProjectId ? Boolean(s.bottomTerminalDockOpenByProjectId[currentProjectId]) : false
+    currentSessionId ? Boolean(s.bottomTerminalDockOpenBySessionId[currentSessionId]) : false
   )
 
   // Only show file/terminal buttons in project-level sessions (has workingFolder)
@@ -82,7 +79,7 @@ export function TitleBar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => currentProjectId && toggleBottomTerminalDock(currentProjectId)}
+                  onClick={() => currentSessionId && toggleBottomTerminalDock(currentSessionId)}
                   className={`titlebar-no-drag flex size-7 items-center justify-center rounded-md transition-colors ${bottomTerminalDockOpen ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
                 >
                   <SquareTerminal className="size-4" />
