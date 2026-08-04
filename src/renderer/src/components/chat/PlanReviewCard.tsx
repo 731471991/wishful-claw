@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@renderer/components/ui/button'
 import { Badge } from '@renderer/components/ui/badge'
 import { useChatStore } from '@renderer/stores/chat-store'
-import { useAgentStore } from '@renderer/stores/agent-store'
 import { usePlanStore, type Plan, type PlanStatus } from '@renderer/stores/plan-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { ToolCallStatus } from '@renderer/lib/agent/types'
@@ -25,7 +24,8 @@ import {
   decodeStructuredToolResult,
   isStructuredToolErrorText
 } from '@renderer/lib/tools/tool-result-format'
-import { sendImplementPlan, sendImplementPlanInNewSession } from '@renderer/hooks/use-chat-actions'
+import { sendImplementPlanInNewSession } from '@renderer/hooks/use-chat-actions'
+import { resolvePlanReview } from '@renderer/lib/tools/plan-native-ui'
 import { cn } from '@renderer/lib/utils'
 import {
   MARKDOWN_REHYPE_PLUGINS,
@@ -167,9 +167,6 @@ export function PlanReviewCard({
   const parsedPayload = React.useMemo(() => parsePlanReviewPayload(output), [output])
   const outputText = React.useMemo(() => outputAsText(output), [output])
   const activeSessionId = useChatStore((s) => s.activeSessionId)
-  const hasStreamingMessage = useChatStore((s) =>
-    activeSessionId ? Boolean(s.streamingMessages[activeSessionId]) : false
-  )
   const fallbackPlan = usePlanStore((s) =>
     parsedPayload?.planId
       ? undefined
@@ -184,7 +181,6 @@ export function PlanReviewCard({
   const executionSession = useChatStore((s) =>
     payload?.planId ? s.getLatestSessionByPlanId?.(payload.planId) ?? null : undefined
   )
-  const isRunning = useAgentStore((s) => s.isSessionActive(activeSessionId)) || hasStreamingMessage
 
   const [copied, setCopied] = React.useState(false)
   const contentRef = React.useRef<HTMLDivElement | null>(null)
@@ -365,15 +361,10 @@ export function PlanReviewCard({
               size="sm"
               className="h-8 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
               onClick={() => {
-                void sendImplementPlan(sessionId ?? activeSessionId ?? '', payload.planId)
+                resolvePlanReview(payload.planId, { approved: true })
               }}
-              disabled={isRunning}
             >
-              {isRunning ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Play className="size-3.5" />
-              )}
+              <Play className="size-3.5" />
               {t('planReview.implement', { defaultValue: 'Implement this plan' })}
             </Button>
             <Button
@@ -381,9 +372,20 @@ export function PlanReviewCard({
               size="sm"
               className="h-8 gap-1.5"
               onClick={() => {
-                void sendImplementPlanInNewSession(null, payload.planId)
+                resolvePlanReview(payload.planId, { approved: false, feedback: 'User requested revisions' })
               }}
-              disabled={isRunning}
+            >
+              <MessageSquarePlus className="size-3.5" />
+              {t('planReview.requestRevisions', { defaultValue: 'Request revisions' })}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => {
+                void sendImplementPlanInNewSession(null, payload.planId)
+                resolvePlanReview(payload.planId, { approved: true, newSession: true })
+              }}
             >
               <MessageSquarePlus className="size-3.5" />
               {t('planReview.executeInNewSession', { defaultValue: 'Execute in new session' })}

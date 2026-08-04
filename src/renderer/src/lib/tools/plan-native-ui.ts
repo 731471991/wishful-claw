@@ -59,6 +59,43 @@ function coerceNativePlan(value: unknown): Plan | null {
   }
 }
 
+// -- Plan review reverse request (like ask-user/request) --
+// The agent calls ExitPlanMode, which sends a plan/review-request reverse
+// request to the renderer. The renderer shows the PlanReviewCard and waits
+// for the user to approve or reject. The response goes back to the agent.
+
+export interface PlanReviewResponse {
+  approved: boolean
+  feedback?: string
+  newSession?: boolean
+}
+
+const planReviewResolvers = new Map<string, (payload: PlanReviewResponse) => void>()
+
+export function resolvePlanReview(planId: string, payload: PlanReviewResponse): void {
+  const resolve = planReviewResolvers.get(planId)
+  if (resolve) {
+    resolve(payload)
+    planReviewResolvers.delete(planId)
+  }
+}
+
+export async function handleNativePlanReviewRequest(params: unknown): Promise<PlanReviewResponse> {
+  const record = isRecord(params) ? params : {}
+  const planId = coerceString(record.planId)
+  if (!planId) {
+    return { approved: false, feedback: 'Invalid plan review request: missing planId' }
+  }
+
+  return await new Promise<PlanReviewResponse>((resolve) => {
+    const previous = planReviewResolvers.get(planId)
+    if (previous) {
+      previous({ approved: false, feedback: 'Superseded by new review request' })
+    }
+    planReviewResolvers.set(planId, resolve)
+  })
+}
+
 export async function handleNativePlanUiUpdate(
   params: unknown
 ): Promise<NativePlanUiUpdateResult> {

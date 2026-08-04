@@ -236,16 +236,76 @@ public static class AgentRuntimePlanExecutor
             await NotifyPlanUiAsync("exit", updatedPlan, content, parameters, context, cancellationToken);
         }
 
-        return EncodeJsonObject(writer =>
+        // Send reverse request to renderer and wait for user review (like AskUserQuestion)
+        var reviewRequest = CreateJsonElement(writer =>
         {
-            writer.WriteString("status", "awaiting_review");
-            writer.WriteBoolean("awaiting_user_review", true);
-            writer.WriteString("plan_id", plan.Id);
-            writer.WriteString("plan_file_path", plan.FilePath);
+            writer.WriteString("planId", plan.Id);
+            writer.WriteString("sessionId", sessionId);
             writer.WriteString("title", title);
+            writer.WriteString("filePath", plan.FilePath);
             writer.WriteString("content", content);
-            writer.WriteString("message", "Plan finalized and ready for user review. STOP and wait for user approval. Do NOT start implementing until the user approves the plan. Once approved, use the Task tool with background=false to dispatch foreground sub-agents for each plan step — do NOT implement steps yourself. After each sub-agent completes, call UpdatePlanStep to mark the step status, then dispatch the next step's sub-agent. If a step fails, update its status and adjust the remaining plan before continuing.");
         });
+
+        var reviewResponse = await AgentRuntimeReverseRequests.RequestAsync(
+            context,
+            "plan/review-request",
+            reviewRequest,
+            cancellationToken);
+
+        // Parse user response
+        bool approved = false;
+        string feedback = "";
+        bool newSession = false;
+        if (reviewResponse.ValueKind == JsonValueKind.Object)
+        {
+            if (reviewResponse.TryGetProperty("approved", out var approvedProp))
+                approved = approvedProp.ValueKind == JsonValueKind.True;
+            if (reviewResponse.TryGetProperty("feedback", out var feedbackProp) && feedbackProp.ValueKind == JsonValueKind.String)
+                feedback = feedbackProp.GetString() ?? "";
+            if (reviewResponse.TryGetProperty("newSession", out var newSessionProp))
+                newSession = newSessionProp.ValueKind == JsonValueKind.True;
+        }
+
+        if (approved)
+        {
+            // Update plan status to approved
+            UpdatePlanForReview(parameters, plan.Id, title, Now());
+
+            if (newSession)
+            {
+                return EncodeJsonObject(writer =>
+                {
+                    writer.WriteString("status", "approved");
+                    writer.WriteString("plan_id", plan.Id);
+                    writer.WriteString("plan_file_path", plan.FilePath);
+                    writer.WriteString("message", "Plan approved and will be executed in a new session. No further action needed in this session.");
+                });
+            }
+
+            return EncodeJsonObject(writer =>
+            {
+                writer.WriteString("status", "approved");
+                writer.WriteString("plan_id", plan.Id);
+                writer.WriteString("plan_file_path", plan.FilePath);
+                writer.WriteString("title", title);
+                writer.WriteString("content", content);
+                writer.WriteString("message", "Plan approved by user. The plan file is at: " + plan.FilePath + ". Execute it step by step using the Task tool with background=false to dispatch foreground sub-agents for each plan step — do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type \"custom\" and background=false to dispatch a foreground work sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.");
+            });
+        }
+        else
+        {
+            // Plan rejected — update status and let agent revise
+            UpdatePlanForReview(parameters, plan.Id, title + " (rejected)", Now());
+
+            return EncodeJsonObject(writer =>
+            {
+                writer.WriteString("status", "rejected");
+                writer.WriteString("plan_id", plan.Id);
+                writer.WriteString("plan_file_path", plan.FilePath);
+                writer.WriteString("feedback", feedback);
+                writer.WriteString("message", "Plan rejected by user. Feedback: " + feedback + ". Revise the plan in the plan file based on the feedback, then call ExitPlanMode again.");
+            });
+        }
     }
 
     // ── UpdatePlanStep ──
