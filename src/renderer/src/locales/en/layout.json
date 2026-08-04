@@ -442,5 +442,23 @@
     "unableToRead": "(Unable to read file)",
     "empty": "Empty folder",
     "stats": "{{folders}} folders · {{files}} files"
+  },
+  "terminal": {
+    "noSessions": "No terminal sessions",
+    "newTerminal": "New terminal",
+    "collapse": "Collapse",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "exited": "Terminal exited",
+    "ended": "Terminal ended",
+    "selectToStart": "Select a terminal to get started",
+    "copy": "Copy",
+    "paste": "Paste",
+    "clear": "Clear",
+    "selectAll": "Select All",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "pasteFailed": "Paste failed",
+    "agentSshSession": "Agent SSH Session"
   }
 }

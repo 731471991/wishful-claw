@@ -93,18 +93,19 @@ export function BottomTerminalDock({
     : sessionTabs[0]?.id ?? null
   const activeTab = sessionTabs.find((t) => t.id === effectiveActiveTabId) ?? null
 
-  // Auto-create a terminal when dock opens and there are no project tabs
+  // Auto-create a terminal when dock opens and there are no session tabs
   useEffect(() => {
     if (sessionTabs.length === 0 && !hasAutoCreatedRef.current) {
       hasAutoCreatedRef.current = true
       void handleAutoCreateTerminal()
+      return
     }
     // Reset auto-created flag when tabs become empty again (e.g., after closing all)
     if (sessionTabs.length === 0) {
       hasAutoCreatedRef.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionTabs.length, projectId])
+  }, [sessionTabs.length])
 
   const handleAutoCreateTerminal = useCallback(async (): Promise<void> => {
     if (sshConnectionId) {
@@ -116,14 +117,13 @@ export function BottomTerminalDock({
     }
 
     if (workingFolder) {
-      console.log('[BottomTerminalDock] Auto-creating local terminal', { workingFolder, projectId })
-      await createTab(workingFolder ?? undefined, projectId, projectName || 'Terminal')
+      await createTab(workingFolder ?? undefined, projectId, projectName || 'Terminal', sessionId)
       return
     }
 
     // Fallback: create terminal with no specific cwd
-    await createTab(undefined, projectId, 'Terminal')
-  }, [sshConnectionId, workingFolder, projectId, projectName, createTab])
+    await createTab(undefined, projectId, 'Terminal', sessionId)
+  }, [sshConnectionId, workingFolder, projectId, projectName, sessionId, createTab])
 
   // Resize handlers
   useEffect(() => {
@@ -309,7 +309,7 @@ export function BottomTerminalDock({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              {fullscreen ? t('terminal.exitFullscreen', { defaultValue: 'Exit fullscreen' }) : t('terminal.fullscreen', { defaultValue: 'Fullscreen' })}
             </TooltipContent>
           </Tooltip>
           <Tooltip>

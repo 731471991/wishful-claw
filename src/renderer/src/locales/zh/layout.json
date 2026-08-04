@@ -442,5 +442,23 @@
     "empty": "空文件夹",
     "searchHint": "点击可预览，或使用添加到对话插入文件引用",
     "stats": "{{folders}} 个文件夹 · {{files}} 个文件"
+  },
+  "terminal": {
+    "noSessions": "没有终端会话",
+    "newTerminal": "新建终端",
+    "collapse": "收起",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "exited": "终端已退出",
+    "ended": "终端已结束",
+    "selectToStart": "选择一个终端开始",
+    "copy": "复制",
+    "paste": "粘贴",
+    "clear": "清屏",
+    "selectAll": "全选",
+    "copied": "已复制",
+    "copyFailed": "复制失败",
+    "pasteFailed": "粘贴失败",
+    "agentSshSession": "Agent SSH 会话"
   }
 }
