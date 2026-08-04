@@ -203,6 +203,13 @@ public static class ToolDispatchRouter
                 toolOutput = await AgentRuntimePlanExecutor.ExecuteAsync(
                 toolCall, state.Parameters, state.RunId, context, state.CancellationToken);
                 isToolError = IsJsonError(toolOutput);
+
+                // ExitPlanMode returns awaiting_review — stop the agent loop
+                // so the user can review the plan before the agent continues.
+                if (toolCall.Name == "ExitPlanMode" && toolOutput.Contains("awaiting_review"))
+                {
+                    state.RequestStop("awaiting_review");
+                }
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)

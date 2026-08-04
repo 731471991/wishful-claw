@@ -212,8 +212,24 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   // Plan mode
   planMode: false,
-  enterPlanMode: () => set({ planMode: true }),
-  exitPlanMode: () => set({ planMode: false }),
+  enterPlanMode: (sessionId?: string | null) => {
+    set((state: any) => {
+      if (sessionId) {
+        return { planModesBySession: { ...state.planModesBySession, [sessionId]: true } }
+      }
+      return { planMode: true }
+    })
+  },
+  exitPlanMode: (sessionId?: string | null) => {
+    set((state: any) => {
+      if (sessionId) {
+        const next = { ...state.planModesBySession }
+        delete next[sessionId]
+        return { planModesBySession: next }
+      }
+      return { planMode: false }
+    })
+  },
   planModesBySession: {},
   isPlanModeEnabled: (sessionId: any) => {
     if (!sessionId) return get().planMode
