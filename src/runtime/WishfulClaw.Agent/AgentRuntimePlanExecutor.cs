@@ -262,6 +262,7 @@ public static class AgentRuntimePlanExecutor
         bool approved = false;
         string feedback = "";
         bool newSession = false;
+        bool cancelled = false;
         if (reviewResponse.ValueKind == JsonValueKind.Object)
         {
             if (reviewResponse.TryGetProperty("approved", out var approvedProp))
@@ -270,6 +271,23 @@ public static class AgentRuntimePlanExecutor
                 feedback = feedbackProp.GetString() ?? "";
             if (reviewResponse.TryGetProperty("newSession", out var newSessionProp))
                 newSession = newSessionProp.ValueKind == JsonValueKind.True;
+            if (reviewResponse.TryGetProperty("cancelled", out var cancelledProp))
+                cancelled = cancelledProp.ValueKind == JsonValueKind.True;
+        }
+
+        if (cancelled)
+        {
+            UpdatePlanStatus(parameters, plan.Id, title, "cancelled", Now());
+            var cancelState = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
+            var cancelSteps = cancelState?.Steps ?? [];
+            await WriteStateFileAsync(plan.FilePath!, plan.Id, title, "cancelled", cancelSteps, cancellationToken);
+
+            return EncodeJsonObject(writer =>
+            {
+                writer.WriteString("status", "cancelled");
+                writer.WriteString("plan_id", plan.Id);
+                writer.WriteString("message", "Plan mode cancelled by user. No further action needed.");
+            });
         }
 
         if (approved)

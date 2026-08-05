@@ -68,6 +68,7 @@ export interface PlanReviewResponse {
   approved: boolean
   feedback?: string
   newSession?: boolean
+  cancelled?: boolean
 }
 
 const planReviewResolvers = new Map<string, (payload: PlanReviewResponse) => void>()
@@ -91,6 +92,19 @@ export function resolvePlanReview(planId: string, payload: PlanReviewResponse): 
   if (resolve) {
     resolve(payload)
     planReviewResolvers.delete(planId)
+  }
+}
+
+export function cancelPlanReview(sessionId: string): void {
+  // Called when user clicks "Exit Plan Mode" on the banner
+  // Resolves any pending plan review for this session as cancelled
+  const planStore = usePlanStore.getState()
+  const plan = planStore.getPlanBySession(sessionId)
+  if (!plan) return
+  const resolve = planReviewResolvers.get(plan.id)
+  if (resolve) {
+    resolve({ approved: false, cancelled: true, feedback: 'User exited plan mode' })
+    planReviewResolvers.delete(plan.id)
   }
 }
 

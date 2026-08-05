@@ -3,6 +3,7 @@ import { Button } from '@renderer/components/ui/button'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
+import { cancelPlanReview } from '@renderer/lib/tools/plan-native-ui'
 
 interface ComposerBannersProps {
   hasApiKey: boolean
@@ -76,7 +77,10 @@ export function ComposerBanners({
             variant="ghost"
             size="sm"
             className="h-5 px-1.5 text-[10px] text-violet-600 dark:text-violet-400 hover:bg-violet-500/10"
-            onClick={() => useUIStore.getState().exitPlanMode(draftSessionId)}
+            onClick={() => {
+              cancelPlanReview(draftSessionId ?? "")
+              useUIStore.getState().exitPlanMode(draftSessionId)
+            }}
           >
             {t('input.exitPlanMode', { defaultValue: 'Exit Plan Mode' })}
           </Button>
