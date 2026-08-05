@@ -61,8 +61,10 @@ export function CollabModeSwitcher({
     sessionId ? (s.collabModesBySession[sessionId] ?? 'normal') : 'normal'
   )
   const derivedMode = modeOverride ?? storeMode
-  // Local mode: initially synced with derivedMode, then independent after user selection
+  // Local mode: initially synced with derivedMode, reset on session switch
   const [localMode, setLocalMode] = React.useState<CollabMode>(derivedMode)
+  // Reset localMode when switching to a different session (re-hydrate from store)
+  React.useEffect(() => { setLocalMode(derivedMode) }, [sessionId])
   const mode = localMode
   const setCollabMode = useUIStore((s) => s.setCollabMode)
   const options = getModeOptions(t)
