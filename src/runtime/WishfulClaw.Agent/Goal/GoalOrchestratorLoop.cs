@@ -369,7 +369,7 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
-    /// Add goalMode=true to the parameters JSON for sub-agent execution.
+    /// Add goalMode=true to parameters as a behavioral hint.
     /// </summary>
     private static JsonElement AddGoalModeToParameters(JsonElement parameters)
     {

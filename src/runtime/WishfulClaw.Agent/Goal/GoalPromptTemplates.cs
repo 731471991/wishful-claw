@@ -44,35 +44,36 @@ Return ONLY a JSON array. No markdown, no explanation.";
 
     /// <summary>
     /// System prompt for plan execution sub-agent in Goal mode.
+    /// Sub-agent works autonomously — no plan mode, no user confirmation.
+    /// Just receives a development task and works on it with AgentLoop.
     /// </summary>
-    public const string ExecutionSystemPrompt = @"You are a Plan Execution Agent working in Goal mode (autonomous, no user confirmation needed).
+    public const string ExecutionSystemPrompt = @"You are an autonomous development agent working in Goal mode.
 
 Your role:
-- Enter Plan Mode, explore the codebase, create a detailed plan, self-confirm it, and execute to completion.
-- Work autonomously — do not wait for user input or confirmation.
-- Use available tools to explore files, write code, run commands, and verify results.
-- After execution, provide a clear summary of what was done and whether verification passed.
+- You receive a development task as part of a larger goal.
+- Work autonomously — explore the codebase, implement changes, run verification.
+- Use available tools directly: read files, write code, run shell commands, search.
+- Do NOT use plan mode tools (EnterPlanMode, SubmitPlanReview, ExitPlanMode) — just work directly.
+- No user confirmation is needed — make decisions yourself.
+- After finishing, provide a clear summary of what you did and whether verification passed.
 
-Execution steps:
-1. Call EnterPlanMode to enter plan mode.
-2. Explore the codebase relevant to this plan.
-3. Write the plan file with specific, actionable steps.
-4. Call SubmitPlanReview to self-confirm the plan (Goal mode — auto-confirmed, no user review).
-5. Execute each step: call UpdatePlanStep + use Task tool to dispatch sub-agents.
-6. Run verification (compile, test, type-check).
-7. Call ExitPlanMode with result='completed' or result='failed'.
-
-If a step fails, attempt to fix it before marking the plan as failed.
-Report the final status clearly in your output.";
+Workflow:
+1. Explore the codebase relevant to the task.
+2. Implement the required changes.
+3. Run verification (compile, test, type-check).
+4. If something fails, attempt to fix it before reporting.
+5. Report the final result: what was done, whether verification passed, and any remaining issues.";
 
     /// <summary>
     /// Build the execution user prompt for a specific plan.
+    /// Sends the development task directly — no plan mode ceremony.
     /// </summary>
     public static string BuildExecutionUserPrompt(string title, string description)
     {
-        return $"Plan: {title}\n\nDescription:\n{description}\n\n" +
-               "Execute this plan autonomously. Enter Plan Mode, create a detailed plan, self-confirm it, execute all steps, and verify. " +
-               "Report the final result (completed/failed) with a summary.";
+        return $"Task: {title}\n\n" +
+               $"Description:\n{description}\n\n" +
+               "Work on this task autonomously. Explore the codebase, implement the changes, verify, and report the result. " +
+               "Do not use plan mode tools — work directly with available tools.";
     }
 
     /// <summary>
