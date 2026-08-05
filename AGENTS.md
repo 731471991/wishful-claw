@@ -9,9 +9,10 @@ Wishful Claw 是一个 Agent 编程软件，参考四个开源项目：
 - **OpenCowork** —— Agent Loop、工具链、Provider、流式协议。以该项目为基底迁移代码，经过拆分、适配和命名空间重组后纳入 WishfulClaw 架构。
 - **KodaClaw** —— 记忆系统、人格系统、PromptBuilder。借鉴设计思路，代码自行实现。
 - **OpenClaw.net** —— 记忆主动回忆、记忆工具、上下文预算。借鉴设计思路，代码自行实现。
-- **DeepSeek-Reasonix** —— 缓存命中率统计、工具注册发现。借鉴设计思路，代码自行实现。
+- **DeepSeek-Reasonix** —— 缓存命中率统计、工具注册发现、工具注入体系（ToolDiscovery/InjectionStrategy）。借鉴设计思路，代码自行实现。
+- **OpenAI Codex** —— Goal 模式状态机（plan → execute → verify → continue/adjust）、自检评估机制。借鉴设计思路，代码自行实现。
 
-OpenCowork 的代码经迁移和重构后已成为 WishfulClaw 的一部分；其余三个项目主要借鉴设计思路和架构理念，代码由 WishfulClaw 自行实现。
+OpenCowork 的代码经迁移和重构后已成为 WishfulClaw 的一部分；其余四个项目主要借鉴设计思路和架构理念，代码由 WishfulClaw 自行实现。
 
 ## 技术栈
 
@@ -191,7 +192,8 @@ Worker
 | OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链、Provider、流式协议（迁移+重构） |
 | KodaClaw | `D:\claw\koda-claw` | 记忆系统、人格系统、PromptBuilder（借鉴思路） |
 | OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆、记忆工具、上下文预算（借鉴思路） |
-| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现（借鉴思路） |
+| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现、工具注入体系（借鉴思路） |
+| OpenAI Codex | — | Goal 模式状态机、自检评估机制（借鉴思路，参考开源仓库 `github.com/openai/codex`） |
 
 ## 开发约定
 
