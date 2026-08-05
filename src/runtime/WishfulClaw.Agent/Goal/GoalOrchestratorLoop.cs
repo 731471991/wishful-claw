@@ -151,6 +151,7 @@ public static partial class GoalOrchestrator
                 // Plan completed successfully
                 plan.Status = "completed";
                 plan.ResultSummary = evaluation.Reasoning ?? result.Summary;
+                GoalPlanTracker.FinishPlan(goal.WorkingFolder, goal.GoalId, plan);
                 await EmitGoalEventAsync(goal, GoalEventType.PlanCompleted,
                     $"Plan {planIndex + 1} completed: {plan.Title}. {plan.ResultSummary}", context);
                 WriteGoalState(goal);
@@ -162,6 +163,7 @@ public static partial class GoalOrchestrator
             {
                 plan.Status = "failed";
                 plan.ResultSummary = $"Failed after {maxRetries} retries: {evaluation.Reasoning}";
+                GoalPlanTracker.FinishPlan(goal.WorkingFolder, goal.GoalId, plan);
                 await EmitGoalEventAsync(goal, GoalEventType.PlanFailed,
                     $"Plan {planIndex + 1} failed after {maxRetries} retries: {evaluation.Reasoning}", context);
                 WriteGoalState(goal);
@@ -177,11 +179,13 @@ public static partial class GoalOrchestrator
                 plan.PlanId = $"plan-{Guid.NewGuid():N}".Substring(0, 16);
                 await EmitGoalEventAsync(goal, GoalEventType.PlanAdjusted,
                     $"Plan {planIndex + 1} adjusted (retry {plan.RetryCount}): {evaluation.Reasoning}", context);
+                GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"Adjusted (retry {plan.RetryCount}): {evaluation.Reasoning}");
             }
             else
             {
                 await EmitGoalEventAsync(goal, GoalEventType.PlanRetried,
                     $"Plan {planIndex + 1} retry {plan.RetryCount}: {evaluation.Reasoning}", context);
+            GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"Retry {plan.RetryCount}: {evaluation.Reasoning}");
             }
 
             WriteGoalState(goal);
@@ -217,6 +221,7 @@ public static partial class GoalOrchestrator
             {
                 await EmitGoalEventAsync(goal, GoalEventType.BackoffStarted,
                     GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds), context);
+            GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"429 backoff: {GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds)}");
                 return BackoffOutcome.Timeout;
             }
 
@@ -301,6 +306,7 @@ public static partial class GoalOrchestrator
         await EmitGoalEventAsync(goal, GoalEventType.PlanStarted,
             $"Plan started: {plan.Title}", context);
 
+        GoalPlanTracker.StartPlan(goal.WorkingFolder, goal.GoalId, plan);
         var prompt = BuildPlanExecutionPrompt(plan.Title, plan.Description);
         var input = CreateTaskInput(prompt, $"Plan: {plan.Title}");
         var toolCallId = $"goal-plan-{plan.PlanId}-{Guid.NewGuid():N}";

@@ -66,7 +66,7 @@ Workflow:
 
     /// <summary>
     /// Build the execution user prompt for a specific plan.
-    /// Sends the development task directly — no plan mode ceremony.
+    /// Sends the development task directly. Orchestrator handles plan file archive. — no plan mode ceremony.
     /// </summary>
     public static string BuildExecutionUserPrompt(string title, string description)
     {
