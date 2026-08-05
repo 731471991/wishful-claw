@@ -218,7 +218,8 @@
     "approvedHint": "该计划已批准。",
     "download": "下载计划",
     "copy": "复制计划",
-    "expand": "在右侧面板展开"
+    "expand": "在右侧面板展开",
+    "cancel": "取消"
   },
   "guide": {
     "title": "对话页新人引导",

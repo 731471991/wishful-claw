@@ -64,6 +64,16 @@ export function ExecutionProcessBlock({
     ? (activeDetail ?? undefined)
     : (summary ?? undefined)
 
+  // During streaming: no fold header, no border -- just show content directly
+  if (isStreaming) {
+    return (
+      <div className="space-y-2">
+        {children}
+      </div>
+    )
+  }
+
+  // After streaming: collapsible block with summary header and border
   return (
     <div className="space-y-1">
       <button

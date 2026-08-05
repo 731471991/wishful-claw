@@ -195,11 +195,23 @@ public static class AgentRuntimePlanExecutor
         // (Previously returned early if status was already "awaiting_review",
         //  but that prevented re-submission after the user rejected the plan.)
 
-        // Read plan file content
-        string content;
+        // Read plan file content (with retry — file may still be locked by a recent Write)
+        string? content = null;
         try
         {
-            content = await File.ReadAllTextAsync(plan.FilePath!, cancellationToken);
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    content = await File.ReadAllTextAsync(plan.FilePath!, cancellationToken);
+                    break;
+                }
+                catch (IOException) when (attempt < 2 && !cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(100 * (attempt + 1), cancellationToken);
+                }
+            }
+            content ??= await File.ReadAllTextAsync(plan.FilePath!, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
