@@ -8,7 +8,6 @@ import {
   Download,
   Loader2,
   Maximize2,
-  MessageSquarePlus,
   Play,
   TriangleAlert
 } from 'lucide-react'
@@ -24,7 +23,6 @@ import {
   decodeStructuredToolResult,
   isStructuredToolErrorText
 } from '@renderer/lib/tools/tool-result-format'
-import { sendImplementPlanInNewSession } from '@renderer/hooks/use-chat-actions'
 import { resolvePlanReview } from '@renderer/lib/tools/plan-native-ui'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -372,23 +370,11 @@ export function PlanReviewCard({
               size="sm"
               className="h-8 gap-1.5"
               onClick={() => {
-                resolvePlanReview(payload.planId, { approved: false, feedback: 'User requested revisions' })
+                resolvePlanReview(payload.planId, { approved: false, feedback: 'User wants to discuss and adjust the plan' })
               }}
             >
-              <MessageSquarePlus className="size-3.5" />
-              {t('planReview.requestRevisions', { defaultValue: 'Request revisions' })}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => {
-                void sendImplementPlanInNewSession(null, payload.planId)
-                resolvePlanReview(payload.planId, { approved: true, newSession: true })
-              }}
-            >
-              <MessageSquarePlus className="size-3.5" />
-              {t('planReview.executeInNewSession', { defaultValue: 'Execute in new session' })}
+              <ClipboardList className="size-3.5" />
+              {t('planReview.requestRevisions', { defaultValue: 'Adjust plan' })}
             </Button>
           </>
         )}
