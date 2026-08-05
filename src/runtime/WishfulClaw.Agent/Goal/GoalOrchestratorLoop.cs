@@ -311,12 +311,10 @@ public static partial class GoalOrchestrator
         var input = CreateTaskInput(prompt, $"Plan: {plan.Title}");
         var toolCallId = $"goal-plan-{plan.PlanId}-{Guid.NewGuid():N}";
 
-        var goalParameters = AddGoalModeToParameters(parameters);
-
         try
         {
             var result = await SubAgentExecutor.ExecuteAsync(
-                input, goalParameters, parentState, context, toolCallId);
+                input, parameters, parentState, context, toolCallId);
 
             stopwatch.Stop();
             var output = result.Content?.Trim() ?? string.Empty;
@@ -374,19 +372,6 @@ public static partial class GoalOrchestrator
         }
     }
 
-    /// <summary>
-    /// Add goalMode=true to parameters as a behavioral hint.
-    /// </summary>
-    private static JsonElement AddGoalModeToParameters(JsonElement parameters)
-    {
-        var json = parameters.GetRawText();
-        if (json.StartsWith("{"))
-        {
-            json = "{\"goalMode\":true," + json.Substring(1);
-        }
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.Clone();
-    }
 
     // ─── State Persistence ───
 
