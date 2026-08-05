@@ -235,11 +235,11 @@ public static class AgentRuntimePlanExecutor
 
         RunStates[runId] = new PlanRunState(false, plan.FilePath);
 
-        // Notify frontend with plan content
+        // Notify frontend — plan is under review, do NOT exit plan mode yet
         var updatedPlan = LoadPlanById(parameters, plan.Id);
         if (updatedPlan != null)
         {
-            await NotifyPlanUiAsync("exit", updatedPlan, content, parameters, context, cancellationToken);
+            await NotifyPlanUiAsync("review", updatedPlan, content, parameters, context, cancellationToken);
         }
 
         // Send reverse request to renderer and wait for user review (like AskUserQuestion)

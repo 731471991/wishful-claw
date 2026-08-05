@@ -77,8 +77,14 @@ export function resolvePlanReview(planId: string, payload: PlanReviewResponse): 
   const planStore = usePlanStore.getState()
   if (payload.approved) {
     planStore.approvePlan(planId)
+    // Exit plan mode UI — banner removed, transitioning to execution phase
+    const plan = planStore.plans[planId]
+    if (plan?.sessionId) {
+      useUIStore.getState().exitPlanMode(plan.sessionId)
+    }
   } else {
     planStore.rejectPlan(planId)
+    // Keep banner — user wants to adjust, still in plan mode
   }
 
   const resolve = planReviewResolvers.get(planId)
@@ -125,6 +131,9 @@ export async function handleNativePlanUiUpdate(
       uiStore.setMode(autoSwitchTarget)
       useChatStore.getState().updateSessionMode(plan.sessionId, autoSwitchTarget)
     }
+  } else if (action === 'review') {
+    // Plan submitted for review — keep banner visible, just sync plan data
+    // Banner will be removed when user approves (resolvePlanReview)
   } else if (action === 'exit') {
     uiStore.exitPlanMode(plan.sessionId)
   }
