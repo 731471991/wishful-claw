@@ -28,6 +28,7 @@ export function ProjectHomePage(): React.JSX.Element {
       void (async () => {
         if (!activeProjectId && mode !== 'chat') return
         const chatStore = useChatStore.getState()
+        const uiStore = useUIStore.getState()
         const chatWorkingFolder =
           mode === 'chat' ? await ensureDefaultChatWorkingFolder() : undefined
         const sessionId =
@@ -37,7 +38,11 @@ export function ProjectHomePage(): React.JSX.Element {
                 workingFolder: chatWorkingFolder
               })
             : chatStore.createSession(mode, activeProjectId)
-        useUIStore.getState().navigateToSession(sessionId)
+        // Apply Goal mode to new session if user selected it before sending
+        if (options?.goalMode && sessionId) {
+          uiStore.setCollabMode(sessionId, 'goal')
+        }
+        uiStore.navigateToSession(sessionId)
         void sendMessage(text, images, undefined, sessionId, undefined, undefined, {
           ...options,
           clearCompletedTasksOnTurnStart: true
