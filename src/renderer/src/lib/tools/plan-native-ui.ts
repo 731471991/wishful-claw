@@ -73,6 +73,14 @@ export interface PlanReviewResponse {
 const planReviewResolvers = new Map<string, (payload: PlanReviewResponse) => void>()
 
 export function resolvePlanReview(planId: string, payload: PlanReviewResponse): void {
+  // Update plan store status immediately so the card reflects the user's choice
+  const planStore = usePlanStore.getState()
+  if (payload.approved) {
+    planStore.approvePlan(planId)
+  } else {
+    planStore.rejectPlan(planId)
+  }
+
   const resolve = planReviewResolvers.get(planId)
   if (resolve) {
     resolve(payload)
