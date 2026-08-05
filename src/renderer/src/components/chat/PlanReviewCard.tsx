@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Button } from '@renderer/components/ui/button'
 import { Badge } from '@renderer/components/ui/badge'
+import { Textarea } from '@renderer/components/ui/textarea'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { usePlanStore, type Plan, type PlanStatus } from '@renderer/stores/plan-store'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -181,6 +182,8 @@ export function PlanReviewCard({
   )
 
   const [copied, setCopied] = React.useState(false)
+  const [showFeedbackInput, setShowFeedbackInput] = React.useState(false)
+  const [feedbackText, setFeedbackText] = React.useState('')
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const [contentTruncated, setContentTruncated] = React.useState(false)
   const planContent = payload?.content ?? ''
@@ -369,14 +372,45 @@ export function PlanReviewCard({
               variant="outline"
               size="sm"
               className="h-8 gap-1.5"
-              onClick={() => {
-                resolvePlanReview(payload.planId, { approved: false, feedback: 'User wants to discuss and adjust the plan' })
-              }}
+              onClick={() => setShowFeedbackInput(true)}
             >
               <ClipboardList className="size-3.5" />
               {t('planReview.requestRevisions', { defaultValue: 'Adjust plan' })}
             </Button>
           </>
+        )}
+        {displayStatus === 'awaiting_review' && showFeedbackInput && (
+          <div className="mt-2 flex flex-col gap-2">
+            <Textarea
+              placeholder={t('planReview.feedbackPlaceholder', { defaultValue: 'Describe what you want adjusted...' })}
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              className="min-h-[60px] resize-none text-sm"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="h-7"
+                onClick={() => {
+                  resolvePlanReview(payload.planId, { approved: false, feedback: feedbackText.trim() || 'User wants to discuss and adjust the plan' })
+                }}
+              >
+                {t('planReview.submitFeedback', { defaultValue: 'Submit feedback' })}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => {
+                  setShowFeedbackInput(false)
+                  setFeedbackText('')
+                }}
+              >
+                {t('planReview.cancel', { defaultValue: 'Cancel' })}
+              </Button>
+            </div>
+          </div>
         )}
         {displayStatus === 'implementing' && (
           <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-300">
