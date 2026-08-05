@@ -110,7 +110,7 @@ const FILE_CHANGE_TOOL_NAMES = new Set(['Write', 'Edit', 'Delete', 'NotebookEdit
 export const INTERACTIVE_TOOL_NAMES = new Set([
   'AskUserQuestion',
   'EnterPlanMode',
-  'ExitPlanMode',
+  'SubmitPlanReview',
   'Notify'
 ])
 

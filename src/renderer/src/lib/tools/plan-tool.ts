@@ -18,7 +18,7 @@ const enterPlanModeHandler: ToolHandler = {
     description:
       'Enter Plan Mode to explore the codebase and create a detailed implementation plan. ' +
       'In plan mode, all tools remain available — Read, Write, Edit, Bash, Glob, Grep etc. ' +
-      'Write the plan into the current plan file returned by this tool, then call ExitPlanMode.',
+      'Write the plan into the current plan file returned by this tool, then call SubmitPlanReview.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -36,7 +36,7 @@ const enterPlanModeHandler: ToolHandler = {
 
 const exitPlanModeHandler: ToolHandler = {
   definition: {
-    name: 'ExitPlanMode',
+    name: 'SubmitPlanReview',
     description:
       'Exit Plan Mode after writing the plan file. This signals that the plan is finalized and ready for user review. ' +
       'After calling this tool, you MUST STOP and wait for the user to review the plan; do NOT continue with any further actions.',
@@ -45,7 +45,7 @@ const exitPlanModeHandler: ToolHandler = {
       properties: {}
     }
   },
-  execute: async () => nativeOnlyPlanResult('ExitPlanMode'),
+  execute: async () => nativeOnlyPlanResult('SubmitPlanReview'),
   requiresApproval: () => false
 }
 

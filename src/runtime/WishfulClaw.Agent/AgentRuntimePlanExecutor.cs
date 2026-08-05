@@ -25,7 +25,7 @@ public static class AgentRuntimePlanExecutor
 
     private static readonly HashSet<string> PlanToolNames = new(StringComparer.Ordinal)
     {
-        "EnterPlanMode", "ExitPlanMode", "UpdatePlanStep"
+        "EnterPlanMode", "SubmitPlanReview", "UpdatePlanStep", "ExitPlanMode"
     };
 
     private static readonly ConcurrentDictionary<string, PlanRunState> RunStates = new(StringComparer.Ordinal);
@@ -46,6 +46,7 @@ public static class AgentRuntimePlanExecutor
         return call.Name switch
         {
             "EnterPlanMode" => await EnterPlanModeAsync(call.Input, parameters, runId, context, cancellationToken),
+            "SubmitPlanReview" => await SubmitPlanReviewAsync(parameters, runId, context, cancellationToken),
             "ExitPlanMode" => await ExitPlanModeAsync(parameters, runId, context, cancellationToken),
             "UpdatePlanStep" => await UpdatePlanStepAsync(call.Input, parameters, runId, context, cancellationToken),
             _ => EncodeError($"Native plan tool not registered: {call.Name}")
@@ -161,14 +162,14 @@ public static class AgentRuntimePlanExecutor
             writer.WriteString(
                 "message",
                 status == "resumed"
-                    ? "Resumed plan draft. Follow the plan mode workflow:\n\nPLANNING PHASE (you are here):\n1. COMMUNICATE: Understand what the user wants. Ask clarifying questions about scope, constraints, and expected outcome. Use AskUserQuestion if needed. Do NOT start exploring until you have a clear picture of the requirements.\n2. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies. Run read-only commands (git status, git log) to check state.\n3. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules, and reference source paths.\n4. SUBMIT: Call ExitPlanMode to submit the plan for user review. Wait for the user to approve or request adjustments.\n\nEXECUTION PHASE (after user approves):\n5. EXECUTE: Use Task tool (background=false) to dispatch foreground sub-agents for each step. Each sub-agent implements, runs mini-verification, and commits. One commit per step. Do NOT push.\n6. REVIEW: Dispatch a review sub-agent to check code quality, layer conventions, and error handling.\n7. VERIFY: Run final verification. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nDo NOT write implementation code during planning. You can read files, write/edit documents, and run read-only commands only."
-                    : "Plan mode activated. Follow the plan mode workflow:\n\nPLANNING PHASE (you are here):\n1. COMMUNICATE: Understand what the user wants. Ask clarifying questions about scope, constraints, and expected outcome. Use AskUserQuestion if needed. Do NOT start exploring until you have a clear picture of the requirements.\n2. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies. Run read-only commands (git status, git log) to check state.\n3. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules, and reference source paths.\n4. SUBMIT: Call ExitPlanMode to submit the plan for user review. Wait for the user to approve or request adjustments.\n\nEXECUTION PHASE (after user approves):\n5. EXECUTE: Use Task tool (background=false) to dispatch foreground sub-agents for each step. Each sub-agent implements, runs mini-verification, and commits. One commit per step. Do NOT push.\n6. REVIEW: Dispatch a review sub-agent to check code quality, layer conventions, and error handling.\n7. VERIFY: Run final verification. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nDo NOT write implementation code during planning. You can read files, write/edit documents, and run read-only commands only.");
+                    ? "Resumed plan draft. Follow the plan mode workflow:\n\nPLANNING PHASE (you are here):\n1. COMMUNICATE: Understand what the user wants. Ask clarifying questions about scope, constraints, and expected outcome. Use AskUserQuestion if needed. Do NOT start exploring until you have a clear picture of the requirements.\n2. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies. Run read-only commands (git status, git log) to check state.\n3. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules, and reference source paths.\n4. SUBMIT: Call SubmitPlanReview to submit the plan for user review. Wait for the user to approve or request adjustments.\n\nEXECUTION PHASE (after user approves):\n5. EXECUTE: Use Task tool (background=false) to dispatch foreground sub-agents for each step. Each sub-agent implements, runs mini-verification, and commits. One commit per step. Do NOT push.\n6. REVIEW: Dispatch a review sub-agent to check code quality, layer conventions, and error handling.\n7. VERIFY: Run final verification. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nDo NOT write implementation code during planning. You can read files, write/edit documents, and run read-only commands only."
+                    : "Plan mode activated. Follow the plan mode workflow:\n\nPLANNING PHASE (you are here):\n1. COMMUNICATE: Understand what the user wants. Ask clarifying questions about scope, constraints, and expected outcome. Use AskUserQuestion if needed. Do NOT start exploring until you have a clear picture of the requirements.\n2. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies. Run read-only commands (git status, git log) to check state.\n3. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules, and reference source paths.\n4. SUBMIT: Call SubmitPlanReview to submit the plan for user review. Wait for the user to approve or request adjustments.\n\nEXECUTION PHASE (after user approves):\n5. EXECUTE: Use Task tool (background=false) to dispatch foreground sub-agents for each step. Each sub-agent implements, runs mini-verification, and commits. One commit per step. Do NOT push.\n6. REVIEW: Dispatch a review sub-agent to check code quality, layer conventions, and error handling.\n7. VERIFY: Run final verification. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nDo NOT write implementation code during planning. You can read files, write/edit documents, and run read-only commands only.");
         });
     }
 
-    // ── ExitPlanMode ──
+    // ── SubmitPlanReview ──
 
-    private static async Task<string> ExitPlanModeAsync(
+    private static async Task<string> SubmitPlanReviewAsync(
         JsonElement parameters,
         string runId,
         IWorkerRequestContext context,
@@ -301,9 +302,59 @@ public static class AgentRuntimePlanExecutor
                 writer.WriteString("plan_id", plan.Id);
                 writer.WriteString("plan_file_path", plan.FilePath);
                 writer.WriteString("feedback", feedback);
-                writer.WriteString("message", "Plan rejected. Feedback: " + feedback + ". Revise the plan file based on the feedback — adjust steps, checkpoints, or file paths as needed. Then call ExitPlanMode again to re-submit for review.");
+                writer.WriteString("message", "Plan rejected. Feedback: " + feedback + ". Revise the plan file based on the feedback — adjust steps, checkpoints, or file paths as needed. Then call SubmitPlanReview again to re-submit for review.");
             });
         }
+    }
+
+
+    // ── ExitPlanMode (cancel) ──
+
+    private static async Task<string> ExitPlanModeAsync(
+        JsonElement parameters,
+        string runId,
+        IWorkerRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        var sessionId = JsonHelpers.GetString(parameters, "sessionId")?.Trim() ?? string.Empty;
+        if (sessionId.Length == 0)
+        {
+            return EncodeError("No active session.");
+        }
+
+        var plan = LoadPlanBySession(parameters, sessionId);
+        if (plan is not { FilePath.Length: > 0 })
+        {
+            return EncodeJsonObject(writer =>
+            {
+                writer.WriteString("status", "not_in_plan_mode");
+                writer.WriteString("message", "You are not currently in plan mode.");
+            });
+        }
+
+        // Mark plan as cancelled in DB
+        UpdatePlanStatus(parameters, plan.Id, plan.Title, "cancelled", Now());
+
+        // Update state file
+        var existingState = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
+        var existingSteps = existingState?.Steps ?? [];
+        await WriteStateFileAsync(plan.FilePath!, plan.Id, plan.Title, "cancelled", existingSteps, cancellationToken);
+
+        RunStates[runId] = new PlanRunState(false, plan.FilePath);
+
+        // Notify frontend to exit plan mode
+        var updatedPlan = LoadPlanById(parameters, plan.Id);
+        if (updatedPlan != null)
+        {
+            await NotifyPlanUiAsync("exit", updatedPlan, null, parameters, context, cancellationToken);
+        }
+
+        return EncodeJsonObject(writer =>
+        {
+            writer.WriteString("status", "cancelled");
+            writer.WriteString("plan_id", plan.Id);
+            writer.WriteString("message", "Plan mode exited. The plan has been cancelled. No changes were made to the codebase.");
+        });
     }
 
     // ── UpdatePlanStep ──

@@ -60,7 +60,7 @@ function coerceNativePlan(value: unknown): Plan | null {
 }
 
 // -- Plan review reverse request (like ask-user/request) --
-// The agent calls ExitPlanMode, which sends a plan/review-request reverse
+// The agent calls SubmitPlanReview, which sends a plan/review-request reverse
 // request to the renderer. The renderer shows the PlanReviewCard and waits
 // for the user to approve or reject. The response goes back to the agent.
 

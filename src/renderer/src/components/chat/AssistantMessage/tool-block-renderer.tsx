@@ -103,7 +103,7 @@ export function ToolBlockRenderer({
       </ScaleIn>
     )
   }
-  if (block.name === 'ExitPlanMode') {
+  if (block.name === 'SubmitPlanReview') {
     const result = toolResults?.get(block.id)
     const liveTc = effectiveLiveToolCallMap?.get(block.id)
     const shouldUsePendingFallback = isLastAssistantMessage && !result && !liveTc

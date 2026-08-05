@@ -26,11 +26,18 @@ internal sealed class PlanToolProvider : IToolProvider
             "Write operations remain available when the planning work needs them.",
             ToolSchemaBuilder.Object(enterProps, ["reason"])));
 
-        // ExitPlanMode — Agent finalizes plan, sends to user for review
+        // SubmitPlanReview — Agent finalizes plan, submits to user for review
+        registry.Register(new ToolDefinitionPlaceholder(
+            "SubmitPlanReview",
+            "Submit the finalized plan for user review. After calling this tool, the plan is shown to the user " +
+            "and you MUST STOP and wait for the user to approve or request adjustments. Do NOT continue with any further actions.",
+            ToolSchemaBuilder.Object()));
+
+        // ExitPlanMode — Cancel plan mode entirely (no review, no execution)
         registry.Register(new ToolDefinitionPlaceholder(
             "ExitPlanMode",
-            "Exit Plan Mode after writing the plan file. This signals that the plan is finalized and ready for user review. " +
-            "After calling this tool, you MUST STOP and wait for the user to review the plan; do NOT continue with any further actions.",
+            "Cancel and exit plan mode entirely. Use this when the user wants to abort planning or when the plan is no longer needed. " +
+            "This does NOT submit the plan for review. Use SubmitPlanReview for that.",
             ToolSchemaBuilder.Object()));
 
         // UpdatePlanStep — Agent updates step status during execution

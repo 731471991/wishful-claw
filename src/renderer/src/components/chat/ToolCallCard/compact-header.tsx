@@ -104,7 +104,7 @@ function getBuiltinToolIcon(name: string): React.ReactNode {
   }
   if (name === 'Monitor') return <SquareTerminal className="size-3.5" />
   if (name === 'EnterPlanMode') return <LogIn className="size-3.5" />
-  if (name === 'ExitPlanMode') return <LogOut className="size-3.5" />
+  if (name === 'SubmitPlanReview') return <LogOut className="size-3.5" />
   if (name === 'Skill') return <FileText className="size-3.5" />
   if (name.endsWith('goal')) return <Target className="size-3.5" />
   if (name.startsWith('memory_')) return <Database className="size-3.5" />
@@ -377,7 +377,7 @@ export function buildCompactToolHeaderModel({
       'Notify',
       'Monitor',
       'EnterPlanMode',
-      'ExitPlanMode',
+      'SubmitPlanReview',
       'get_goal',
       'create_goal',
       'update_goal',
