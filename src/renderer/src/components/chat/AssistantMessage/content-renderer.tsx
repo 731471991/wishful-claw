@@ -295,7 +295,7 @@ export function ContentRenderer({
   // Split items into process (thinking/tool_use) and final output (text/image).
   // hasProcessContent is true only when there are tool calls — thinking-only won't collapse.
   const { processItems, finalItems, hasProcessContent } =
-    splitProcessAndFinal(renderItemsWithInlineSummaries, normalizedContent, toolExecutionOutline)
+    splitProcessAndFinal(renderItemsWithInlineSummaries, normalizedContent)
 
   // Count thinking blocks for summary
   const thinkingBlockCount = normalizedContent?.filter((b) => b.type === 'thinking').length ?? 0

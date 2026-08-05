@@ -4,7 +4,7 @@
 // Example output: "运行了3个命令，查看了2个文件，编辑了1个文件"
 // With other tools: "运行了1个命令，2个浏览器操作"
 
-import { INTERACTIVE_TOOL_NAMES, type ToolExecutionOutline, type ToolExecutionItem } from '../execution-outline'
+import type { ToolExecutionOutline, ToolExecutionItem } from '../execution-outline'
 import type { ContentBlock } from '@renderer/lib/api/types'
 import type { AssistantRenderItemWithInlineSummary } from './types'
 import type { TFunction } from 'i18next'
@@ -106,8 +106,7 @@ export function buildProcessSummary(
  */
 export function splitProcessAndFinal(
   items: AssistantRenderItemWithInlineSummary[],
-  normalizedContent: ContentBlock[] | null,
-  toolExecutionOutline: ToolExecutionOutline | null
+  normalizedContent: ContentBlock[] | null
 ): {
   processItems: AssistantRenderItemWithInlineSummary[]
   finalItems: AssistantRenderItemWithInlineSummary[]
@@ -119,23 +118,6 @@ export function splitProcessAndFinal(
       if (item.kind === 'block') {
         const block = normalizedContent?.[item.index]
         if (block && (block.type === 'text' || block.type === 'image' || block.type === 'image_error' || block.type === 'agent_error')) {
-          continue
-        }
-        // Interactive tool cards (PlanReviewCard, AskUserQuestionCard) should
-        // always be visible — treat them as final output, not process.
-        if (block?.type === 'tool_use' && (block.name === 'ExitPlanMode' || block.name === 'AskUserQuestion')) {
-          continue
-        }
-      }
-      // Also skip tool-run items that contain only interactive tools
-      // (ExitPlanMode, AskUserQuestion). These are isolated into their own
-      // runs by execution-outline but arrive here as tool-run items.
-      if (item.kind === 'tool-run') {
-        const run = toolExecutionOutline?.runById?.get(item.runId)
-        if (run && run.itemIds.every(id => {
-          const it = toolExecutionOutline?.itemByToolUseId?.get(id)
-          return it && INTERACTIVE_TOOL_NAMES.has(it.name)
-        })) {
           continue
         }
       }
