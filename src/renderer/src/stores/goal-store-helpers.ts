@@ -93,10 +93,23 @@ interface AccountGoalUsageInput {
   expectedGoalId?: string | null
 }
 
+export interface GoalProgressState {
+  sessionId: string
+  goalId: string
+  eventType: string
+  message: string
+  status: string
+  currentPlanIndex: number
+  planCount: number
+  completedPlans: number
+  timestamp: number
+}
+
 export interface GoalStore {
   goalsBySession: Record<string, SessionGoal>
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>
+  goalProgressBySession: Record<string, GoalProgressState>
   _loaded: boolean
 
   loadGoalsFromDb: () => Promise<void>
@@ -138,6 +151,7 @@ export interface GoalStore {
   applySyncedGoal: (goal: SessionGoal) => void
   applySyncedGoalClear: (sessionId: string) => void
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
+  applyGoalProgress: (progress: GoalProgressState) => void
 }
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {

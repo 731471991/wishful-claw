@@ -19,6 +19,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   goalsBySession: {},
   goalEventsBySession: {},
   activeGoalRunsBySession: {},
+  goalProgressBySession: {},
   _loaded: false,
 
   loadGoalsFromDb: async () => {
@@ -252,6 +253,15 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
 
   applySyncedGoalEvent: (event) => {
     upsertGoalEvent(set, event)
+  },
+
+  applyGoalProgress: (progress) => {
+    set((state) => ({
+      goalProgressBySession: {
+        ...state.goalProgressBySession,
+        [progress.sessionId]: progress
+      }
+    }))
   }
 }))
 

@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
+import { installGoalSyncListener, useGoalStore } from '@renderer/stores/goal-store'
 
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
@@ -443,6 +444,26 @@ export const useChatStore = create<ChatStore>()(
 
           continue
 
+        }
+
+        // Route goal_progress events to the goal store
+        if (eventType === 'goal_progress') {
+          const gp = event as { goalId?: string; sessionId?: string; eventType?: string; message?: string; status?: string; currentPlanIndex?: number; planCount?: number; completedPlans?: number; timestamp?: number }
+          const gpSessionId = gp.sessionId ?? targetSessionId
+          if (gpSessionId && gp.eventType) {
+            useGoalStore.getState().applyGoalProgress({
+              sessionId: gpSessionId,
+              goalId: gp.goalId ?? '',
+              eventType: gp.eventType,
+              message: gp.message ?? '',
+              status: gp.status ?? '',
+              currentPlanIndex: gp.currentPlanIndex ?? 0,
+              planCount: gp.planCount ?? 0,
+              completedPlans: gp.completedPlans ?? 0,
+              timestamp: gp.timestamp ?? Date.now()
+            })
+          }
+          continue
         }
 
 
@@ -1294,6 +1315,8 @@ export const useChatStore = create<ChatStore>()(
 
 
 // Start the stream receiver
+
+installGoalSyncListener()
 
 getAgentStreamReceiver().start((envelope) => {
 

@@ -15,6 +15,12 @@ import {
   eventMetadataNumber,
   eventMetadataString
 } from './goal-session-utils'
+import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
+import {
+  GOAL_PAUSE_MSGPACK_CHANNEL,
+  GOAL_RESUME_MSGPACK_CHANNEL,
+  GOAL_ABORT_MSGPACK_CHANNEL
+} from '@shared/messagepack/binary-ipc'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',
@@ -130,6 +136,7 @@ export function useGoalActions(
   saveGoal: () => Promise<void>
   clearGoal: () => Promise<void>
   setGoalStatus: (status: 'active' | 'paused') => Promise<void>
+  abortGoal: () => Promise<void>
 } {
   const { t } = useTranslation('chat')
   const { t: tCommon } = useTranslation('common')
@@ -178,12 +185,25 @@ export function useGoalActions(
       }
       if (status === 'active' && result.goal?.status === 'active') {
         dispatchNextQueuedMessageForSession(sessionId)
+        try { await invokeMessagePackBinary(GOAL_RESUME_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
       if (status === 'paused' && result.goal?.status === 'paused') {
         abortSession(sessionId)
+        try { await invokeMessagePackBinary(GOAL_PAUSE_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
     },
-    [sessionId, t]
+    [sessionId, t, goal?.goalId]
+  )
+
+  const abortGoal = React.useCallback(
+    async (): Promise<void> => {
+      if (!sessionId || !goal) return
+      try {
+        await invokeMessagePackBinary(GOAL_ABORT_MSGPACK_CHANNEL, { sessionId, goalId: goal.goalId })
+      } catch { /* ignore */ }
+      await useGoalStore.getState().updateGoal(sessionId, { status: 'paused' })
+    },
+    [sessionId, goal]
   )
 
   const clearGoal = React.useCallback(async (): Promise<void> => {
@@ -254,7 +274,8 @@ export function useGoalActions(
     openManager,
     saveGoal,
     clearGoal,
-    setGoalStatus
+    setGoalStatus,
+    abortGoal
   }
 }
 
