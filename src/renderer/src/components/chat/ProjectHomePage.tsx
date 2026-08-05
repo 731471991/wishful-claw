@@ -82,8 +82,13 @@ export function ProjectHomePage(): React.JSX.Element {
         <div className="flex flex-1 items-start justify-center pt-8 lg:items-center lg:pt-0">
           <div className="w-full max-w-[760px]">
             <div className="mb-6 flex flex-col items-center gap-3 text-center sm:mb-7">
+              <p className="max-w-[760px] text-[30px] font-semibold tracking-tight text-foreground/92 sm:text-[42px]">
+                {activeProject.name}
+              </p>
               <p className="max-w-[560px] text-sm leading-6 text-muted-foreground/72">
-                {workingFolder ? t('projectHome.heroDesc') : t('projectHome.noWorkingFolder')}
+                {workingFolder
+                  ? `${workingFolder}`
+                  : t('projectHome.noWorkingFolder')}
               </p>
 
               {sshConnectionId ? (
