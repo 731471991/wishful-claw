@@ -6,16 +6,16 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：Goal Store — `goal-store.ts`：管理 Goal 状态（当前 Goal 元信息 + 计划列表 + 每个计划状态 + 实时日志 + 429 退避状态 + 中断状态）。从 workerRequest 事件流更新状态
-- [ ] 步骤2：IPC 事件适配 — `handleEnvelope` 路由 goal_* 事件到 goal-store：goal_started / plan_started / plan_completed / plan_failed / plan_evaluated / plan_retried / backoff_started / backoff_progress / backoff_resolved / goal_paused / goal_resumed / goal_aborted / goal_completed
-- [ ] 步骤3：Goal 进度面板组件 — `GoalPanel.tsx`：展示当前 Goal 的计划列表，每个计划显示标题 + 状态图标（待执行/执行中/已完成/失败/重试中）+ 步骤进度 + 结果摘要
-- [ ] 步骤4：计划展开详情 — 点击计划可展开查看步骤列表（从 state.json 读取）+ 子 Agent 执行日志摘要
-- [ ] 步骤5：429 等待状态展示 — 当 Goal 处于 429 退避时，面板顶部显示等待状态卡片："额度限制，等待恢复中... 已等待 X 分钟，下次尝试 +Ymin"，带旋转/脉冲动画
-- [ ] 步骤6：中断按钮 — 面板底部 [暂停] [中止] 按钮，暂停变为 [恢复]。调用 goal:interrupt / goal:resume / goal:abort IPC
-- [ ] 步骤7：Goal 创建入口 — 聊天输入框增加 "Goal 模式" 开关（类似 Plan 模式的 banner），开启后发送的消息作为 Goal 目标
-- [ ] 步骤8：右侧面板集成 — Goal 进度面板作为右侧面板的一个 tab（与 Plan Review、SubAgents 等并列），或作为独立面板覆盖
-- [ ] 步骤9：实时日志流 — 底部滚动日志区，显示编排循环的关键事件时间线（拆分计划 / 子 Agent 启动 / 评估结果 / 429 退避 / 计划完成）
-- [ ] 步骤10：编译验证 — 三个 tsc 配置全部零错误
+- [x] 步骤1：Goal Store — `goal-store.ts`：管理 Goal 状态（当前 Goal 元信息 + 计划列表 + 每个计划状态 + 实时日志 + 429 退避状态 + 中断状态）。从 workerRequest 事件流更新状态
+- [x] 步骤2：IPC 事件适配 — `handleEnvelope` 路由 goal_* 事件到 goal-store：goal_started / plan_started / plan_completed / plan_failed / plan_evaluated / plan_retried / backoff_started / backoff_progress / backoff_resolved / goal_paused / goal_resumed / goal_aborted / goal_completed
+- [x] 步骤3：Goal 进度面板组件 — `GoalPanel.tsx`：展示当前 Goal 的计划列表，每个计划显示标题 + 状态图标（待执行/执行中/已完成/失败/重试中）+ 步骤进度 + 结果摘要
+- [x] 步骤4：计划展开详情 — 点击计划可展开查看步骤列表（从 state.json 读取）+ 子 Agent 执行日志摘要
+- [x] 步骤5：429 等待状态展示 — 当 Goal 处于 429 退避时，面板顶部显示等待状态卡片："额度限制，等待恢复中... 已等待 X 分钟，下次尝试 +Ymin"，带旋转/脉冲动画
+- [x] 步骤6：中断按钮 — 面板底部 [暂停] [中止] 按钮，暂停变为 [恢复]。调用 goal:interrupt / goal:resume / goal:abort IPC
+- [x] 步骤7：Goal 创建入口 — 聊天输入框增加 "Goal 模式" 开关（类似 Plan 模式的 banner），开启后发送的消息作为 Goal 目标
+- [x] 步骤8：右侧面板集成 — Goal 进度面板作为右侧面板的一个 tab（与 Plan Review、SubAgents 等并列），或作为独立面板覆盖
+- [x] 步骤9：实时日志流 — 底部滚动日志区，显示编排循环的关键事件时间线（拆分计划 / 子 Agent 启动 / 评估结果 / 429 退避 / 计划完成）
+- [x] 步骤10：编译验证 — 三个 tsc 配置全部零错误
 
 ## 验证检查点
 

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 
@@ -91,7 +91,7 @@ public static partial class GoalOrchestrator
             }
             else
             {
-                goal.Status = "completed";
+                goal.Status = "completed_with_failures";
                 var failedCount = goal.Plans.Count(p => p.Status != "completed");
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
                     $"Goal completed with {failedCount} failed plan(s)", context);
@@ -127,10 +127,10 @@ public static partial class GoalOrchestrator
             // Handle 429: backoff and retry
             if (result.Is429)
             {
-                var backoffResult = await Handle429BackoffAsync(
+                var (backoffOutcome, backoffResult) = await Handle429BackoffAsync(
                     goal, plan, planIndex, result, parameters, parentState, context, ct);
 
-                if (backoffResult == BackoffOutcome.Timeout)
+                if (backoffOutcome == BackoffOutcome.Timeout)
                 {
                     plan.Status = "failed";
                     plan.ResultSummary = "Rate limit timeout after 6 hours";
@@ -138,8 +138,15 @@ public static partial class GoalOrchestrator
                         $"Plan {planIndex + 1} failed: rate limit timeout", context);
                     return;
                 }
-                // After backoff resolved, loop back to retry the plan
-                continue;
+                // Use the test execution result from backoff, avoid re-executing
+                if (backoffResult != null)
+                {
+                    result = backoffResult;
+                }
+                else
+                {
+                    continue;
+                }
             }
 
             // Self-check evaluation
@@ -179,13 +186,13 @@ public static partial class GoalOrchestrator
                 plan.PlanId = $"plan-{Guid.NewGuid():N}".Substring(0, 16);
                 await EmitGoalEventAsync(goal, GoalEventType.PlanAdjusted,
                     $"Plan {planIndex + 1} adjusted (retry {plan.RetryCount}): {evaluation.Reasoning}", context);
-                GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"Adjusted (retry {plan.RetryCount}): {evaluation.Reasoning}");
+                    GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"Adjusted (retry {plan.RetryCount}): {evaluation.Reasoning}");
             }
             else
             {
                 await EmitGoalEventAsync(goal, GoalEventType.PlanRetried,
                     $"Plan {planIndex + 1} retry {plan.RetryCount}: {evaluation.Reasoning}", context);
-            GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"Retry {plan.RetryCount}: {evaluation.Reasoning}");
+                GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"Retry {plan.RetryCount}: {evaluation.Reasoning}");
             }
 
             WriteGoalState(goal);
@@ -196,7 +203,7 @@ public static partial class GoalOrchestrator
 
     private enum BackoffOutcome { Resolved, Timeout }
 
-    private static async Task<BackoffOutcome> Handle429BackoffAsync(
+    private static async Task<(BackoffOutcome outcome, PlanExecutionResult? result)> Handle429BackoffAsync(
         GoalContext goal,
         GoalPlanItem plan,
         int planIndex,
@@ -212,7 +219,7 @@ public static partial class GoalOrchestrator
         while (true)
         {
             if (ct.IsCancellationRequested)
-                return BackoffOutcome.Timeout;
+                return (BackoffOutcome.Timeout, null);
 
             var (delaySeconds, phase) = GoalBackoffStrategy.CalculateBackoff(
                 attempt, result.RetryAfterHint);
@@ -221,8 +228,8 @@ public static partial class GoalOrchestrator
             {
                 await EmitGoalEventAsync(goal, GoalEventType.BackoffStarted,
                     GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds), context);
-            GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"429 backoff: {GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds)}");
-                return BackoffOutcome.Timeout;
+                GoalPlanTracker.AppendLog(goal.WorkingFolder, goal.GoalId, plan.PlanId, $"429 backoff: {GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds)}");
+                return (BackoffOutcome.Timeout, null);
             }
 
             await EmitGoalEventAsync(goal, GoalEventType.BackoffStarted,
@@ -235,7 +242,7 @@ public static partial class GoalOrchestrator
             }
             catch (OperationCanceledException)
             {
-                return BackoffOutcome.Timeout;
+                return (BackoffOutcome.Timeout, null);
             }
 
             totalWaitedSeconds += delaySeconds;
@@ -250,10 +257,8 @@ public static partial class GoalOrchestrator
             {
                 await EmitGoalEventAsync(goal, GoalEventType.BackoffResolved,
                     $"Rate limit resolved after {totalWaitedSeconds / 60} min", context);
-                // The caller will continue with the non-429 result
-                // But we need to pass this result back... 
-                // For simplicity, we'll just return Resolved and the outer loop will re-execute
-                return BackoffOutcome.Resolved;
+                // Return the test result so the caller can use it for evaluation
+                return (BackoffOutcome.Resolved, retryResult);
             }
 
             attempt++;

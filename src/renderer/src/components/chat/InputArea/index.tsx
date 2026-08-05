@@ -1,8 +1,6 @@
-// InputArea: main composer component with editor, toolbar, and controls
+﻿// InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
-import { toast } from 'sonner'
-import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
 import type { SendMessageOptions } from '@renderer/hooks/use-chat-actions'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { updateWebSearchToolRegistration } from '@renderer/lib/tools'
@@ -260,24 +258,16 @@ export function InputArea({
     const promptText = liveEditorState.promptText.trim()
     if (!promptText && attachedImages.length === 0) return
     if (disabled || needsWorkingFolder || pendingImageReads > 0) return
-    let goalMode: boolean | undefined
-    if (hasPendingGoalMode && promptText) {
-      const validation = validateGoalObjective(promptText)
-      if (validation) { toast.error(t('goal.toasts.objectiveInvalid'), { description: validation }); return }
-      goalMode = true
-    }
-    cancelPromptRecommendation()
     const hasLeadingSlashCommand = liveEditorState.plainText.trimStart().startsWith('/')
     const message = selectedSkill && !hasLeadingSlashCommand ? `[Skill: ${selectedSkill}]\n${promptText}` : promptText
     const sendOptions: SendMessageOptions = { clearCompletedTasksOnTurnStart: true, enablePlanMode: planMode || undefined }
     const selectedFileReferences = liveEditorState.selectedFiles.map(selectedFileItemToReference)
     if (selectedFileReferences.length > 0) sendOptions.selectedFileReferences = selectedFileReferences
-    if (goalMode) sendOptions.goalMode = true
+    if (isGoalMode) sendOptions.sessionMode = 'goal'
     onSend?.(message, attachedImages.length > 0 ? attachedImages : undefined, sendOptions)
     resetComposer()
-    if (goalMode) setPendingGoalMode(false)
   }, [getLiveEditorState, attachedImages, disabled, needsWorkingFolder, pendingImageReads,
-      hasPendingGoalMode, cancelPromptRecommendation, selectedSkill, onSend, planMode, resetComposer, t])
+      isGoalMode, cancelPromptRecommendation, selectedSkill, onSend, planMode, resetComposer, t])
 
   const { handlePlanModeChange, handleGoalModeChange } = useModeControls({
     projectScoped, draftSessionId, disabled, isStreaming, isOptimizingLocked, pendingImageReads, hasActiveGoal, focusInputAtEnd, setPendingPlanMode, setPendingGoalMode, t

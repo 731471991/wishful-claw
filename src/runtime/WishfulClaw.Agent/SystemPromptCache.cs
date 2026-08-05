@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace WishfulClaw.Agent;
 
@@ -45,7 +45,7 @@ public static class SystemPromptCache
         string? userRules,
         string? sshConnectionId,
         string? projectId,
-        string? goalObjective = null)
+        string? sessionMode = null)
     {
         return string.Join('|',
             personaId ?? string.Empty,
@@ -54,6 +54,6 @@ public static class SystemPromptCache
             userRules ?? string.Empty,
             sshConnectionId ?? string.Empty,
             projectId ?? string.Empty,
-            goalObjective ?? string.Empty);
+            sessionMode ?? string.Empty);
     }
 }

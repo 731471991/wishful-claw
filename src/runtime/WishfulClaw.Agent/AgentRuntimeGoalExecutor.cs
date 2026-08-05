@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -63,20 +63,19 @@ public static class AgentRuntimeGoalExecutor
         if (objective.Length == 0)
             return EncodeError("create_goal requires a non-empty objective.");
 
-        // Store in memory
-        var goal = new GoalRecord(objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-        Goals[sessionId] = goal;
-
         // Check if a goal is already running for this session
-        // (simple check: if GoalOrchestrator has an active goal for this session, don't start another)
         var existingGoalId = GoalOrchestrator.GetActiveGoalId(sessionId);
         if (existingGoalId != null)
-            return EncodeGoal(goal); // Already running, just acknowledge
+            return EncodeGoal(new GoalRecord(objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId));
 
         // Start the orchestration loop
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
         var goalId = await GoalOrchestrator.StartAsync(
             objective, sessionId, workingFolder, parameters, parentState, context);
+
+        // Store in memory with the orchestrator goalId
+        var goal = new GoalRecord(objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId);
+        Goals[sessionId] = goal;
 
         return EncodeGoal(goal);
     }
@@ -117,6 +116,8 @@ public static class AgentRuntimeGoalExecutor
             w.WriteString("objective", goal.Objective);
             w.WriteString("status", goal.Status);
             w.WriteNumber("updatedAt", goal.UpdatedAt);
+            if (!string.IsNullOrEmpty(goal.GoalId))
+                w.WriteString("goalId", goal.GoalId);
             w.WriteEndObject();
             w.WriteEndObject();
         }
@@ -131,5 +132,5 @@ public static class AgentRuntimeGoalExecutor
         return System.Text.Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private sealed record GoalRecord(string Objective, string Status, long UpdatedAt);
+    private sealed record GoalRecord(string Objective, string Status, long UpdatedAt, string? GoalId = null);
 }

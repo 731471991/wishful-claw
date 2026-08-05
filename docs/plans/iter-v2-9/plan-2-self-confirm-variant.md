@@ -6,13 +6,13 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：PlanMode 配置标志 — 在 AgentRuntimeRunState 或 SessionConversation 中增加 `IsGoalMode` 标志，区分计划模式和 Goal 模式
-- [ ] 步骤2：SelfReviewPlan 工具 — 替代 SubmitPlanReview 的 reverse request 机制。当 `IsGoalMode=true` 时，SubmitPlanReview 不发 reverse request 暂停等待用户，而是让 Agent 自行评估计划合理性后返回 "approved" 直接进入 execute 阶段
-- [ ] 步骤3：自行确认逻辑 — SelfReviewPlan 的工具返回值注入引导：告诉 Agent "你已自行确认计划，进入执行阶段"，通过工具返回值注入而非 system prompt
-- [ ] 步骤4：ExitPlanMode 适配 — Goal 模式下 ExitPlanMode 不取消整个 agent loop，而是标记当前计划完成/失败，将结果返回给 GoalOrchestrator
-- [ ] 步骤5：UpdatePlanStep 不变 — 步骤状态跟踪逻辑保持不变，state.json 实时更新
-- [ ] 步骤6：PromptBuilder guidance 适配 — 计划模式引导通过工具返回值注入，Goal 模式下额外注入"你处于自主执行模式，不需要等待用户确认"
-- [ ] 步骤7：编译验证 — `dotnet build` 零错误
+- [x] 步骤1：PlanMode 配置标志 — 在 AgentRuntimeRunState 或 SessionConversation 中增加 `IsGoalMode` 标志，区分计划模式和 Goal 模式
+- [x] 步骤2：SelfReviewPlan 工具 — 替代 SubmitPlanReview 的 reverse request 机制。当 `IsGoalMode=true` 时，SubmitPlanReview 不发 reverse request 暂停等待用户，而是让 Agent 自行评估计划合理性后返回 "approved" 直接进入 execute 阶段
+- [x] 步骤3：自行确认逻辑 — SelfReviewPlan 的工具返回值注入引导：告诉 Agent "你已自行确认计划，进入执行阶段"，通过工具返回值注入而非 system prompt
+- [x] 步骤4：ExitPlanMode 适配 — Goal 模式下 ExitPlanMode 不取消整个 agent loop，而是标记当前计划完成/失败，将结果返回给 GoalOrchestrator
+- [x] 步骤5：UpdatePlanStep 不变 — 步骤状态跟踪逻辑保持不变，state.json 实时更新
+- [x] 步骤6：PromptBuilder guidance 适配 — 计划模式引导通过工具返回值注入，Goal 模式下额外注入"你处于自主执行模式，不需要等待用户确认"
+- [x] 步骤7：编译验证 — `dotnet build` 零错误
 
 ## 验证检查点
 

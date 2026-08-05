@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -151,9 +151,17 @@ public static partial class GoalOrchestrator
     /// </summary>
     private static JsonElement CreateTaskInput(string prompt, string description)
     {
-        var promptJson = JsonSerializer.Serialize(prompt);
-        var descJson = JsonSerializer.Serialize(description);
-        var json = "{\"subagent_type\":\"custom\",\"description\":" + descJson + ",\"prompt\":" + promptJson + ",\"background\":false}";
+        using var stream = new MemoryStream();
+        using (var w = new Utf8JsonWriter(stream))
+        {
+            w.WriteStartObject();
+            w.WriteString("subagent_type", "custom");
+            w.WriteString("description", description);
+            w.WriteString("prompt", prompt);
+            w.WriteBoolean("background", false);
+            w.WriteEndObject();
+        }
+        var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
     }

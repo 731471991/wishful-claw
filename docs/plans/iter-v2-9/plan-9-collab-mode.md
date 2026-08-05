@@ -12,25 +12,25 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：修复 SkillsMenu 崩溃 — `activeChannelIdsByProject` 和 `toggleActiveChannel` 在 channel-store 中不存在，添加 `?? {}` 和 `?? (() => {})` 兜底
-- [ ] 步骤2：UI Store 添加协作模式状态 — 在 `useUIStore` 中增加 `collabModesBySession: Record<string, 'normal' | 'goal'>`，默认 `undefined` 即为常规模式
-- [ ] 步骤3：创建协作模式选择器组件 — `CollabModeSwitcher.tsx`，放在 `composer-toolbar` 最左侧，ModelSwitcher 前面
+- [x] 步骤1：修复 SkillsMenu 崩溃 — `activeChannelIdsByProject` 和 `toggleActiveChannel` 在 channel-store 中不存在，添加 `?? {}` 和 `?? (() => {})` 兜底
+- [x] 步骤2：UI Store 添加协作模式状态 — 在 `useUIStore` 中增加 `collabModesBySession: Record<string, 'normal' | 'goal'>`，默认 `undefined` 即为常规模式
+- [x] 步骤3：创建协作模式选择器组件 — `CollabModeSwitcher.tsx`，放在 `composer-toolbar` 最左侧，ModelSwitcher 前面
   - 使用 `DropdownMenu` 组件
   - 两个选项：常规（💬 图标 + 标签 + 描述）、目标（🎯 图标 + 标签 + 描述）
   - 选中项显示勾选标记
   - 样式参考 ModelSwitcher / OpenCowork TitleBar
-- [ ] 步骤4：集成到 ComposerToolbar — 将 `CollabModeSwitcher` 放在 ModelSwitcher 左侧
+- [x] 步骤4：集成到 ComposerToolbar — 将 `CollabModeSwitcher` 放在 ModelSwitcher 左侧
   - 传入当前模式状态和切换回调
   - `disabled` 条件同 Goal 模式（流式/优化中禁用）
-- [ ] 步骤5：InputArea 模式联动逻辑
+- [x] 步骤5：InputArea 模式联动逻辑
   - 切到目标模式 → placeholder 变为"描述要追求的目标..."，发送消息时作为目标
   - 切回常规模式 → 如果有 Goal 在执行，暂停/清除
   - GoalSessionBar 仅在目标模式下显示（不再依赖 DB 查询结果）
   - 目标模式下 SkillsMenu 隐藏 Plan 模式开关
-- [ ] 步骤6：SkillsMenu 中移除 Goal 模式开关 — 因为 Goal 模式已提到协作模式选择器
+- [x] 步骤6：SkillsMenu 中移除 Goal 模式开关 — 因为 Goal 模式已提到协作模式选择器
   - 保留 Plan 模式开关（常规模式下可用）
-- [ ] 步骤7：i18n 文案 — 协作模式下拉选项的中英文标签和描述
-- [ ] 步骤8：编译验证 — `npx tsc --noEmit -p tsconfig.web.json` 零错误
+- [x] 步骤7：i18n 文案 — 协作模式下拉选项的中英文标签和描述
+- [x] 步骤8：编译验证 — `npx tsc --noEmit -p tsconfig.web.json` 零错误
 
 ## 验证检查点
 

@@ -6,13 +6,13 @@
 
 ## 步骤清单
 
-- [ ] 步骤1：GoalEntity 数据模型 — 定义 `GoalEntity.cs`，字段：GoalId / SessionId / GoalText / Status (Active/Paused/Completed/Aborted) / CreatedAt / UpdatedAt / PlanCount / CompletedPlanCount
-- [ ] 步骤2：PlanItem 模型 — Goal 下的计划项数据结构：PlanId / Title / Description / Status (Pending/Executing/Completed/Failed) / RetryCount / SubAgentRunId / ResultSummary
-- [ ] 步骤3：DbGoalTools — DB CRUD：CreateGoal / GetGoal / UpdateGoalStatus / UpdateGoalProgress / ListActiveGoals，CodeFirst 自动建表
-- [ ] 步骤4：Goal 文件格式 — `.wishful-claw/goals/{goalId}.md`（Goal 描述 + 计划列表 Markdown）+ `{goalId}.state.json`（执行状态 JSON：计划列表 + 每个计划的状态 + 执行结果摘要 + 重试次数）
-- [ ] 步骤5：GoalFileTools — 文件读写工具：WriteGoalFile / ReadGoalFile / UpdateGoalState / ReadGoalState，状态变更时实时写 state.json
-- [ ] 步骤6：Worker Module 注册 — DbGoalTools 注册到 WorkerModuleCatalog，IPC 端点可达
-- [ ] 步骤7：编译验证 — `dotnet build` 零错误 + `npx tsc --noEmit -p tsconfig.web.json` 零错误
+- [x] 步骤1：GoalEntity 数据模型 — 定义 `GoalEntity.cs`，字段：GoalId / SessionId / GoalText / Status (Active/Paused/Completed/Aborted) / CreatedAt / UpdatedAt / PlanCount / CompletedPlanCount
+- [x] 步骤2：PlanItem 模型 — Goal 下的计划项数据结构：PlanId / Title / Description / Status (Pending/Executing/Completed/Failed) / RetryCount / SubAgentRunId / ResultSummary
+- [x] 步骤3：DbGoalTools — DB CRUD：CreateGoal / GetGoal / UpdateGoalStatus / UpdateGoalProgress / ListActiveGoals，CodeFirst 自动建表
+- [x] 步骤4：Goal 文件格式 — `.wishful-claw/goals/{goalId}.md`（Goal 描述 + 计划列表 Markdown）+ `{goalId}.state.json`（执行状态 JSON：计划列表 + 每个计划的状态 + 执行结果摘要 + 重试次数）
+- [x] 步骤5：GoalFileTools — 文件读写工具：WriteGoalFile / ReadGoalFile / UpdateGoalState / ReadGoalState，状态变更时实时写 state.json
+- [x] 步骤6：Worker Module 注册 — DbGoalTools 注册到 WorkerModuleCatalog，IPC 端点可达
+- [x] 步骤7：编译验证 — `dotnet build` 零错误 + `npx tsc --noEmit -p tsconfig.web.json` 零错误
 
 ## 验证检查点
 

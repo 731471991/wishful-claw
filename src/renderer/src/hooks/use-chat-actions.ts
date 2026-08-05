@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+﻿import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
@@ -8,9 +8,8 @@ import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type C
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
   enablePlanMode?: boolean
-  goalMode?: boolean
+  sessionMode?: 'normal' | 'goal'
   selectedFileReferences?: unknown[]
-  goalObjective?: string
   imageEdit?: unknown
   toolPreset?: string
   [key: string]: unknown
@@ -133,8 +132,7 @@ export function useChatActions() {
         sshConnectionId,
         projectId,
         ...(opts?.enablePlanMode ? { enablePlanMode: true } : {}),
-        ...(opts?.goalMode ? { goalMode: true } : {}),
-        ...(opts?.goalObjective ? { goalObjective: opts.goalObjective } : {})
+        sessionMode: opts?.sessionMode
       })
 
       void opts

@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 
 import { immer } from 'zustand/middleware/immer'
 
@@ -79,8 +79,7 @@ export interface AgentActions {
     sshConnectionId?: string
     projectId?: string
     enablePlanMode?: boolean
-    goalMode?: boolean
-    goalObjective?: string
+    sessionMode?: 'normal' | 'goal'
 
   }) => Promise<void>
 
