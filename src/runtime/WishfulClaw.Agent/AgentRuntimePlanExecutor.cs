@@ -161,8 +161,8 @@ public static class AgentRuntimePlanExecutor
             writer.WriteString(
                 "message",
                 status == "resumed"
-                    ? "Resumed existing plan draft. You are in planning phase: do NOT write implementation code. You can read files (Read/Glob/Grep), write and edit documents (Write/Edit), and run read-only commands. Write the plan into the plan file, then call ExitPlanMode."
-                    : "Plan mode activated. You are in planning phase: do NOT write implementation code. You can read files (Read/Glob/Grep), write and edit documents (Write/Edit), and run read-only commands. Write the plan into the plan file, then call ExitPlanMode.");
+                    ? "Resumed plan draft. Follow the development workflow planning phase:\n\n1. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies. Run read-only commands (git status, git log) to check state.\n2. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules, and reference source paths. Follow the plan.md format.\n3. VALIDATE: Self-check the plan before submitting — steps cover the target, each has a checkpoint, file paths match project structure (AGENTS.md), layer dependencies are correct.\n4. SUBMIT: Call ExitPlanMode to wait for user review.\n\nDo NOT write implementation code. You can read files, write/edit documents, and run read-only commands only."
+                    : "Plan mode activated. Follow the development workflow planning phase:\n\n1. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies. Run read-only commands (git status, git log) to check state.\n2. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules, and reference source paths. Follow the plan.md format.\n3. VALIDATE: Self-check the plan before submitting — steps cover the target, each has a checkpoint, file paths match project structure (AGENTS.md), layer dependencies are correct.\n4. SUBMIT: Call ExitPlanMode to wait for user review.\n\nDo NOT write implementation code. You can read files, write/edit documents, and run read-only commands only.");
         });
     }
 
@@ -279,7 +279,7 @@ public static class AgentRuntimePlanExecutor
                 writer.WriteString("plan_file_path", plan.FilePath);
                 writer.WriteString("title", title);
                 writer.WriteString("content", content);
-                writer.WriteString("message", "Plan approved by user. The plan file is at: " + plan.FilePath + ". Execute it step by step using the Task tool with background=false to dispatch foreground sub-agents for each plan step — do NOT implement steps yourself. For each step: (1) call UpdatePlanStep to mark it in_progress, (2) use the Task tool with subagent_type \"custom\" and background=false to dispatch a foreground work sub-agent with a self-contained prompt containing all context needed for that step, (3) when the sub-agent returns, call UpdatePlanStep to mark it completed or failed based on the result. If a step fails, assess whether the remaining plan needs adjustment before continuing.");
+                writer.WriteString("message", "Plan approved. The plan file is at: " + plan.FilePath + ". Execute the development workflow:\n\n1. EXECUTE: For each step in the plan:\n  (a) Call UpdatePlanStep to mark it in_progress.\n  (b) Use the Task tool with subagent_type \"custom\" and background=false to dispatch a foreground sub-agent with a self-contained prompt for that step. The sub-agent should: implement the step, run mini-verification (dotnet build / npx tsc --noEmit), and commit if it passes.\n  (c) When the sub-agent returns, call UpdatePlanStep to mark completed or failed.\n  (d) If a step fails, git reset to the last good commit, fix, and retry (max 3 retries before asking the user).\n\n2. REVIEW: After all steps complete, dispatch a review sub-agent to check: code matches plan target, layer conventions (AGENTS.md), no hardcoded paths/keys, error handling is sufficient.\n\n3. VERIFY: Run final compilation — dotnet build + npx tsc --noEmit for all tsconfig configs. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nRules: One commit per step. Do NOT push until user confirms PASS. Only commit, never push during execution." );
             });
         }
         else
@@ -293,7 +293,7 @@ public static class AgentRuntimePlanExecutor
                 writer.WriteString("plan_id", plan.Id);
                 writer.WriteString("plan_file_path", plan.FilePath);
                 writer.WriteString("feedback", feedback);
-                writer.WriteString("message", "Plan rejected by user. Feedback: " + feedback + ". Revise the plan in the plan file based on the feedback, then call ExitPlanMode again.");
+                writer.WriteString("message", "Plan rejected. Feedback: " + feedback + ". Revise the plan file based on the feedback — adjust steps, checkpoints, or file paths as needed. Then call ExitPlanMode again to re-submit for review.");
             });
         }
     }
