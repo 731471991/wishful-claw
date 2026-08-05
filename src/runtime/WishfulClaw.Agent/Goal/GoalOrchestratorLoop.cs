@@ -268,25 +268,20 @@ public static partial class GoalOrchestrator
         IWorkerRequestContext context,
         CancellationToken ct)
     {
-        // For Plan 3/4 basic: if the plan completed without 429, consider it satisfied
-        // Plan 8 (integration) will add real LLM evaluation
-        if (result.Status == "completed" && !string.IsNullOrEmpty(result.Summary))
-        {
-            return new EvaluationResult
-            {
-                Satisfied = true,
-                Reasoning = "Plan executed successfully",
-                NextAction = "proceed"
-            };
-        }
+        // Use LLM-based evaluation via sub-agent
+        var executionResultText = !string.IsNullOrEmpty(result.Summary)
+            ? result.Summary
+            : result.Error ?? "No output";
 
-        // If failed, not satisfied
-        return new EvaluationResult
-        {
-            Satisfied = false,
-            Reasoning = result.Error ?? "Plan execution did not complete",
-            NextAction = "retry"
-        };
+        return await EvaluateViaLlmAsync(
+            goal.GoalText,
+            plan.Title,
+            plan.Description,
+            executionResultText,
+            parameters,
+            parentState,
+            context,
+            ct);
     }
 
     // ─── Plan Execution ───

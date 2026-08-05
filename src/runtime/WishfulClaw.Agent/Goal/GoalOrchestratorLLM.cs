@@ -21,7 +21,7 @@ public static partial class GoalOrchestrator
         IWorkerRequestContext context,
         CancellationToken cancellationToken)
     {
-        var prompt = BuildDecompositionPrompt(goalText);
+        var prompt = GoalPromptTemplates.BuildDecompositionUserPrompt(goalText, null);
 
         var input = CreateTaskInput(prompt, "Goal Decomposition");
         var toolCallId = $"goal-decompose-{Guid.NewGuid():N}";
@@ -31,20 +31,20 @@ public static partial class GoalOrchestrator
 
         var output = result.Content?.Trim() ?? string.Empty;
 
+        // Strip markdown code fences if present
+        if (output.StartsWith("```"))
+        {
+            var firstNewline = output.IndexOf('\n');
+            if (firstNewline >= 0)
+                output = output.Substring(firstNewline + 1);
+            if (output.EndsWith("```"))
+                output = output.Substring(0, output.Length - 3);
+            output = output.Trim();
+        }
+
         // Parse JSON array from output
         try
         {
-            // Strip markdown code fences if present
-            if (output.StartsWith("```"))
-            {
-                var firstNewline = output.IndexOf('\n');
-                if (firstNewline >= 0)
-                    output = output.Substring(firstNewline + 1);
-                if (output.EndsWith("```"))
-                    output = output.Substring(0, output.Length - 3);
-                output = output.Trim();
-            }
-
             var plans = new List<GoalPlanItem>();
             using var doc = JsonDocument.Parse(output);
             foreach (var element in doc.RootElement.EnumerateArray())
@@ -76,36 +76,74 @@ public static partial class GoalOrchestrator
         }
     }
 
+    /// <summary>
+    /// Build the execution prompt for a plan using GoalPromptTemplates.
+    /// </summary>
     internal static string BuildPlanExecutionPrompt(string title, string description)
     {
-        return "You are a Plan Execution Agent working in Goal mode (autonomous, no user confirmation).\n\n" +
-               "Plan: " + title + "\n" +
-               "Description: " + description + "\n\n" +
-               "Enter Plan Mode to explore the codebase, create a plan, self-confirm it, and execute it to completion.\n" +
-               "Steps:\n" +
-               "1. Call EnterPlanMode to enter plan mode.\n" +
-               "2. Explore the codebase relevant to this plan.\n" +
-               "3. Write the plan file with specific steps.\n" +
-               "4. Call SubmitPlanReview to self-confirm the plan (Goal mode — no user confirmation needed).\n" +
-               "5. Execute each step: call UpdatePlanStep + use Task tool to dispatch sub-agents.\n" +
-               "6. Run verification (compile, test).\n" +
-               "7. Call ExitPlanMode with result='completed' or result='failed'.\n\n" +
-               "Work autonomously. Do not wait for user input. Complete the plan and report results.";
+        return GoalPromptTemplates.BuildExecutionUserPrompt(title, description);
     }
 
-    private static string BuildDecompositionPrompt(string goalText)
+    /// <summary>
+    /// Evaluate a plan execution result using LLM.
+    /// Returns whether the plan's requirements are satisfied.
+    /// </summary>
+    private static async Task<EvaluationResult> EvaluateViaLlmAsync(
+        string goalText,
+        string planTitle,
+        string planDescription,
+        string executionResult,
+        JsonElement parameters,
+        AgentRuntimeRunState parentState,
+        IWorkerRequestContext context,
+        CancellationToken ct)
     {
-        return "You are a Goal Decomposition Agent. Break the following goal into a series of sequential plans.\n\n" +
-               "Goal: " + goalText + "\n\n" +
-               "For each plan, provide:\n" +
-               "- title: A short title for the plan\n" +
-               "- description: What the plan should accomplish (detailed enough for a sub-agent to execute)\n\n" +
-               "Return ONLY a JSON array (no markdown, no explanation). Example:\n" +
-               "[\n" +
-               "  {\"title\": \"Setup\", \"description\": \"Initialize project structure and dependencies\"},\n" +
-               "  {\"title\": \"Implementation\", \"description\": \"Implement core features\"}\n" +
-               "]\n\n" +
-               "Break the goal into 2-6 plans. Each plan should be a meaningful unit of work.";
+        var prompt = GoalPromptTemplates.BuildEvaluationUserPrompt(
+            goalText, planTitle, planDescription, executionResult);
+
+        var input = CreateTaskInput(prompt, "Goal Evaluation");
+        var toolCallId = $"goal-eval-{Guid.NewGuid():N}";
+
+        try
+        {
+            var result = await SubAgentExecutor.ExecuteAsync(
+                input, parameters, parentState, context, toolCallId);
+
+            var output = result.Content?.Trim() ?? string.Empty;
+
+            // Strip markdown code fences
+            if (output.StartsWith("```"))
+            {
+                var firstNewline = output.IndexOf('\n');
+                if (firstNewline >= 0)
+                    output = output.Substring(firstNewline + 1);
+                if (output.EndsWith("```"))
+                    output = output.Substring(0, output.Length - 3);
+                output = output.Trim();
+            }
+
+            // Parse JSON evaluation result
+            using var doc = JsonDocument.Parse(output);
+            var root = doc.RootElement;
+
+            return new EvaluationResult
+            {
+                Satisfied = root.TryGetProperty("satisfied", out var s) && s.GetBoolean(),
+                Reasoning = root.TryGetProperty("reasoning", out var r) ? r.GetString() : "No reasoning provided",
+                NextAction = root.TryGetProperty("nextAction", out var na) ? na.GetString() ?? "proceed" : "proceed",
+                AdjustedDescription = root.TryGetProperty("adjustedDescription", out var ad) ? ad.GetString() : null
+            };
+        }
+        catch (Exception ex)
+        {
+            // Fallback to heuristic evaluation if LLM fails
+            return new EvaluationResult
+            {
+                Satisfied = false,
+                Reasoning = $"LLM evaluation failed: {ex.Message}. Falling back to heuristic.",
+                NextAction = "retry"
+            };
+        }
     }
 
     /// <summary>
