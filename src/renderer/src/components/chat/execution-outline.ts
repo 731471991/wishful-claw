@@ -93,6 +93,8 @@ interface BuildToolExecutionOutlineOptions {
 const COMMAND_TOOL_NAMES = new Set(['Bash', 'Shell', 'PowerShell'])
 const HIDDEN_TOOL_NAMES = new Set([
   'TaskCreate', 'TaskGet', 'TaskUpdate', 'TaskList',
+  // Plan step tracking is internal -- not user-facing
+  'UpdatePlanStep',
   // Memory tools are internal agent operations — not user-facing
   'memory_hot_read', 'memory_hot_write',
   'memory_append', 'memory_update', 'memory_search',
