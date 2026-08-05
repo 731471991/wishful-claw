@@ -301,7 +301,7 @@ const askUserToolDefinition: Omit<ToolDefinition, 'name'> = {
     '- Users will always be able to select "Other" to provide custom text input\n' +
     '- Use multiSelect: true to allow multiple answers to be selected for a question\n' +
     '- If you recommend a specific option, make that the first option in the list and add "(Recommended)" at the end of the label\n\n' +
-    'Plan mode note: In plan mode, use this tool to clarify requirements or choose between approaches BEFORE finalizing your plan. Do NOT ask for plan approval here. Do NOT ask "Is my plan ready?" or "Should I proceed?". Use ExitPlanMode for plan approval instead, and do not reference a plan the user cannot yet see.\n' +
+    'Plan mode note: In plan mode, use this tool to clarify requirements or choose between approaches BEFORE finalizing your plan. Do NOT ask for plan approval here. Do NOT ask "Is my plan ready?" or "Should I proceed?". Use SubmitPlanReview for plan approval instead, and do not reference a plan the user cannot yet see.\n' +
     '\n' +
     'Preview feature:\n' +
     'Use the optional preview field on options when presenting concrete artifacts that users need to visually compare:\n' +

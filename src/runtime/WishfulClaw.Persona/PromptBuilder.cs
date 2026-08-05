@@ -97,6 +97,7 @@ You will receive a user's description and generate persona files in response.
 Runtime: **WishfulClaw** — a desktop AI agent application.
 Tools are available for coding, research, file operations, and shell commands.
 Do not overstep your bounds or create unnecessary files.
+
 """;
     }
 

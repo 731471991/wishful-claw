@@ -207,7 +207,7 @@
     "processing": "Preparing the plan review card...",
     "errorTitle": "Failed to render the plan review card",
     "planFile": "Plan File",
-    "implement": "Implement This Plan",
+    "implement": "Implement this plan",
     "executeInNewSession": "Execute In New Session",
     "runningHint": "This session is implementing the plan now.",
     "runningInSession": "This plan is running in session \"{{title}}\".",
@@ -215,7 +215,11 @@
     "approvedHint": "This plan has already been approved.",
     "download": "Download plan",
     "copy": "Copy plan",
-    "expand": "Expand in side panel"
+    "expand": "Expand in side panel",
+    "requestRevisions": "Adjust plan",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "feedbackPlaceholder": "Describe what you want adjusted..."
   },
   "guide": {
     "title": "Conversation Onboarding",

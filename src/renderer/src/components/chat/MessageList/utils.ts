@@ -78,7 +78,7 @@ export function collectDuplicatePlanReviewToolUseIds(
     const toolResults = toolResultsLookup.get(message.id)
     for (const block of message.content) {
       if (block.type !== 'tool_use') continue
-      if (block.name !== 'ExitPlanMode') continue
+      if (block.name !== 'SubmitPlanReview') continue
 
       const planId = getPlanReviewPlanId(toolResults?.get(block.id)?.content)
       if (!planId) {

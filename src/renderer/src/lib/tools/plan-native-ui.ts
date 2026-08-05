@@ -59,6 +59,71 @@ function coerceNativePlan(value: unknown): Plan | null {
   }
 }
 
+// -- Plan review reverse request (like ask-user/request) --
+// The agent calls SubmitPlanReview, which sends a plan/review-request reverse
+// request to the renderer. The renderer shows the PlanReviewCard and waits
+// for the user to approve or reject. The response goes back to the agent.
+
+export interface PlanReviewResponse {
+  approved: boolean
+  feedback?: string
+  newSession?: boolean
+  cancelled?: boolean
+}
+
+const planReviewResolvers = new Map<string, (payload: PlanReviewResponse) => void>()
+
+export function resolvePlanReview(planId: string, payload: PlanReviewResponse): void {
+  // Update plan store status immediately so the card reflects the user's choice
+  const planStore = usePlanStore.getState()
+  if (payload.approved) {
+    planStore.approvePlan(planId)
+    // Exit plan mode UI — banner removed, transitioning to execution phase
+    const plan = planStore.plans[planId]
+    if (plan?.sessionId) {
+      useUIStore.getState().exitPlanMode(plan.sessionId)
+    }
+  } else {
+    planStore.rejectPlan(planId)
+    // Keep banner — user wants to adjust, still in plan mode
+  }
+
+  const resolve = planReviewResolvers.get(planId)
+  if (resolve) {
+    resolve(payload)
+    planReviewResolvers.delete(planId)
+  }
+}
+
+export function cancelPlanReview(sessionId: string): void {
+  // Called when user clicks "Exit Plan Mode" on the banner
+  // Resolves any pending plan review for this session as cancelled
+  const planStore = usePlanStore.getState()
+  const plan = planStore.getPlanBySession(sessionId)
+  if (!plan) return
+  const resolve = planReviewResolvers.get(plan.id)
+  if (resolve) {
+    resolve({ approved: false, cancelled: true, feedback: 'User exited plan mode' })
+    planReviewResolvers.delete(plan.id)
+  }
+}
+
+export async function handleNativePlanReviewRequest(params: unknown): Promise<PlanReviewResponse> {
+  const record = isRecord(params) ? params : {}
+  const planId = coerceString(record.planId)
+  if (!planId) {
+    return { approved: false, feedback: 'Invalid plan review request: missing planId' }
+  }
+
+  return await new Promise<PlanReviewResponse>((resolve) => {
+    const previous = planReviewResolvers.get(planId)
+    if (previous) {
+      previous({ approved: false, feedback: 'Superseded by new review request' })
+    }
+    planReviewResolvers.set(planId, resolve)
+  })
+}
+
 export async function handleNativePlanUiUpdate(
   params: unknown
 ): Promise<NativePlanUiUpdateResult> {
@@ -80,6 +145,9 @@ export async function handleNativePlanUiUpdate(
       uiStore.setMode(autoSwitchTarget)
       useChatStore.getState().updateSessionMode(plan.sessionId, autoSwitchTarget)
     }
+  } else if (action === 'review') {
+    // Plan submitted for review — keep banner visible, just sync plan data
+    // Banner will be removed when user approves (resolvePlanReview)
   } else if (action === 'exit') {
     uiStore.exitPlanMode(plan.sessionId)
   }

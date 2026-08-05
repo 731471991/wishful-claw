@@ -2,6 +2,7 @@ import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-nati
 import { handleMcpCapabilityList, handleMcpCapabilityInspect } from '@renderer/lib/tools/mcp-capability-bridge'
 import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'
+import { handleNativePlanUiUpdate, handleNativePlanReviewRequest } from '@renderer/lib/tools/plan-native-ui'
 import { handleSkillManagementExecute } from '@renderer/lib/tools/skill-management-bridge'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
@@ -114,6 +115,26 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
       // Sub-agent tool approval — waits for user to click approve/reject
       // in the SubAgentCard UI. 5 min auto-reject fallback in the handler.
       const result = await handleSubAgentApprovalRequest(payload.params)
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'plan/review-request') {
+      // Plan review waits for explicit user interaction (approve/reject).
+      const result = await handleNativePlanReviewRequest(payload.params)
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'plan/ui-update') {
+      // Plan UI update — sync plan state from native worker to renderer store.
+      const result = await handleNativePlanUiUpdate(payload.params)
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result

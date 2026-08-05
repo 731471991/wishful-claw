@@ -203,6 +203,7 @@ public static class ToolDispatchRouter
                 toolOutput = await AgentRuntimePlanExecutor.ExecuteAsync(
                 toolCall, state.Parameters, state.RunId, context, state.CancellationToken);
                 isToolError = IsJsonError(toolOutput);
+
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)

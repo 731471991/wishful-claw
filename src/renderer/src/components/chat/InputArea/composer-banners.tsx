@@ -1,8 +1,8 @@
 import { AlertTriangle, FolderOpen, ClipboardList, Target } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { useTranslation } from 'react-i18next'
-import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
+import { exitPlanMode as exitPlanModeAction } from '@renderer/hooks/use-chat-actions'
 
 interface ComposerBannersProps {
   hasApiKey: boolean
@@ -63,7 +63,7 @@ export function ComposerBanners({
 
       {/* Plan mode banner */}
       {planMode && projectScoped && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-1.5">
+        <div className={cn(composerWidthClass, 'mb-2 flex items-center justify-between gap-2 rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-1.5')}>
           <div className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400">
             <ClipboardList className="size-3.5 shrink-0" />
             <span>
@@ -76,7 +76,7 @@ export function ComposerBanners({
             variant="ghost"
             size="sm"
             className="h-5 px-1.5 text-[10px] text-violet-600 dark:text-violet-400 hover:bg-violet-500/10"
-            onClick={() => useUIStore.getState().exitPlanMode(draftSessionId)}
+            onClick={() => void exitPlanModeAction(draftSessionId)}
           >
             {t('input.exitPlanMode', { defaultValue: 'Exit Plan Mode' })}
           </Button>

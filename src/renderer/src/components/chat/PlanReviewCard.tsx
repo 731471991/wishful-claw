@@ -8,15 +8,14 @@ import {
   Download,
   Loader2,
   Maximize2,
-  MessageSquarePlus,
   Play,
   TriangleAlert
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@renderer/components/ui/button'
 import { Badge } from '@renderer/components/ui/badge'
+import { Textarea } from '@renderer/components/ui/textarea'
 import { useChatStore } from '@renderer/stores/chat-store'
-import { useAgentStore } from '@renderer/stores/agent-store'
 import { usePlanStore, type Plan, type PlanStatus } from '@renderer/stores/plan-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { ToolCallStatus } from '@renderer/lib/agent/types'
@@ -25,7 +24,7 @@ import {
   decodeStructuredToolResult,
   isStructuredToolErrorText
 } from '@renderer/lib/tools/tool-result-format'
-import { sendImplementPlan, sendImplementPlanInNewSession } from '@renderer/hooks/use-chat-actions'
+import { resolvePlanReview } from '@renderer/lib/tools/plan-native-ui'
 import { cn } from '@renderer/lib/utils'
 import {
   MARKDOWN_REHYPE_PLUGINS,
@@ -167,9 +166,6 @@ export function PlanReviewCard({
   const parsedPayload = React.useMemo(() => parsePlanReviewPayload(output), [output])
   const outputText = React.useMemo(() => outputAsText(output), [output])
   const activeSessionId = useChatStore((s) => s.activeSessionId)
-  const hasStreamingMessage = useChatStore((s) =>
-    activeSessionId ? Boolean(s.streamingMessages[activeSessionId]) : false
-  )
   const fallbackPlan = usePlanStore((s) =>
     parsedPayload?.planId
       ? undefined
@@ -184,9 +180,10 @@ export function PlanReviewCard({
   const executionSession = useChatStore((s) =>
     payload?.planId ? s.getLatestSessionByPlanId?.(payload.planId) ?? null : undefined
   )
-  const isRunning = useAgentStore((s) => s.isSessionActive(activeSessionId)) || hasStreamingMessage
 
   const [copied, setCopied] = React.useState(false)
+  const [showFeedbackInput, setShowFeedbackInput] = React.useState(false)
+  const [feedbackText, setFeedbackText] = React.useState('')
   const contentRef = React.useRef<HTMLDivElement | null>(null)
   const [contentTruncated, setContentTruncated] = React.useState(false)
   const planContent = payload?.content ?? ''
@@ -365,31 +362,57 @@ export function PlanReviewCard({
               size="sm"
               className="h-8 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
               onClick={() => {
-                void sendImplementPlan(sessionId ?? activeSessionId ?? '', payload.planId)
+                resolvePlanReview(payload.planId, { approved: true })
               }}
-              disabled={isRunning}
             >
-              {isRunning ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Play className="size-3.5" />
-              )}
+              <Play className="size-3.5" />
               {t('planReview.implement', { defaultValue: 'Implement this plan' })}
             </Button>
             <Button
               variant="outline"
               size="sm"
               className="h-8 gap-1.5"
-              onClick={() => {
-                void sendImplementPlanInNewSession(null, payload.planId)
-              }}
-              disabled={isRunning}
+              onClick={() => setShowFeedbackInput(true)}
             >
-              <MessageSquarePlus className="size-3.5" />
-              {t('planReview.executeInNewSession', { defaultValue: 'Execute in new session' })}
+              <ClipboardList className="size-3.5" />
+              {t('planReview.requestRevisions', { defaultValue: 'Adjust plan' })}
             </Button>
           </>
         )}
+      </div>
+      {displayStatus === 'awaiting_review' && showFeedbackInput && (
+        <div className="mt-3 flex flex-col gap-2">
+          <Textarea
+            placeholder={t('planReview.feedbackPlaceholder', { defaultValue: 'Describe what you want adjusted...' })}
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+            className="min-h-[80px] resize-none text-sm"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              size="sm"
+              className="h-7"
+              onClick={() => {
+                resolvePlanReview(payload.planId, { approved: false, feedback: feedbackText.trim() || 'User wants to discuss and adjust the plan' })
+              }}
+            >
+              {t('planReview.submit', { defaultValue: 'Submit' })}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7"
+              onClick={() => {
+                setShowFeedbackInput(false)
+                setFeedbackText('')
+              }}
+            >
+              {t('planReview.cancel', { defaultValue: 'Cancel' })}
+            </Button>
+          </div>
+        </div>
+      )}
         {displayStatus === 'implementing' && (
           <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-300">
             <Loader2 className="size-3.5 animate-spin" />
@@ -426,7 +449,6 @@ export function PlanReviewCard({
             </span>
           </div>
         )}
-      </div>
     </div>
   )
 }

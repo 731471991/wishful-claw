@@ -292,6 +292,20 @@ function SubAgentCardInner({
     // Work sub-agents (foreground) expand by default; background stay collapsed.
   const [isExpanded, setIsExpanded] = React.useState(!isBackground)
 
+  // Auto-collapse foreground sub-agent cards when execution completes
+  const wasRunningRef = React.useRef(false)
+  React.useEffect(() => {
+    if (isBackground) return
+    if (isRunning) {
+      wasRunningRef.current = true
+      if (!isExpanded) setIsExpanded(true)
+    } else if (wasRunningRef.current) {
+      // Sub-agent just finished — auto-collapse
+      wasRunningRef.current = false
+      setIsExpanded(false)
+    }
+  }, [isBackground, isRunning, isExpanded])
+
   const elapsed = tracked
     ? (tracked.completedAt ?? (tracked.isRunning ? now : tracked.startedAt)) - tracked.startedAt
     : histMeta?.elapsed

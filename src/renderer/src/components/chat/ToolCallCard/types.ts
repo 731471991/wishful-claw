@@ -110,7 +110,7 @@ export const COMPACT_BUILTIN_TOOL_NAMES = new Set([
   'Delete',
   'Edit',
   'EnterPlanMode',
-  'ExitPlanMode',
+  'SubmitPlanReview',
   'Glob',
   'Grep',
   'LS',
