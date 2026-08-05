@@ -284,7 +284,6 @@ export function InputArea({
   })
 
   const handleCollabModeChange = React.useCallback((nextMode: CollabMode): void => {
-    console.log('[InputArea] handleCollabModeChange nextMode=' + nextMode + ' draftSessionId=' + draftSessionId + ' disabled=' + disabled + ' isStreaming=' + isStreaming + ' isOptimizingLocked=' + isOptimizingLocked + ' pendingImageReads=' + pendingImageReads + ' hasActiveGoal=' + hasActiveGoal + ' pendingCollabMode=' + pendingCollabMode)
     if (disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0) return
     if (nextMode === 'normal') {
       if (draftSessionId && hasActiveGoal) {
@@ -293,15 +292,9 @@ export function InputArea({
       }
       if (draftSessionId) useUIStore.getState().setCollabMode(draftSessionId, 'normal')
       setPendingCollabMode(null)
-      console.log('[InputArea] handleCollabModeChange: set to normal draftSessionId=' + draftSessionId)
     } else {
-      if (draftSessionId) {
-        console.log('[InputArea] handleCollabModeChange: setCollabMode draftSessionId=' + draftSessionId + ' nextMode=' + nextMode)
-        useUIStore.getState().setCollabMode(draftSessionId, 'goal')
-      } else {
-        console.log('[InputArea] handleCollabModeChange: setPendingCollabMode nextMode=' + nextMode)
-        setPendingCollabMode('goal')
-      }
+      if (draftSessionId) useUIStore.getState().setCollabMode(draftSessionId, 'goal')
+      else setPendingCollabMode('goal')
       requestAnimationFrame(() => focusInputAtEnd())
     }
   }, [disabled, isStreaming, isOptimizingLocked, pendingImageReads, draftSessionId, hasActiveGoal, focusInputAtEnd])

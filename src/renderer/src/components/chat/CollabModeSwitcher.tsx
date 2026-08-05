@@ -61,31 +61,22 @@ export function CollabModeSwitcher({
     sessionId ? (s.collabModesBySession[sessionId] ?? 'normal') : 'normal'
   )
   const derivedMode = modeOverride ?? storeMode
-  // Local mode: immediately reflects user selection, synced with derivedMode
+  // Local mode: initially synced with derivedMode, then independent after user selection
   const [localMode, setLocalMode] = React.useState<CollabMode>(derivedMode)
-  React.useEffect(() => { setLocalMode(derivedMode) }, [derivedMode])
   const mode = localMode
   const setCollabMode = useUIStore((s) => s.setCollabMode)
   const options = getModeOptions(t)
   const activeOption = options.find((o) => o.value === mode) ?? options[0]
 
-  // ── Debug logging ──
-  console.log('[CollabModeSwitcher] render sessionId=' + sessionId + ' modeOverride=' + modeOverride + ' storeMode=' + storeMode + ' derivedMode=' + derivedMode + ' localMode=' + localMode + ' mode=' + mode + ' disabled=' + disabled)
-
   const handleSelect = (nextMode: CollabMode): void => {
-    console.log('[CollabModeSwitcher] handleSelect nextMode=' + nextMode + ' modeBefore=' + mode + ' sessionId=' + sessionId)
     if (nextMode === mode) {
-      console.log('[CollabModeSwitcher] handleSelect: same mode, skip')
       setOpen(false)
       return
     }
     setLocalMode(nextMode) // Immediately update local state for instant UI feedback
-    console.log('[CollabModeSwitcher] handleSelect: setLocalMode nextMode=' + nextMode)
     if (sessionId) {
-      console.log('[CollabModeSwitcher] handleSelect: setCollabMode sessionId=' + sessionId + ' nextMode=' + nextMode)
       setCollabMode(sessionId, nextMode)
     }
-    console.log('[CollabModeSwitcher] handleSelect: calling onModeChange nextMode=' + nextMode)
     onModeChange?.(nextMode)
     setOpen(false)
   }
