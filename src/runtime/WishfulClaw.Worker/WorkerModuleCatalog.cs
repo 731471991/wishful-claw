@@ -39,6 +39,7 @@ public static class WorkerModuleCatalog
         new XaiVideoModule(),
         new ExtensionModule(),
         new SkillModule(),
-        new WebFetchModule()
+        new WebFetchModule(),
+        new GoalModule()
     ];
 }

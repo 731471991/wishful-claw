@@ -73,6 +73,28 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
+    /// Pause a running Goal.
+    /// </summary>
+    public static void Pause(string goalId)
+    {
+        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "active")
+        {
+            goal.Status = "paused";
+        }
+    }
+
+    /// <summary>
+    /// Resume a paused Goal.
+    /// </summary>
+    public static void Resume(string goalId)
+    {
+        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "paused")
+        {
+            goal.Status = "active";
+        }
+    }
+
+    /// <summary>
     /// Abort a running Goal.
     /// </summary>
     public static void Abort(string goalId)

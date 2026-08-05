@@ -357,6 +357,23 @@ registerWebSearchHandlers()
     'db:goal-events:add:msgpack',
     async (args) => getNativeWorker().request('db/goal-events-add', args)
   )
+  // -- Goal control handlers --
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'goal:pause:msgpack',
+    async (args) => getNativeWorker().request('goal/pause', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'goal:resume:msgpack',
+    async (args) => getNativeWorker().request('goal/resume', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'goal:abort:msgpack',
+    async (args) => getNativeWorker().request('goal/abort', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'goal:status:msgpack',
+    async (args) => getNativeWorker().request('goal/status', args)
+  )
   
   // -- Log handlers --
   registerMessagePackHandler<{ level: string; message: string; stack?: string; extra?: Record<string, unknown> }, void>(
