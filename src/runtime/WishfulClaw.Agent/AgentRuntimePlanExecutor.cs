@@ -190,19 +190,9 @@ public static class AgentRuntimePlanExecutor
             });
         }
 
-        // Check if already awaiting review
-        if (plan.Status == "awaiting_review")
-        {
-            return EncodeJsonObject(writer =>
-            {
-                writer.WriteString("status", "awaiting_review");
-                writer.WriteBoolean("awaiting_user_review", true);
-                writer.WriteString("plan_id", plan.Id);
-                writer.WriteString("plan_file_path", plan.FilePath);
-                writer.WriteString("title", plan.Title);
-                writer.WriteString("message", "Plan is already finalized and awaiting user review.");
-            });
-        }
+        // Always re-read the plan file and re-submit for review.
+        // (Previously returned early if status was already "awaiting_review",
+        //  but that prevented re-submission after the user rejected the plan.)
 
         // Read plan file content
         string content;
