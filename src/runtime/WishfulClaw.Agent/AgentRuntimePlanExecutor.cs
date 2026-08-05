@@ -214,8 +214,11 @@ public static class AgentRuntimePlanExecutor
         var now = Now();
         UpdatePlanForReview(parameters, plan.Id, title, now);
 
-        // Initialize state file
-        await WriteStateFileAsync(plan.FilePath!, plan.Id, title, "awaiting_review", [], cancellationToken);
+        // Read existing steps (if any) to avoid clearing them on re-submission
+        var existingState = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
+        var existingSteps = existingState?.Steps ?? [];
+        // Write state file with "awaiting_review" status, preserving existing steps
+        await WriteStateFileAsync(plan.FilePath!, plan.Id, title, "awaiting_review", existingSteps, cancellationToken);
 
         RunStates[runId] = new PlanRunState(false, plan.FilePath);
 
@@ -258,8 +261,13 @@ public static class AgentRuntimePlanExecutor
 
         if (approved)
         {
-            // Update plan status to approved
-            UpdatePlanForReview(parameters, plan.Id, title, Now());
+            // Update plan status to approved in DB
+            UpdatePlanStatus(parameters, plan.Id, title, "approved", Now());
+
+            // Update state.json to "approved", preserving existing steps
+            var stateBeforeExec = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
+            var stepsBeforeExec = stateBeforeExec?.Steps ?? [];
+            await WriteStateFileAsync(plan.FilePath!, plan.Id, title, "approved", stepsBeforeExec, cancellationToken);
 
             if (newSession)
             {
@@ -279,13 +287,13 @@ public static class AgentRuntimePlanExecutor
                 writer.WriteString("plan_file_path", plan.FilePath);
                 writer.WriteString("title", title);
                 writer.WriteString("content", content);
-                writer.WriteString("message", "Plan approved. The plan file is at: " + plan.FilePath + ". Execute the development workflow:\n\n1. EXECUTE: For each step in the plan:\n  (a) Call UpdatePlanStep to mark it in_progress.\n  (b) Use the Task tool with subagent_type \"custom\" and background=false to dispatch a foreground sub-agent with a self-contained prompt for that step. The sub-agent should: implement the step, run mini-verification (dotnet build / npx tsc --noEmit), and commit if it passes.\n  (c) When the sub-agent returns, call UpdatePlanStep to mark completed or failed.\n  (d) If a step fails, git reset to the last good commit, fix, and retry (max 3 retries before asking the user).\n\n2. REVIEW: After all steps complete, dispatch a review sub-agent to check: code matches plan target, layer conventions (AGENTS.md), no hardcoded paths/keys, error handling is sufficient.\n\n3. VERIFY: Run final compilation — dotnet build + npx tsc --noEmit for all tsconfig configs. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nRules: One commit per step. Do NOT push until user confirms PASS. Only commit, never push during execution." );
+                writer.WriteString("message", "Plan approved. The plan file is at: " + plan.FilePath + ". Execute the development workflow:\n\n1. EXECUTE: For each step in the plan:\n  (a) Call UpdatePlanStep to mark it in_progress.\n  (b) Use the Task tool with subagent_type \"custom\" and background=false to dispatch a foreground sub-agent with a self-contained prompt for that step. The sub-agent should: implement the step, run mini-verification appropriate for the task (e.g. compile, lint, or test), and commit if it passes.\n  (c) When the sub-agent returns, call UpdatePlanStep to mark completed or failed.\n  (d) If a step fails, git reset to the last good commit, fix, and retry (max 3 retries before asking the user).\n\n2. REVIEW: After all steps complete, dispatch a review sub-agent to check: code matches plan target, layer conventions (AGENTS.md), no hardcoded paths/keys, error handling is sufficient.\n\n3. VERIFY: Run final compilation — dotnet build + npx tsc --noEmit for all tsconfig configs. Report results and STOP for user to confirm PASS/FAIL/PARTIAL.\n\nRules: One commit per step. Do NOT push until user confirms PASS. Only commit, never push during execution." );
             });
         }
         else
         {
             // Plan rejected — update status and let agent revise
-            UpdatePlanForReview(parameters, plan.Id, title + " (rejected)", Now());
+            UpdatePlanStatus(parameters, plan.Id, title, "rejected", Now());
 
             return EncodeJsonObject(writer =>
             {
@@ -479,11 +487,16 @@ public static class AgentRuntimePlanExecutor
 
     private static void UpdatePlanForReview(JsonElement parameters, string planId, string title, long updatedAt)
     {
+        UpdatePlanStatus(parameters, planId, title, "awaiting_review", updatedAt);
+    }
+
+    private static void UpdatePlanStatus(JsonElement parameters, string planId, string title, string status, long updatedAt)
+    {
         DbClient.EnsureInitialized(parameters);
         var db = DbClient.GetClient(parameters);
         db.Updateable<PlanEntity>()
             .SetColumns(e => e.Title == title)
-            .SetColumns(e => e.Status == "awaiting_review")
+            .SetColumns(e => e.Status == status)
             .SetColumns(e => e.UpdatedAt == updatedAt)
             .Where(e => e.Id == planId)
             .ExecuteCommand();
@@ -499,6 +512,22 @@ public static class AgentRuntimePlanExecutor
     }
 
     // ── State File ──
+
+    private static async Task<PlanState?> ReadStateFileAsync(string planFilePath, CancellationToken cancellationToken)
+    {
+        var stateFilePath = GetStateFilePath(planFilePath);
+        if (!File.Exists(stateFilePath)) return null;
+        try
+        {
+            var json = await File.ReadAllTextAsync(stateFilePath, cancellationToken);
+            return JsonSerializer.Deserialize<PlanState>(json);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            WorkerLog.Warn($"Failed to read plan state file: {ex.Message}");
+            return null;
+        }
+    }
 
     private static async Task WriteStateFileAsync(
         string planFilePath,
@@ -522,6 +551,21 @@ public static class AgentRuntimePlanExecutor
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = true
         });
+
+        // Retry up to 3 times to handle file lock contention from rapid UpdatePlanStep calls
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                await File.WriteAllTextAsync(stateFilePath, json, cancellationToken);
+                return;
+            }
+            catch (IOException) when (attempt < 2 && !cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(100 * (attempt + 1), cancellationToken);
+            }
+        }
+        // Final attempt — let it throw if it fails
         await File.WriteAllTextAsync(stateFilePath, json, cancellationToken);
     }
 
