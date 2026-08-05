@@ -292,12 +292,12 @@ git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 pus
 
 项目运行时的所有异常（主进程、渲染进程、Worker、IPC 通道）会自动写入日志文件。
 
-**日志位置**：`<userData>/logs/` 目录下，按日期命名，如 `2026-07-22.log`
+**日志位置**：`~/.wishful-claw/logs/` 目录下，按日期命名，如 `2026-08-05.log`
 
-其中 `<userData>` 是 Electron 的 `app.getPath('userData')` 返回值：
-- Windows：`%APPDATA%/WishfulClaw`（即 `C:\Users\<用户名>\AppData\Roaming\WishfulClaw\logs\`）
-- macOS：`~/Library/Application Support/<appName>/logs/`
-- Linux：`~/.config/<appName>/logs/`
+日志统一写在用户主目录下的 `.wishful-claw/logs/`，与 `config.json`、`index.db` 等配置文件同级：
+- Windows：`C:\\Users\\<用户名>\\.wishful-claw\\logs\\`
+- macOS：`~/.wishful-claw/logs/`
+- Linux：`~/.wishful-claw/logs/`
 
 **排查方式**：Agent 排查问题时，优先读取当天日志文件中的 `[ERROR]` 级别条目，获取完整堆栈信息，而非依赖用户口述错误。
 

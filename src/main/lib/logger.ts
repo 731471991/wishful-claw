@@ -1,5 +1,6 @@
-import { app } from 'electron'
+// electron app import removed — logs now go to ~/.wishful-claw/logs/
 import { join } from 'path'
+import * as os from 'os'
 import * as fs from 'fs'
 
 // ─── Types ───
@@ -21,7 +22,7 @@ let logDir: string = ''
 
 function getLogDir(): string {
   if (!logDir) {
-    logDir = join(app.getPath('userData'), 'logs')
+    logDir = join(os.homedir(), '.wishful-claw', 'logs')
   }
   return logDir
 }
