@@ -36,7 +36,7 @@ public static class GoalPlanTracker
     /// Called by the orchestrator before spawning a sub-agent.
     /// </summary>
     public static void StartPlan(
-        string workingFolder,
+        string? workingFolder,
         string goalId,
         GoalPlanItem plan,
         List<string>? steps = null)
@@ -86,7 +86,7 @@ public static class GoalPlanTracker
     /// Called by the orchestrator after sub-agent execution + evaluation.
     /// </summary>
     public static void FinishPlan(
-        string workingFolder,
+        string? workingFolder,
         string goalId,
         GoalPlanItem plan)
     {
@@ -128,7 +128,7 @@ public static class GoalPlanTracker
     /// Can be called by the orchestrator during execution (e.g., backoff events, retries).
     /// </summary>
     public static void AppendLog(
-        string workingFolder,
+        string? workingFolder,
         string goalId,
         string planId,
         string message)
