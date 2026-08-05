@@ -320,19 +320,44 @@ registerWebSearchHandlers()
     'db:messages:list-locator:msgpack',
     async () => null
   )
+  // ── Goal DB handlers (forwarded to Worker) ──
+  registerMessagePackHandler<Record<string, unknown>, unknown[]>(
+    'db:goals:list:msgpack',
+    async (args) => getNativeWorker().request('db/goals-list', args)
+  )
   registerMessagePackHandler<string, unknown | null>(
     'db:goals:get:msgpack',
-    async () => null
+    async (sessionId) => getNativeWorker().request('db/goals-get', { sessionId })
   )
-  registerMessagePackHandler<string, unknown[]>(
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'db:goals:create:msgpack',
+    async (args) => getNativeWorker().request('db/goals-create', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'db:goals:set:msgpack',
+    async (args) => getNativeWorker().request('db/goals-set', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'db:goals:update:msgpack',
+    async (args) => getNativeWorker().request('db/goals-update', args)
+  )
+  registerMessagePackHandler<string, unknown>(
+    'db:goals:clear:msgpack',
+    async (sessionId) => getNativeWorker().request('db/goals-clear', { sessionId })
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'db:goals:account:msgpack',
+    async (args) => getNativeWorker().request('db/goals-account', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown[]>(
     'db:goal-events:list:msgpack',
-    async () => []
+    async (args) => getNativeWorker().request('db/goal-events-list', args)
   )
-  registerMessagePackHandler<unknown, void>(
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
     'db:goal-events:add:msgpack',
-    async () => undefined
+    async (args) => getNativeWorker().request('db/goal-events-add', args)
   )
-
+  
   // -- Log handlers --
   registerMessagePackHandler<{ level: string; message: string; stack?: string; extra?: Record<string, unknown> }, void>(
     'log:write',

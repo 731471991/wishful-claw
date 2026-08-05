@@ -69,6 +69,20 @@ public sealed class DbModule : IWorkerModule
         context.Register("db/plans-update", DbPlanTools.Update);
         context.Register("db/plans-delete", DbPlanTools.Delete);
 
+        // ── Goals ──
+        context.Register("db/goals-list", DbGoalTools.List);
+        context.Register("db/goals-get", DbGoalTools.Get);
+        context.Register("db/goals-create", DbGoalTools.Create);
+        context.Register("db/goals-set", DbGoalTools.Set);
+        context.Register("db/goals-update", DbGoalTools.Update);
+        context.Register("db/goals-clear", DbGoalTools.Clear);
+        context.Register("db/goals-account", DbGoalTools.AccountUsage);
+        context.Register("db/goals-list-active", DbGoalTools.ListActive);
+
+        // ── Goal Events ──
+        context.Register("db/goal-events-list", DbGoalTools.ListEvents);
+        context.Register("db/goal-events-add", DbGoalTools.AddEvent);
+
         // ── Plugin Sessions ──
         context.Register("db/plugin-normal-projects", DbPluginSessionTools.ListNormalProjects);
         context.Register("db/plugin-sync-session-models", DbPluginSessionTools.SyncPluginSessionModels);
