@@ -73,6 +73,7 @@ public static class PromptBuilder
         var goalMode = JsonHelpers.GetBool(parameters, "goalMode", false);
         if (goalMode)
         {
+            WorkerLog.Info($"goalMode enabled, goalObjective={JsonHelpers.GetString(parameters, "goalObjective") ?? "(not set)"}");
             var goalObjective = JsonHelpers.GetString(parameters, "goalObjective");
             if (!string.IsNullOrWhiteSpace(goalObjective))
             {

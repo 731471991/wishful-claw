@@ -45,3 +45,4 @@ logs/
 out/
 package-lock.json
 .reasonix/
+build_out
