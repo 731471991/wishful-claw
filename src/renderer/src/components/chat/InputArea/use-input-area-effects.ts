@@ -88,8 +88,8 @@ export function useInputAreaEffects(input: InputAreaEffectsInput): void {
   React.useEffect(() => {
     if (draftSessionId && pendingCollabMode) {
       useUIStore.getState().setCollabMode(draftSessionId, pendingCollabMode)
+      setPendingCollabMode(null)
     }
-    setPendingCollabMode(null)
   }, [draftSessionId, pendingCollabMode, setPendingCollabMode])
 
   React.useEffect(() => {
