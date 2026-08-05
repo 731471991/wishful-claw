@@ -16,7 +16,7 @@ export function isProjectSession({
   activeProjectId
 }: SessionScopeInput): boolean {
   if (session) {
-    return Boolean(session.projectId)
+    return Boolean(session.projectId) || (PROJECT_SCOPED_VIEWS.has(chatView) && Boolean(activeProjectId))
   }
 
   return PROJECT_SCOPED_VIEWS.has(chatView) && Boolean(activeProjectId)
