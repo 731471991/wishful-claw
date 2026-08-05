@@ -69,15 +69,23 @@ export function CollabModeSwitcher({
   const options = getModeOptions(t)
   const activeOption = options.find((o) => o.value === mode) ?? options[0]
 
+  // ── Debug logging ──
+  console.log('[CollabModeSwitcher] render', { sessionId, modeOverride, storeMode, derivedMode, localMode, mode, disabled })
+
   const handleSelect = (nextMode: CollabMode): void => {
+    console.log('[CollabModeSwitcher] handleSelect', { nextMode, modeBefore: mode, sessionId })
     if (nextMode === mode) {
+      console.log('[CollabModeSwitcher] handleSelect: same mode, skip')
       setOpen(false)
       return
     }
     setLocalMode(nextMode) // Immediately update local state for instant UI feedback
+    console.log('[CollabModeSwitcher] handleSelect: setLocalMode', { nextMode })
     if (sessionId) {
+      console.log('[CollabModeSwitcher] handleSelect: setCollabMode', { sessionId, nextMode })
       setCollabMode(sessionId, nextMode)
     }
+    console.log('[CollabModeSwitcher] handleSelect: calling onModeChange', { nextMode })
     onModeChange?.(nextMode)
     setOpen(false)
   }
