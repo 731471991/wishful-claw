@@ -44,7 +44,8 @@ public static class SystemPromptCache
         string? language,
         string? userRules,
         string? sshConnectionId,
-        string? projectId)
+        string? projectId,
+        string? goalObjective = null)
     {
         return string.Join('|',
             personaId ?? string.Empty,
@@ -52,6 +53,7 @@ public static class SystemPromptCache
             language ?? string.Empty,
             userRules ?? string.Empty,
             sshConnectionId ?? string.Empty,
-            projectId ?? string.Empty);
+            projectId ?? string.Empty,
+            goalObjective ?? string.Empty);
     }
 }

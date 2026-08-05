@@ -219,7 +219,7 @@ export function GoalSessionBar({
   const activeRunStartedAt = useGoalStore((s) => {
     if (!sessionId || !goal) return null
     const activeRun = s.activeGoalRunsBySession[sessionId]
-    return activeRun?.goalId === goal.goalId ? activeRun.startedAt : null
+    return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
   })
   const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt)
 
@@ -367,7 +367,7 @@ export function GoalPanelCard({
   const activeRunStartedAt = useGoalStore((s) => {
     if (!sessionId || !goal) return null
     const activeRun = s.activeGoalRunsBySession[sessionId]
-    return activeRun?.goalId === goal.goalId ? activeRun.startedAt : null
+    return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
   })
   const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt)
 

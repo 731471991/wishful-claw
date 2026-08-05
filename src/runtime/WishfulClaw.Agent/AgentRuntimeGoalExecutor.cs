@@ -1,12 +1,13 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
 namespace WishfulClaw.Agent;
 
 /// <summary>
 /// Goal tool executor — get/create/update goals.
-/// Simplified port: in-memory storage (no SQLite). Ported from WishfulClaw AgentRuntimeGoalExecutor.
+/// CreateGoal triggers GoalOrchestrator.StartAsync to start the orchestration loop.
 /// </summary>
 public static class AgentRuntimeGoalExecutor
 {
@@ -15,6 +16,10 @@ public static class AgentRuntimeGoalExecutor
     public static bool IsGoalTool(string toolName) =>
         toolName is "get_goal" or "create_goal" or "update_goal";
 
+    /// <summary>
+    /// Execute a goal tool synchronously (get_goal, update_goal).
+    /// create_goal must use ExecuteAsync to trigger the orchestrator.
+    /// </summary>
     public static string Execute(AgentRuntimeNativeToolCall call, JsonElement parameters)
     {
         var sessionId = JsonHelpers.GetString(parameters, "sessionId")?.Trim() ?? string.Empty;
@@ -24,20 +29,55 @@ public static class AgentRuntimeGoalExecutor
         return call.Name switch
         {
             "get_goal" => EncodeGoal(Goals.TryGetValue(sessionId, out var g) ? g : null),
-            "create_goal" => CreateGoal(call.Input, sessionId),
             "update_goal" => UpdateGoal(call.Input, sessionId),
-            _ => EncodeError($"Unknown goal tool: {call.Name}")
+            _ => EncodeError($"Use ExecuteAsync for {call.Name}")
         };
     }
 
-    private static string CreateGoal(JsonElement input, string sessionId)
+    /// <summary>
+    /// Execute a goal tool asynchronously. create_goal triggers GoalOrchestrator.
+    /// </summary>
+    public static async Task<string> ExecuteAsync(
+        AgentRuntimeNativeToolCall call,
+        AgentRuntimeRunState state,
+        IWorkerRequestContext context)
+    {
+        var sessionId = JsonHelpers.GetString(state.Parameters, "sessionId")?.Trim() ?? string.Empty;
+        if (sessionId.Length == 0)
+            return EncodeError("No active session.");
+
+        if (call.Name != "create_goal")
+            return Execute(call, state.Parameters);
+
+        return await CreateGoalAsync(call.Input, sessionId, state.Parameters, state, context);
+    }
+
+    private static async Task<string> CreateGoalAsync(
+        JsonElement input,
+        string sessionId,
+        JsonElement parameters,
+        AgentRuntimeRunState parentState,
+        IWorkerRequestContext context)
     {
         var objective = JsonHelpers.GetString(input, "objective")?.Trim() ?? string.Empty;
         if (objective.Length == 0)
             return EncodeError("create_goal requires a non-empty objective.");
 
+        // Store in memory
         var goal = new GoalRecord(objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         Goals[sessionId] = goal;
+
+        // Check if a goal is already running for this session
+        // (simple check: if GoalOrchestrator has an active goal for this session, don't start another)
+        var existingGoalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+        if (existingGoalId != null)
+            return EncodeGoal(goal); // Already running, just acknowledge
+
+        // Start the orchestration loop
+        var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
+        var goalId = await GoalOrchestrator.StartAsync(
+            objective, sessionId, workingFolder, parameters, parentState, context);
+
         return EncodeGoal(goal);
     }
 
@@ -53,6 +93,15 @@ public static class AgentRuntimeGoalExecutor
             status ?? existing.Status,
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         Goals[sessionId] = updated;
+
+        // If status is "completed" or "blocked", abort the orchestrator
+        if (status is "completed" or "blocked" or "failed")
+        {
+            var activeGoalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+            if (activeGoalId != null)
+                GoalOrchestrator.Abort(activeGoalId);
+        }
+
         return EncodeGoal(updated);
     }
 

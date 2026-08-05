@@ -8,6 +8,7 @@ import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type C
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
   enablePlanMode?: boolean
+  goalMode?: boolean
   selectedFileReferences?: unknown[]
   goalObjective?: string
   imageEdit?: unknown
@@ -131,7 +132,9 @@ export function useChatActions() {
         contextCompressionThreshold: settings.contextCompressionThreshold,
         sshConnectionId,
         projectId,
-        ...(opts?.enablePlanMode ? { enablePlanMode: true } : {})
+        ...(opts?.enablePlanMode ? { enablePlanMode: true } : {}),
+        ...(opts?.goalMode ? { goalMode: true } : {}),
+        ...(opts?.goalObjective ? { goalObjective: opts.goalObjective } : {})
       })
 
       void opts

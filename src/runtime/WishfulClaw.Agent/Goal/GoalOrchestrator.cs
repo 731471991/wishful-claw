@@ -115,6 +115,19 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
+    /// Get the active goal ID for a session, if one exists.
+    /// </summary>
+    public static string? GetActiveGoalId(string sessionId)
+    {
+        foreach (var kvp in ActiveGoals)
+        {
+            if (kvp.Value.SessionId == sessionId && kvp.Value.Status == "active")
+                return kvp.Key;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Get the current context for a running Goal.
     /// </summary>
     public static GoalContext? GetContext(string goalId)

@@ -148,9 +148,9 @@ function SkillsMenuContent({
   const loadSkills = useSkillsStore((s) => s.loadSkills)
 
   const channels = useChannelStore((s) => s.channels)
-  const activeChannelIdsByProject = (useChannelStore as any)((s: any) => s.activeChannelIdsByProject)
+  const activeChannelIdsByProject = (useChannelStore as any)((s: any) => s.activeChannelIdsByProject) ?? {}
   const activeChannelIds = activeChannelIdsByProject[projectId ?? '__global__'] ?? []
-  const toggleActiveChannel = (useChannelStore as any)((s: any) => s.toggleActiveChannel)
+  const toggleActiveChannel = (useChannelStore as any)((s: any) => s.toggleActiveChannel) ?? (() => {})
   const loadChannels = useChannelStore((s) => s.loadChannels)
   const loadProviders = useChannelStore((s) => s.loadProviders)
   const configuredChannels = React.useMemo(

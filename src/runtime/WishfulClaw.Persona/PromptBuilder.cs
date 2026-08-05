@@ -70,6 +70,19 @@ public static class PromptBuilder
         }
 
         // ── Tool Capability ──
+        var goalMode = JsonHelpers.GetBool(parameters, "goalMode", false);
+        if (goalMode)
+        {
+            var goalObjective = JsonHelpers.GetString(parameters, "goalObjective");
+            if (!string.IsNullOrWhiteSpace(goalObjective))
+            {
+                parts.Add(BuildGoalContext(goalObjective!));
+            }
+            else
+            {
+                parts.Add(BuildGoalModePrompt());
+            }
+        }
         parts.Add(BuildToolCapability(parameters));
 
         // ── User Rules ──
@@ -316,5 +329,38 @@ The following are user-defined rules that you MUST ALWAYS FOLLOW WITHOUT ANY EXC
             "ja" or "ja-jp" => "日本語",
             _ => "English"
         };
+    }
+
+    // ── Goal Mode Prompt (no specific objective yet) ──
+    private static string BuildGoalModePrompt()
+    {
+        return @"
+<goal_mode>
+You are operating in **Goal Mode**. The user wants to work toward a significant objective, but the specific goal has not been defined yet.
+
+Your task:
+1. **Discuss with the user** to understand what they want to achieve. Ask questions to clarify the scope, requirements, and expected outcomes.
+2. Once you have a clear understanding, **use the `create_goal` tool** to record the objective and start working toward it.
+3. After the goal is created, use `update_goal` to mark it as `complete` when achieved, or `blocked` if you cannot make progress.
+
+Remember: Do not create a goal until you have discussed with the user and confirmed the objective.
+</goal_mode>";
+    }
+
+    // ── Goal Context ──
+    private static string BuildGoalContext(string goalObjective)
+    {
+        return $@"
+<goal_context>
+You are operating in **Goal Mode**. The user wants to pursue the following objective:
+
+Objective: {goalObjective}
+
+Instructions:
+- **Discuss with the user** to confirm and refine this objective before starting. Ask questions if anything is unclear.
+- Once confirmed, **use the `create_goal` tool** to record the objective and begin working toward it.
+- The `create_goal` tool will start the orchestration loop: it will decompose the objective into plans, execute them step by step, and self-check the results.
+- Use `update_goal` to mark the goal as `complete` when the objective is achieved, or `blocked` if you cannot make progress.
+</goal_context>";
     }
 }

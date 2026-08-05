@@ -45,11 +45,11 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     if (cached && !force) return cached
 
     try {
-      const row = await invokeMessagePackBinary<SessionGoalRow | null>(
+      const result = await invokeMessagePackBinary<GoalMutationResult | SessionGoalRow | null>(
         DB_GOALS_GET_MSGPACK_CHANNEL,
         sessionId
       )
-      const goal = row ? rowToGoal(row) : undefined
+      const goal = asGoal(result) ?? undefined
       set((state) => {
         const next = { ...state.goalsBySession }
         if (goal) {
