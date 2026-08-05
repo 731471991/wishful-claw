@@ -60,7 +60,11 @@ export function CollabModeSwitcher({
   const storeMode = useUIStore((s) =>
     sessionId ? (s.collabModesBySession[sessionId] ?? 'normal') : 'normal'
   )
-  const mode = modeOverride ?? storeMode
+  const derivedMode = modeOverride ?? storeMode
+  // Local mode: immediately reflects user selection, synced with derivedMode
+  const [localMode, setLocalMode] = React.useState<CollabMode>(derivedMode)
+  React.useEffect(() => { setLocalMode(derivedMode) }, [derivedMode])
+  const mode = localMode
   const setCollabMode = useUIStore((s) => s.setCollabMode)
   const options = getModeOptions(t)
   const activeOption = options.find((o) => o.value === mode) ?? options[0]
@@ -70,6 +74,7 @@ export function CollabModeSwitcher({
       setOpen(false)
       return
     }
+    setLocalMode(nextMode) // Immediately update local state for instant UI feedback
     if (sessionId) {
       setCollabMode(sessionId, nextMode)
     }
