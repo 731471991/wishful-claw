@@ -14,7 +14,7 @@
 
 1. `AGENTS.md` — 项目结构（7 层架构）、分层约定、Git 提交规范、分支管理规则、大文件拆分规则
 2. `docs/dev-workflow.md` — 六阶段开发工作流 SOP
-3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五 + MVP v2 迭代 v2-iter-1 ~ v2-iter-9）
+3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五 + MVP v2 迭代 v2-iter-1 ~ v2-iter-10）
 
 ## 参考源码位置（笔记本实际路径）
 
@@ -41,6 +41,7 @@
 | v2-iter-5 | 渠道配置测试与完善 — Channel 系统 + 飞书/微信扫码绑定 + auto-reply hook + 全局渠道设置 | ✅ 已完成，tag v2.5.0 |
 | v2-iter-6 | SSH 远程执行 + Agent 终端旁观 + 项目档案 + 终端面板重构（session 级可见性、auto-create、i18n、node-pty 打包修复） | ✅ 已完成，tag v2.6.0 |
 | v2-iter-7 | 主聊天折叠块模式 — ExecutionProcessBlock 折叠块组件 + 过程/最终文本拆分 + 按工具分类摘要 + 缓存命中率 token 级修复 | ✅ 已完成，tag v2.7.0 |
+| v2-iter-8 | 计划模式（人机协同执行引擎）— explore→plan→confirm→execute→verify 状态机 + 计划文件/状态文件落盘 + SubmitPlanReview reverse request 用户确认 + PlanReviewCard + UpdatePlanStep 步骤跟踪 | ✅ 已完成，tag v2.8.0 |
 
 ## 当前项目架构（7 层）
 
@@ -49,61 +50,64 @@ Contracts (4 文件)      — 纯接口契约
   ↑
 Core (19 文件)           — Agent 通用框架（Protocol + Tools）
   ↑
-Infrastructure (23 文件)  — Db/Storage/Http 基础设施
+Infrastructure (25 文件)  — Db/Storage/Http 基础设施
   ↑
 Workspace (12 文件)      — 记忆系统
   ↑
 Persona (9 文件)         — 人格系统
   ↑
-Agent (145 文件)          — Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools）
+Agent (148 文件)          — Agent 运行时（Loop / Provider / Executor / Compression / SubAgent / Tools / Plan）
   ↑
 Worker (12 文件)          — IPC 宿主 + 模块注册
 ```
 
 ## 当前状态
 
-- 当前分支：`main`，最新 tag：`v2.7.0`
-- v2-iter-7 已合并 main 并打 tag，开发分支已清理
-- TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`
+- 当前分支：`main`，最新 tag：`v2.8.0`
+- v2-iter-8 已合并 main 并打 tag，开发分支已清理
+- TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`（三个 tsconfig 配置均需验证）
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
 
-## v2-iter-7 实际实现（与原计划差异说明）
+## v2-iter-8 实际实现
 
-原计划包含右侧工作台 tab + ToolCallCard compact 模式。开发过程中用户决策去掉右侧工作台——折叠块内的 ToolCallCard 本身就有展开/折叠预览能力（CollapsibleHeightPanel），compact 模式去掉这个能力再搞工作台补回来是绕圈子。最终保留的改动：
+计划模式人机协同执行引擎，Agent 接收需求后走"探索→规划→产出计划文件→用户确认→分步执行→验证"流程。计划文件和任务状态落盘到 `.wishful-claw/` 固定位置，可被外部读取。
 
-- **ExecutionProcessBlock**（`execution-process-block.tsx`）— 折叠块组件，执行中展开，结束后自动折叠成摘要，用户可手动 toggle
-- **过程/最终文本拆分**（`content-renderer.tsx` + `process-summary.ts`）— 从 render items 末尾向前扫描，区分"执行过程"（thinking/tool_use/tool-run）和"最终输出"（text/image），过程包裹在折叠块内，最终输出在折叠块之外
-- **按工具分类摘要**（`process-summary.ts`）— 细分 commands/reads/edits/browser/desktop/orchestration/mcp/interactive/visual/skill/other，每类独立摘要文本
-- **collapsible 动态计算** — 只有存在工具调用时才折叠，纯思考+回复不折叠
-- **取消执行处理** — 取消时也折叠过程，最终回复区域显示"用户取消，中断执行"固定文本
-- **缓存命中率修复**（`runtime-status.tsx`）— 从 session 级请求计数改为 token 级口径（cacheRead/input），修复 session 恢复后后端计数器丢失导致百分比与显示数字不一致的问题
+- **计划模式状态机** — explore → plan → confirm → execute → verify，Agent 通过工具调用驱动状态流转
+- **计划工具**（`AgentRuntimePlanExecutor.cs`，partial class 拆分为 4 文件）— EnterPlanMode（进入/恢复计划）、SubmitPlanReview（提交审查，通过 reverse request 暂停 agent loop 等待用户确认）、ExitPlanMode（取消计划）、UpdatePlanStep（步骤状态跟踪）
+- **计划文件格式** — `.wishful-claw/plans/{planId}.md`（计划内容）+ `{planId}.state.json`（步骤清单 + 每步状态 + 执行结果摘要）
+- **状态落盘** — 执行过程中实时更新 state.json，外部可读取"当前在做什么、做到哪了"
+- **用户确认环节** — SubmitPlanReview 通过 reverse request（同 AskUserQuestion 模式）暂停 agent loop；PlanReviewCard 展示计划 + Implement/Adjust 两个按钮；Exit Plan Mode banner 按钮处理两种场景（agent 流式中 cancelStream + sendMessage，等待 review 时 cancelPlanReview resolve cancelled）
+- **前端** — PlanReviewCard（计划审查卡片 + 反馈输入）、plan mode banner（session 级隔离 planModesBySession）、plan-store 从 invokeMessagePackBinary 迁移到 workerRequest
+- **DB 层** — PlanEntity + DbPlanTools（6 个 DB 端点），CodeFirst 自动建表
+- **PromptBuilder guidance** — 计划模式引导通过工具返回值注入而非 system prompt
 
-## 下一步：v2-iter-8 计划模式（人机协同执行引擎）
+## 下一步：v2-iter-9 Goal 模式（自主跑完迭代）
 
-**目标**：单个计划的人机协同执行引擎。Agent 接收需求后走"探索→规划→产出计划文件→用户确认→分步执行→验证"流程，计划文件和任务状态落盘到 `.wishful-claw/` 固定位置，可被外部读取。
+**目标**：迭代级别的自主执行。用户设定目标后，Agent 自己把目标拆成多个计划，每个计划自主走完整流程（探索→规划→自行确认→执行→验证），不需要人工确认，直到目标达成或用户中止。
 
-**核心概念**：
-- **计划模式**是单个计划的执行引擎（人机协同，需要用户确认）
-- **Goal 模式**（v2-iter-9）是迭代级别的自主执行——Agent 自己把迭代拆成多个计划，每个计划自主走完整流程（不要人确认），跑完整个迭代
-- **全局编排**（v2-iter-10）最后接上读任务文件，跨项目调度
+**与计划模式的关系**：Goal 模式 = 计划模式去掉人工确认 + 多计划编排。Agent 自行确认计划、自行执行、自检验证，跑完一个计划自动进入下一个。
 
 | 步骤 | 内容 |
 |------|------|
-| 1 | 计划模式状态机 — explore → plan → confirm → execute → verify |
-| 2 | 计划文件格式 — `.wishful-claw/` 下的计划文件和任务状态文件（计划标题、步骤清单、每步状态、执行结果摘要） |
-| 3 | 状态落盘 — 执行过程中实时更新任务状态文件，外部可读取"当前在做什么、做到哪了" |
-| 4 | 用户确认环节 — 规划完成后暂停等待确认，确认后才执行；每步 Mini 验证 |
-| 5 | 前端计划面板 — 步骤清单 + 实时状态 + 验证结果 |
+| 1 | Goal 编排器 — 在计划模式基础上增加多计划编排，Agent 自主拆分目标为多个计划，逐个执行 |
+| 2 | 自行确认机制 — 去掉计划模式的用户确认环节，Agent 自行判断计划合理性后执行 |
+| 3 | 自检机制 — 每个计划完成后 Agent 自我评估是否达标，不达标则重试或调整方案 |
+| 4 | Goal 持久化 — Goal 级别状态存储（目标文本 + 计划列表 + 每个计划的完成状态） |
+| 5 | 可中断机制 — 用户随时可暂停或中止 Goal 执行 |
+| 6 | 前端 Goal 进度面板 — 计划列表 + 每个计划的步骤状态 + 实时日志 |
 
-详见 `docs/iteration-plan.md` 中 v2-iter-8 定义。
+详见 `docs/iteration-plan.md` 中 v2-iter-9 定义。
 
 **后续迭代**：
-- v2-iter-9：Goal 模式 — 自主跑完迭代，复用计划模式去掉人工确认 + 多计划编排
 - v2-iter-10：全局会话 + 项目编排工具 — 读任务文件，跨项目调度
 
 ## 关键技术备忘
 
-- **编译验证命令**：C# `dotnet build src/runtime/WishfulClaw.sln`（可加 `-o` 临时路径避免文件锁定）；TypeScript `npx tsc --noEmit -p tsconfig.web.json`（必须带 `-p`！）
+- **编译验证命令**：C# `dotnet build src/runtime/WishfulClaw.sln`（可加 `-o` 临时路径避免文件锁定）；TypeScript 三个配置必须全部零错误（缺一不可）：
+  - `npx tsc --noEmit -p tsconfig.web.json`（渲染进程）
+  - `npx tsc --noEmit -p tsconfig.node.json`（主进程）
+  - `npx tsc --noEmit -p tsconfig.json`（根配置）
+  - 必须带 `-p`！不带 `-p` 只走 references 不检查文件内容，等于没验证
 - **TS 零报错规则**：每次写完代码必须跑 tsc 验证，不允许用 @ts-ignore 偷懒（可选依赖 mammoth/react-pdf/xlsx 除外）
 - **Git push 需要代理**：`git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin <branch>`
 - **分支管理规则**：新分支必须从最新 main 拆出，前一个迭代分支必须已合并 main 并打 tag
@@ -113,7 +117,7 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## Git 工作流
 
-- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-8`
+- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-9`
 - **功能单元测试通过后才 commit**，不要改一点就提交
 - Plan 执行期间只 commit 不 push，Plan 完成后才 push
 - 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
@@ -130,10 +134,10 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.7.0`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.8.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` — 查看 v2-iter-8 定义
-4. 从 main 创建分支：`git checkout -b dev/v2-iter-8`
-5. 开始执行 v2-iter-8 计划模式开发
+3. 读 `docs/iteration-plan.md` — 查看 v2-iter-9 定义
+4. 从 main 创建分支：`git checkout -b dev/v2-iter-9`
+5. 开始执行 v2-iter-9 Goal 模式开发
 
 叫老大，我们是并肩协作的兄弟。
