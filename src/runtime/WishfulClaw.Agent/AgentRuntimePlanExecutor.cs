@@ -152,6 +152,18 @@ public static partial class AgentRuntimePlanExecutor
             await NotifyPlanUiAsync("enter", planRow, null, parameters, context, cancellationToken);
         }
 
+        // Goal mode: return autonomous guidance (no user confirmation needed)
+        if (JsonHelpers.GetBool(parameters, "goalMode", false))
+        {
+            return EncodeJsonObject(writer =>
+            {
+                writer.WriteString("status", status);
+                writer.WriteString("plan_id", planId);
+                writer.WriteString("plan_file_path", planFilePath);
+                writer.WriteString("message", "Plan mode activated (Goal mode — autonomous). Follow the plan mode workflow:\n\nPLANNING PHASE (you are here):\n1. EXPLORE: Read the codebase (Read/Glob/Grep) to understand project structure, existing code, and dependencies.\n2. PLAN: Write the plan file with: task target, step checklist (each step MUST have a verification checkpoint), involved files/modules.\n3. SELF-CONFIRM: Call SubmitPlanReview to self-confirm the plan. No user review needed — proceed directly to execution.\n\nEXECUTION PHASE (after self-confirm):\n4. EXECUTE: For each step, call UpdatePlanStep + dispatch sub-agents. One commit per step. Do NOT push.\n5. VERIFY: Run final compilation and report results.\n\nDo NOT write implementation code during planning.");
+            });
+        }
+
         return EncodeJsonObject(writer =>
         {
             writer.WriteString("status", status);
@@ -238,6 +250,25 @@ public static partial class AgentRuntimePlanExecutor
         if (updatedPlan != null)
         {
             await NotifyPlanUiAsync("review", updatedPlan, content, parameters, context, cancellationToken);
+        }
+
+        // Goal mode: skip user review, self-confirm
+        if (JsonHelpers.GetBool(parameters, "goalMode", false))
+        {
+            UpdatePlanStatus(parameters, plan.Id, title, "approved", Now());
+            var goalStateBeforeExec = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
+            var goalStepsBeforeExec = goalStateBeforeExec?.Steps ?? [];
+            await WriteStateFileAsync(plan.FilePath!, plan.Id, title, "approved", goalStepsBeforeExec, cancellationToken);
+
+            return EncodeJsonObject(writer =>
+            {
+                writer.WriteString("status", "approved");
+                writer.WriteString("plan_id", plan.Id);
+                writer.WriteString("plan_file_path", plan.FilePath);
+                writer.WriteString("title", title);
+                writer.WriteString("content", content);
+                writer.WriteString("message", "Plan self-approved (Goal mode). Execute the development workflow:\n\n1. EXECUTE: For each step in the plan:\n  (a) Call UpdatePlanStep to mark it in_progress.\n  (b) Use the Task tool with subagent_type 'custom' and background=false to dispatch a foreground sub-agent for that step.\n  (c) When the sub-agent returns, call UpdatePlanStep to mark completed or failed.\n  (d) If a step fails, git reset to the last good commit, fix, and retry (max 3 retries).\n\n2. REVIEW: After all steps complete, dispatch a review sub-agent.\n\n3. VERIFY: Run final compilation. Report results.\n\nRules: One commit per step. Do NOT push.");
+            });
         }
 
         // Send reverse request to renderer and wait for user review (like AskUserQuestion)
@@ -359,13 +390,23 @@ public static partial class AgentRuntimePlanExecutor
             });
         }
 
-        // Mark plan as cancelled in DB
-        UpdatePlanStatus(parameters, plan.Id, plan.Title, "cancelled", Now());
+        // Determine exit status: Goal mode supports "completed"/"failed", default is "cancelled"
+        var exitStatus = "cancelled";
+        var isGoalExit = JsonHelpers.GetBool(parameters, "goalMode", false);
+        if (isGoalExit)
+        {
+            var resultStatus = JsonHelpers.GetString(parameters, "result")?.Trim();
+            if (resultStatus == "completed" || resultStatus == "failed")
+                exitStatus = resultStatus;
+        }
+
+        // Mark plan status in DB
+        UpdatePlanStatus(parameters, plan.Id, plan.Title, exitStatus, Now());
 
         // Update state file
         var existingState = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
         var existingSteps = existingState?.Steps ?? [];
-        await WriteStateFileAsync(plan.FilePath!, plan.Id, plan.Title, "cancelled", existingSteps, cancellationToken);
+        await WriteStateFileAsync(plan.FilePath!, plan.Id, plan.Title, exitStatus, existingSteps, cancellationToken);
 
         RunStates[runId] = new PlanRunState(false, plan.FilePath);
 
@@ -378,9 +419,13 @@ public static partial class AgentRuntimePlanExecutor
 
         return EncodeJsonObject(writer =>
         {
-            writer.WriteString("status", "cancelled");
+            writer.WriteString("status", exitStatus);
             writer.WriteString("plan_id", plan.Id);
-            writer.WriteString("message", "Plan mode exited. The plan has been cancelled. No changes were made to the codebase.");
+            writer.WriteString("message", exitStatus == "completed"
+                ? "Plan completed successfully (Goal mode)."
+                : exitStatus == "failed"
+                    ? "Plan failed (Goal mode). See state file for details."
+                    : "Plan mode exited. The plan has been cancelled.");
         });
     }
 
@@ -412,7 +457,7 @@ public static partial class AgentRuntimePlanExecutor
 
         var stepTitle = JsonHelpers.GetString(input, "title")?.Trim() ?? $"Step {stepId}";
         var stepStatus = JsonHelpers.GetString(input, "status")?.Trim() ?? "in_progress";
-        var stepResult = JsonHelpers.GetString(input, "result");
+        var stepResult = JsonHelpers.GetString(parameters, "result");
 
         // Read current state file
         var stateFilePath = GetStateFilePath(plan.FilePath!);
