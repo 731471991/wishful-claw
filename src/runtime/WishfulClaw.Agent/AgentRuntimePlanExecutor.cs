@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
@@ -14,7 +12,7 @@ namespace WishfulClaw.Agent;
 /// File-based plan storage in .wishful-claw/plans/ + DB metadata in plans table.
 /// Sends plan/ui-update reverse requests to the renderer for real-time UI sync.
 /// </summary>
-public static class AgentRuntimePlanExecutor
+public static partial class AgentRuntimePlanExecutor
 {
     private const string PlanDirectoryName = ".wishful-claw/plans";
     private const string IdAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -337,7 +335,6 @@ public static class AgentRuntimePlanExecutor
         }
     }
 
-
     // ── ExitPlanMode (cancel) ──
 
     private static async Task<string> ExitPlanModeAsync(
@@ -412,6 +409,7 @@ public static class AgentRuntimePlanExecutor
         var stepId = input.TryGetProperty("stepId", out var sidEl) && sidEl.ValueKind == JsonValueKind.Number
             ? sidEl.GetInt32()
             : 0;
+
         var stepTitle = JsonHelpers.GetString(input, "title")?.Trim() ?? $"Step {stepId}";
         var stepStatus = JsonHelpers.GetString(input, "status")?.Trim() ?? "in_progress";
         var stepResult = JsonHelpers.GetString(input, "result");
@@ -522,257 +520,5 @@ public static class AgentRuntimePlanExecutor
         }
     }
 
-    // ── DB Operations ──
-
-    private static PlanEntity? LoadPlanBySession(JsonElement parameters, string sessionId)
-    {
-        try
-        {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            return db.Queryable<PlanEntity>()
-                .Where(e => e.SessionId == sessionId)
-                .OrderBy("updated_at DESC")
-                .First();
-        }
-        catch (Exception ex)
-        {
-            WorkerLog.Warn($"LoadPlanBySession failed: {ex.Message}");
-            return null;
-        }
-    }
-
-    private static PlanEntity? LoadPlanById(JsonElement parameters, string planId)
-    {
-        try
-        {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            return db.Queryable<PlanEntity>()
-                .Where(e => e.Id == planId)
-                .First();
-        }
-        catch (Exception ex)
-        {
-            WorkerLog.Warn($"LoadPlanById failed: {ex.Message}");
-            return null;
-        }
-    }
-
-    private static void InsertPlan(JsonElement parameters, PlanEntity plan)
-    {
-        DbClient.EnsureInitialized(parameters);
-        var db = DbClient.GetClient(parameters);
-        db.Insertable(plan).ExecuteCommand();
-    }
-
-    private static void UpdatePlanForReview(JsonElement parameters, string planId, string title, long updatedAt)
-    {
-        UpdatePlanStatus(parameters, planId, title, "awaiting_review", updatedAt);
-    }
-
-    private static void UpdatePlanStatus(JsonElement parameters, string planId, string title, string status, long updatedAt)
-    {
-        DbClient.EnsureInitialized(parameters);
-        var db = DbClient.GetClient(parameters);
-        db.Updateable<PlanEntity>()
-            .SetColumns(e => e.Title == title)
-            .SetColumns(e => e.Status == status)
-            .SetColumns(e => e.UpdatedAt == updatedAt)
-            .Where(e => e.Id == planId)
-            .ExecuteCommand();
-    }
-
-    private static void DeletePlan(JsonElement parameters, string planId)
-    {
-        DbClient.EnsureInitialized(parameters);
-        var db = DbClient.GetClient(parameters);
-        db.Deleteable<PlanEntity>()
-            .Where(e => e.Id == planId)
-            .ExecuteCommand();
-    }
-
-    // ── State File ──
-
-    private static async Task<PlanState?> ReadStateFileAsync(string planFilePath, CancellationToken cancellationToken)
-    {
-        var stateFilePath = GetStateFilePath(planFilePath);
-        if (!File.Exists(stateFilePath)) return null;
-        try
-        {
-            var json = await File.ReadAllTextAsync(stateFilePath, cancellationToken);
-            return JsonSerializer.Deserialize<PlanState>(json);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            WorkerLog.Warn($"Failed to read plan state file: {ex.Message}");
-            return null;
-        }
-    }
-
-    private static async Task WriteStateFileAsync(
-        string planFilePath,
-        string planId,
-        string title,
-        string status,
-        List<PlanStep> steps,
-        CancellationToken cancellationToken)
-    {
-        var stateFilePath = GetStateFilePath(planFilePath);
-        var state = new PlanState
-        {
-            PlanId = planId,
-            Title = title,
-            Status = status,
-            Steps = steps,
-            UpdatedAt = Now()
-        };
-        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = true
-        });
-
-        // Retry up to 3 times to handle file lock contention from rapid UpdatePlanStep calls
-        for (var attempt = 0; attempt < 3; attempt++)
-        {
-            try
-            {
-                await File.WriteAllTextAsync(stateFilePath, json, cancellationToken);
-                return;
-            }
-            catch (IOException) when (attempt < 2 && !cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(100 * (attempt + 1), cancellationToken);
-            }
-        }
-        // Final attempt — let it throw if it fails
-        await File.WriteAllTextAsync(stateFilePath, json, cancellationToken);
-    }
-
-    // ── Helpers ──
-
-    private static string GetPlanFilePath(string workingFolder, string planId)
-    {
-        return Path.Combine(workingFolder, PlanDirectoryName, $"{planId}.md");
-    }
-
-    private static string GetStateFilePath(string planFilePath)
-    {
-        // Replace .md with .state.json
-        var dir = Path.GetDirectoryName(planFilePath) ?? string.Empty;
-        var name = Path.GetFileNameWithoutExtension(planFilePath);
-        return Path.Combine(dir, $"{name}.state.json");
-    }
-
-    private static bool IsDraftPlanStatus(string status)
-    {
-        return status is "drafting" or "rejected";
-    }
-
-    private static string InferTitleFromContent(string content)
-    {
-        foreach (var rawLine in content.Split('\n'))
-        {
-            var line = rawLine.Trim();
-            if (line.Length == 0) continue;
-            var title = System.Text.RegularExpressions.Regex
-                .Replace(line, @"^#+\s*", string.Empty).Trim();
-            title = System.Text.RegularExpressions.Regex
-                .Replace(title, @"^plan:\s*", string.Empty, System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
-            return title.Length > 80 ? title[..80] : title.Length > 0 ? title : "Plan";
-        }
-        return "Plan";
-    }
-
-    private static long Now()
-    {
-        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    }
-
-    private static string CreatePlanId()
-    {
-        Span<byte> bytes = stackalloc byte[12];
-        RandomNumberGenerator.Fill(bytes);
-        Span<char> chars = stackalloc char[12];
-        for (var i = 0; i < bytes.Length; i++)
-        {
-            chars[i] = IdAlphabet[bytes[i] % IdAlphabet.Length];
-        }
-        return new string(chars);
-    }
-
-    private static JsonElement CreateJsonElement(Action<Utf8JsonWriter> writeProperties)
-    {
-        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-        using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
-        {
-            writer.WriteStartObject();
-            writeProperties(writer);
-            writer.WriteEndObject();
-        }
-        using var document = JsonDocument.Parse(buffer.WrittenMemory);
-        return document.RootElement.Clone();
-    }
-
-    private static string EncodeError(string message)
-    {
-        return EncodeJsonObject(writer => writer.WriteString("error", message));
-    }
-
-    private static string EncodeJsonObject(Action<Utf8JsonWriter> writeProperties)
-    {
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream, WriterOptions))
-        {
-            writer.WriteStartObject();
-            writeProperties(writer);
-            writer.WriteEndObject();
-        }
-        return Encoding.UTF8.GetString(stream.ToArray());
-    }
-
-    private static void WritePlanSnapshot(Utf8JsonWriter writer, PlanEntity plan, string? content)
-    {
-        writer.WriteStartObject();
-        writer.WriteString("id", plan.Id);
-        writer.WriteString("sessionId", plan.SessionId);
-        writer.WriteString("title", plan.Title);
-        writer.WriteString("status", plan.Status);
-        WriteNullableString(writer, "filePath", plan.FilePath);
-        WriteNullableString(writer, "content", content ?? plan.Content);
-        WriteNullableString(writer, "specJson", plan.SpecJson);
-        writer.WriteNumber("createdAt", plan.CreatedAt);
-        writer.WriteNumber("updatedAt", plan.UpdatedAt);
-        writer.WriteEndObject();
-    }
-
-    private static void WriteNullableString(Utf8JsonWriter writer, string name, string? value)
-    {
-        if (!string.IsNullOrEmpty(value))
-        {
-            writer.WriteString(name, value);
-        }
-    }
-
     private sealed record PlanRunState(bool Active, string? FilePath);
-}
-
-// ── Plan State Model (for .state.json) ──
-
-internal sealed class PlanState
-{
-    public string PlanId { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Status { get; set; } = "drafting";
-    public List<PlanStep> Steps { get; set; } = [];
-    public long UpdatedAt { get; set; }
-}
-
-internal sealed class PlanStep
-{
-    public int Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string Status { get; set; } = "pending";
-    public string? Result { get; set; }
 }

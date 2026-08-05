@@ -316,6 +316,80 @@ export async function sendPlanRevision(sessionId: string, planId: string, feedba
   })
 }
 
+/**
+ * Exit plan mode — called when user clicks "Exit Plan Mode" on the banner.
+ *
+ * Two scenarios:
+ * 1. Agent is actively streaming (exploring / planning / executing) —
+ *    no pending reverse request. We must cancel the agent loop first,
+ *    then send a user message so the agent knows the plan was cancelled.
+ * 2. Agent is waiting for plan review (SubmitPlanReview reverse request
+ *    pending) — cancelPlanReview resolves the reverse request with
+ *    cancelled=true. The agent loop resumes and gets the cancellation.
+ *    No new message needed — the agent handles it.
+ */
+export async function exitPlanMode(sessionId: string | null): Promise<void> {
+  if (!sessionId) return
+
+  const uiStore = (await import('@renderer/stores/ui-store')).useUIStore.getState()
+  const planStore = (await import('@renderer/stores/plan-store')).usePlanStore.getState()
+
+  // 1. Cancel any pending plan review reverse request
+  const plan = planStore.getPlanBySession(sessionId)
+  if (plan) {
+    const { cancelPlanReview } = await import('@renderer/lib/tools/plan-native-ui')
+    cancelPlanReview(sessionId)
+  }
+
+  // 2. Exit plan mode UI (remove banner)
+  uiStore.exitPlanMode(sessionId)
+
+  // 3. If agent is streaming, cancel the loop and send a message
+  const chatStore = useChatStore.getState()
+  const wasStreaming = !!chatStore.streamingMessageId
+
+  if (wasStreaming) {
+    // Cancel the running agent loop
+    await chatStore.cancelStream()
+
+    // Send a user message so the agent knows the plan was cancelled
+    const providerStore = (await import('@renderer/stores/provider-store')).useProviderStore.getState()
+    const settingsStore = (await import('@renderer/stores/settings-store')).useSettingsStore.getState()
+    const activeProvider = providerStore.getActiveProvider()
+    if (!activeProvider) return
+    const modelId = providerStore.activeModelId || activeProvider.defaultModel || activeProvider.models.find((m: any) => m.enabled)?.id
+    if (!modelId) return
+    const session = chatStore.sessions.find((s) => s.id === sessionId)
+    const workingFolder = session?.workingFolder ?? undefined
+    const sshConnectionId = session?.sshConnectionId ?? undefined
+    const projectId = session?.projectId ?? undefined
+
+    useActivityStore.getState().clearActivities()
+
+    const provider = buildProviderPayload(activeProvider, modelId, settingsStore)
+
+    await chatStore.sendMessage({
+      provider,
+      messages: [{ role: 'user', content: '用户退出了计划模式，计划已取消。不再需要计划流程，请正常对话。' }],
+      sessionId,
+      toolPreset: workingFolder ? 'coding' : 'chat',
+      webSearchEnabled: settingsStore.webSearchEnabled,
+      workingFolder,
+      sshConnectionId,
+      projectId,
+      maxIterations: 0,
+      maxParallelTools: settingsStore.maxParallelToolCalls,
+      maxToolCallsPerTurn: settingsStore.maxToolCallsPerTurn,
+      maxConcurrentSubAgents: settingsStore.maxConcurrentSubAgents,
+      personaId: session?.personaId ?? settingsStore.defaultPersonaId ?? undefined,
+      language: settingsStore.language,
+      userRules: settingsStore.systemPrompt || undefined,
+      contextCompressionEnabled: settingsStore.contextCompressionEnabled,
+      contextCompressionThreshold: settingsStore.contextCompressionThreshold
+    })
+  }
+}
+
 export async function sendImplementPlanInNewSession(_projectId: string | null, _planId: string): Promise<void> {
   // TODO: implement plan execution in new session
 }
