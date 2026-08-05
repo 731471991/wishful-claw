@@ -295,7 +295,7 @@ git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 pus
 **日志位置**：`<userData>/logs/` 目录下，按日期命名，如 `2026-07-22.log`
 
 其中 `<userData>` 是 Electron 的 `app.getPath('userData')` 返回值：
-- Windows：`%APPDATA%/<appName>`（即 `C:\Users\<用户名>\AppData\Roaming\wishful-claw\logs\`）
+- Windows：`%APPDATA%/WishfulClaw`（即 `C:\Users\<用户名>\AppData\Roaming\WishfulClaw\logs\`）
 - macOS：`~/Library/Application Support/<appName>/logs/`
 - Linux：`~/.config/<appName>/logs/`
 

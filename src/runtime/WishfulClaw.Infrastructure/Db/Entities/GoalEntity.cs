@@ -62,7 +62,7 @@ public class GoalEntity
 [SugarTable("goal_events")]
 public class GoalEventEntity
 {
-    [SugarColumn(IsPrimaryKey = true, ColumnName = "id", IsIdentity = true)]
+    [SugarColumn(IsPrimaryKey = true, ColumnName = "id", IsIdentity = true, ColumnDataType = "INTEGER")]
     public long Id { get; set; }
 
     [SugarColumn(ColumnName = "session_id")]
