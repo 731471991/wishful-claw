@@ -75,19 +75,31 @@ npm run build
 ### 3. electron-builder 打包
 
 ```bash
-npx electron-builder --dir --config.npmRebuild=false
+npx electron-builder --dir          # 绿色版（不解压目录）
+npx electron-builder --win          # NSIS 安装器
 ```
 
-配置在 `package.json` 的 `build` 字段中：
+配置在 `electron-builder.yml` 中（参考 OpenCowork 的配置方式）：
 
 - `extraResources`：将 `resources/worker/` 中的 .NET Worker 复制到安装包的 `resources/worker/` 目录
-- `files`：只包含 `out/**/*`（Vite 打包后的产物），排除 node_modules 中的源码
+- `files`：只包含 `out/**/*`（Vite 打包后的产物），排除 node_modules 中已被 Vite 打包的前端包
 - `asarUnpack`：`resources/**` 和原生模块（node-pty、ssh2 等）从 asar 中解出
-- `win.target`：NSIS 安装器或 portable 绿色版
+- `npmRebuild: false`：跳过原生模块重建（依赖 prebuilt 二进制文件）
+- `win.target`：NSIS 安装器
+- 跨平台：已配置 win/mac/linux 三平台目标
 
-## 参考：OpenCowork 打包方案
+## 参考来源
 
-Wishful Claw 的打包方案参考了 OpenCowork 项目：
+打包方案参考了 `D:\claw\OpenCowork` 项目：
+
+| 参考文件 | 关键内容 | 对应 Wishful Claw 文件 |
+|----------|---------|----------------------|
+| `electron-builder.yml` | 构建配置、files 排除规则、asarUnpack | `electron-builder.yml` |
+| `scripts/publish-native-worker.mjs` | .NET Worker AOT 编译脚本 | `package.json` 的 `build:worker:prod` |
+| `scripts/postinstall.mjs` | 原生模块重建 | 暂未实现（使用 prebuilt） |
+| `package.json` 中的 scripts | 打包命令 | `package.json` 中的 scripts |
+| `.github/workflows/build.yml` | CI/CD 多平台矩阵 | 暂未实现 |
+| `dev-app-update.yml` | 自动更新配置 | 暂未实现 |
 
 | 特性 | OpenCowork | Wishful Claw |
 |------|-----------|--------------|
