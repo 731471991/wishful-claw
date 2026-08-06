@@ -5,7 +5,7 @@
 | 工具 | 用途 | 配置位置 |
 |------|------|----------|
 | `electron-vite` | 编译 Electron 主进程 + Preload + React 渲染进程 | `electron.vite.config.ts` |
-| `electron-builder` | 打包为安装包/绿色版 | `package.json` 中的 `build` 字段 |
+| `electron-builder` | 打包为安装包/绿色版 | `electron-builder.yml` |
 | `dotnet publish` | 编译 .NET Worker 子进程（自包含） | `package.json` 的 `build:worker:prod` 脚本 |
 
 ## 前置条件
@@ -26,9 +26,11 @@ npm run dev:full     # 编译 .NET Worker + 前端开发（推荐）
 ### 打包
 
 ```bash
-npm run build:worker:prod    # 编译 .NET Worker（自包含发布）
-npm run pack                 # 前端打包 + electron-builder --dir（不解压目录）
-npm run pack:full            # 完整流程：编译 Worker → 前端打包 → 打包
+npm run pack                     # 前端打包 + electron-builder --dir（不解压目录）
+npm run pack:full                # 完整流程：编译 Worker → 前端打包 → 不解压目录
+npm run pack:zip                 # 打包并生成绿色版 zip 压缩包
+npm run pack:installer           # 前端打包 + NSIS 安装器
+npm run pack:installer:full      # 完整流程：编译 Worker → 前端打包 → NSIS 安装器
 ```
 
 ### 输出产物
@@ -90,11 +92,12 @@ Wishful Claw 的打包方案参考了 OpenCowork 项目：
 | 特性 | OpenCowork | Wishful Claw |
 |------|-----------|--------------|
 | 打包工具 | electron-builder v26 | electron-builder v26 |
-| 配置文件 | `electron-builder.yml` | `package.json` 的 `build` 字段 |
-| .NET Worker 编译 | `scripts/publish-native-worker.mjs`（AOT） | `scripts/publish-worker.mjs`（自包含） |
+| 配置文件 | `electron-builder.yml` | `electron-builder.yml` ✅ 已对齐 |
+| .NET Worker 编译 | `scripts/publish-native-worker.mjs`（AOT） | `build:worker:prod` 脚本（自包含） |
 | Worker 输出目录 | `resources/native-worker/` | `resources/worker/` |
-| asar 解包 | `asarUnpack: ["resources/**"]` | `asarUnpack: ["resources/**"]` |
-| 包体积优化 | 详细的 `files` 排除规则 | 基础 `files` 规则 |
+| asar 解包 | `asarUnpack: ["resources/**"]` | `asarUnpack: ["resources/**"]` ✅ 已对齐 |
+| 包体积优化 | 详细的 `files` 排除规则 | 详细的 `files` 排除规则 ✅ 已对齐 |
+| 原生模块重建 | `npmRebuild: false` + postinstall | `npmRebuild: false` ✅ 已对齐 |
 | 自动更新 | GitHub Releases + electron-updater | 未实现 |
 | CI/CD | GitHub Actions 多平台矩阵 | 未实现 |
 | 代码签名 | Windows + macOS 签名 | 未配置 |
