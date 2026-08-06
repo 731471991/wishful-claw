@@ -7,7 +7,7 @@
     "dev": "electron-vite dev",
     "dev:full": "dotnet build src/runtime/WishfulClaw.sln && electron-vite dev",
     "build:worker": "dotnet build src/runtime/WishfulClaw.sln",
-    "build:worker:prod": "dotnet publish src/runtime/WishfulClaw.Worker/WishfulClaw.Worker.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o resources/worker",
+    "build:worker:prod": "dotnet publish src/runtime/WishfulClaw.Worker/WishfulClaw.Worker.csproj -c Release -r win-x64 --self-contained true -p:PublishAot=true -p:StripSymbols=true -o resources/worker",
     "start": "electron-vite preview",
     "build": "electron-vite build",
     "pack": "electron-vite build && electron-builder --dir",
