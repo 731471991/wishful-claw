@@ -71,6 +71,7 @@ public static class PromptBuilder
 
         // ── Session Mode (Goal) ──
         var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
+        WorkerLog.Warn("PromptBuilder: sessionMode parameter = [" + (sessionMode ?? "(null)") + "]");
         if (sessionMode == "goal")
         {
             WorkerLog.Info("sessionMode=goal, injecting goal mode prompt");
