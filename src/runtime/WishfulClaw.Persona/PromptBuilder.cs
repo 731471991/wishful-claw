@@ -69,20 +69,12 @@ public static class PromptBuilder
             parts.Add(BuildMemoryContext(parameters));
         }
 
-        // ── Tool Capability ──
-        var goalMode = JsonHelpers.GetBool(parameters, "goalMode", false);
-        if (goalMode)
+        // ── Session Mode (Goal) ──
+        var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
+        if (sessionMode == "goal")
         {
-            WorkerLog.Info($"goalMode enabled, goalObjective={JsonHelpers.GetString(parameters, "goalObjective") ?? "(not set)"}");
-            var goalObjective = JsonHelpers.GetString(parameters, "goalObjective");
-            if (!string.IsNullOrWhiteSpace(goalObjective))
-            {
-                parts.Add(BuildGoalContext(goalObjective!));
-            }
-            else
-            {
-                parts.Add(BuildGoalModePrompt());
-            }
+            WorkerLog.Info("sessionMode=goal, injecting goal mode prompt");
+            parts.Add(BuildGoalModePrompt());
         }
         parts.Add(BuildToolCapability(parameters));
 
@@ -348,20 +340,4 @@ Remember: Do not create a goal until you have discussed with the user and confir
 </goal_mode>";
     }
 
-    // ── Goal Context ──
-    private static string BuildGoalContext(string goalObjective)
-    {
-        return $@"
-<goal_context>
-You are operating in **Goal Mode**. The user wants to pursue the following objective:
-
-Objective: {goalObjective}
-
-Instructions:
-- **Discuss with the user** to confirm and refine this objective before starting. Ask questions if anything is unclear.
-- Once confirmed, **use the `create_goal` tool** to record the objective and begin working toward it.
-- The `create_goal` tool will start the orchestration loop: it will decompose the objective into plans, execute them step by step, and self-check the results.
-- Use `update_goal` to mark the goal as `complete` when the objective is achieved, or `blocked` if you cannot make progress.
-</goal_context>";
-    }
 }
