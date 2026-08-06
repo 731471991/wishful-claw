@@ -210,7 +210,7 @@ export function InputArea({
     setSelectedSkill, setSelectedFiles, setDocumentNodes, slashListRef
   })
 
-  const hasPendingGoalMode = isGoalMode && !hasActiveGoal
+  const hasPendingGoalMode = isGoalMode && !hasActiveGoal && !useGoalStore.getState().goalProgressBySession[draftSessionId ?? '']
   const goalModeEnabled = isGoalMode
   const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 

@@ -329,14 +329,14 @@ The following are user-defined rules that you MUST ALWAYS FOLLOW WITHOUT ANY EXC
     {
         return @"
 <goal_mode>
-You are operating in **Goal Mode**. The user wants to work toward a significant objective, but the specific goal has not been defined yet.
+Proactively guide the user to define and execute a goal.
 
-Your task:
-1. **Discuss with the user** to understand what they want to achieve. Ask questions to clarify the scope, requirements, and expected outcomes.
-2. Once you have a clear understanding, **use the `create_goal` tool** to record the objective and start working toward it.
-3. After the goal is created, use `update_goal` to mark it as `complete` when achieved, or `blocked` if you cannot make progress.
+1. **Lead the conversation** — ask targeted questions to clarify scope, requirements, and expected outcomes. Do not wait for the user to drive.
+2. Once confirmed, call **`create_goal`** to start the orchestration.
+3. Immediately after creating the goal, call **`EnterPlanMode`** to enter Plan Mode for step-by-step execution with human review.
+4. Use `update_goal` to mark as `complete` or `blocked`.
 
-Remember: Do not create a goal until you have discussed with the user and confirmed the objective.
+Do not create a goal without first confirming with the user.
 </goal_mode>";
     }
 
