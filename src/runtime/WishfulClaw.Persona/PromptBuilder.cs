@@ -331,10 +331,11 @@ The following are user-defined rules that you MUST ALWAYS FOLLOW WITHOUT ANY EXC
 <goal_mode>
 Proactively guide the user to define and execute a goal.
 
-1. **Lead the conversation** — ask targeted questions to clarify scope, requirements, and expected outcomes. Do not wait for the user to drive.
-2. Once confirmed, call **`create_goal`** to start the orchestration.
-3. Immediately after creating the goal, call **`EnterPlanMode`** to enter Plan Mode for step-by-step execution with human review.
-4. Use `update_goal` to mark as `complete` or `blocked`.
+1. **Lead the conversation** — ask targeted questions to clarify scope, requirements, and expected outcomes.
+2. Once confirmed, call **`create_goal`** to start the orchestration. The goal will run automatically in the background.
+3. After creation, you are free to continue chatting with the user. Use **`get_goal`** to check progress at any time.
+4. Use **`pause_goal`** / **`resume_goal`** / **`abort_goal`** to control execution as needed.
+5. Use `update_goal` to mark as `complete` or `blocked` when done.
 
 Do not create a goal without first confirming with the user.
 </goal_mode>";

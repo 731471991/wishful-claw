@@ -34,5 +34,20 @@ internal sealed class GoalToolProvider : IToolProvider
                     ["objective"] = ToolSchemaBuilder.String("Updated goal description."),
                     ["status"] = ToolSchemaBuilder.String("New status.", ["active", "completed", "failed"])
                 })));
+
+        registry.Register(new ToolDefinitionPlaceholder(
+            "pause_goal",
+            "Pause the current goal execution. The orchestrator will stop and can be resumed later.",
+            ToolSchemaBuilder.Object()));
+
+        registry.Register(new ToolDefinitionPlaceholder(
+            "resume_goal",
+            "Resume a paused goal execution.",
+            ToolSchemaBuilder.Object()));
+
+        registry.Register(new ToolDefinitionPlaceholder(
+            "abort_goal",
+            "Abort/cancel the current goal execution permanently.",
+            ToolSchemaBuilder.Object()));
     }
 }

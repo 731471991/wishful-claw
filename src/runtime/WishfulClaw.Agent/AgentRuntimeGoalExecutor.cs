@@ -14,7 +14,7 @@ public static class AgentRuntimeGoalExecutor
     private static readonly ConcurrentDictionary<string, GoalRecord> Goals = new(StringComparer.Ordinal);
 
     public static bool IsGoalTool(string toolName) =>
-        toolName is "get_goal" or "create_goal" or "update_goal";
+        toolName is "get_goal" or "create_goal" or "update_goal" or "pause_goal" or "resume_goal" or "abort_goal";
 
     /// <summary>
     /// Execute a goal tool synchronously (get_goal, update_goal).
@@ -28,8 +28,11 @@ public static class AgentRuntimeGoalExecutor
 
         return call.Name switch
         {
-            "get_goal" => EncodeGoal(Goals.TryGetValue(sessionId, out var g) ? g : null),
+            "get_goal" => EncodeGoalWithProgress(Goals.TryGetValue(sessionId, out var g) ? g : null, sessionId),
             "update_goal" => UpdateGoal(call.Input, sessionId),
+            "pause_goal" => PauseGoal(sessionId),
+            "resume_goal" => ResumeGoal(sessionId),
+            "abort_goal" => AbortGoal(sessionId),
             _ => EncodeError($"Use ExecuteAsync for {call.Name}")
         };
     }
@@ -122,6 +125,76 @@ public static class AgentRuntimeGoalExecutor
             w.WriteEndObject();
         }
         return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static string GetGoalProgressJson(string sessionId)
+    {
+        var goalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+        if (goalId == null) return "null";
+        var ctx = GoalOrchestrator.GetContext(goalId);
+        if (ctx == null) return "null";
+
+        using var stream = new MemoryStream();
+        using (var w = new Utf8JsonWriter(stream))
+        {
+            w.WriteStartObject();
+            w.WriteNumber("planCount", ctx.Plans.Count);
+            w.WriteNumber("currentPlanIndex", ctx.CurrentPlanIndex);
+            w.WriteNumber("completedPlans", ctx.Plans.Count(p => p.Status == "completed"));
+            w.WriteNumber("failedPlans", ctx.Plans.Count(p => p.Status == "failed"));
+            w.WriteString("status", ctx.Status);
+            w.WriteString("startedAt", ctx.StartedAt.ToString("O"));
+            w.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static string EncodeGoalWithProgress(GoalRecord? goal, string sessionId)
+    {
+        if (goal is null)
+            return "{\"goal\":null,\"progress\":null}";
+        using var stream = new MemoryStream();
+        using (var w = new Utf8JsonWriter(stream))
+        {
+            w.WriteStartObject();
+            w.WriteStartObject("goal");
+            w.WriteString("objective", goal.Objective);
+            w.WriteString("status", goal.Status);
+            w.WriteNumber("updatedAt", goal.UpdatedAt);
+            if (!string.IsNullOrEmpty(goal.GoalId))
+                w.WriteString("goalId", goal.GoalId);
+            w.WriteEndObject();
+
+            // Plan progress
+            w.WritePropertyName("progress");
+            w.WriteRawValue(GetGoalProgressJson(sessionId));
+            w.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static string PauseGoal(string sessionId)
+    {
+        var goalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+        if (goalId == null) return EncodeError("No active goal to pause.");
+        GoalOrchestrator.Pause(goalId);
+        return EncodeGoal(new GoalRecord("", "paused", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
+    }
+
+    private static string ResumeGoal(string sessionId)
+    {
+        var goalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+        if (goalId == null) return EncodeError("No paused goal to resume.");
+        GoalOrchestrator.Resume(goalId);
+        return EncodeGoal(new GoalRecord("", "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
+    }
+
+    private static string AbortGoal(string sessionId)
+    {
+        var goalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+        if (goalId == null) return EncodeError("No active goal to abort.");
+        GoalOrchestrator.Abort(goalId);
+        return EncodeError("Goal aborted.");
     }
 
     private static string EncodeError(string message)
