@@ -10,8 +10,9 @@
     "build:worker:prod": "dotnet publish src/runtime/WishfulClaw.Worker/WishfulClaw.Worker.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o resources/worker",
     "start": "electron-vite preview",
     "build": "electron-vite build",
-    "pack": "electron-vite build && electron-builder --win",
-    "pack:full": "npm run build:worker:prod && electron-vite build && electron-builder --win",
+    "pack": "electron-vite build && electron-builder --dir --config.npmRebuild=false",
+    "pack:full": "npm run build:worker:prod && electron-vite build && electron-builder --dir --config.npmRebuild=false",
+    "pack:zip": "electron-vite build && electron-builder --dir --config.npmRebuild=false && cd release && powershell -Command \"Compress-Archive -Path win-unpacked -DestinationPath WishfulClaw-v${npm_package_version}-win-x64.zip -CompressionLevel Optimal\"",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
@@ -31,6 +32,12 @@
         "to": "worker",
         "filter": ["**/*"]
       }
+    ],
+    "asarUnpack": [
+      "resources/**",
+      "node_modules/node-pty/**",
+      "node_modules/ssh2/**",
+      "node_modules/@jitsi/robotjs/**"
     ],
     "win": {
       "target": [
