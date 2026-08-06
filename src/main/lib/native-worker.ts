@@ -347,6 +347,14 @@ function resolveWorkerPath(): string | null {
   const executableName =
     process.platform === 'win32' ? 'WishfulClaw.Worker.exe' : 'WishfulClaw.Worker'
 
+  // Production mode: look in app resources (packaged by electron-builder)
+  try {
+    const resourcesPath = path.join(process.resourcesPath, 'worker', executableName)
+    if (require('fs').existsSync(resourcesPath)) return resourcesPath
+  } catch {
+    // process.resourcesPath may not be available in dev mode
+  }
+
   // Dev mode: look in the .NET build output
   const devPath = path.join(
     process.cwd(),

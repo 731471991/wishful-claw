@@ -7,11 +7,45 @@
     "dev": "electron-vite dev",
     "dev:full": "dotnet build src/runtime/WishfulClaw.sln && electron-vite dev",
     "build:worker": "dotnet build src/runtime/WishfulClaw.sln",
+    "build:worker:prod": "dotnet publish src/runtime/WishfulClaw.Worker/WishfulClaw.Worker.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o resources/worker",
     "start": "electron-vite preview",
     "build": "electron-vite build",
+    "pack": "electron-vite build && electron-builder --win",
+    "pack:full": "npm run build:worker:prod && electron-vite build && electron-builder --win",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
+  },
+  "build": {
+    "appId": "com.wishfulclaw.app",
+    "productName": "Wishful Claw",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/worker",
+        "to": "worker",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -79,6 +113,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
     "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
