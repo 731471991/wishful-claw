@@ -48,21 +48,19 @@ npm run pack:installer:full      # 完整流程：编译 Worker → 前端打包
 npm run build:worker:prod
 ```
 
-使用 **AOT 编译**（`PublishAot=true`），自包含发布，输出到 `resources/worker/`：
+使用 **自包含发布**（`PublishSingleFile=true`），输出到 `resources/worker/`：
 
 ```bash
 dotnet publish src/runtime/WishfulClaw.Worker/WishfulClaw.Worker.csproj \
   -c Release \
   -r win-x64 \
   --self-contained true \
-  -p:PublishAot=true \
-  -p:StripSymbols=true \
+  -p:PublishSingleFile=true \
   -o resources/worker
 ```
 
-> AOT 编译后的二进制文件约 20-30MB，比普通自包含发布（~97MB）小得多。
-> 自包含发布（`--self-contained true`）确保目标机器不需要安装 .NET 运行时。
-> AOT 编译比普通发布慢，首次编译需要下载 AOT 工具链，请耐心等待。
+> 自包含发布约 80-100MB（含 .NET 运行时），目标机器不需要安装 .NET 运行时。
+> 未来计划切换为 AOT 编译（`PublishAot=true`）以减小体积，但需先解决底层反射代码的兼容问题。
 > **每次打包都必须重新编译 Worker**（使用 `pack:full` 或 `pack:installer:full`），信不过历史编译。
 > 仅打包前端（`pack` / `pack:installer`）不会重新编译 Worker。
 
