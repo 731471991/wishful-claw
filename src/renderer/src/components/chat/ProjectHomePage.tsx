@@ -43,10 +43,7 @@ export function ProjectHomePage(): React.JSX.Element {
           uiStore.setCollabMode(sessionId, 'goal')
         }
         uiStore.navigateToSession(sessionId)
-        void sendMessage(text, images, undefined, sessionId, undefined, undefined, {
-          ...options,
-          clearCompletedTasksOnTurnStart: true
-        })
+        void sendMessage({ text, images, sessionId, opts: { ...options, clearCompletedTasksOnTurnStart: true } })
       })()
     },
     [activeProjectId, mode, sendMessage]

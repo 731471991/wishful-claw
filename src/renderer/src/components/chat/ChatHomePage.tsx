@@ -192,10 +192,7 @@ export function ChatHomePage(): React.JSX.Element {
               })
             : chatStore.createSession(mode, projectIdForSession ?? activeProject?.id ?? undefined)
         useUIStore.getState().navigateToSession(sessionId)
-        void sendMessage(text, images, undefined, sessionId, undefined, undefined, {
-          ...options,
-          clearCompletedTasksOnTurnStart: true
-        })
+        void sendMessage({ text, images, sessionId, opts: { ...options, clearCompletedTasksOnTurnStart: true } })
       })()
     },
     [activeProject?.id, mode, selectedProjectId, sendMessage]

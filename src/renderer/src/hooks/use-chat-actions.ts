@@ -21,7 +21,7 @@ export function useChatActions() {
   const cancelStream = useChatStore((s) => s.cancelStream)
 
   const handleSendMessage = useCallback(
-    async (text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
+    async ({ text, images: _images, sessionId, opts }: { text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }; images?: unknown[]; sessionId?: string; opts?: SendMessageOptions }) => {
       const providerStore = useProviderStore.getState()
       const activeProvider = providerStore.getActiveProvider()
       if (!activeProvider) {
@@ -47,7 +47,7 @@ export function useChatActions() {
       const session = chatStore.sessions.find((s) => s.id === targetSessionId)
       const projectId = session?.projectId
       const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
-      const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
+      const workingFolder = session?.workingFolder ?? project?.workingFolder ?? undefined
       const sshConnectionId = session?.sshConnectionId ?? project?.sshConnectionId ?? undefined
       console.log('[ChatActions] sshConnectionId:', { session: session?.sshConnectionId, project: project?.sshConnectionId, resolved: sshConnectionId, projectId })
 

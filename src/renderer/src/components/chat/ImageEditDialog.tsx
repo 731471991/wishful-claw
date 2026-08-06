@@ -162,10 +162,7 @@ export function ImageEditDialog({ sessionId }: ImageEditDialogProps): React.JSX.
 
     setIsSubmitting(true)
     try {
-      await sendMessage(prompt.trim(), [image], undefined, sessionId, undefined, undefined, {
-        clearCompletedTasksOnTurnStart: true,
-        imageEdit: editorMode === 'mask' ? { maskDataUrl } : {}
-      })
+      await sendMessage({ text: prompt.trim(), images: [image], sessionId, opts: { clearCompletedTasksOnTurnStart: true, imageEdit: editorMode === 'mask' ? { maskDataUrl } : {} } })
       closeEditor()
     } catch (error) {
       console.error('Image edit failed:', error)

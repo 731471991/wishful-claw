@@ -161,7 +161,7 @@ export function WidgetOutputBlock({
       if (type === 'send_prompt') {
         const text = (data as { text?: unknown }).text
         if (typeof text === 'string' && text.trim()) {
-          void sendMessage(text.trim())
+          void sendMessage({ text: text.trim() })
         }
       }
     }
