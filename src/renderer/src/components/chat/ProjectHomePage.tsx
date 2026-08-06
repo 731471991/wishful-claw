@@ -39,7 +39,7 @@ export function ProjectHomePage(): React.JSX.Element {
               })
             : chatStore.createSession(mode, activeProjectId)
         // Apply Goal mode to new session if user selected it before sending
-        if (options?.goalMode && sessionId) {
+        if (options?.sessionMode === 'goal' && sessionId) {
           uiStore.setCollabMode(sessionId, 'goal')
         }
         uiStore.navigateToSession(sessionId)
