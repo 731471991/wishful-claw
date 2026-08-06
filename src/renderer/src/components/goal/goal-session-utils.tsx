@@ -26,11 +26,30 @@ export function useGoalSession(sessionId?: string | null): {
   events: SessionGoalEvent[]
 } {
   const goal = useGoalStore((s) => (sessionId ? s.goalsBySession[sessionId] : undefined))
+  const progress = useGoalStore((s) => (sessionId ? s.goalProgressBySession[sessionId] : undefined))
   const events = useGoalStore((s) =>
     sessionId
       ? (s.goalEventsBySession[sessionId] ?? EMPTY_SESSION_GOAL_EVENTS)
       : EMPTY_SESSION_GOAL_EVENTS
   )
+
+  // Fallback: when orchestrator is running but DB goal not yet available,
+  // construct a synthetic goal from progress data
+  const fallbackGoal: SessionGoal | undefined = React.useMemo(() => {
+    if (!progress || goal) return undefined
+    return {
+      sessionId: progress.sessionId,
+      goalId: progress.goalId,
+      objective: '',
+      status: 'active' as const,
+      createdAt: progress.timestamp,
+      updatedAt: progress.timestamp,
+      tokensUsed: 0,
+      timeUsedSeconds: 0,
+      plans: [],
+      workingFolder: null
+    }
+  }, [progress, goal])
 
   React.useEffect(() => {
     if (!sessionId) return
@@ -44,7 +63,7 @@ export function useGoalSession(sessionId?: string | null): {
       .loadGoalEventsForSession(sessionId, { goalId: goal?.goalId, force: true })
   }, [sessionId, goal?.goalId])
 
-  return { goal, events }
+  return { goal: goal ?? fallbackGoal, events }
 }
 
 export function statusTone(status?: SessionGoal['status']): string {
