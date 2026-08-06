@@ -8,7 +8,8 @@ namespace WishfulClaw.Core.Tools;
 public sealed record ToolDefinition(
     string Name,
     string Description,
-    JsonElement InputSchema);
+    JsonElement InputSchema,
+    string[]? AvailableModes = null);
 
 /// <summary>
 /// Result of executing a tool.

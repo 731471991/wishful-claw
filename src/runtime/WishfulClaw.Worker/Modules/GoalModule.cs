@@ -15,6 +15,7 @@ public sealed class GoalModule : IWorkerModule
         context.Register("goal/resume", ResumeGoal);
         context.Register("goal/abort", AbortGoal);
         context.Register("goal/status", GetGoalStatus);
+        context.Register("goal/confirm", ConfirmGoal);
     }
     private static WorkerResponse PauseGoal(JsonElement parameters)
     {
@@ -38,6 +39,27 @@ public sealed class GoalModule : IWorkerModule
         if (!string.IsNullOrEmpty(goalId))
             GoalOrchestrator.Abort(goalId);
         return WorkerResponse.Json(new { success = true });
+    }
+
+    private static async Task<WorkerResponse> ConfirmGoal(JsonElement parameters, IWorkerRequestContext context)
+    {
+        var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
+        var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
+
+        if (string.IsNullOrEmpty(goalId) || string.IsNullOrEmpty(sessionId))
+            return WorkerResponse.Json(new { success = false, error = "goalId and sessionId are required" });
+
+        var pending = GoalOrchestrator.GetPendingGoal(goalId);
+        if (pending == null)
+            return WorkerResponse.Json(new { success = false, error = "No pending goal found with this goalId" });
+
+        var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
+        var workingFolder = JsonHelpers.GetString(pending.Parameters, "workingFolder");
+
+        var ok = await GoalOrchestrator.ConfirmGoalAsync(
+            goalId, sessionId, workingFolder, pending.Parameters, parentState, context);
+
+        return WorkerResponse.Json(new { success = ok });
     }
 
     private static WorkerResponse GetGoalStatus(JsonElement parameters)

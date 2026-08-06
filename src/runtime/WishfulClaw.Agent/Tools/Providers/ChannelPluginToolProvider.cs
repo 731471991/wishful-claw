@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Agent.Tools;
+using WishfulClaw.Agent.Tools;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -6,6 +6,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// <summary>
 /// Registers channel-specific plugin tool definitions (Feishu, WeChat).
 /// Execution: ToolDispatchRouter → AgentRuntimeChannelPluginExecutor (reverse-request to main process).
+/// Available in normal and goal modes only (not sub-agent).
 /// </summary>
 internal sealed class ChannelPluginToolProvider : IToolProvider
 {
@@ -25,7 +26,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["chatId"] = chatIdProp,
                     ["imagePath"] = ToolSchemaBuilder.String("Local path to the image file.")
                 },
-                ["chatId", "imagePath"])));
+                ["chatId", "imagePath"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuSendFile",
@@ -36,14 +38,16 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["chatId"] = chatIdProp,
                     ["filePath"] = ToolSchemaBuilder.String("Local path to the file.")
                 },
-                ["chatId", "filePath"])));
+                ["chatId", "filePath"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuListChatMembers",
             "List members in a Feishu chat.",
             ToolSchemaBuilder.Object(
                 new() { ["chatId"] = chatIdProp },
-                ["chatId"])));
+                ["chatId"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuAtMember",
@@ -55,7 +59,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["userId"] = ToolSchemaBuilder.String("User ID to mention."),
                     ["content"] = ToolSchemaBuilder.String("Message content.")
                 },
-                ["chatId", "userId", "content"])));
+                ["chatId", "userId", "content"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuSendUrgent",
@@ -67,7 +72,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["userIds"] = ToolSchemaBuilder.ArraySchema("User IDs to notify.", ToolSchemaBuilder.String("User ID.")),
                     ["urgentType"] = ToolSchemaBuilder.String("Urgent type.", ["app", "sms"])
                 },
-                ["messageId"])));
+                ["messageId"]),
+            availableModes: ["normal", "goal"]));
 
         // ── Feishu Bitable ──
         RegisterFeishuBitableTools(registry);
@@ -82,7 +88,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["chatId"] = chatIdProp,
                     ["imagePath"] = ToolSchemaBuilder.String("Local path to the image file.")
                 },
-                ["chatId", "imagePath"])));
+                ["chatId", "imagePath"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "WeixinSendFile",
@@ -93,7 +100,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["chatId"] = chatIdProp,
                     ["filePath"] = ToolSchemaBuilder.String("Local path to the file.")
                 },
-                ["chatId", "filePath"])));
+                ["chatId", "filePath"]),
+            availableModes: ["normal", "goal"]));
     }
 
     private static void RegisterFeishuBitableTools(ToolRegistry registry)
@@ -105,21 +113,24 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
             "FeishuBitableListApps",
             "List Feishu Bitable (多维表格) apps.",
             ToolSchemaBuilder.Object(
-                new() { ["pageSize"] = ToolSchemaBuilder.Number("Page size. Defaults to 50.") })));
+                new() { ["pageSize"] = ToolSchemaBuilder.Number("Page size. Defaults to 50.") }),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableListTables",
             "List tables in a Feishu Bitable app.",
             ToolSchemaBuilder.Object(
                 new() { ["appToken"] = appToken },
-                ["appToken"])));
+                ["appToken"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableListFields",
             "List fields in a Feishu Bitable table.",
             ToolSchemaBuilder.Object(
                 new() { ["appToken"] = appToken, ["tableId"] = tableId },
-                ["appToken", "tableId"])));
+                ["appToken", "tableId"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableGetRecords",
@@ -132,7 +143,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["pageSize"] = ToolSchemaBuilder.Number("Page size. Defaults to 50."),
                     ["filter"] = ToolSchemaBuilder.String("Optional filter condition.")
                 },
-                ["appToken", "tableId"])));
+                ["appToken", "tableId"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableCreateRecords",
@@ -144,7 +156,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["tableId"] = tableId,
                     ["records"] = ToolSchemaBuilder.ArraySchema("Records to create.", ToolSchemaBuilder.String("Record JSON."))
                 },
-                ["appToken", "tableId", "records"])));
+                ["appToken", "tableId", "records"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableUpdateRecords",
@@ -156,7 +169,8 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["tableId"] = tableId,
                     ["records"] = ToolSchemaBuilder.ArraySchema("Records to update.", ToolSchemaBuilder.String("Record JSON."))
                 },
-                ["appToken", "tableId", "records"])));
+                ["appToken", "tableId", "records"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableDeleteRecords",
@@ -168,6 +182,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["tableId"] = tableId,
                     ["recordIds"] = ToolSchemaBuilder.ArraySchema("Record IDs to delete.", ToolSchemaBuilder.String("Record ID."))
                 },
-                ["appToken", "tableId", "recordIds"])));
+                ["appToken", "tableId", "recordIds"]),
+            availableModes: ["normal", "goal"]));
     }
 }

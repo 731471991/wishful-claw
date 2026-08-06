@@ -22,6 +22,12 @@ public static partial class GoalOrchestrator
     private static readonly ConcurrentDictionary<string, GoalContext> ActiveGoals = new(StringComparer.Ordinal);
 
     /// <summary>
+    /// Pending goals awaiting user confirmation before the orchestrator starts.
+    /// Holds the parameters needed to start the orchestration loop once confirmed.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, PendingGoal> PendingGoals = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Start a new Goal execution asynchronously.
     /// Returns immediately; the orchestration loop runs in the background.
     /// </summary>
@@ -45,6 +51,11 @@ public static partial class GoalOrchestrator
         };
 
         ActiveGoals[goalId] = goal;
+
+        // Emit preliminary event immediately so the frontend knows a goal is in progress
+        // (the full GoalStarted event with plan details is emitted after decomposition)
+        _ = EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
+            $"Goal created: {goalText}. Decomposing into plans...", context);
 
         // Fire and forget the orchestration loop
         _ = Task.Run(async () =>
@@ -156,6 +167,7 @@ public static partial class GoalOrchestrator
                 {
                     goalId = goal.GoalId,
                     sessionId = goal.SessionId,
+                    objective = goal.GoalText,
                     eventType = eventType.ToString(),
                     message = message,
                     status = goal.Status,
@@ -175,4 +187,132 @@ public static partial class GoalOrchestrator
             // Event emission failures should not crash the orchestration loop
         }
     }
+
+    // ── Pending goal (user confirmation required before orchestrator starts) ──
+
+    /// <summary>
+    /// Create a pending goal without starting the orchestrator.
+    /// The goal will be stored in memory until the user confirms via ConfirmGoalAsync.
+    /// </summary>
+    public static string CreatePendingGoal(
+        string goalText,
+        string sessionId,
+        string? workingFolder,
+        JsonElement parameters)
+    {
+        var goalId = $"goal-{Guid.NewGuid():N}".Substring(0, 21);
+        PendingGoals[goalId] = new PendingGoal
+        {
+            GoalId = goalId,
+            SessionId = sessionId,
+            GoalText = goalText,
+            WorkingFolder = workingFolder,
+            Parameters = parameters.Clone()
+        };
+        return goalId;
+    }
+
+    /// <summary>
+    /// Emit a goal_progress event for a pending goal so the frontend can
+    /// display the confirmation card before the orchestrator starts.
+    /// </summary>
+    public static async Task EmitPendingGoalAsync(
+        string goalId,
+        string sessionId,
+        string goalText,
+        IWorkerRequestContext context)
+    {
+        try
+        {
+            var eventPayload = new AgentRuntimeStreamEvent(
+                "goal_progress",
+                SubAgentName: $"Goal: {goalText.Substring(0, Math.Min(50, goalText.Length))}",
+                ToolUseId: goalId,
+                Input: JsonSerializer.SerializeToElement(new
+                {
+                    goalId = goalId,
+                    sessionId = sessionId,
+                    objective = goalText,
+                    eventType = "GoalPending",
+                    message = $"Goal created: {goalText}. Awaiting your confirmation.",
+                    status = "pending",
+                    currentPlanIndex = -1,
+                    planCount = 0,
+                    completedPlans = 0,
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                }));
+
+            await AgentRuntimeTools.EmitAsync(
+                new AgentRuntimeRunState($"goal-{goalId}", sessionId),
+                context,
+                eventPayload);
+        }
+        catch
+        {
+            // Event emission failures should not crash goal creation
+        }
+    }
+
+    /// <summary>
+    /// Confirm a pending goal and start the orchestration loop.
+    /// </summary>
+    public static async Task<bool> ConfirmGoalAsync(
+        string goalId,
+        string sessionId,
+        string? workingFolder,
+        JsonElement parameters,
+        AgentRuntimeRunState parentState,
+        IWorkerRequestContext context)
+    {
+        if (!PendingGoals.TryRemove(goalId, out var pending))
+            return false;
+
+        // Use provided parameters (from confirm) or fall back to pending's saved parameters
+        var actualParameters = parameters.ValueKind == JsonValueKind.Object
+            ? parameters
+            : pending.Parameters;
+
+        await StartAsync(
+            pending.GoalText,
+            sessionId,
+            workingFolder ?? pending.WorkingFolder,
+            actualParameters,
+            parentState,
+            context);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Get a pending goal by goalId, or null if not found.
+    /// </summary>
+    public static PendingGoal? GetPendingGoal(string goalId)
+    {
+        return PendingGoals.TryGetValue(goalId, out var pending) ? pending : null;
+    }
+
+    /// <summary>
+    /// Get the pending goal ID for a session, if one exists.
+    /// </summary>
+    public static string? GetPendingGoalId(string sessionId)
+    {
+        foreach (var kvp in PendingGoals)
+        {
+            if (kvp.Value.SessionId == sessionId)
+                return kvp.Key;
+        }
+        return null;
+    }
+}
+
+/// <summary>
+/// Pending goal awaiting user confirmation before orchestration starts.
+/// </summary>
+public sealed class PendingGoal
+{
+    public string GoalId { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public string GoalText { get; set; } = string.Empty;
+    public string? WorkingFolder { get; set; }
+    public JsonElement Parameters { get; set; }
 }

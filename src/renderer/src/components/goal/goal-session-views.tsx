@@ -129,6 +129,7 @@ export function useGoalActions(
   tokenBudgetDraft: string
   saving: boolean
   clearing: boolean
+  confirming: boolean
   setOpen: (open: boolean) => void
   setObjectiveDraft: (value: string) => void
   setTokenBudgetDraft: (value: string) => void
@@ -137,6 +138,7 @@ export function useGoalActions(
   clearGoal: () => Promise<void>
   setGoalStatus: (status: 'active' | 'paused') => Promise<void>
   abortGoal: () => Promise<void>
+  confirmGoal: () => Promise<void>
 } {
   const { t } = useTranslation('chat')
   const { t: tCommon } = useTranslation('common')
@@ -145,6 +147,7 @@ export function useGoalActions(
   const [tokenBudgetDraft, setTokenBudgetDraft] = React.useState('')
   const [saving, setSaving] = React.useState(false)
   const [clearing, setClearing] = React.useState(false)
+  const [confirming, setConfirming] = React.useState(false)
 
   const openManager = React.useCallback(() => {
     setObjectiveDraft(goal?.objective ?? '')
@@ -262,12 +265,23 @@ export function useGoalActions(
     setOpen(false)
   }, [goal, objectiveDraft, parseGoalTokenBudget, sessionId, t])
 
+  const confirmGoal = React.useCallback(async (): Promise<void> => {
+    if (!sessionId || !goal) return
+    setConfirming(true)
+    const result = await useGoalStore.getState().confirmGoal(sessionId, goal.goalId)
+    setConfirming(false)
+    if (!result.success) {
+      toast.error(t('goal.toasts.confirmFailed'), { description: result.error })
+    }
+  }, [sessionId, goal, t])
+
   return {
     open,
     objectiveDraft,
     tokenBudgetDraft,
     saving,
     clearing,
+    confirming,
     setOpen,
     setObjectiveDraft,
     setTokenBudgetDraft,
@@ -275,7 +289,8 @@ export function useGoalActions(
     saveGoal,
     clearGoal,
     setGoalStatus,
-    abortGoal
+    abortGoal,
+    confirmGoal
   }
 }
 

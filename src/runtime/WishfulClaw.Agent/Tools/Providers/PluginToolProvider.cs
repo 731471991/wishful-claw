@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Agent.Tools;
+using WishfulClaw.Agent.Tools;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -21,7 +21,10 @@ internal sealed class PluginToolProvider : IToolProvider
             "Send a text message through a messaging channel (Feishu, WeChat, etc.).",
             ToolSchemaBuilder.Object(
                 new() { ["chatId"] = chatId, ["content"] = content },
-                ["chatId", "content"])));
+                ["chatId", "content"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "PluginReplyMessage",
@@ -32,7 +35,10 @@ internal sealed class PluginToolProvider : IToolProvider
                     ["messageId"] = ToolSchemaBuilder.String("The message ID to reply to."),
                     ["content"] = content
                 },
-                ["messageId", "content"])));
+                ["messageId", "content"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "PluginGetGroupMessages",
@@ -43,12 +49,17 @@ internal sealed class PluginToolProvider : IToolProvider
                     ["chatId"] = chatId,
                     ["count"] = ToolSchemaBuilder.Number("Number of messages to retrieve. Defaults to 20.")
                 },
-                ["chatId"])));
+                ["chatId"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "PluginListGroups",
             "List all groups/chats the channel bot is in.",
-            ToolSchemaBuilder.Object()));
+            ToolSchemaBuilder.Object(),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "PluginSummarizeGroup",
@@ -59,12 +70,18 @@ internal sealed class PluginToolProvider : IToolProvider
                     ["chatId"] = chatId,
                     ["count"] = ToolSchemaBuilder.Number("Number of recent messages to summarize. Defaults to 50.")
                 },
-                ["chatId"])));
+                ["chatId"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "PluginGetCurrentChatMessages",
             "Get messages from the current chat context.",
             ToolSchemaBuilder.Object(
-                new() { ["count"] = ToolSchemaBuilder.Number("Number of messages. Defaults to 20.") })));
+                new() { ["count"] = ToolSchemaBuilder.Number("Number of messages. Defaults to 20.") }
+            ),
+            availableModes: ["normal", "goal"]
+        ));
     }
 }

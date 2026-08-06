@@ -40,8 +40,8 @@ export function useGoalSession(sessionId?: string | null): {
     return {
       sessionId: progress.sessionId,
       goalId: progress.goalId,
-      objective: '',
-      status: 'active' as const,
+      objective: progress.objective ?? '',
+      status: (progress.status as SessionGoal['status']) || 'active',
       createdAt: progress.timestamp,
       updatedAt: progress.timestamp,
       tokensUsed: 0,
@@ -68,6 +68,8 @@ export function useGoalSession(sessionId?: string | null): {
 
 export function statusTone(status?: SessionGoal['status']): string {
   switch (status) {
+    case 'pending':
+      return 'border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-300'
     case 'active':
       return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
     case 'paused':

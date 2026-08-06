@@ -14,12 +14,14 @@ public sealed class ToolDefinitionPlaceholder : IToolExecutor
     public string Name { get; }
     public string Description { get; }
     public JsonElement InputSchema { get; }
+    public string[]? AvailableModes { get; }
 
-    public ToolDefinitionPlaceholder(string name, string description, JsonElement inputSchema)
+    public ToolDefinitionPlaceholder(string name, string description, JsonElement inputSchema, string[]? availableModes = null)
     {
         Name = name;
         Description = description;
         InputSchema = inputSchema;
+        AvailableModes = availableModes;
     }
 
     public Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)

@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Agent.Tools;
+using WishfulClaw.Agent.Tools;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -6,6 +6,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// <summary>
 /// Registers desktop control tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeDesktopExecutor (reverse-request to main process).
+/// Available in normal and goal modes only (not sub-agent).
 /// </summary>
 internal sealed class DesktopToolProvider : IToolProvider
 {
@@ -17,7 +18,8 @@ internal sealed class DesktopToolProvider : IToolProvider
             "DesktopScreenshot",
             "Capture a full desktop screenshot and return it to the agent. Use before mouse or keyboard actions when screen state matters.",
             ToolSchemaBuilder.Object(
-                new() { ["delayMs"] = ToolSchemaBuilder.Number("Optional delay in milliseconds before capturing.") })));
+                new() { ["delayMs"] = ToolSchemaBuilder.Number("Optional delay in milliseconds before capturing.") }),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "DesktopClick",
@@ -30,7 +32,8 @@ internal sealed class DesktopToolProvider : IToolProvider
                     ["button"] = ToolSchemaBuilder.String("Mouse button: left, right, or middle."),
                     ["action"] = ToolSchemaBuilder.String("Mouse action: click, double_click, down, or up.")
                 },
-                ["x", "y"])));
+                ["x", "y"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "DesktopType",
@@ -41,7 +44,8 @@ internal sealed class DesktopToolProvider : IToolProvider
                     ["text"] = ToolSchemaBuilder.String("Type a full text string."),
                     ["key"] = ToolSchemaBuilder.String("Press one special key (Enter, Tab, Escape, etc.)."),
                     ["hotkey"] = ToolSchemaBuilder.ArraySchema("Key chord like [\"Control\", \"L\"].", ToolSchemaBuilder.String("Key name."))
-                })));
+                }),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "DesktopScroll",
@@ -53,12 +57,14 @@ internal sealed class DesktopToolProvider : IToolProvider
                     ["y"] = ToolSchemaBuilder.Number("Optional Y coordinate before scrolling."),
                     ["scrollX"] = ToolSchemaBuilder.Number("Horizontal scroll delta. Defaults to 0."),
                     ["scrollY"] = ToolSchemaBuilder.Number("Vertical scroll delta.")
-                })));
+                }),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "DesktopWait",
             "Pause desktop automation for a short period before continuing.",
             ToolSchemaBuilder.Object(
-                new() { ["delayMs"] = ToolSchemaBuilder.Number("Delay in milliseconds. Defaults to 2000.") })));
+                new() { ["delayMs"] = ToolSchemaBuilder.Number("Delay in milliseconds. Defaults to 2000.") }),
+            availableModes: ["normal", "goal"]));
     }
 }

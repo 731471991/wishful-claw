@@ -1,5 +1,6 @@
 
 export type SessionGoalStatus =
+  | 'pending'
   | 'active'
   | 'paused'
   | 'blocked'
@@ -96,6 +97,7 @@ interface AccountGoalUsageInput {
 export interface GoalProgressState {
   sessionId: string
   goalId: string
+  objective?: string
   eventType: string
   message: string
   status: string
@@ -135,6 +137,7 @@ export interface GoalStore {
     sessionId: string,
     patch: Partial<Pick<SessionGoal, 'objective' | 'status' | 'tokenBudget'>>
   ) => Promise<{ success: boolean; goal?: SessionGoal; error?: string }>
+  confirmGoal: (sessionId: string, goalId: string) => Promise<{ success: boolean; error?: string }>
   clearGoal: (sessionId: string) => Promise<{ success: boolean; cleared: boolean; error?: string }>
   accountGoalUsage: (
     input: AccountGoalUsageInput

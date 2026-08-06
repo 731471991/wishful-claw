@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Agent.Tools;
+using WishfulClaw.Agent.Tools;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -22,21 +22,30 @@ internal sealed class TeamToolProvider : IToolProvider
                     ["name"] = ToolSchemaBuilder.String("Team name."),
                     ["members"] = ToolSchemaBuilder.ArraySchema("Team member configurations.", ToolSchemaBuilder.String("Member agent name."))
                 },
-                ["name"])));
+                ["name"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "TeamStatus",
             "Get the status of an agent team.",
             ToolSchemaBuilder.Object(
                 new() { ["name"] = ToolSchemaBuilder.String("Team name.") },
-                ["name"])));
+                ["name"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "TeamDelete",
             "Delete an agent team.",
             ToolSchemaBuilder.Object(
                 new() { ["name"] = ToolSchemaBuilder.String("Team name.") },
-                ["name"])));
+                ["name"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "SendMessage",
@@ -48,6 +57,9 @@ internal sealed class TeamToolProvider : IToolProvider
                     ["member"] = ToolSchemaBuilder.String("Member agent name."),
                     ["message"] = ToolSchemaBuilder.String("Message content.")
                 },
-                ["team", "member", "message"])));
+                ["team", "member", "message"]
+            ),
+            availableModes: ["normal", "goal"]
+        ));
     }
 }

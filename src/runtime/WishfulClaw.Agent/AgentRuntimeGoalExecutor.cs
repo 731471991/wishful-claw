@@ -66,18 +66,25 @@ public static class AgentRuntimeGoalExecutor
         if (objective.Length == 0)
             return EncodeError("create_goal requires a non-empty objective.");
 
-        // Check if a goal is already running for this session
-        var existingGoalId = GoalOrchestrator.GetActiveGoalId(sessionId);
+        // Check if a goal is already running or pending for this session
+        var existingGoalId = GoalOrchestrator.GetActiveGoalId(sessionId) ?? GoalOrchestrator.GetPendingGoalId(sessionId);
         if (existingGoalId != null)
-            return EncodeGoal(new GoalRecord(objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId));
+        {
+            var existingStatus = GoalOrchestrator.GetActiveGoalId(sessionId) != null ? "active" : "pending";
+            return EncodeGoal(new GoalRecord(objective, existingStatus, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId));
+        }
 
-        // Start the orchestration loop
+        // Create a pending goal - does NOT start the orchestrator yet.
+        // The orchestrator will be started when the user confirms via the frontend.
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
-        var goalId = await GoalOrchestrator.StartAsync(
-            objective, sessionId, workingFolder, parameters, parentState, context);
+        var goalId = GoalOrchestrator.CreatePendingGoal(
+            objective, sessionId, workingFolder, parameters);
 
-        // Store in memory with the orchestrator goalId
-        var goal = new GoalRecord(objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId);
+        // Notify the frontend of the pending goal so it can show the confirmation card
+        _ = GoalOrchestrator.EmitPendingGoalAsync(goalId, sessionId, objective, context);
+
+        // Store in memory with pending status
+        var goal = new GoalRecord(objective, "pending", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId);
         Goals[sessionId] = goal;
 
         return EncodeGoal(goal);

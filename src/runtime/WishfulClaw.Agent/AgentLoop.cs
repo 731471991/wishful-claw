@@ -88,7 +88,8 @@ internal static partial class AgentLoop
         var toolPreset = ToolPreset.BuiltIn.TryGetValue(toolPresetId, out var tp)
             ? tp
             : ToolPreset.BuiltIn["full"];
-        var toolDefs = ToolModuleState.Registry?.GetToolDefinitions(toolPreset) ?? [];
+        var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
+        var toolDefs = ToolModuleState.Registry?.GetToolDefinitions(toolPreset, sessionMode) ?? [];
 
         // Filter out WebSearch/WebFetch when web search is not enabled.
         // Previously done in the frontend; now handled backend-side since
@@ -100,7 +101,6 @@ internal static partial class AgentLoop
                 .Where(t => t.Name != "WebSearch" && t.Name != "WebFetch")
                 .ToList();
         }
-
         // ── Persona-aware system prompt ──
         var personaId = JsonHelpers.GetString(parameters, "personaId");
         if (!string.IsNullOrWhiteSpace(personaId))
@@ -111,7 +111,6 @@ internal static partial class AgentLoop
             var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
             var projectId = JsonHelpers.GetString(parameters, "projectId");
             WorkerLog.Warn($"agent run sshConnectionId={sshConnectionId ?? "(null)"} personaId={personaId} projectId={projectId ?? "(null)"}");
-            var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
             var cacheKey = SystemPromptCache.ComputeKey(personaId, workingFolder, language, userRules, sshConnectionId, projectId, sessionMode);
             var builtPrompt = SystemPromptCache.GetOrBuild(cacheKey, () =>
                 PromptBuilder.Build(

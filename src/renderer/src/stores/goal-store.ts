@@ -11,6 +11,7 @@ import {
   DB_GOALS_CLEAR_MSGPACK_CHANNEL,
   DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
   DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
+  GOAL_CONFIRM_MSGPACK_CHANNEL,
 } from '../../../shared/messagepack/binary-ipc'
 import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalEventMutationResult, GoalMutationResult, GoalStore, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
 export { EMPTY_SESSION_GOAL_EVENTS }
@@ -150,6 +151,32 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
       upsertGoal(set, goal)
       void get().loadGoalEventsForSession(goal.sessionId, { goalId: goal.goalId, force: true })
       return { success: true, goal }
+    } catch (error) {
+      return { success: false, error: mutationError(error) }
+    }
+  },
+
+  confirmGoal: async (sessionId, goalId) => {
+    try {
+      const result = await invokeMessagePackBinary<{ success: boolean; error?: string }>(
+        GOAL_CONFIRM_MSGPACK_CHANNEL,
+        { sessionId, goalId }
+      )
+      if (result.success) {
+        // Optimistically flip the goal to active so the banner transitions immediately.
+        // The orchestrator's goal_progress events will keep it in sync afterwards.
+        set((state) => {
+          const existing = state.goalsBySession[sessionId]
+          if (!existing) return {}
+          return {
+            goalsBySession: {
+              ...state.goalsBySession,
+              [sessionId]: { ...existing, status: 'active' }
+            }
+          }
+        })
+      }
+      return { success: result.success, error: result.error }
     } catch (error) {
       return { success: false, error: mutationError(error) }
     }

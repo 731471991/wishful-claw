@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -18,14 +18,19 @@ internal sealed class SkillManagementToolProvider : IToolProvider
         registry.Register(new ToolDefinitionPlaceholder(
             "list_installed_skills",
             "List all skills currently installed in the local skills directory. Returns each skill's name, description, and enabled status.",
-            ToolSchemaBuilder.Object()), Category);
+            ToolSchemaBuilder.Object(),
+            availableModes: ["normal", "goal"]
+        ), Category);
 
         registry.Register(new ToolDefinitionPlaceholder(
             "search_skill_market",
             "Search the skill marketplace for available skills. Returns matching skills with name, description, download URL, and install command.",
             ToolSchemaBuilder.Object(
                 new() { ["query"] = ToolSchemaBuilder.String("Search query for finding skills") },
-                new[] { "query" })), Category);
+                new[] { "query" }
+            ),
+            availableModes: ["normal", "goal"]
+        ), Category);
 
         registry.Register(new ToolDefinitionPlaceholder(
             "install_skill",
@@ -34,6 +39,9 @@ internal sealed class SkillManagementToolProvider : IToolProvider
                 new() {
                     ["slug"] = ToolSchemaBuilder.String("Skill slug from marketplace search results"),
                     ["url"] = ToolSchemaBuilder.String("Direct download URL for the skill")
-                })), Category);
+                }
+            ),
+            availableModes: ["normal", "goal"]
+        ), Category);
     }
 }

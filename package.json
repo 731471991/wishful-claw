@@ -24,7 +24,16 @@
       "output": "dist-electron"
     },
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "!src/*",
+      "!electron.vite.config.*",
+      "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}",
+      "!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,.npmrc,pnpm-lock.yaml}",
+      "!node_modules/**/*.ts",
+      "!node_modules/**/*.map",
+      "!node_modules/**/{README.md,CHANGELOG.md,HISTORY.md,CONTRIBUTING.md,LICENSE,LICENSE.md}",
+      "!node_modules/**/{test,tests,__tests__,__test__,bench,benchmarks,benchmark}",
+      "!node_modules/**/{example,examples,demo,demos,sample,samples,docs,doc,man,guide}"
     ],
     "extraResources": [
       {

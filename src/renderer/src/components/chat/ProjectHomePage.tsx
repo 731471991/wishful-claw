@@ -30,14 +30,13 @@ export function ProjectHomePage(): React.JSX.Element {
         const chatStore = useChatStore.getState()
         const uiStore = useUIStore.getState()
         const chatWorkingFolder =
-          mode === 'chat' ? await ensureDefaultChatWorkingFolder() : undefined
-        const sessionId =
-          mode === 'chat'
-            ? chatStore.createSession(mode, null, {
-                preserveProjectless: true,
-                workingFolder: chatWorkingFolder
-              })
-            : chatStore.createSession(mode, activeProjectId)
+          !activeProjectId ? await ensureDefaultChatWorkingFolder() : undefined
+        const sessionId = activeProjectId
+          ? chatStore.createSession(mode, activeProjectId)
+          : chatStore.createSession(mode, null, {
+              preserveProjectless: true,
+              workingFolder: chatWorkingFolder
+            })
         // Apply Goal mode to new session if user selected it before sending
         if (options?.sessionMode === 'goal' && sessionId) {
           uiStore.setCollabMode(sessionId, 'goal')

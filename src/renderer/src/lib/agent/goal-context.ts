@@ -53,6 +53,8 @@ export function goalRemainingTokens(goal: SessionGoal): number | null {
 
 export function goalStatusLabel(status: SessionGoal['status']): string {
   switch (status) {
+    case 'pending':
+      return 'pending'
     case 'active':
       return 'active'
     case 'paused':
