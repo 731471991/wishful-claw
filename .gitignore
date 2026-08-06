@@ -38,6 +38,7 @@ appsettings.Local.json
 publish/
 artifacts/
 TestResults/
+resources/worker/
 
 # Logs
 logs/
@@ -46,3 +47,5 @@ out/
 package-lock.json
 .reasonix/
 build_out
+release/
+scripts/

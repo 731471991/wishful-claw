@@ -1,0 +1,102 @@
+appId: com.wishfulclaw.app
+productName: Wishful Claw
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - '!src/*'
+  - '!electron.vite.config.*'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,.npmrc,pnpm-lock.yaml}'
+  - '!node_modules/**/*.ts'
+  - '!node_modules/**/*.map'
+  - '!node_modules/**/{README.md,CHANGELOG.md,HISTORY.md,CONTRIBUTING.md,LICENSE,LICENSE.md}'
+  - '!node_modules/**/{test,tests,__tests__,__test__,bench,benchmarks,benchmark}'
+  - '!node_modules/**/{example,examples,demo,demos,sample,samples,docs,doc,man,guide}'
+  - '!node_modules/monaco-editor/**'
+  - '!node_modules/@monaco-editor/**'
+  - '!node_modules/mermaid/**'
+  - '!node_modules/katex/**'
+  - '!node_modules/react-pdf/**'
+  - '!node_modules/xlsx/**'
+  - '!node_modules/mammoth/**'
+  - '!node_modules/motion/**'
+  - '!node_modules/motion-dom/**'
+  - '!node_modules/motion-utils/**'
+  - '!node_modules/lucide-react/**'
+  - '!node_modules/react-markdown/**'
+  - '!node_modules/react-syntax-highlighter/**'
+  - '!node_modules/remark*/**'
+  - '!node_modules/rehype*/**'
+  - '!node_modules/unified/**'
+  - '!node_modules/unist*/**'
+  - '!node_modules/hast*/**'
+  - '!node_modules/mdast*/**'
+  - '!node_modules/micromark*/**'
+  - '!node_modules/vfile*/**'
+  - '!node_modules/cytoscape*/**'
+  - '!node_modules/d3*/**'
+  - '!node_modules/@radix-ui/**'
+  - '!node_modules/radix-ui/**'
+  - '!node_modules/@tanstack/**'
+  - '!node_modules/@toon-format/**'
+  - '!node_modules/dompurify/**'
+  - '!node_modules/html-to-image/**'
+  - '!node_modules/@lobehub/**'
+  - '!node_modules/@types/**'
+  - '!node_modules/@vitejs/**'
+  - '!node_modules/tailwindcss/**'
+  - '!node_modules/@tailwindcss/**'
+  - '!node_modules/tw-animate-css/**'
+  - '!node_modules/lightningcss*/**'
+  - '!node_modules/monaco-editor-workers/**'
+
+extraResources:
+  - from: resources/worker
+    to: worker
+    filter:
+      - '**/*'
+
+asarUnpack:
+  - resources/**
+  - node_modules/node-pty/**
+  - node_modules/ssh2/**
+  - node_modules/@jitsi/robotjs/**
+
+npmRebuild: false
+
+win:
+  executableName: WishfulClaw
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: null
+
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: null
+  notarize: false
+
+linux:
+  target:
+    - AppImage
+    - deb
+  maintainer: wishful-claw
+  category: Utility
+appImage:
+  artifactName: ${name}-${version}.${ext}
