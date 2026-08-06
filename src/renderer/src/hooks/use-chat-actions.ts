@@ -135,6 +135,7 @@ export function useChatActions() {
         sessionMode: opts?.sessionMode
       })
 
+      console.warn('[ChatActions] sessionMode', opts?.sessionMode, 'opts=', opts)
       void opts
     },
     [sendMessage]
