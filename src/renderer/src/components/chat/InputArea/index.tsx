@@ -313,9 +313,7 @@ export function InputArea({
 
   const editorPlaceholder = pendingReviewPlanId
     ? t('input.placeholderPlanReview', { defaultValue: 'Enter suggestions for this plan...' })
-    : hasPendingGoalMode
-      ? t('input.placeholderPendingGoal', { defaultValue: 'Describe the goal to pursue...' })
-      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode as never] ?? 'input.placeholder')))
+    : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode as never] ?? 'input.placeholder')))
 
   const composerIconControlClass = 'composer-control rounded-xl'
   const debouncedTokens = useDebouncedTokens(finalSerializedText)

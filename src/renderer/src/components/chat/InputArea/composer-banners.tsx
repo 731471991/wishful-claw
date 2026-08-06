@@ -102,7 +102,7 @@ export function ComposerBanners({
           <span>
             {t('input.pendingGoalBanner', {
               defaultValue:
-                'Goal pursuit is ready. Your next text message will be used as the goal and sent normally.'
+                'Goal mode is active. The Agent will discuss the objective with you and create a goal once confirmed.'
             })}
           </span>
         </div>
