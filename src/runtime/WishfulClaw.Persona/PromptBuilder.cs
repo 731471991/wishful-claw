@@ -55,6 +55,14 @@ public static class PromptBuilder
             parts.Add(BuildProjectContext(workingFolder, JsonHelpers.GetString(parameters, "sshConnectionId")));
         }
 
+        // ── Session Mode (Goal) — high priority, before persona ──
+        var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
+        if (sessionMode == "goal")
+        {
+            WorkerLog.Info("sessionMode=goal, injecting goal mode prompt");
+            parts.Add(BuildGoalModePrompt());
+        }
+
         // ── Context Documents (Persona) ──
         if (profile == PromptProfile.Main && !string.IsNullOrWhiteSpace(personaId))
         {
@@ -67,15 +75,6 @@ public static class PromptBuilder
         if (profile == PromptProfile.Main)
         {
             parts.Add(BuildMemoryContext(parameters));
-        }
-
-        // ── Session Mode (Goal) ──
-        var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
-        WorkerLog.Warn("PromptBuilder: sessionMode parameter = [" + (sessionMode ?? "(null)") + "]");
-        if (sessionMode == "goal")
-        {
-            WorkerLog.Info("sessionMode=goal, injecting goal mode prompt");
-            parts.Add(BuildGoalModePrompt());
         }
         parts.Add(BuildToolCapability(parameters));
 
