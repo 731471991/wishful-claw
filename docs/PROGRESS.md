@@ -1,5 +1,16 @@
 # 开发进度
 
+## v2-iter-10：全局会话 + 项目编排工具
+- 状态：规划中
+- 分支：dev/v2-iter-10
+- VERDICT: —
+- Tag: —
+- Commit: —
+- 日期: 2026-08-07
+- 备注：全局会话作项目经理助手，list_projects / get_project_details / create_session / send_session_message 四工具；任务状态用固定目录 .wishful-claw/project-status.md + 固定消息模版，项目会话收到模版消息后自己整理
+
+
+
 ## 迭代一：项目骨架
 - 状态：已完成
 - 分支：dev/iter-1
