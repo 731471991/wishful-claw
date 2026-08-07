@@ -106,6 +106,7 @@ export function useChatActions() {
         apiKey: activeProvider.apiKey,
         baseUrl: activeProvider.baseUrl,
         model: modelId,
+        contextLength: modelConfig?.contextLength ?? undefined,
         temperature: settings.temperature ?? undefined,
         maxTokens: settings.maxTokens ?? undefined,
         thinkingEnabled,

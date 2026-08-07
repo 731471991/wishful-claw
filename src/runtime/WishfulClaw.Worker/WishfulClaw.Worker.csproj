@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +16,10 @@
     <ProjectReference Include="..\WishfulClaw.Persona\WishfulClaw.Persona.csproj" />
     <ProjectReference Include="..\WishfulClaw.Workspace\WishfulClaw.Workspace.csproj" />
     <ProjectReference Include="..\WishfulClaw.Infrastructure\WishfulClaw.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <RdXmlFile Include="rd.xml" />
   </ItemGroup>
 
 </Project>

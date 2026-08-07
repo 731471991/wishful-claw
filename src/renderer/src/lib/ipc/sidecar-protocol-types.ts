@@ -96,6 +96,7 @@ export interface SidecarProviderConfig {
   apiKey?: string
   baseUrl?: string
   model?: string
+  contextLength?: number
   category?: string
   maxTokens?: number
   temperature?: number

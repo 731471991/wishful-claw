@@ -40,6 +40,7 @@ public static class ContextCompression
     private const int MinCompactMessages = 2;       // skip compaction below this many foldable messages
     private const int MinFoldTokens = 400;          // skip if fold region too small
     private const double FallbackTokPerChar = 0.25; // ~4 chars/token before usage data
+    private const int DefaultContextCompressionLimit = 200_000; // fallback when provider has no contextLength
     private const int MaxPinnedFirstUserTokens = 1500;
     private const double PinnedFirstUserWindowFrac = 0.15;
 
@@ -206,7 +207,7 @@ public static class ContextCompression
         int min)
     {
         var head = PinnedPrefixLen(conversation, provider);
-        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
+        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? DefaultContextCompressionLimit;
 
         int start;
         if (contextLength > 0)
@@ -261,7 +262,7 @@ public static class ContextCompression
     private static bool IsPinnableUserTurn(AgentRuntimeChatMessage message, JsonElement provider)
     {
         var budget = MaxPinnedFirstUserTokens;
-        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
+        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? DefaultContextCompressionLimit;
         if (contextLength > 0)
         {
             var fracBudget = (int)(contextLength * PinnedFirstUserWindowFrac);

@@ -413,6 +413,7 @@ export interface ProviderConfig {
   apiKey?: string
   baseUrl?: string
   model?: string
+  contextLength?: number
   category?: ModelCategory
   providerId?: string
   providerBuiltinId?: string

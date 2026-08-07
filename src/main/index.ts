@@ -372,8 +372,9 @@ registerWebSearchHandlers()
   )
   registerMessagePackHandler<Record<string, unknown>, unknown>(
     'goal:status:msgpack',
-    async (args) => getNativeWorker().request('goal/status', args),
-
+    async (args) => getNativeWorker().request('goal/status', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
     'goal:confirm:msgpack',
     async (args) => getNativeWorker().request('goal/confirm', args)
   )

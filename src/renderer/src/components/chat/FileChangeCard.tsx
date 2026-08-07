@@ -37,7 +37,13 @@ export function FileChangeCard({
 
   const filePath = String(input.file_path ?? input.path ?? '')
   const elapsed =
-    startedAt && completedAt ? ((completedAt - startedAt) / 1000).toFixed(1) + 's' : null
+    startedAt && completedAt
+      ? (() => {
+          const diffMs = completedAt - startedAt
+          if (diffMs < 1000) return `${Math.round(diffMs)}ms`
+          return `${(diffMs / 1000).toFixed(1)}s`
+        })()
+      : null
   const outputStr = typeof output === 'string' ? output : undefined
   const isFileActionable = trackedChange?.status === 'open'
   const parsedOutput = outputStr ? decodeStructuredToolResult(outputStr) : null

@@ -15,7 +15,7 @@ import { dawnPreset } from './theme-presets/dawn'
 
 export type { AppThemeMode, AppThemePreset, SshTerminalThemePreset, ThemePresetDefinition, SshChromePalette }
 
-export const DEFAULT_APP_THEME_PRESET: AppThemePreset = 'ocean'
+export const DEFAULT_APP_THEME_PRESET: AppThemePreset = 'studio'
 export const DEFAULT_SSH_TERMINAL_THEME_PRESET: SshTerminalThemePreset = DEFAULT_APP_THEME_PRESET
 
 const PRESET_DEFINITIONS: Record<AppThemePreset, ThemePresetDefinition> = {

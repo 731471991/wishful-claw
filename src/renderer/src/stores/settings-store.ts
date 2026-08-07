@@ -357,7 +357,7 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'wishfulclaw-settings',
-      version: 30,
+      version: 31,
       storage: createJSONStorage(() => ipcStorage),
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>
@@ -474,15 +474,8 @@ export const useSettingsStore = create<SettingsStore>()(
         if (state.backgroundColor === undefined) {
           state.backgroundColor = ''
         }
-        if (!isAppThemePreset(state.themePreset)) {
-          state.themePreset = DEFAULT_APP_THEME_PRESET
-        } else if (
-          (version < 17 && matchesLegacyThemeDefaults) ||
-          (version < 18 && matchesV17ThemeDefaults) ||
-          (version < 19 && matchesV18ThemeDefaults)
-        ) {
-          state.themePreset = DEFAULT_APP_THEME_PRESET
-        }
+        // 统一迁移为默认配色（远航蓝 ocean），覆盖任何历史默认值（如旧版 graphite）
+        state.themePreset = DEFAULT_APP_THEME_PRESET
         if (!isAppThemePreset(state.sshTerminalThemePreset)) {
           state.sshTerminalThemePreset = DEFAULT_SSH_TERMINAL_THEME_PRESET
         } else if (
