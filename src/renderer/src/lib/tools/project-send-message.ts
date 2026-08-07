@@ -5,12 +5,17 @@
  * The global session (project manager) sends a message to a target project session
  * via the normal sendMessage pipeline — fully simulating a user action.
  *
+ * Before calling sendMessage, ensures the target session exists in the chat store
+ * (injected if missing). After sendMessage completes, reads the target session's
+ * last assistant message from the store and returns it as the tool result.
+ *
  * Flow:
  *   Worker (send_session_message tool)
  *     → reverse-request "project/send-session-message"
  *     → Main process (rendererMethods)
  *     → Renderer (this handler)
- *     → chatStore.sendMessage() → agent/run
+ *     → Ensure session in store → chatStore.sendMessage() → agent/run
+ *     → Read target session's reply from store
  *     → Response back to Worker
  */
 
@@ -34,7 +39,31 @@ export async function handleProjectSendSessionMessage(
     return { success: false, error: 'Missing required fields: sessionId, content' }
   }
 
-  // 1. Get provider config from store
+  // 1. Ensure target session exists in the chat store
+  //    (sendMessage's beginUserTurn silently fails if session is not in store)
+  const chatStore = useChatStore.getState()
+  const existingSession = chatStore.sessions.find((s) => s.id === sessionId)
+  if (!existingSession) {
+    useChatStore.setState((state) => {
+      state.sessions.push({
+        id: sessionId,
+        title: 'Project Task',
+        mode: 'chat',
+        messages: [],
+        messageCount: 0,
+        messagesLoaded: true,
+        loadedRangeStart: 0,
+        loadedRangeEnd: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        projectId: projectId || undefined,
+        workingFolder: workingFolder || undefined,
+        modelSelectionMode: 'inherit'
+      })
+    })
+  }
+
+  // 2. Get provider config from store
   const providerStore = useProviderStore.getState()
   const targetProvider = providerStore.getActiveProvider()
   if (!targetProvider) {
@@ -59,7 +88,12 @@ export async function handleProjectSendSessionMessage(
     thinkingEnabled: false
   }
 
-  // 2. Call sendMessage to trigger the Agent Loop
+  // 3. Record message count before sending to detect new messages
+  const storeBefore = useChatStore.getState()
+  const sessionBefore = storeBefore.sessions.find((s) => s.id === sessionId)
+  const msgCountBefore = sessionBefore?.messageCount ?? 0
+
+  // 4. Call sendMessage to trigger the Agent Loop
   try {
     await useChatStore.getState().sendMessage({
       sessionMode: 'normal',
@@ -81,9 +115,45 @@ export async function handleProjectSendSessionMessage(
       contextCompressionThreshold: settings.contextCompressionThreshold
     })
 
-    return { success: true, result: 'Message sent successfully.' }
+    // 5. Read target session's reply from store
+    const storeAfter = useChatStore.getState()
+    const sessionAfter = storeAfter.sessions.find((s) => s.id === sessionId)
+    let reply = ''
+
+    if (sessionAfter && sessionAfter.messages.length > msgCountBefore) {
+      // Find the last non-streaming assistant message
+      for (let i = sessionAfter.messages.length - 1; i >= 0; i--) {
+        const msg = sessionAfter.messages[i]
+        if (msg.role === 'assistant' && !msg.isStreaming) {
+          reply = msg.text || extractTextFromContent(msg) || ''
+          if (reply) break
+        }
+      }
+    }
+
+    // Build a structured result for the global Agent
+    const result = [
+      `Message sent to session "${sessionAfter?.title || sessionId}".`,
+      reply
+        ? `\n\nReply from the target session:\n${reply}`
+        : '\n\nThe target session has processed the message (no text reply).'
+    ].join('')
+
+    return { success: true, result }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return { success: false, error: `Failed to send message: ${msg}` }
   }
+}
+
+function extractTextFromContent(msg: { content?: string | Array<unknown> | Record<string, unknown> }): string {
+  if (!msg.content) return ''
+  if (typeof msg.content === 'string') return msg.content
+  if (Array.isArray(msg.content)) {
+    return msg.content
+      .filter((b: unknown) => (b as { type?: string }).type === 'text')
+      .map((b: unknown) => ('text' in (b as Record<string, unknown>) ? (b as Record<string, unknown>).text ?? '' : ''))
+      .join('')
+  }
+  return ''
 }
