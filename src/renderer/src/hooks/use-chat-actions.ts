@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+﻿import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'
@@ -8,8 +8,8 @@ import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type C
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
   enablePlanMode?: boolean
+  sessionMode?: 'normal' | 'goal'
   selectedFileReferences?: unknown[]
-  goalObjective?: string
   imageEdit?: unknown
   toolPreset?: string
   [key: string]: unknown
@@ -21,7 +21,7 @@ export function useChatActions() {
   const cancelStream = useChatStore((s) => s.cancelStream)
 
   const handleSendMessage = useCallback(
-    async (text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }, _images?: unknown[], _options?: unknown, sessionId?: string, _planId?: string, _workingFolder?: string, opts?: SendMessageOptions) => {
+    async ({ text, images: _images, sessionId, opts }: { text: string | { text: string; images?: unknown[]; skill?: string | null; selectedFiles?: unknown[] }; images?: unknown[]; sessionId?: string; opts?: SendMessageOptions }) => {
       const providerStore = useProviderStore.getState()
       const activeProvider = providerStore.getActiveProvider()
       if (!activeProvider) {
@@ -47,7 +47,7 @@ export function useChatActions() {
       const session = chatStore.sessions.find((s) => s.id === targetSessionId)
       const projectId = session?.projectId
       const project = projectId ? chatStore.projects.find((p) => p.id === projectId) : null
-      const workingFolder = session?.workingFolder ?? project?.workingFolder ?? _workingFolder ?? undefined
+      const workingFolder = session?.workingFolder ?? project?.workingFolder ?? undefined
       const sshConnectionId = session?.sshConnectionId ?? project?.sshConnectionId ?? undefined
       console.log('[ChatActions] sshConnectionId:', { session: session?.sshConnectionId, project: project?.sshConnectionId, resolved: sshConnectionId, projectId })
 
@@ -106,6 +106,7 @@ export function useChatActions() {
         apiKey: activeProvider.apiKey,
         baseUrl: activeProvider.baseUrl,
         model: modelId,
+        contextLength: modelConfig?.contextLength ?? undefined,
         temperature: settings.temperature ?? undefined,
         maxTokens: settings.maxTokens ?? undefined,
         thinkingEnabled,
@@ -131,7 +132,8 @@ export function useChatActions() {
         contextCompressionThreshold: settings.contextCompressionThreshold,
         sshConnectionId,
         projectId,
-        ...(opts?.enablePlanMode ? { enablePlanMode: true } : {})
+        ...(opts?.enablePlanMode ? { enablePlanMode: true } : {}),
+        sessionMode: opts?.sessionMode
       })
 
       void opts

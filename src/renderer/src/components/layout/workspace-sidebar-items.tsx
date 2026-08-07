@@ -302,13 +302,13 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
   }, [])
 
   const handleNewSessionInProject = useCallback(() => {
-    // Navigate to home with project selected. Session is created when user sends a message.
+    // Navigate to project home. Session is created when user sends a message.
     setActiveProjectHome(project.id)
     const uiStore = useUIStore.getState()
     if (uiStore.mode === 'chat') {
       uiStore.setMode('cowork')
     }
-    uiStore.navigateToHome()
+    uiStore.navigateToProject(project.id)
   }, [project.id, setActiveProjectHome])
 
   if (isEditing) {

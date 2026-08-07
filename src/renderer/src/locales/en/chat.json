@@ -42,7 +42,7 @@
     "placeholderAcp": "Describe the goal, context, constraints, and acceptance criteria. I will design and delegate first instead of coding directly...",
     "placeholderPlanReview": "Enter revision feedback for this plan, or click the card above to implement it...",
     "placeholderPendingGoal": "Describe the goal to pursue...",
-    "pendingGoalBanner": "Goal pursuit is ready. Your next text message will be used as the goal and sent normally.",
+    "pendingGoalBanner": "Goal mode is active. The Agent will discuss the objective with you and create a goal once confirmed.",
     "placeholderInitWorkspace": "No AGENTS.md found in the current working folder. Try /init first to initialize the project context...",
     "noApiKey": "No API key configured. Click here to open Settings.",
     "attachImages": "Attach images (paste or drag & drop also supported)",

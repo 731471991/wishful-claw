@@ -5,6 +5,7 @@ import { Spinner } from '@renderer/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { SkillsMenu } from '../SkillsMenu'
+import { CollabModeSwitcher, type CollabMode } from '../CollabModeSwitcher'
 import { ModelSwitcher } from '../ModelSwitcher'
 import { PersonaSwitcher } from '../PersonaSwitcher'
 import { ContextRing } from './context-ring'
@@ -18,6 +19,12 @@ interface ComposerToolbarProps {
   readOnlyModel?: MessageRequestModelMeta | null
   modelRoute: 'main' | 'fast'
   draftSessionId: string | null
+
+  // Collab mode
+  draftSessionIdCollab?: string | null
+  collabModeDisabled?: boolean
+  onCollabModeChange?: (mode: CollabMode) => void
+  collabModeOverride?: CollabMode
 
   // Web search
   canToggleWebSearch: boolean
@@ -86,10 +93,11 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
   const { t } = useTranslation('chat')
   const {
     readOnlyModel, modelRoute, draftSessionId,
+    draftSessionIdCollab, collabModeDisabled, onCollabModeChange, collabModeOverride,
     disabled, isStreaming,
     setSelectedSkill, insertSlashCommand, insertPluginPrompt, handleAttachMedia,
     activeProjectId, mode, hideModeSwitch, planMode, goalModeEnabled,
-    planModeDisabled, goalModeDisabled, onPlanModeChange, onGoalModeChange,
+    planModeDisabled, goalModeDisabled, onPlanModeChange,
     onSelectFolder, hideWorkingFolderPicker,
     isOptimizing, isOptimizingLocked, handleOptimizePrompt, hasText,
     permissionMode, onSelectPermissionMode, onOpenSettings,
@@ -123,8 +131,8 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
       goalModeEnabled={goalModeEnabled}
       planModeDisabled={planModeDisabled}
       goalModeDisabled={goalModeDisabled}
-      onPlanModeChange={onPlanModeChange}
-      onGoalModeChange={onGoalModeChange}
+      onPlanModeChange={goalModeEnabled ? undefined : onPlanModeChange}
+      onGoalModeChange={undefined}
     />
   )
 
@@ -221,6 +229,16 @@ export function ComposerToolbar(props: ComposerToolbarProps) {
     >
       <div className="flex w-full items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pr-1 [scrollbar-width:none]">
+          {onCollabModeChange && (
+            <div className="shrink-0">
+              <CollabModeSwitcher
+                sessionId={draftSessionIdCollab}
+                disabled={collabModeDisabled || isStreaming}
+                modeOverride={collabModeOverride}
+                onModeChange={onCollabModeChange}
+              />
+            </div>
+          )}
           <div className="shrink-0">
             {readOnlyModel !== undefined ? (
               <ReadOnlyModelBadge model={readOnlyModel} />

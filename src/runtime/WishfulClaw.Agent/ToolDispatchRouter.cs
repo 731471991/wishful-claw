@@ -186,8 +186,18 @@ public static class ToolDispatchRouter
         // Goal: in-memory goal tracking
         else if (AgentRuntimeGoalExecutor.IsGoalTool(toolCall.Name))
         {
-            toolOutput = AgentRuntimeGoalExecutor.Execute(toolCall, state.Parameters);
-            isToolError = IsJsonError(toolOutput);
+            try
+            {
+                toolOutput = await AgentRuntimeGoalExecutor.ExecuteAsync(
+                toolCall, state, context);
+                isToolError = IsJsonError(toolOutput);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"Goal tool execution failed: {ex.Message}";
+                isToolError = true;
+            }
         }
         // Task: in-memory task management
         else if (AgentRuntimeTaskExecutor.IsTaskTool(toolCall.Name))

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { ArrowLeft, ArrowRight, RefreshCw, Square, Globe, AlertCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -121,16 +121,6 @@ export function BrowserPanel({
   )
 
   useEffect(() => {
-    console.warn('[BrowserPanel] Mount, setBrowserWebviewRef sessionId:', sessionId, 'projectId:', projectId)
-    setBrowserWebviewRef(webviewRef, sessionId, projectId)
-    return () => {
-      console.warn('[BrowserPanel] Unmount, clear webviewRef sessionId:', sessionId)
-      setBrowserWebviewRef(null, sessionId, projectId)
-      setBrowserLoading(false, sessionId, projectId)
-    }
-  }, [projectId, sessionId, setBrowserLoading, setBrowserWebviewRef])
-
-  useEffect(() => {
     setInputUrl(storedUrl)
     setCommittedUrl(storedUrl)
   }, [storedUrl])
@@ -211,55 +201,137 @@ export function BrowserPanel({
     setBrowserCanGoForward
   ])
 
-  useEffect(() => {
-    const wv = webviewRef.current
-    if (!isWebviewConnected(wv)) return
+  // --- Event binding via callback ref ---
+  //
+  // Previous approach used a useEffect that checked `isWebviewConnected(wv)` and
+  // bailed out when the webview wasn't connected yet. This meant events were
+  // never bound on first mount (the effect didn't re-run after the guest
+  // connected), and key changes (reuse-mode toggle) left the new webview
+  // without listeners.
+  //
+  // The callback ref fires the moment React attaches the DOM element, before
+  // the guest process connects. addEventListener works on the DOM element
+  // regardless of guest connection state, so we bind immediately.
+  //
+  // latestRef holds the newest callbacks so that event listeners always call
+  // up-to-date store actions without needing to re-bind on every render.
+
+  const latestRef = useRef({
+    canNavigateTo,
+    setBrowserLoading,
+    setBrowserUrl,
+    setBrowserErrorInfo,
+    setBrowserPageTitle,
+    setBrowserCanGoBack,
+    setBrowserCanGoForward,
+    setBrowserWebviewRef,
+    updateNavState,
+    sessionId,
+    projectId
+  })
+  latestRef.current = {
+    canNavigateTo,
+    setBrowserLoading,
+    setBrowserUrl,
+    setBrowserErrorInfo,
+    setBrowserPageTitle,
+    setBrowserCanGoBack,
+    setBrowserCanGoForward,
+    setBrowserWebviewRef,
+    updateNavState,
+    sessionId,
+    projectId
+  }
+
+  const webviewCleanupRef = useRef<(() => void) | null>(null)
+
+  const handleWebviewRef = useCallback((wv: Electron.WebviewTag | null) => {
+    // Clean up listeners from the previous webview element (if any).
+    if (webviewCleanupRef.current) {
+      webviewCleanupRef.current()
+      webviewCleanupRef.current = null
+    }
+
+    webviewRef.current = wv
+
+    const R = latestRef.current
+    R.setBrowserWebviewRef(webviewRef, R.sessionId, R.projectId)
+
+    if (!wv) {
+      R.setBrowserLoading(false, R.sessionId, R.projectId)
+      return
+    }
 
     const onStartLoading = (): void => {
-      setBrowserLoading(true, sessionId, projectId)
-      setBrowserErrorInfo(null, sessionId, projectId)
+      R.setBrowserLoading(true, R.sessionId, R.projectId)
+      R.setBrowserErrorInfo(null, R.sessionId, R.projectId)
     }
 
     const onStopLoading = (): void => {
-      setBrowserLoading(false, sessionId, projectId)
-      updateNavState()
+      R.setBrowserLoading(false, R.sessionId, R.projectId)
+      R.updateNavState()
     }
 
     const onNavigate = (e: Electron.DidNavigateEvent): void => {
       setInputUrl(e.url)
-      setBrowserUrl(e.url, sessionId, projectId)
-      updateNavState()
+      R.setBrowserUrl(e.url, R.sessionId, R.projectId)
+      R.updateNavState()
     }
 
     const onNavigateInPage = (e: Electron.DidNavigateInPageEvent): void => {
       setInputUrl(e.url)
-      setBrowserUrl(e.url, sessionId, projectId)
-      updateNavState()
+      R.setBrowserUrl(e.url, R.sessionId, R.projectId)
+      R.updateNavState()
     }
 
     const onTitleUpdated = (e: Electron.PageTitleUpdatedEvent): void => {
-      setBrowserPageTitle(e.title, sessionId, projectId)
+      R.setBrowserPageTitle(e.title, R.sessionId, R.projectId)
     }
 
     const onFailLoad = (e: Electron.DidFailLoadEvent): void => {
       if (!e.isMainFrame || e.errorCode === -3) return
-      setBrowserErrorInfo(
+      R.setBrowserErrorInfo(
         { code: e.errorCode, desc: e.errorDescription, url: e.validatedURL },
-        sessionId,
-        projectId
+        R.sessionId,
+        R.projectId
       )
-      setBrowserLoading(false, sessionId, projectId)
+      R.setBrowserLoading(false, R.sessionId, R.projectId)
     }
 
     const onWillNavigate = (e: Event & { url?: string; preventDefault: () => void }): void => {
-      if (!e.url || canNavigateTo(e.url)) return
+      if (!e.url || latestRef.current.canNavigateTo(e.url)) return
       e.preventDefault()
     }
 
     const onNewWindow = (e: Event & { url: string; preventDefault: () => void }): void => {
       e.preventDefault()
-      if (!canNavigateTo(e.url)) return
+      if (!latestRef.current.canNavigateTo(e.url)) return
       ipcClient.invoke(IPC.SHELL_OPEN_EXTERNAL, e.url)
+    }
+
+    const onRenderProcessGone = (e: Event & { reason?: string }): void => {
+      const LR = latestRef.current
+      LR.setBrowserLoading(false, LR.sessionId, LR.projectId)
+      LR.setBrowserErrorInfo(
+        {
+          code: -20,
+          desc: `Render process gone: ${e.reason ?? 'unknown'}`,
+          url: wv.src ?? ''
+        },
+        LR.sessionId,
+        LR.projectId
+      )
+      // Auto-reload after a brief delay so the user doesn't get stuck
+      // on a blank panel after a crash.
+      setTimeout(() => {
+        if (webviewRef.current === wv) {
+          try {
+            wv.reload()
+          } catch {
+            // webview may have been removed
+          }
+        }
+      }, 500)
     }
 
     wv.addEventListener('did-start-loading', onStartLoading)
@@ -270,8 +342,9 @@ export function BrowserPanel({
     wv.addEventListener('did-fail-load', onFailLoad as EventListener)
     wv.addEventListener('will-navigate', onWillNavigate as EventListener)
     wv.addEventListener('new-window', onNewWindow as EventListener)
+    wv.addEventListener('render-process-gone', onRenderProcessGone as EventListener)
 
-    return () => {
+    webviewCleanupRef.current = () => {
       wv.removeEventListener('did-start-loading', onStartLoading)
       wv.removeEventListener('did-stop-loading', onStopLoading)
       wv.removeEventListener('did-navigate', onNavigate as EventListener)
@@ -280,18 +353,9 @@ export function BrowserPanel({
       wv.removeEventListener('did-fail-load', onFailLoad as EventListener)
       wv.removeEventListener('will-navigate', onWillNavigate as EventListener)
       wv.removeEventListener('new-window', onNewWindow as EventListener)
+      wv.removeEventListener('render-process-gone', onRenderProcessGone as EventListener)
     }
-  }, [
-    canNavigateTo,
-    committedUrl,
-    projectId,
-    sessionId,
-    setBrowserLoading,
-    setBrowserErrorInfo,
-    setBrowserUrl,
-    setBrowserPageTitle,
-    updateNavState
-  ])
+  }, [])
 
   return (
     <div className="flex h-full flex-col">
@@ -373,7 +437,7 @@ export function BrowserPanel({
         {committedUrl && (
           <webview
             key={runtimeBrowserUserDataReuseEnabled ? 'user-browser-profile' : 'wishfulclaw-profile'}
-            ref={webviewRef as React.Ref<Electron.WebviewTag>}
+            ref={handleWebviewRef as React.Ref<Electron.WebviewTag>}
             src={committedUrl}
             className="size-full"
             {...webviewSessionProps}

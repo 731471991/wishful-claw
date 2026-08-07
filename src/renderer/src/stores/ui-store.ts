@@ -236,6 +236,24 @@ export const useUIStore = create<UIStore>((set, get) => ({
     return get().planModesBySession[sessionId] ?? false
   },
 
+  // Collab mode (normal / goal)
+  collabModesBySession: {},
+  setCollabMode: (sessionId: string, mode: 'normal' | 'goal') => {
+    set((state: any) => {
+      const next = { ...state.collabModesBySession }
+      if (mode === 'normal') {
+        delete next[sessionId]
+      } else {
+        next[sessionId] = mode
+      }
+      return { collabModesBySession: next }
+    })
+  },
+  getCollabMode: (sessionId?: string | null) => {
+    if (!sessionId) return 'normal'
+    return get().collabModesBySession[sessionId] ?? 'normal'
+  },
+
   // Browser panel (session-scoped)
   browserStatesBySession: {},
   browserWebviewRefsBySession: {},

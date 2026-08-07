@@ -26,6 +26,13 @@ public interface IToolExecutor
     JsonElement InputSchema { get; }
 
     /// <summary>
+    /// The session modes this tool is available in. null = all modes.
+    /// e.g. ["normal"] = only in normal mode, ["goal"] = only in goal mode.
+    /// Default implementation returns null (available in all modes).
+    /// </summary>
+    string[]? AvailableModes => null;
+
+    /// <summary>
     /// Execute the tool with the given input and context.
     /// </summary>
     Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context);

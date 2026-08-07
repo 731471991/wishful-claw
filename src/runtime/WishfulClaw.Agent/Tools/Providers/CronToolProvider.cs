@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Agent.Tools;
+using WishfulClaw.Agent.Tools;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -6,6 +6,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// <summary>
 /// Registers cron/scheduled task tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeCronExecutor (reverse-request to main process).
+/// Available in normal and goal modes only (not sub-agent).
 /// </summary>
 internal sealed class CronToolProvider : IToolProvider
 {
@@ -22,14 +23,16 @@ internal sealed class CronToolProvider : IToolProvider
             "Add a scheduled task (legacy alias for CronCreate).",
             ToolSchemaBuilder.Object(
                 new() { ["schedule"] = cronSchedule, ["prompt"] = cronPrompt, ["title"] = cronTitle },
-                ["schedule", "prompt"])));
+                ["schedule", "prompt"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronCreate",
             "Create a scheduled task that runs automatically at the specified time.",
             ToolSchemaBuilder.Object(
                 new() { ["schedule"] = cronSchedule, ["prompt"] = cronPrompt, ["title"] = cronTitle },
-                ["schedule", "prompt"])));
+                ["schedule", "prompt"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronUpdate",
@@ -42,25 +45,29 @@ internal sealed class CronToolProvider : IToolProvider
                     ["prompt"] = cronPrompt,
                     ["title"] = cronTitle
                 },
-                ["task_id"])));
+                ["task_id"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronRemove",
             "Remove a scheduled task (legacy alias for CronDelete).",
             ToolSchemaBuilder.Object(
                 new() { ["task_id"] = ToolSchemaBuilder.String("Task ID to remove.") },
-                ["task_id"])));
+                ["task_id"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronDelete",
             "Delete a scheduled task.",
             ToolSchemaBuilder.Object(
                 new() { ["task_id"] = ToolSchemaBuilder.String("Task ID to delete.") },
-                ["task_id"])));
+                ["task_id"]),
+            availableModes: ["normal", "goal"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronList",
             "List all scheduled tasks.",
-            ToolSchemaBuilder.Object()));
+            ToolSchemaBuilder.Object(),
+            availableModes: ["normal", "goal"]));
     }
 }

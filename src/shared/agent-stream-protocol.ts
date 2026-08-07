@@ -132,6 +132,19 @@ export type AgentStreamEvent =
   | { type: 'request_retry'; attempt: number; maxAttempts: number; delayMs: number; statusCode?: number; reason: string }
   // Error
   | { type: 'error'; message: string; errorType?: string; details?: string; stackTrace?: string }
+  // Goal progress (orchestrator events)
+  | {
+      type: 'goal_progress'
+      goalId: string
+      sessionId: string
+      eventType: string
+      message: string
+      status: string
+      currentPlanIndex: number
+      planCount: number
+      completedPlans: number
+      timestamp: number
+    }
   // Debug / compression
   | { type: 'request_debug'; debugInfo: RequestDebugInfoWire }
   | { type: 'context_compression_start' }

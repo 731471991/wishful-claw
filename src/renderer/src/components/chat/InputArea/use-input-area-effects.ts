@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { type CollabMode } from '../CollabModeSwitcher'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { cloneImageAttachments, type ImageAttachment } from '@renderer/lib/image-attachments'
 import { resolveProjectMemoryTextFile } from '@renderer/lib/agent/memory-files'
@@ -40,6 +41,8 @@ export interface InputAreaEffectsInput {
   // State setters
   setPendingPlanMode: React.Dispatch<React.SetStateAction<boolean>>
   setPendingGoalMode: React.Dispatch<React.SetStateAction<boolean>>
+  pendingCollabMode: CollabMode | null
+  setPendingCollabMode: React.Dispatch<React.SetStateAction<CollabMode | null>>
   setAutoAcceptCountdown: React.Dispatch<React.SetStateAction<number | null>>
   setIsWorkspaceAgentsMissing: React.Dispatch<React.SetStateAction<boolean>>
   setAttachedImages: React.Dispatch<React.SetStateAction<ImageAttachment[]>>
@@ -69,7 +72,7 @@ export function useInputAreaEffects(input: InputAreaEffectsInput): void {
     handleRecommendationSelectionChange,
     inputDraftHydrated, persistedDraft, activeDraftKey, finalSerializedText,
     attachedImages, selectedSkill, savePersistedDraft,
-    setPendingPlanMode, setPendingGoalMode, setAutoAcceptCountdown, setIsWorkspaceAgentsMissing,
+    setPendingPlanMode, setPendingGoalMode, pendingCollabMode, setPendingCollabMode, setAutoAcceptCountdown, setIsWorkspaceAgentsMissing,
     setAttachedImages, setPreviewImage, setSelectedSkill, setHighlightedFileId, setEditorSelection,
     editorRef, rootRef, draftSaveTimerRef, draftReadyKeyRef,
     isStreaming, disabled, replaceSelectionWithText,
@@ -80,6 +83,14 @@ export function useInputAreaEffects(input: InputAreaEffectsInput): void {
     if (draftSessionId) setPendingPlanMode(false)
     setPendingGoalMode(false)
   }, [draftSessionId, setPendingPlanMode, setPendingGoalMode])
+
+  // Apply pending collab mode when session is created
+  React.useEffect(() => {
+    if (draftSessionId && pendingCollabMode) {
+      useUIStore.getState().setCollabMode(draftSessionId, pendingCollabMode)
+      setPendingCollabMode(null)
+    }
+  }, [draftSessionId, pendingCollabMode, setPendingCollabMode])
 
   React.useEffect(() => {
     if (hasActiveGoal) setPendingGoalMode(false)

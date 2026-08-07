@@ -2,7 +2,7 @@
 
 ## 一、项目概述
 
-Wishful Claw 是一个 Agent 编程软件项目，目标是打造一个适合自己的"贾维斯"。项目从零构建，参考三个开源 Agent 项目的优点，融合为一体。
+Wishful Claw 是一个 Agent 编程软件项目，目标是打造一个适合自己的"贾维斯"。项目从零构建，参考五个开源 Agent 项目的优点，融合为一体。
 
 - **项目路径**：`D:\claw\wishful-claw`
 - **GitHub**：https://github.com/731471991/wishful-claw
@@ -19,13 +19,13 @@ Wishful Claw 是一个 Agent 编程软件项目，目标是打造一个适合自
 | OpenClaw | Agent 编程工具 | 功能强 | 记忆差、不够智能 | 最早体验者 |
 | KodaClaw | 国产大牛自写 Agent | 记忆系统好、人格系统好 | 工具不全、模型支持有限、作者更新慢 | 深度改源码、多样化部署 |
 | Koda-agent | KodaClaw 系列 Rust 版 CLI | 纯编程辅助 | 功能有限 | 改造加功能 |
-| Reasonix | 开源 Agent | 打磨好、bug 少 | 功能单一、无人格 | 拉源码改造，目前常用 |
+| Reasonix | 开源 Agent | 打磨好、bug 少、缓存命中率高、工具注册机制完善 | 功能单一、无人格 | 拉源码改造，目前常用（缓存命中率 / 工具注入参考） |
 | OpenCowork | 开源 Agent | 功能全面、模型支持全、更新快 | 人格差、记忆粗糙、bug 多 | 拉源码改造，目前常用 |
 
 ### 决策结论
 
 - **基底选择：OpenCowork**——更新快、功能全、作者是 token 中转商、生态活跃
-- **Reasonix 不参考**——新做项目，别人的打磨经验不适用
+- **Reasonix 局部参考**——缓存命中率统计、工具注册发现、工具注入体系设计思路可借鉴，代码自行实现
 - **KodaClaw 只参考设计思路**——作者更新慢，不参考代码维护性
 
 ## 三、三种形态
@@ -46,9 +46,13 @@ Wishful Claw 是一个 Agent 编程软件项目，目标是打造一个适合自
 
 | 项目 | 本地路径 | 参考内容 |
 |------|---------|---------|
-| OpenCowork | `D:\gy\OpenCowork` | Agent Loop、工具链（30+ Executor）、模型 Provider（5 种）、架构（Electron + .NET Sidecar）、MessagePack 流式协议、模块化注册（IWorkerModule） |
-| KodaClaw（含 SDK） | `D:\gy\koda-claw\koda-claw` | 记忆系统设计（文件驱动分层流转、HEARTBEAT 语义降级）、人格系统设计（Identity + Soul 双层、PersonaPreset 预设、PromptBuilder 分段组装） |
+| 项目 | 本地路径 | 参考内容 |
+|------|---------|---------|
+| OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链（30+ Executor）、模型 Provider（5 种）、架构（Electron + .NET Sidecar）、MessagePack 流式协议、模块化注册（IWorkerModule） |
+| KodaClaw（含 SDK） | `D:\claw\koda-claw\koda-claw` | 记忆系统设计（文件驱动分层流转、HEARTBEAT 语义降级）、人格系统设计（Identity + Soul 双层、PersonaPreset 预设、PromptBuilder 分段组装） |
 | OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆机制（TryInjectRecallAsync）、记忆工具化（memory/memory_search 工具）、上下文预算（ContextBudgetPlanner）、循环终止检测、工具治理体系 |
+| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计（prefix cache 分析）、工具注册发现（ToolRegistry/ToolDiscovery）、工具注入体系（InjectionStrategy） |
+| OpenAI Codex | — | Goal 模式状态机（plan → execute → verify → continue/adjust）、自检评估机制（参考开源仓库 `github.com/openai/codex`） |
 
 ## 五、架构设计
 

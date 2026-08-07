@@ -74,8 +74,10 @@ public static class DbClient
                 typeof(MessageEntity),
                 typeof(SubAgentRunEntity),
                 typeof(SshConnectionEntity),
-                typeof(PlanEntity));
-            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (6 entities, MemoryArchiveEntity excluded)");
+                typeof(PlanEntity),
+                typeof(GoalEntity),
+                typeof(GoalEventEntity));
+            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (8 entities, MemoryArchiveEntity excluded)");
 
             // memory_entries 表（手动创建，不通过 CodeFirst）
             WorkerLog.Info("DbClient: creating memory_entries table");
@@ -132,6 +134,7 @@ public static class DbClient
             // ── Migrations: add columns that CodeFirst doesn't add to existing tables ──
             WorkerLog.Info("DbClient: running EnsureColumn migrations");
             EnsureColumn(_db, "sessions", "persona_id", "TEXT");
+            EnsureGoalEventsTable(_db);
             WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;
@@ -225,6 +228,36 @@ public static class DbClient
         catch
         {
             // Ignore migration errors (column may already exist or table not created yet)
+        }
+    }
+
+    /// <summary>
+    /// Creates the goal_events table if it doesn't exist.
+    /// CodeFirst.InitTables may skip new tables on existing databases.
+    /// </summary>
+    private static void EnsureGoalEventsTable(SqlSugarScope db)
+    {
+        try
+        {
+            var dt = db.Ado.GetDataTable("SELECT name FROM sqlite_master WHERE type='table' AND name='goal_events';");
+            var exists = dt.Rows.Count > 0;
+            if (!exists)
+            {
+                db.Ado.ExecuteCommand(@"CREATE TABLE IF NOT EXISTS goal_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id VARCHAR(255) NOT NULL,
+                    goal_id VARCHAR(255),
+                    event_type VARCHAR(255) NOT NULL,
+                    message TEXT,
+                    metadata_json TEXT,
+                    created_at BIGINT NOT NULL
+                );");
+                WorkerLog.Info("DbClient: goal_events table created via migration");
+            }
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Error($"DbClient: EnsureGoalEventsTable failed: {ex.Message}");
         }
     }
 }

@@ -19,6 +19,7 @@ export function escapeGoalXmlText(input: string): string {
 }
 
 export function formatGoalElapsedSeconds(seconds: number): string {
+  if (!Number.isFinite(seconds)) seconds = 0
   const safeSeconds = Math.max(0, Math.floor(seconds))
   const hours = Math.floor(safeSeconds / 3600)
   const minutes = Math.floor((safeSeconds % 3600) / 60)
@@ -52,6 +53,8 @@ export function goalRemainingTokens(goal: SessionGoal): number | null {
 
 export function goalStatusLabel(status: SessionGoal['status']): string {
   switch (status) {
+    case 'pending':
+      return 'pending'
     case 'active':
       return 'active'
     case 'paused':

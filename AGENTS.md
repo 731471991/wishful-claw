@@ -9,9 +9,10 @@ Wishful Claw 是一个 Agent 编程软件，参考四个开源项目：
 - **OpenCowork** —— Agent Loop、工具链、Provider、流式协议。以该项目为基底迁移代码，经过拆分、适配和命名空间重组后纳入 WishfulClaw 架构。
 - **KodaClaw** —— 记忆系统、人格系统、PromptBuilder。借鉴设计思路，代码自行实现。
 - **OpenClaw.net** —— 记忆主动回忆、记忆工具、上下文预算。借鉴设计思路，代码自行实现。
-- **DeepSeek-Reasonix** —— 缓存命中率统计、工具注册发现。借鉴设计思路，代码自行实现。
+- **DeepSeek-Reasonix** —— 缓存命中率统计、工具注册发现、工具注入体系（ToolDiscovery/InjectionStrategy）。借鉴设计思路，代码自行实现。
+- **OpenAI Codex** —— Goal 模式状态机（plan → execute → verify → continue/adjust）、自检评估机制。借鉴设计思路，代码自行实现。
 
-OpenCowork 的代码经迁移和重构后已成为 WishfulClaw 的一部分；其余三个项目主要借鉴设计思路和架构理念，代码由 WishfulClaw 自行实现。
+OpenCowork 的代码经迁移和重构后已成为 WishfulClaw 的一部分；其余四个项目主要借鉴设计思路和架构理念，代码由 WishfulClaw 自行实现。
 
 ## 技术栈
 
@@ -191,7 +192,8 @@ Worker
 | OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链、Provider、流式协议（迁移+重构） |
 | KodaClaw | `D:\claw\koda-claw` | 记忆系统、人格系统、PromptBuilder（借鉴思路） |
 | OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆、记忆工具、上下文预算（借鉴思路） |
-| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现（借鉴思路） |
+| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现、工具注入体系（借鉴思路） |
+| OpenAI Codex | — | Goal 模式状态机、自检评估机制（借鉴思路，参考开源仓库 `github.com/openai/codex`） |
 
 ## 开发约定
 
@@ -219,6 +221,16 @@ Worker
 1. **逻辑不相关的代码不放在同一个文件**：即使参考项目把它们放在一起，搬入时也要拆分到各自的文件中
 2. **判断标准**：如果两个类/方法之间没有调用关系或数据依赖，只是参考方随手放在一起，就必须拆开
 3. **拆分到正确的目录**：拆出来的文件放到 AGENTS.md 项目结构中对应的目录
+
+### AI 排查规范
+
+> 以下规范针对 AI 编程助手排查问题时的操作流程，非人类开发者的代码规范。
+
+大文件拆分后，相关逻辑分散在多个独立文件中（如 InputArea 拆出了 `use-input-area-effects.ts`、`use-input-area-selectors.ts` 等），AI 排查问题时应：
+
+1. **先扫主文件，再扫周边**：找到主文件后，查看其所有 import 语句，逐一排查从其他文件引入的逻辑
+2. **不要只盯着主文件**：拆分出去的独立文件可能包含关键副作用（如 `use-input-area-effects.ts` 中的 `useEffect`），这些 effect 在排查时容易被忽略
+3. **关注 hooks/effects 文件名**：文件名包含 `effects`、`selectors`、`controls` 等字样的，通常是独立的行为逻辑，必须主动查看
 
 ### 迭代交付标准
 
@@ -292,12 +304,12 @@ git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 pus
 
 项目运行时的所有异常（主进程、渲染进程、Worker、IPC 通道）会自动写入日志文件。
 
-**日志位置**：`<userData>/logs/` 目录下，按日期命名，如 `2026-07-22.log`
+**日志位置**：`~/.wishful-claw/logs/` 目录下，按日期命名，如 `2026-08-05.log`
 
-其中 `<userData>` 是 Electron 的 `app.getPath('userData')` 返回值：
-- Windows：`%APPDATA%/<appName>`（即 `C:\Users\<用户名>\AppData\Roaming\wishful-claw\logs\`）
-- macOS：`~/Library/Application Support/<appName>/logs/`
-- Linux：`~/.config/<appName>/logs/`
+日志统一写在用户主目录下的 `.wishful-claw/logs/`，与 `config.json`、`index.db` 等配置文件同级：
+- Windows：`C:\\Users\\<用户名>\\.wishful-claw\\logs\\`
+- macOS：`~/.wishful-claw/logs/`
+- Linux：`~/.wishful-claw/logs/`
 
 **排查方式**：Agent 排查问题时，优先读取当天日志文件中的 `[ERROR]` 级别条目，获取完整堆栈信息，而非依赖用户口述错误。
 

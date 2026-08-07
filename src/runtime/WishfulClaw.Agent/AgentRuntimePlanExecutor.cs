@@ -359,13 +359,16 @@ public static partial class AgentRuntimePlanExecutor
             });
         }
 
-        // Mark plan as cancelled in DB
-        UpdatePlanStatus(parameters, plan.Id, plan.Title, "cancelled", Now());
+        // Determine exit status (default: cancelled)
+        var exitStatus = "cancelled";
+
+        // Mark plan status in DB
+        UpdatePlanStatus(parameters, plan.Id, plan.Title, exitStatus, Now());
 
         // Update state file
         var existingState = await ReadStateFileAsync(plan.FilePath!, cancellationToken);
         var existingSteps = existingState?.Steps ?? [];
-        await WriteStateFileAsync(plan.FilePath!, plan.Id, plan.Title, "cancelled", existingSteps, cancellationToken);
+        await WriteStateFileAsync(plan.FilePath!, plan.Id, plan.Title, exitStatus, existingSteps, cancellationToken);
 
         RunStates[runId] = new PlanRunState(false, plan.FilePath);
 
@@ -378,9 +381,13 @@ public static partial class AgentRuntimePlanExecutor
 
         return EncodeJsonObject(writer =>
         {
-            writer.WriteString("status", "cancelled");
+            writer.WriteString("status", exitStatus);
             writer.WriteString("plan_id", plan.Id);
-            writer.WriteString("message", "Plan mode exited. The plan has been cancelled. No changes were made to the codebase.");
+            writer.WriteString("message", exitStatus == "completed"
+                ? "Plan completed successfully (Goal mode)."
+                : exitStatus == "failed"
+                    ? "Plan failed (Goal mode). See state file for details."
+                    : "Plan mode exited. The plan has been cancelled.");
         });
     }
 
@@ -412,7 +419,7 @@ public static partial class AgentRuntimePlanExecutor
 
         var stepTitle = JsonHelpers.GetString(input, "title")?.Trim() ?? $"Step {stepId}";
         var stepStatus = JsonHelpers.GetString(input, "status")?.Trim() ?? "in_progress";
-        var stepResult = JsonHelpers.GetString(input, "result");
+        var stepResult = JsonHelpers.GetString(parameters, "result");
 
         // Read current state file
         var stateFilePath = GetStateFilePath(plan.FilePath!);

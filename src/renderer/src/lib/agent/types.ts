@@ -10,7 +10,6 @@ import type {
   ImageErrorCode,
   ToolCallExtraContent
 } from '../api/types'
-import type { CompressionConfig } from './context-compression'
 
 // --- Tool Call Runtime State ---
 
@@ -82,15 +81,6 @@ export interface AgentLoopConfig {
   maxParallelTools?: number
   /** Optional message queue for injecting messages mid-loop (used by teammates). */
   messageQueue?: MessageQueue
-  /** Context compression configuration */
-  contextCompression?: {
-    config: CompressionConfig
-    /** Compress messages using the main model. Returns the compressed message array. */
-    compressFn: (
-      messages: UnifiedMessage[],
-      options?: { preserveCount?: number }
-    ) => Promise<UnifiedMessage[]>
-  }
   /** Force all tool calls through the approval callback, even if the tool declares requiresApproval=false.
    *  Used by plugin auto-reply to enforce security permissions on all tools. */
   forceApproval?: boolean

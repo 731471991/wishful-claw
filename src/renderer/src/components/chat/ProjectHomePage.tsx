@@ -28,20 +28,21 @@ export function ProjectHomePage(): React.JSX.Element {
       void (async () => {
         if (!activeProjectId && mode !== 'chat') return
         const chatStore = useChatStore.getState()
+        const uiStore = useUIStore.getState()
         const chatWorkingFolder =
-          mode === 'chat' ? await ensureDefaultChatWorkingFolder() : undefined
-        const sessionId =
-          mode === 'chat'
-            ? chatStore.createSession(mode, null, {
-                preserveProjectless: true,
-                workingFolder: chatWorkingFolder
-              })
-            : chatStore.createSession(mode, activeProjectId)
-        useUIStore.getState().navigateToSession(sessionId)
-        void sendMessage(text, images, undefined, sessionId, undefined, undefined, {
-          ...options,
-          clearCompletedTasksOnTurnStart: true
-        })
+          !activeProjectId ? await ensureDefaultChatWorkingFolder() : undefined
+        const sessionId = activeProjectId
+          ? chatStore.createSession(mode, activeProjectId)
+          : chatStore.createSession(mode, null, {
+              preserveProjectless: true,
+              workingFolder: chatWorkingFolder
+            })
+        // Apply Goal mode to new session if user selected it before sending
+        if (options?.sessionMode === 'goal' && sessionId) {
+          uiStore.setCollabMode(sessionId, 'goal')
+        }
+        uiStore.navigateToSession(sessionId)
+        void sendMessage({ text, images, sessionId, opts: { ...options, clearCompletedTasksOnTurnStart: true } })
       })()
     },
     [activeProjectId, mode, sendMessage]
@@ -82,8 +83,13 @@ export function ProjectHomePage(): React.JSX.Element {
         <div className="flex flex-1 items-start justify-center pt-8 lg:items-center lg:pt-0">
           <div className="w-full max-w-[760px]">
             <div className="mb-6 flex flex-col items-center gap-3 text-center sm:mb-7">
+              <p className="max-w-[760px] text-[30px] font-semibold tracking-tight text-foreground/92 sm:text-[42px]">
+                {activeProject.name}
+              </p>
               <p className="max-w-[560px] text-sm leading-6 text-muted-foreground/72">
-                {workingFolder ? t('projectHome.heroDesc') : t('projectHome.noWorkingFolder')}
+                {workingFolder
+                  ? `${workingFolder}`
+                  : t('projectHome.noWorkingFolder')}
               </p>
 
               {sshConnectionId ? (

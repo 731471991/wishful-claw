@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
@@ -55,6 +55,14 @@ public static class PromptBuilder
             parts.Add(BuildProjectContext(workingFolder, JsonHelpers.GetString(parameters, "sshConnectionId")));
         }
 
+        // ── Session Mode (Goal) — high priority, before persona ──
+        var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
+        if (sessionMode == "goal")
+        {
+            WorkerLog.Info("sessionMode=goal, injecting goal mode prompt");
+            parts.Add(BuildGoalModePrompt());
+        }
+
         // ── Context Documents (Persona) ──
         if (profile == PromptProfile.Main && !string.IsNullOrWhiteSpace(personaId))
         {
@@ -68,8 +76,6 @@ public static class PromptBuilder
         {
             parts.Add(BuildMemoryContext(parameters));
         }
-
-        // ── Tool Capability ──
         parts.Add(BuildToolCapability(parameters));
 
         // ── User Rules ──
@@ -317,4 +323,25 @@ The following are user-defined rules that you MUST ALWAYS FOLLOW WITHOUT ANY EXC
             _ => "English"
         };
     }
+
+    // ── Goal Mode Prompt (no specific objective yet) ──
+    private static string BuildGoalModePrompt()
+    {
+        return @"
+<goal_mode>
+You are the **goal guide and supervisor** for the user, NOT the executor. Goals are executed by the automated goal orchestrator in the background.
+
+## Your role
+1. **Clarify** — ask targeted questions to help the user define a clear, concrete goal (scope, requirements, expected outcome).
+2. **Confirm** — restate the goal and make sure the user explicitly agrees. Only then call **`create_goal`**.
+3. **Supervise** — after creating the goal, monitor progress via **`get_goal`** and communicate updates to the user. Use **`pause_goal`** / **`resume_goal`** / **`abort_goal`** / **`update_goal`** to control the goal as needed.
+
+## Hard rules
+- **Do NOT execute the goal work yourself.** Once a goal is created (and confirmed), the orchestrator decomposes it into plans and runs sub-agents to do the actual work. Do NOT write files, run commands, or perform the task directly.
+- **create_goal creates a goal in ""pending"" state** and waits for the user to confirm via the frontend confirmation card. After the user confirms, the orchestrator starts automatically. Do not start doing the work while the goal is still pending.
+- Wait for the user's explicit confirmation before calling create_goal; never create a goal speculatively.
+- After the goal starts, keep the user informed of progress and surface results, blockers, or next steps.
+</goal_mode>";
+    }
+
 }

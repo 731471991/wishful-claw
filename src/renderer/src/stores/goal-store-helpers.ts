@@ -1,5 +1,6 @@
 
 export type SessionGoalStatus =
+  | 'pending'
   | 'active'
   | 'paused'
   | 'blocked'
@@ -93,10 +94,24 @@ interface AccountGoalUsageInput {
   expectedGoalId?: string | null
 }
 
+export interface GoalProgressState {
+  sessionId: string
+  goalId: string
+  objective?: string
+  eventType: string
+  message: string
+  status: string
+  currentPlanIndex: number
+  planCount: number
+  completedPlans: number
+  timestamp: number
+}
+
 export interface GoalStore {
   goalsBySession: Record<string, SessionGoal>
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>
+  goalProgressBySession: Record<string, GoalProgressState>
   _loaded: boolean
 
   loadGoalsFromDb: () => Promise<void>
@@ -122,6 +137,7 @@ export interface GoalStore {
     sessionId: string,
     patch: Partial<Pick<SessionGoal, 'objective' | 'status' | 'tokenBudget'>>
   ) => Promise<{ success: boolean; goal?: SessionGoal; error?: string }>
+  confirmGoal: (sessionId: string, goalId: string) => Promise<{ success: boolean; error?: string }>
   clearGoal: (sessionId: string) => Promise<{ success: boolean; cleared: boolean; error?: string }>
   accountGoalUsage: (
     input: AccountGoalUsageInput
@@ -138,6 +154,7 @@ export interface GoalStore {
   applySyncedGoal: (goal: SessionGoal) => void
   applySyncedGoalClear: (sessionId: string) => void
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
+  applyGoalProgress: (progress: GoalProgressState) => void
 }
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {

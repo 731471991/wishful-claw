@@ -1,18 +1,19 @@
-// InputArea: main composer component with editor, toolbar, and controls
+﻿// InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
-import { toast } from 'sonner'
-import { validateGoalObjective } from '@renderer/lib/agent/goal-context'
 import type { SendMessageOptions } from '@renderer/hooks/use-chat-actions'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { updateWebSearchToolRegistration } from '@renderer/lib/tools'
 import { useDebouncedTokens } from '@renderer/hooks/use-estimated-tokens'
 import { usePromptRecommendation } from '@renderer/hooks/use-prompt-recommendation'
 import { useChatStore } from '@renderer/stores/chat-store'
+import { useUIStore } from '@renderer/stores/ui-store'
+import { type CollabMode } from '../CollabModeSwitcher'
 import { useTranslation } from 'react-i18next'
 import { type ImageAttachment } from '@renderer/lib/image-attachments'
 import { type FileAwareEditorHandle } from '../file-aware-editor-utils'
 import { GoalSessionBar } from '@renderer/components/goal/GoalSessionControls'
+import { useGoalStore } from '@renderer/stores/goal-store'
 import { cn } from '@renderer/lib/utils'
 import type { AppPluginId } from '@renderer/lib/app-plugin/types'
 import {
@@ -73,6 +74,12 @@ export function InputArea({
     draftSessionId, projectScoped, workspaceReady,
     planMode, hasActiveGoal, pendingReviewPlanId, hasApiKey
   } = sel
+  const [pendingCollabMode, setPendingCollabMode] = React.useState<CollabMode | null>(null)
+  const collabMode = useUIStore((s) =>
+    draftSessionId ? (s.collabModesBySession[draftSessionId] ?? 'normal') : 'normal'
+  )
+  const isGoalMode = collabMode === 'goal' || pendingCollabMode === 'goal'
+  const effectiveCollabMode: CollabMode = draftSessionId ? collabMode : (pendingCollabMode ?? 'normal')
 
   const needsWorkingFolder = projectScoped && !workingFolder && Boolean(onSelectFolder)
 
@@ -80,7 +87,7 @@ export function InputArea({
   const [autoAcceptCountdown, setAutoAcceptCountdown] = React.useState<number | null>(null)
   const [isWorkspaceAgentsMissing, setIsWorkspaceAgentsMissing] = React.useState(false)
   const [, setPendingPlanMode] = React.useState(false)
-  const [pendingGoalMode, setPendingGoalMode] = React.useState(false)
+  const [, setPendingGoalMode] = React.useState(false)
   const removePersistedDraftRef = React.useRef<(() => void) | null>(null)
   const flyoutPointerRef = React.useRef<{ x: number; y: number } | null>(null)
   const slashListRef = React.useRef<HTMLDivElement | null>(null)
@@ -203,8 +210,8 @@ export function InputArea({
     setSelectedSkill, setSelectedFiles, setDocumentNodes, slashListRef
   })
 
-  const hasPendingGoalMode = pendingGoalMode && !hasActiveGoal
-  const goalModeEnabled = hasActiveGoal || hasPendingGoalMode
+  const hasPendingGoalMode = isGoalMode && !hasActiveGoal && !useGoalStore.getState().goalProgressBySession[draftSessionId ?? '']
+  const goalModeEnabled = isGoalMode
   const composerWidthClass = fullWidth ? 'mx-auto w-full max-w-none' : 'mx-auto w-full max-w-[820px]'
 
   ;(useInputAreaEffects as any)({
@@ -213,7 +220,7 @@ export function InputArea({
     applyEditorStateFromSerializedText, selectedFiles, focusInputAtEnd, handleRecommendationSelectionChange,
     inputDraftHydrated, persistedDraft, activeDraftKey, finalSerializedText,
     attachedImages, selectedSkill, savePersistedDraft,
-    setPendingPlanMode, setPendingGoalMode, setAutoAcceptCountdown, setIsWorkspaceAgentsMissing,
+    setPendingPlanMode, setPendingGoalMode, pendingCollabMode, setPendingCollabMode, setAutoAcceptCountdown, setIsWorkspaceAgentsMissing,
     setAttachedImages, setPreviewImage, setSelectedSkill, setHighlightedFileId, setEditorSelection,
     editorRef, rootRef, draftSaveTimerRef, draftReadyKeyRef, isStreaming, disabled, replaceSelectionWithText,
   })
@@ -251,28 +258,36 @@ export function InputArea({
     const promptText = liveEditorState.promptText.trim()
     if (!promptText && attachedImages.length === 0) return
     if (disabled || needsWorkingFolder || pendingImageReads > 0) return
-    let goalObjective: string | undefined
-    if (hasPendingGoalMode && promptText) {
-      const validation = validateGoalObjective(promptText)
-      if (validation) { toast.error(t('goal.toasts.objectiveInvalid'), { description: validation }); return }
-      goalObjective = promptText
-    }
-    cancelPromptRecommendation()
     const hasLeadingSlashCommand = liveEditorState.plainText.trimStart().startsWith('/')
     const message = selectedSkill && !hasLeadingSlashCommand ? `[Skill: ${selectedSkill}]\n${promptText}` : promptText
     const sendOptions: SendMessageOptions = { clearCompletedTasksOnTurnStart: true, enablePlanMode: planMode || undefined }
     const selectedFileReferences = liveEditorState.selectedFiles.map(selectedFileItemToReference)
     if (selectedFileReferences.length > 0) sendOptions.selectedFileReferences = selectedFileReferences
-    if (goalObjective) sendOptions.goalObjective = goalObjective
+    if (isGoalMode) sendOptions.sessionMode = 'goal'
     onSend?.(message, attachedImages.length > 0 ? attachedImages : undefined, sendOptions)
     resetComposer()
-    if (goalObjective) setPendingGoalMode(false)
   }, [getLiveEditorState, attachedImages, disabled, needsWorkingFolder, pendingImageReads,
-      hasPendingGoalMode, cancelPromptRecommendation, selectedSkill, onSend, planMode, resetComposer, t])
+      isGoalMode, cancelPromptRecommendation, selectedSkill, onSend, planMode, resetComposer, t])
 
   const { handlePlanModeChange, handleGoalModeChange } = useModeControls({
     projectScoped, draftSessionId, disabled, isStreaming, isOptimizingLocked, pendingImageReads, hasActiveGoal, focusInputAtEnd, setPendingPlanMode, setPendingGoalMode, t
   })
+
+  const handleCollabModeChange = React.useCallback((nextMode: CollabMode): void => {
+    if (disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0) return
+    if (nextMode === 'normal') {
+      if (draftSessionId && hasActiveGoal) {
+        void useGoalStore.getState().loadGoalForSession(draftSessionId, true)
+          .then(() => useGoalStore.getState().updateGoal(draftSessionId, { status: 'paused' }))
+      }
+      if (draftSessionId) useUIStore.getState().setCollabMode(draftSessionId, 'normal')
+      setPendingCollabMode(null)
+    } else {
+      if (draftSessionId) useUIStore.getState().setCollabMode(draftSessionId, 'goal')
+      else setPendingCollabMode('goal')
+      requestAnimationFrame(() => focusInputAtEnd())
+    }
+  }, [disabled, isStreaming, isOptimizingLocked, pendingImageReads, draftSessionId, hasActiveGoal, focusInputAtEnd])
 
   const handleKeyDown = useComposerKeydown({
     isOptimizingLocked, fileMenuOpen, slashMenuOpen, fileSearchResults, selectedFileSearchIndex,
@@ -298,9 +313,7 @@ export function InputArea({
 
   const editorPlaceholder = pendingReviewPlanId
     ? t('input.placeholderPlanReview', { defaultValue: 'Enter suggestions for this plan...' })
-    : hasPendingGoalMode
-      ? t('input.placeholderPendingGoal', { defaultValue: 'Describe the goal to pursue...' })
-      : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode as never] ?? 'input.placeholder')))
+    : (effectivePlaceholder ?? (shouldRecommendInit ? t('input.placeholderInitWorkspace') : t(placeholderKeys[mode as never] ?? 'input.placeholder')))
 
   const composerIconControlClass = 'composer-control rounded-xl'
   const debouncedTokens = useDebouncedTokens(finalSerializedText)
@@ -334,7 +347,7 @@ export function InputArea({
         summarizeQueuedMessage={summarizeQueuedMessage}
       />
 
-      {!hideGoalSessionBar && draftSessionId && (
+      {!hideGoalSessionBar && isGoalMode && draftSessionId && (
         <GoalSessionBar sessionId={draftSessionId} className={cn('mb-2', fullWidth && 'max-w-none')} />
       )}
 
@@ -446,6 +459,10 @@ export function InputArea({
             goalModeDisabled={disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0}
             onPlanModeChange={handlePlanModeChange}
             onGoalModeChange={handleGoalModeChange}
+            draftSessionIdCollab={draftSessionId}
+            collabModeDisabled={disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0}
+            collabModeOverride={effectiveCollabMode}
+            onCollabModeChange={projectScoped ? handleCollabModeChange : undefined}
             onSelectFolder={onSelectFolder}
             hideWorkingFolderPicker={hideWorkingFolderPicker}
             isOptimizing={isOptimizing}

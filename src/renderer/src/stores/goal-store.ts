@@ -11,6 +11,7 @@ import {
   DB_GOALS_CLEAR_MSGPACK_CHANNEL,
   DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
   DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
+  GOAL_CONFIRM_MSGPACK_CHANNEL,
 } from '../../../shared/messagepack/binary-ipc'
 import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalEventMutationResult, GoalMutationResult, GoalStore, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
 export { EMPTY_SESSION_GOAL_EVENTS }
@@ -19,6 +20,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   goalsBySession: {},
   goalEventsBySession: {},
   activeGoalRunsBySession: {},
+  goalProgressBySession: {},
   _loaded: false,
 
   loadGoalsFromDb: async () => {
@@ -44,11 +46,11 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     if (cached && !force) return cached
 
     try {
-      const row = await invokeMessagePackBinary<SessionGoalRow | null>(
+      const result = await invokeMessagePackBinary<GoalMutationResult | SessionGoalRow | null>(
         DB_GOALS_GET_MSGPACK_CHANNEL,
         sessionId
       )
-      const goal = row ? rowToGoal(row) : undefined
+      const goal = asGoal(result) ?? undefined
       set((state) => {
         const next = { ...state.goalsBySession }
         if (goal) {
@@ -154,6 +156,32 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     }
   },
 
+  confirmGoal: async (sessionId, goalId) => {
+    try {
+      const result = await invokeMessagePackBinary<{ success: boolean; error?: string }>(
+        GOAL_CONFIRM_MSGPACK_CHANNEL,
+        { sessionId, goalId }
+      )
+      if (result.success) {
+        // Optimistically flip the goal to active so the banner transitions immediately.
+        // The orchestrator's goal_progress events will keep it in sync afterwards.
+        set((state) => {
+          const existing = state.goalsBySession[sessionId]
+          if (!existing) return {}
+          return {
+            goalsBySession: {
+              ...state.goalsBySession,
+              [sessionId]: { ...existing, status: 'active' }
+            }
+          }
+        })
+      }
+      return { success: result.success, error: result.error }
+    } catch (error) {
+      return { success: false, error: mutationError(error) }
+    }
+  },
+
   clearGoal: async (sessionId) => {
     try {
       const result = await invokeMessagePackBinary<GoalMutationResult>(
@@ -252,6 +280,15 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
 
   applySyncedGoalEvent: (event) => {
     upsertGoalEvent(set, event)
+  },
+
+  applyGoalProgress: (progress) => {
+    set((state) => ({
+      goalProgressBySession: {
+        ...state.goalProgressBySession,
+        [progress.sessionId]: progress
+      }
+    }))
   }
 }))
 

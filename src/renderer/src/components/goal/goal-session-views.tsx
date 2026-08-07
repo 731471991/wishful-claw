@@ -15,6 +15,12 @@ import {
   eventMetadataNumber,
   eventMetadataString
 } from './goal-session-utils'
+import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
+import {
+  GOAL_PAUSE_MSGPACK_CHANNEL,
+  GOAL_RESUME_MSGPACK_CHANNEL,
+  GOAL_ABORT_MSGPACK_CHANNEL
+} from '@shared/messagepack/binary-ipc'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',
@@ -123,6 +129,7 @@ export function useGoalActions(
   tokenBudgetDraft: string
   saving: boolean
   clearing: boolean
+  confirming: boolean
   setOpen: (open: boolean) => void
   setObjectiveDraft: (value: string) => void
   setTokenBudgetDraft: (value: string) => void
@@ -130,6 +137,8 @@ export function useGoalActions(
   saveGoal: () => Promise<void>
   clearGoal: () => Promise<void>
   setGoalStatus: (status: 'active' | 'paused') => Promise<void>
+  abortGoal: () => Promise<void>
+  confirmGoal: () => Promise<void>
 } {
   const { t } = useTranslation('chat')
   const { t: tCommon } = useTranslation('common')
@@ -138,6 +147,7 @@ export function useGoalActions(
   const [tokenBudgetDraft, setTokenBudgetDraft] = React.useState('')
   const [saving, setSaving] = React.useState(false)
   const [clearing, setClearing] = React.useState(false)
+  const [confirming, setConfirming] = React.useState(false)
 
   const openManager = React.useCallback(() => {
     setObjectiveDraft(goal?.objective ?? '')
@@ -178,12 +188,25 @@ export function useGoalActions(
       }
       if (status === 'active' && result.goal?.status === 'active') {
         dispatchNextQueuedMessageForSession(sessionId)
+        try { await invokeMessagePackBinary(GOAL_RESUME_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
       if (status === 'paused' && result.goal?.status === 'paused') {
         abortSession(sessionId)
+        try { await invokeMessagePackBinary(GOAL_PAUSE_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
     },
-    [sessionId, t]
+    [sessionId, t, goal?.goalId]
+  )
+
+  const abortGoal = React.useCallback(
+    async (): Promise<void> => {
+      if (!sessionId || !goal) return
+      try {
+        await invokeMessagePackBinary(GOAL_ABORT_MSGPACK_CHANNEL, { sessionId, goalId: goal.goalId })
+      } catch { /* ignore */ }
+      await useGoalStore.getState().updateGoal(sessionId, { status: 'paused' })
+    },
+    [sessionId, goal]
   )
 
   const clearGoal = React.useCallback(async (): Promise<void> => {
@@ -242,19 +265,32 @@ export function useGoalActions(
     setOpen(false)
   }, [goal, objectiveDraft, parseGoalTokenBudget, sessionId, t])
 
+  const confirmGoal = React.useCallback(async (): Promise<void> => {
+    if (!sessionId || !goal) return
+    setConfirming(true)
+    const result = await useGoalStore.getState().confirmGoal(sessionId, goal.goalId)
+    setConfirming(false)
+    if (!result.success) {
+      toast.error(t('goal.toasts.confirmFailed'), { description: result.error })
+    }
+  }, [sessionId, goal, t])
+
   return {
     open,
     objectiveDraft,
     tokenBudgetDraft,
     saving,
     clearing,
+    confirming,
     setOpen,
     setObjectiveDraft,
     setTokenBudgetDraft,
     openManager,
     saveGoal,
     clearGoal,
-    setGoalStatus
+    setGoalStatus,
+    abortGoal,
+    confirmGoal
   }
 }
 

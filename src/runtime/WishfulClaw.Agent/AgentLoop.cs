@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
@@ -17,6 +17,7 @@ internal static partial class AgentLoop
 {
     private const double DefaultContextCompressionThreshold = 0.8;
     private const int DefaultContextCompressionReservedOutputTokens = 20_000;
+    private const int DefaultContextCompressionLimit = 200_000;
     private const int ContextCompressionAutoBufferTokens = 13_000;
 
     /// <summary>
@@ -88,7 +89,8 @@ internal static partial class AgentLoop
         var toolPreset = ToolPreset.BuiltIn.TryGetValue(toolPresetId, out var tp)
             ? tp
             : ToolPreset.BuiltIn["full"];
-        var toolDefs = ToolModuleState.Registry?.GetToolDefinitions(toolPreset) ?? [];
+        var sessionMode = JsonHelpers.GetString(parameters, "sessionMode");
+        var toolDefs = ToolModuleState.Registry?.GetToolDefinitions(toolPreset, sessionMode) ?? [];
 
         // Filter out WebSearch/WebFetch when web search is not enabled.
         // Previously done in the frontend; now handled backend-side since
@@ -100,7 +102,6 @@ internal static partial class AgentLoop
                 .Where(t => t.Name != "WebSearch" && t.Name != "WebFetch")
                 .ToList();
         }
-
         // ── Persona-aware system prompt ──
         var personaId = JsonHelpers.GetString(parameters, "personaId");
         if (!string.IsNullOrWhiteSpace(personaId))
@@ -111,7 +112,7 @@ internal static partial class AgentLoop
             var sshConnectionId = JsonHelpers.GetString(parameters, "sshConnectionId");
             var projectId = JsonHelpers.GetString(parameters, "projectId");
             WorkerLog.Warn($"agent run sshConnectionId={sshConnectionId ?? "(null)"} personaId={personaId} projectId={projectId ?? "(null)"}");
-            var cacheKey = SystemPromptCache.ComputeKey(personaId, workingFolder, language, userRules, sshConnectionId, projectId);
+            var cacheKey = SystemPromptCache.ComputeKey(personaId, workingFolder, language, userRules, sshConnectionId, projectId, sessionMode);
             var builtPrompt = SystemPromptCache.GetOrBuild(cacheKey, () =>
                 PromptBuilder.Build(
                     PromptProfile.Main, provider, parameters, personaId, workingFolder, language, userRules));
@@ -426,12 +427,14 @@ internal static partial class AgentLoop
         var compressionEnabled = JsonHelpers.GetBool(parameters, "contextCompressionEnabled", true);
         if (!compressionEnabled)
         {
+            WorkerLog.Warn("context compression DIAG: disabled (contextCompressionEnabled=false)");
             return false;
         }
 
-        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? 0;
+        var contextLength = JsonHelpers.GetIntNullable(provider, "contextLength") ?? DefaultContextCompressionLimit;
         if (contextLength <= 0)
         {
+            WorkerLog.Warn($"context compression DIAG: contextLength<=0 value={contextLength} raw={JsonHelpers.GetString(provider, "contextLength") ?? "(null)"}");
             return false;
         }
 
@@ -440,9 +443,22 @@ internal static partial class AgentLoop
         // Clamp to 0.3 ~ 0.9
         thresholdRatio = Math.Min(0.9, Math.Max(0.3, thresholdRatio));
 
-        var threshold = (int)(contextLength * thresholdRatio);
-        var reserved = contextLength - DefaultContextCompressionReservedOutputTokens - ContextCompressionAutoBufferTokens;
-        var trigger = Math.Min(threshold, reserved);
-        return inputTokens >= trigger;
+        // Align with the frontend: base the trigger on the effective window
+        // (contextLength minus reserved output tokens) rather than the raw
+        // contextLength, so both sides fire compression at the same token count.
+        var effectiveWindow = contextLength - DefaultContextCompressionReservedOutputTokens;
+        if (effectiveWindow <= 0)
+        {
+            WorkerLog.Warn($"context compression DIAG: effectiveWindow<=0 contextLength={contextLength} reserved={DefaultContextCompressionReservedOutputTokens}");
+            return false;
+        }
+
+        var ratioThreshold = (int)(effectiveWindow * thresholdRatio);
+        var bufferedThreshold = effectiveWindow - ContextCompressionAutoBufferTokens;
+        bufferedThreshold = bufferedThreshold > 0 ? bufferedThreshold : ratioThreshold;
+        var trigger = Math.Min(ratioThreshold, bufferedThreshold);
+        var willCompress = inputTokens >= trigger;
+        WorkerLog.Warn($"context compression DIAG: inputTokens={inputTokens} contextLength={contextLength} effectiveWindow={effectiveWindow} thresholdRatio={thresholdRatio:0.###} trigger={trigger} -> {(willCompress ? "WOULD COMPRESS" : "skip (below trigger)")}");
+        return willCompress;
     }
 }

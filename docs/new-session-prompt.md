@@ -4,7 +4,7 @@
 
 ---
 
-老大，继续 wishful-claw 开发。这是 Agent 编程软件，融合三个开源项目：OpenCowork（Agent Loop / 工具链 / Provider / 架构）、KodaClaw（记忆系统 / 人格系统设计）、OpenClaw.net（记忆主动回忆机制）。
+老大，继续 wishful-claw 开发。这是 Agent 编程软件，融合五个开源项目：OpenCowork（Agent Loop / 工具链 / Provider / 架构）、KodaClaw（记忆系统 / 人格系统设计）、OpenClaw.net（记忆主动回忆机制）、DeepSeek-Reasonix（缓存命中率 / 工具注册发现 / 工具注入体系）、OpenAI Codex（Goal 模式状态机 / 自检评估机制）。
 
 **项目路径**：`D:\claw\wishful-claw`
 **GitHub**：731471991/wishful-claw
@@ -21,7 +21,8 @@
 - OpenCowork：`D:\claw\OpenCowork`（Agent Loop / 工具链 / Provider / 前端 UI / Skill / MCP，代码已迁移）
 - KodaClaw：`D:\claw\koda-claw`（记忆 / 人格设计思路，代码已迁移）
 - OpenClaw.net：`D:\claw\openclaw.net`（记忆主动回忆 / 上下文预算，代码已迁移）
-- DeepSeek-Reasonix：`D:\claw\DeepSeek-Reasonix`（prefix cache / 重试策略 / 上下文压缩参考）
+- DeepSeek-Reasonix：`D:\claw\DeepSeek-Reasonix`（prefix cache / 重试策略 / 上下文压缩 / 工具注册发现 / 工具注入体系参考）
+- OpenAI Codex：开源仓库 `github.com/openai/codex`（Goal 模式状态机 plan→execute→verify→continue/adjust、自检评估机制参考）
 
 > 以上参考项目代码已全部迁移并适配为 WishfulClaw 命名空间，仅作历史溯源，开发时不再直接参考。
 
@@ -42,6 +43,7 @@
 | v2-iter-6 | SSH 远程执行 + Agent 终端旁观 + 项目档案 + 终端面板重构（session 级可见性、auto-create、i18n、node-pty 打包修复） | ✅ 已完成，tag v2.6.0 |
 | v2-iter-7 | 主聊天折叠块模式 — ExecutionProcessBlock 折叠块组件 + 过程/最终文本拆分 + 按工具分类摘要 + 缓存命中率 token 级修复 | ✅ 已完成，tag v2.7.0 |
 | v2-iter-8 | 计划模式（人机协同执行引擎）— explore→plan→confirm→execute→verify 状态机 + 计划文件/状态文件落盘 + SubmitPlanReview reverse request 用户确认 + PlanReviewCard + UpdatePlanStep 步骤跟踪 | ✅ 已完成，tag v2.8.0 |
+| v2-iter-9 | Goal 模式（自主跑完迭代）— GoalOrchestrator 编排层 + 自确认/自检评估 + 429 限流长退避 + 可中断 + 前端 Goal 进度面板 | ✅ 已完成，tag v2.9.0（待合并 main） |
 
 ## 当前项目架构（7 层）
 
@@ -63,7 +65,8 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，最新 tag：`v2.8.0`
+- 当前分支：`dev/v2-iter-9`，最新 tag：`v2.8.0`
+- v2-iter-9（Goal 模式）9 个 Plan 全部完成，待用户确认后合并 main
 - v2-iter-8 已合并 main 并打 tag，开发分支已清理
 - TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`（三个 tsconfig 配置均需验证）
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
@@ -81,25 +84,11 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 - **DB 层** — PlanEntity + DbPlanTools（6 个 DB 端点），CodeFirst 自动建表
 - **PromptBuilder guidance** — 计划模式引导通过工具返回值注入而非 system prompt
 
-## 下一步：v2-iter-9 Goal 模式（自主跑完迭代）
+## 下一步：v2-iter-10 全局会话 + 项目编排工具
 
-**目标**：迭代级别的自主执行。用户设定目标后，Agent 自己把目标拆成多个计划，每个计划自主走完整流程（探索→规划→自行确认→执行→验证），不需要人工确认，直到目标达成或用户中止。
+**目标**：全局会话模式 + 跨项目编排。读任务文件，跨项目调度 Agent 执行。
 
-**与计划模式的关系**：Goal 模式 = 计划模式去掉人工确认 + 多计划编排。Agent 自行确认计划、自行执行、自检验证，跑完一个计划自动进入下一个。
-
-| 步骤 | 内容 |
-|------|------|
-| 1 | Goal 编排器 — 在计划模式基础上增加多计划编排，Agent 自主拆分目标为多个计划，逐个执行 |
-| 2 | 自行确认机制 — 去掉计划模式的用户确认环节，Agent 自行判断计划合理性后执行 |
-| 3 | 自检机制 — 每个计划完成后 Agent 自我评估是否达标，不达标则重试或调整方案 |
-| 4 | Goal 持久化 — Goal 级别状态存储（目标文本 + 计划列表 + 每个计划的完成状态） |
-| 5 | 可中断机制 — 用户随时可暂停或中止 Goal 执行 |
-| 6 | 前端 Goal 进度面板 — 计划列表 + 每个计划的步骤状态 + 实时日志 |
-
-详见 `docs/iteration-plan.md` 中 v2-iter-9 定义。
-
-**后续迭代**：
-- v2-iter-10：全局会话 + 项目编排工具 — 读任务文件，跨项目调度
+详见 `docs/iteration-plan.md` 中 v2-iter-10 定义。
 
 ## 关键技术备忘
 
@@ -134,10 +123,9 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.8.0`
+1. `git status` + `git log --oneline -5` — 确认当前在 `dev/v2-iter-9`，最新 tag `v2.8.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` — 查看 v2-iter-9 定义
-4. 从 main 创建分支：`git checkout -b dev/v2-iter-9`
-5. 开始执行 v2-iter-9 Goal 模式开发
+3. 读 `docs/iteration-plan.md` — 查看 v2-iter-10 定义
+4. 后续迭代从 main 创建分支：`git checkout main && git checkout -b dev/v2-iter-10`
 
 叫老大，我们是并肩协作的兄弟。

@@ -129,6 +129,7 @@ export function mapSidecarProvider(provider: SidecarProviderInput): SidecarProvi
     apiKey: provider.apiKey,
     ...(provider.baseUrl ? { baseUrl: provider.baseUrl } : {}),
     model: provider.model,
+    ...(provider.contextLength !== undefined ? { contextLength: provider.contextLength } : {}),
     ...(provider.category ? { category: provider.category } : {}),
     ...(provider.maxTokens !== undefined ? { maxTokens: provider.maxTokens } : {}),
     ...(provider.temperature !== undefined ? { temperature: provider.temperature } : {}),

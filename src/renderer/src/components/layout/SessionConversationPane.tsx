@@ -13,7 +13,7 @@ import { MessageList } from '@renderer/components/chat/MessageList'
 import { InputArea } from '@renderer/components/chat/InputArea'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useChatActions } from '@renderer/hooks/use-chat-actions'
+import { useChatActions, type SendMessageOptions } from '@renderer/hooks/use-chat-actions'
 import { ActivityPanel } from '@renderer/components/activity/ActivityPanel'
 import { useActivityStore } from '@renderer/stores/activity-store'
 import { useTerminalStore } from '@renderer/stores/terminal-store'
@@ -67,7 +67,7 @@ export function SessionConversationPane({
   const handleSend = useCallback(
     (text: string, _images?: unknown, _options?: unknown) => {
       if (!resolvedSessionId) return
-      void sendMessage(text, undefined, undefined, resolvedSessionId)
+      void sendMessage({ text, sessionId: resolvedSessionId, opts: _options as SendMessageOptions | undefined })
     },
     [resolvedSessionId, sendMessage]
   )

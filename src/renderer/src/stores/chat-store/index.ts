@@ -1,8 +1,9 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 
 import { immer } from 'zustand/middleware/immer'
 
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
+import { installGoalSyncListener, useGoalStore } from '@renderer/stores/goal-store'
 
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
@@ -78,6 +79,7 @@ export interface AgentActions {
     sshConnectionId?: string
     projectId?: string
     enablePlanMode?: boolean
+    sessionMode?: 'normal' | 'goal'
 
   }) => Promise<void>
 
@@ -421,15 +423,36 @@ export const useChatStore = create<ChatStore>()(
 
       }
 
-      if (!targetSessionId) return
-
-
-
       for (const event of envelope.events) {
 
-        // Route sub-agent events to the agent store's sub-agent handler
-
         const eventType = (event as { type?: string }).type ?? ''
+
+        // Route goal_progress events to the goal store BEFORE the targetSessionId check
+        // because goal_progress events carry their own sessionId in the payload
+        // (emitted by GoalOrchestrator with a custom runId, not matching any streaming message).
+        if (eventType === 'goal_progress') {
+          const gp = event as { goalId?: string; sessionId?: string; objective?: string; eventType?: string; message?: string; status?: string; currentPlanIndex?: number; planCount?: number; completedPlans?: number; timestamp?: number }
+          const gpSessionId = gp.sessionId ?? targetSessionId
+          if (gpSessionId && gp.eventType) {
+            useGoalStore.getState().applyGoalProgress({
+              sessionId: gpSessionId,
+              goalId: gp.goalId ?? '',
+              objective: gp.objective ?? '',
+              eventType: gp.eventType,
+              message: gp.message ?? '',
+              status: gp.status ?? '',
+              currentPlanIndex: gp.currentPlanIndex ?? 0,
+              planCount: gp.planCount ?? 0,
+              completedPlans: gp.completedPlans ?? 0,
+              timestamp: gp.timestamp ?? Date.now()
+            })
+          }
+          continue
+        }
+
+      if (!targetSessionId) return
+
+        // Route sub-agent events to the agent store's sub-agent handler
 
         if (eventType.startsWith('sub_agent_')) {
 
@@ -1294,6 +1317,8 @@ export const useChatStore = create<ChatStore>()(
 
 
 // Start the stream receiver
+
+installGoalSyncListener()
 
 getAgentStreamReceiver().start((envelope) => {
 
