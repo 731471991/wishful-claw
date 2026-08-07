@@ -14,7 +14,19 @@
 
 1. `AGENTS.md` — 项目结构（7 层架构）、分层约定、Git 提交规范、分支管理规则、大文件拆分规则
 2. `docs/dev-workflow.md` — 六阶段开发工作流 SOP
-3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五 + MVP v2 迭代 v2-iter-1 ~ v2-iter-10）
+3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五 + MVP v2 迭代 v2-iter-1 ~ v2-iter-11）
+
+## 【最重要】每个新迭代开始，必须先与老大讨论确认
+
+**不要按 `docs/iteration-plan.md` 默认规划的迭代直接开工。**
+
+历史经验：计划文档里默认规划的迭代（步骤、范围、验证标准）在实际使用中常与真实需求有差异——它是"规划草案"，不是最终需求。开工前必须：
+
+1. **先读文档**：`docs/iteration-plan.md` + `docs/PROGRESS.md`（看已完结迭代与最新 tag）
+2. **主动与老大确认本次迭代的具体范围**：做什么、优先级、边界、验证标准，以老大口头/对话中确认的需求为准
+3. **计划文档仅作参考**：可据此提建议，但最终以老大确认的为准；发现实际需求与计划不符时，按实际需求调整并告知老大
+
+**切勿**拿到计划文档后不经确认就默认执行。
 
 ## 参考源码位置（笔记本实际路径）
 
@@ -43,7 +55,9 @@
 | v2-iter-6 | SSH 远程执行 + Agent 终端旁观 + 项目档案 + 终端面板重构（session 级可见性、auto-create、i18n、node-pty 打包修复） | ✅ 已完成，tag v2.6.0 |
 | v2-iter-7 | 主聊天折叠块模式 — ExecutionProcessBlock 折叠块组件 + 过程/最终文本拆分 + 按工具分类摘要 + 缓存命中率 token 级修复 | ✅ 已完成，tag v2.7.0 |
 | v2-iter-8 | 计划模式（人机协同执行引擎）— explore→plan→confirm→execute→verify 状态机 + 计划文件/状态文件落盘 + SubmitPlanReview reverse request 用户确认 + PlanReviewCard + UpdatePlanStep 步骤跟踪 | ✅ 已完成，tag v2.8.0 |
-| v2-iter-9 | Goal 模式（自主跑完迭代）— GoalOrchestrator 编排层 + 自确认/自检评估 + 429 限流长退避 + 可中断 + 前端 Goal 进度面板 | ✅ 已完成，tag v2.9.0（待合并 main） |
+| v2-iter-9 | Goal 模式（自主跑完迭代）— GoalOrchestrator 编排层 + 自确认/自检评估 + 429 限流长退避 + 可中断 + 前端 Goal 进度面板 + 上下文压缩阈值统一 + 内置浏览器修复 + 配色默认远航蓝 + AOT 兼容配置 | ✅ 已完成，tag v2.9.0，已合并 main |
+| v2-iter-10 | 全局会话 + 项目编排工具（规划中，需与老大讨论确认范围） | ⏳ 待规划 |
+| v2-iter-11 | Native AOT 打包（SqlSugar → Dapper 迁移）— 真正 AOT 裁剪让包尽量小（规划中，需与老大讨论确认） | ⏳ 待规划 |
 
 ## 当前项目架构（7 层）
 
@@ -65,9 +79,9 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`dev/v2-iter-9`，最新 tag：`v2.8.0`
-- v2-iter-9（Goal 模式）9 个 Plan 全部完成，待用户确认后合并 main
-- v2-iter-8 已合并 main 并打 tag，开发分支已清理
+- 当前分支：`main`，最新 tag：`v2.9.0`
+- v2-iter-9（Goal 模式）已完成，已合并 main 并打 tag v2.9.0，开发分支已清理
+- 下一步：v2-iter-10 / v2-iter-11（均需先与老大讨论确认范围和需求）
 - TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`（三个 tsconfig 配置均需验证）
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
 
@@ -84,11 +98,14 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 - **DB 层** — PlanEntity + DbPlanTools（6 个 DB 端点），CodeFirst 自动建表
 - **PromptBuilder guidance** — 计划模式引导通过工具返回值注入而非 system prompt
 
-## 下一步：v2-iter-10 全局会话 + 项目编排工具
+## 下一步（需与老大讨论确认后确定）
 
-**目标**：全局会话模式 + 跨项目编排。读任务文件，跨项目调度 Agent 执行。
+当前已完成 v2-iter-9（tag v2.9.0）。候选迭代（范围待与老大讨论确认）：
 
-详见 `docs/iteration-plan.md` 中 v2-iter-10 定义。
+- **v2-iter-10**：全局会话 + 项目编排工具（详见 `docs/iteration-plan.md`）
+- **v2-iter-11**：Native AOT 打包（SqlSugar → Dapper 迁移）（详见 `docs/iteration-plan.md`）
+
+**开工前先与老大确认本次迭代具体做什么、优先级、边界。**
 
 ## 关键技术备忘
 
@@ -123,9 +140,10 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `dev/v2-iter-9`，最新 tag `v2.8.0`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.9.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` — 查看 v2-iter-10 定义
-4. 后续迭代从 main 创建分支：`git checkout main && git checkout -b dev/v2-iter-10`
+3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看候选迭代（v2-iter-10 / v2-iter-11）定义
+4. **与老大讨论确认本次迭代范围**（做什么、优先级、边界、验证标准），确认后再开工
+5. 新迭代从 main 创建分支：`git checkout main && git pull origin main && git checkout -b dev/v2-iter-{N}`
 
 叫老大，我们是并肩协作的兄弟。
