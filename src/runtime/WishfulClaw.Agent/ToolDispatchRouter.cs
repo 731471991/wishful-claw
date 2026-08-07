@@ -429,6 +429,22 @@ public static class ToolDispatchRouter
                 isToolError = true;
             }
         }
+        // Project management tools: list_projects / get_project_details / create_session / send_session_message
+        else if (AgentRuntimeProjectExecutor.IsProjectTool(toolCall.Name))
+        {
+            try
+            {
+                toolOutput = await AgentRuntimeProjectExecutor.ExecuteAsync(
+                toolCall, state.Parameters, context, state.CancellationToken);
+                isToolError = IsJsonError(toolOutput);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                toolOutput = $"Project tool execution failed: {ex.Message}";
+                isToolError = true;
+            }
+        }
         else if (SubAgentExecutor.IsTaskTool(toolCall.Name))
         {
             try
