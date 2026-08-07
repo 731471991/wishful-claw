@@ -112,8 +112,22 @@ export async function handleProjectSendSessionMessage(
       contextCompressionThreshold: settings.contextCompressionThreshold
     })
 
+    // Debug: check store state immediately after sendMessage
+    const storeAfter = useChatStore.getState()
+    const sessionAfter = storeAfter.sessions.find((s) => s.id === sessionId)
+    const msgCount = sessionAfter?.messages?.length ?? -1
+    const hasStreaming = !!(storeAfter as unknown as { streamingMessages?: Record<string, string> }).streamingMessages?.[sessionId]
+    const sessionTitle = sessionAfter?.title ?? 'unknown'
+    const storeSessionCount = storeAfter.sessions.length
+
     // Don't wait for completion — return immediately after sending
-    return { success: true, result: `Message sent to session "${sessionId}". The target session is now processing. Check back later with get_project_details.` }
+    return {
+      success: true,
+      result: `Message sent to session "${sessionTitle}" (${sessionId}). ` +
+        `Store state: sessionExists=${!!sessionAfter}, msgCount=${msgCount}, ` +
+        `streamingSet=${hasStreaming}, totalSessionsInStore=${storeSessionCount}. ` +
+        `The target session is now processing. Check back later with get_project_details.`
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return { success: false, error: `Failed to send message: ${msg}` }
