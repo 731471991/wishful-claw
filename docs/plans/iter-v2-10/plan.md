@@ -87,6 +87,7 @@
 
 ### 修改
 - `src/runtime/WishfulClaw.Agent/ToolDispatchRouter.cs` — 分发 4 工具
+- `src/runtime/WishfulClaw.Core/Tools/ToolPreset.cs` — chat/coding/full preset 的 AllowedCategories 加 `"project"` 类别
 - `src/main/ipc/native-agent-runtime.ts` — rendererMethods 加 `project/send-session-message`
 - `src/renderer/src/lib/ipc/renderer-tool-bridge.ts` — 处理 `project/send-session-message`，调 sendMessage
 
