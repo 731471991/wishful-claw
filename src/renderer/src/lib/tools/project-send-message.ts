@@ -51,7 +51,7 @@ export async function handleProjectSendSessionMessage(
         mode: 'chat',
         messages: [],
         messageCount: 0,
-        messagesLoaded: true,
+        messagesLoaded: false,
         loadedRangeStart: 0,
         loadedRangeEnd: 0,
         createdAt: Date.now(),
@@ -88,14 +88,11 @@ export async function handleProjectSendSessionMessage(
     thinkingEnabled: false
   }
 
-  // 3. Record message count before sending to detect new messages
-  const storeBefore = useChatStore.getState()
-  const sessionBefore = storeBefore.sessions.find((s) => s.id === sessionId)
-  const msgCountBefore = sessionBefore?.messageCount ?? 0
-
-  // 4. Call sendMessage to trigger the Agent Loop
+  // 3. Fire-and-forget sendMessage — global session doesn't need to wait for result
+  //    The Agent can check back later via get_project_details.
   try {
-    await useChatStore.getState().sendMessage({
+    // Fire-and-forget: don't await, let the target session execute in background
+    useChatStore.getState().sendMessage({
       sessionMode: 'normal',
       provider,
       messages: [{ role: 'user', content }],
@@ -115,45 +112,11 @@ export async function handleProjectSendSessionMessage(
       contextCompressionThreshold: settings.contextCompressionThreshold
     })
 
-    // 5. Read target session's reply from store
-    const storeAfter = useChatStore.getState()
-    const sessionAfter = storeAfter.sessions.find((s) => s.id === sessionId)
-    let reply = ''
-
-    if (sessionAfter && sessionAfter.messages.length > msgCountBefore) {
-      // Find the last non-streaming assistant message
-      for (let i = sessionAfter.messages.length - 1; i >= 0; i--) {
-        const msg = sessionAfter.messages[i]
-        if (msg.role === 'assistant' && !msg.isStreaming) {
-          reply = msg.text || extractTextFromContent(msg) || ''
-          if (reply) break
-        }
-      }
-    }
-
-    // Build a structured result for the global Agent
-    const result = [
-      `Message sent to session "${sessionAfter?.title || sessionId}".`,
-      reply
-        ? `\n\nReply from the target session:\n${reply}`
-        : '\n\nThe target session has processed the message (no text reply).'
-    ].join('')
-
-    return { success: true, result }
+    // Don't wait for completion — return immediately after sending
+    return { success: true, result: `Message sent to session "${sessionId}". The target session is now processing. Check back later with get_project_details.` }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return { success: false, error: `Failed to send message: ${msg}` }
   }
 }
 
-function extractTextFromContent(msg: { content?: string | Array<unknown> | Record<string, unknown> }): string {
-  if (!msg.content) return ''
-  if (typeof msg.content === 'string') return msg.content
-  if (Array.isArray(msg.content)) {
-    return msg.content
-      .filter((b: unknown) => (b as { type?: string }).type === 'text')
-      .map((b: unknown) => ('text' in (b as Record<string, unknown>) ? (b as Record<string, unknown>).text ?? '' : ''))
-      .join('')
-  }
-  return ''
-}
