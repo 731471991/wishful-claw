@@ -1,13 +1,19 @@
 # 开发进度
 
 ## v2-iter-10：全局会话 + 项目编排工具
-- 状态：规划中
+- 状态：执行完成（待验证）
 - 分支：dev/v2-iter-10
 - VERDICT: —
 - Tag: —
-- Commit: —
+- Commit: b665e28
 - 日期: 2026-08-07
-- 备注：全局会话作项目经理助手，list_projects / get_project_details / create_session / send_session_message 四工具；任务状态用固定目录 .wishful-claw/project-status.md + 固定消息模版，项目会话收到模版消息后自己整理
+- 备注：6 个步骤全部完成，编译通过。
+  - 步骤1：ProjectToolsProvider.cs - 4 工具定义注册
+  - 步骤2+3：AgentRuntimeProjectExecutor.cs - 后端 Executor 实现
+  - 步骤4：ToolDispatchRouter 路由接入 + ToolPreset project 类别
+  - 步骤5：Main 进程 rendererMethods 注册
+  - 步骤6：renderer bridge + project-send-message.ts handler
+  - 待老大确认验证
 
 
 
