@@ -79,7 +79,7 @@ export interface AgentActions {
     sshConnectionId?: string
     projectId?: string
     enablePlanMode?: boolean
-    sessionMode?: 'normal' | 'goal'
+    sessionMode?: 'normal' | 'goal' | 'global'
 
   }) => Promise<void>
 

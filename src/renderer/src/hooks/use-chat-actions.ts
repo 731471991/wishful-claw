@@ -8,7 +8,7 @@ import { getCachedTools, fetchToolDefinitions, fetchToolDefinitionsAsync, type C
 export interface SendMessageOptions {
   clearCompletedTasksOnTurnStart?: boolean
   enablePlanMode?: boolean
-  sessionMode?: 'normal' | 'goal'
+  sessionMode?: 'normal' | 'goal' | 'global'
   selectedFileReferences?: unknown[]
   imageEdit?: unknown
   toolPreset?: string

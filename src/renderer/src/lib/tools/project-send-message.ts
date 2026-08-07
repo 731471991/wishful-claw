@@ -62,6 +62,7 @@ export async function handleProjectSendSessionMessage(
   // 2. Call sendMessage to trigger the Agent Loop
   try {
     await useChatStore.getState().sendMessage({
+      sessionMode: 'normal',
       provider,
       messages: [{ role: 'user', content }],
       sessionId,

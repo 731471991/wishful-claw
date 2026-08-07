@@ -263,7 +263,7 @@ export function InputArea({
     const sendOptions: SendMessageOptions = { clearCompletedTasksOnTurnStart: true, enablePlanMode: planMode || undefined }
     const selectedFileReferences = liveEditorState.selectedFiles.map(selectedFileItemToReference)
     if (selectedFileReferences.length > 0) sendOptions.selectedFileReferences = selectedFileReferences
-    if (isGoalMode) sendOptions.sessionMode = 'goal'
+    sendOptions.sessionMode = isGoalMode ? 'goal' : (!activeProjectId ? 'global' : 'normal')
     onSend?.(message, attachedImages.length > 0 ? attachedImages : undefined, sendOptions)
     resetComposer()
   }, [getLiveEditorState, attachedImages, disabled, needsWorkingFolder, pendingImageReads,

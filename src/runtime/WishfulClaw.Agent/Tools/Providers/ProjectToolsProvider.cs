@@ -24,7 +24,8 @@ internal sealed class ProjectToolsProvider : IToolProvider
                         "Optional search filter to narrow results by project name. " +
                         "Case-insensitive substring match. Leave empty to list all projects.")
                 },
-                [])));
+                []),
+                availableModes: new[] { "global" }));
 
         // get_project_details: Get project details including sessions and task status
         registry.Register(new ToolDefinitionPlaceholder(
@@ -39,7 +40,8 @@ internal sealed class ProjectToolsProvider : IToolProvider
                     ["projectId"] = ToolSchemaBuilder.String(
                         "The ID of the project to inspect. Use list_projects to find available project IDs.")
                 },
-                ["projectId"])));
+                ["projectId"]),
+                availableModes: new[] { "global" }));
 
         // create_session: Create a new session for a project
         registry.Register(new ToolDefinitionPlaceholder(
@@ -56,7 +58,8 @@ internal sealed class ProjectToolsProvider : IToolProvider
                         "Optional name for the new session. If not provided, a default name will be generated " +
                         "based on current task/context.")
                 },
-                ["projectId"])));
+                ["projectId"]),
+                availableModes: new[] { "global" }));
 
         // send_session_message: Send a message to a session
         registry.Register(new ToolDefinitionPlaceholder(
@@ -79,6 +82,7 @@ internal sealed class ProjectToolsProvider : IToolProvider
                         "Optional project ID for the target session. " +
                         "If not provided, inferred from the session.")
                 },
-                ["sessionId", "content"])));
+                ["sessionId", "content"]),
+                availableModes: new[] { "global" }));
     }
 }
