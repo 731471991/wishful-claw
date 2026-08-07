@@ -134,16 +134,42 @@ public static class AgentRuntimeProjectExecutor
                 updatedAt = s.UpdatedAt
             }).ToList();
 
-            // Try to read project-status.md
+            // Check project-status.md: exists, stale, and provide update template
             string? taskStatus = null;
+            bool statusFileNeedsUpdate = false;
+            long statusFileAge = 0;
+
             if (!string.IsNullOrEmpty(project.WorkingFolder))
             {
                 var statusFilePath = Path.Combine(project.WorkingFolder, ".wishful-claw", "project-status.md");
                 if (File.Exists(statusFilePath))
                 {
                     taskStatus = File.ReadAllText(statusFilePath);
+                    var lastWrite = File.GetLastWriteTimeUtc(statusFilePath);
+                    statusFileAge = (long)(DateTime.UtcNow - lastWrite).TotalMilliseconds;
+                    // Stale if older than 1 hour
+                    if (statusFileAge > 3600000)
+                    {
+                        statusFileNeedsUpdate = true;
+                    }
+                }
+                else
+                {
+                    statusFileNeedsUpdate = true;
                 }
             }
+
+            // Fixed template message for Agent to send via send_session_message
+            var statusUpdateTemplate = statusFileNeedsUpdate
+                ? GenerateStatusUpdateTemplate(project.Name, project.WorkingFolder ?? "")
+                : "";
+
+            // Find the most recent active session (updated within last hour) for convenience
+            var activeSessionId = sessions
+                .Where(s => s.UpdatedAt > (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 3600000))
+                .OrderByDescending(s => s.UpdatedAt)
+                .Select(s => s.Id)
+                .FirstOrDefault() ?? sessions.FirstOrDefault()?.Id;
 
             var result = JsonSerializer.Serialize(new
             {
@@ -152,7 +178,10 @@ public static class AgentRuntimeProjectExecutor
                 workingFolder = project.WorkingFolder,
                 sessions = sessionRows,
                 taskStatus = taskStatus ?? "",
-                hasTaskStatus = taskStatus is not null
+                hasTaskStatus = taskStatus is not null,
+                statusFileNeedsUpdate,
+                statusUpdateTemplate,
+                suggestedSessionId = activeSessionId ?? ""
             });
 
             return result;
@@ -281,5 +310,23 @@ public static class AgentRuntimeProjectExecutor
     private static string EncodeError(string message)
     {
         return JsonSerializer.Serialize(new { error = message });
+    }
+
+    /// <summary>
+    /// Generate a fixed template message for the Agent to send to a project session,
+    /// instructing it to organize and write a clean project-status.md summary.
+    /// </summary>
+    private static string GenerateStatusUpdateTemplate(string projectName, string workingFolder)
+    {
+        return $"Please organize the current task status for project **{projectName}** " +
+            $"and write a clean summary to `.wishful-claw/project-status.md` in the working directory.\n\n" +
+            "The status file should include:\n" +
+            "- **Active tasks**: what's currently being worked on\n" +
+            "- **Recent changes**: what was done recently\n" +
+            "- **Next steps**: what's planned next\n" +
+            "- **Blockers**: any issues that need attention\n\n" +
+            "Please review the current conversation history, plans, and goals to produce " +
+            "an accurate and up-to-date summary. Write the file in Markdown format " +
+            $"at `{workingFolder}/.wishful-claw/project-status.md`.";
     }
 }
