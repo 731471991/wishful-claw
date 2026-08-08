@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 
@@ -35,7 +36,7 @@ public sealed class GitModule : IWorkerModule
             var maxStdoutChars = GitExecutor.GetInt(parameters, "maxStdoutChars", 512 * 1024);
             var maxStderrChars = GitExecutor.GetInt(parameters, "maxStderrChars", 64 * 1024);
             var result = await GitExecutor.ExecAsync(args, cwd, timeoutMs, maxStdoutChars, maxStderrChars);
-            return WorkerResponse.Json(result);
+            return WorkerResponse.Json(result, AgentRuntimeJsonContext.Default.GitExecResult);
         }
         catch (Exception ex)
         {
@@ -49,7 +50,7 @@ public sealed class GitModule : IWorkerModule
         {
             var cwd = GetCwd(parameters);
             var repositories = await GitScanTools.ScanRepositoriesAsync(parameters, cwd);
-            return WorkerResponse.Json(repositories);
+            return WorkerResponse.Json(repositories, AgentRuntimeJsonContext.Default.ListGitRepositorySummary);
         }
         catch (Exception ex)
         {
@@ -61,7 +62,7 @@ public sealed class GitModule : IWorkerModule
     {
         var cwd = GetCwd(parameters);
         var result = await GitStatusTools.StatusDetailedAsync(cwd);
-        return WorkerResponse.Json(result);
+        return WorkerResponse.Json(result, AgentRuntimeJsonContext.Default.GitStatusDetailedResult);
     }
 
     private static async Task<WorkerResponse> QueryAsync(JsonElement parameters)
@@ -70,11 +71,11 @@ public sealed class GitModule : IWorkerModule
         {
             var cwd = GetCwd(parameters);
             var result = await GitQueryTools.QueryAsync(parameters, cwd);
-            return WorkerResponse.Json(result);
+            return WorkerResponse.Json(result, AgentRuntimeJsonContext.Default.GitQueryResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(GitQueryResult.Failure(ex.Message));
+            return WorkerResponse.Json(GitQueryResult.Failure(ex.Message), AgentRuntimeJsonContext.Default.GitQueryResult);
         }
     }
 

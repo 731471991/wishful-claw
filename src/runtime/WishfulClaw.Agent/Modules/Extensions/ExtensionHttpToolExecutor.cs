@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 ﻿using System.Buffers;
 using System.Net;
 using System.Text;
@@ -77,7 +78,7 @@ public static partial class ExtensionHttpToolExecutor
             ? inputElement
             : EmptyJsonObject();
         var result = await ExecuteAsync(extensionId, toolName, input, CancellationToken.None);
-        return WorkerResponse.Json(result);
+        return WorkerResponse.Json(result, AgentRuntimeJsonContext.Default.NativeExtensionToolExecutionResult);
     }
 
     private static ExtensionFetchRequest BuildToolFetchRequest(
@@ -294,7 +295,7 @@ public static partial class ExtensionHttpToolExecutor
         }
 
         using var document = JsonDocument.Parse(
-            JsonSerializer.Serialize(value));
+            JsonSerializer.Serialize(value, WorkerJsonHelper.GetTypeInfo<string>()));
         return document.RootElement.Clone();
     }
 

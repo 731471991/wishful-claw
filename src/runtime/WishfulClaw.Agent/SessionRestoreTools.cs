@@ -1,6 +1,7 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using Microsoft.Data.Sqlite;
@@ -43,7 +44,7 @@ internal static class SessionRestoreTools
             {
                 // No messages in DB — nothing to restore, leave session empty
                 WorkerLog.Info($"agent restore-session: no messages for session={FormatLogValue(sessionId)}");
-                return WorkerResponse.Json(new { restored = true, sessionId, messageCount = 0 });
+                return WorkerResponse.Json(new SessionRestoreResponse(true, sessionId, 0), AgentRuntimeJsonContext.Default.SessionRestoreResponse);
             }
 
             // Convert DB rows to wire-format JsonElements
@@ -67,7 +68,7 @@ internal static class SessionRestoreTools
                 WorkerLog.Info(
                     $"agent restore-session: skipped (session already has {sessionConv.MessageCount} messages) " +
                     $"session={FormatLogValue(sessionId)}");
-                return WorkerResponse.Json(new { restored = true, sessionId, messageCount = sessionConv.MessageCount, skipped = true });
+                return WorkerResponse.Json(new SessionRestoreResponse(true, sessionId, sessionConv.MessageCount, Skipped: true), AgentRuntimeJsonContext.Default.SessionRestoreResponse);
             }
 
             sessionConv.Initialize(wireMessages, conversation);
@@ -76,12 +77,7 @@ internal static class SessionRestoreTools
                 $"agent restore-session: loaded {wireMessages.Count} messages " +
                 $"for session={FormatLogValue(sessionId)}");
 
-            return WorkerResponse.Json(new
-            {
-                restored = true,
-                sessionId,
-                messageCount = wireMessages.Count
-            });
+            return WorkerResponse.Json(new SessionRestoreResponse(true, sessionId, wireMessages.Count), AgentRuntimeJsonContext.Default.SessionRestoreResponse);
         }
         catch (Exception ex)
         {

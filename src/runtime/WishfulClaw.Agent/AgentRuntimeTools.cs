@@ -1,5 +1,6 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -76,7 +77,7 @@ public static class AgentRuntimeTools
             CancellationToken.None);
 
         return Task.FromResult(WorkerResponse.Json(
-            new AgentRuntimeRunResult(true, runId)));
+            new AgentRuntimeRunResult(true, runId), AgentRuntimeJsonContext.Default.AgentRuntimeRunResult));
     }
 
     public static WorkerResponse Cancel(JsonElement parameters)
@@ -84,17 +85,17 @@ public static class AgentRuntimeTools
         var runId = JsonHelpers.GetString(parameters, "runId")?.Trim();
         if (string.IsNullOrEmpty(runId))
         {
-            return WorkerResponse.Json(new AgentRuntimeCancelResult(false, null));
+            return WorkerResponse.Json(new AgentRuntimeCancelResult(false, null), AgentRuntimeJsonContext.Default.AgentRuntimeCancelResult);
         }
 
         if (!ActiveRuns.TryGetValue(runId, out var state))
         {
-            return WorkerResponse.Json(new AgentRuntimeCancelResult(false, runId));
+            return WorkerResponse.Json(new AgentRuntimeCancelResult(false, runId), AgentRuntimeJsonContext.Default.AgentRuntimeCancelResult);
         }
 
         state.Cancel("user");
         WorkerLog.Info($"agent run cancel requested runId={runId}");
-        return WorkerResponse.Json(new AgentRuntimeCancelResult(true, runId));
+        return WorkerResponse.Json(new AgentRuntimeCancelResult(true, runId), AgentRuntimeJsonContext.Default.AgentRuntimeCancelResult);
     }
 
     public static WorkerResponse RequestStop(JsonElement parameters)
@@ -102,17 +103,17 @@ public static class AgentRuntimeTools
         var runId = JsonHelpers.GetString(parameters, "runId")?.Trim();
         if (string.IsNullOrEmpty(runId))
         {
-            return WorkerResponse.Json(new AgentRuntimeStopResult(false, null));
+            return WorkerResponse.Json(new AgentRuntimeStopResult(false, null), AgentRuntimeJsonContext.Default.AgentRuntimeStopResult);
         }
 
         if (!ActiveRuns.TryGetValue(runId, out var state))
         {
-            return WorkerResponse.Json(new AgentRuntimeStopResult(false, runId));
+            return WorkerResponse.Json(new AgentRuntimeStopResult(false, runId), AgentRuntimeJsonContext.Default.AgentRuntimeStopResult);
         }
 
         state.RequestStop("user");
         WorkerLog.Info($"agent run stop requested runId={runId}");
-        return WorkerResponse.Json(new AgentRuntimeStopResult(true, runId));
+        return WorkerResponse.Json(new AgentRuntimeStopResult(true, runId), AgentRuntimeJsonContext.Default.AgentRuntimeStopResult);
     }
 
     public static WorkerResponse AppendMessages(JsonElement parameters)
@@ -120,17 +121,17 @@ public static class AgentRuntimeTools
         var runId = JsonHelpers.GetString(parameters, "runId")?.Trim();
         if (string.IsNullOrEmpty(runId))
         {
-            return WorkerResponse.Json(new AgentRuntimeAppendMessagesResult(false, null, 0));
+            return WorkerResponse.Json(new AgentRuntimeAppendMessagesResult(false, null, 0), AgentRuntimeJsonContext.Default.AgentRuntimeAppendMessagesResult);
         }
 
         if (!ActiveRuns.TryGetValue(runId, out var state))
         {
-            return WorkerResponse.Json(new AgentRuntimeAppendMessagesResult(false, runId, 0));
+            return WorkerResponse.Json(new AgentRuntimeAppendMessagesResult(false, runId, 0), AgentRuntimeJsonContext.Default.AgentRuntimeAppendMessagesResult);
         }
 
         var count = state.EnqueueMessages(parameters);
         WorkerLog.Debug($"agent run append messages runId={runId} count={count}");
-        return WorkerResponse.Json(new AgentRuntimeAppendMessagesResult(count > 0, runId, count));
+        return WorkerResponse.Json(new AgentRuntimeAppendMessagesResult(count > 0, runId, count), AgentRuntimeJsonContext.Default.AgentRuntimeAppendMessagesResult);
     }
 
     // ── Event emission ──
@@ -233,7 +234,7 @@ public static class AgentRuntimeTools
 
         SessionConversationManager.Remove(sessionId);
         WorkerLog.Info($"agent session cleared sessionId={FormatLogValue(sessionId)}");
-        return WorkerResponse.Json(new { cleared = true, sessionId });
+        return WorkerResponse.Json(new ClearSessionResult(true, sessionId), AgentRuntimeJsonContext.Default.ClearSessionResult);
     }
 
     // ── Reverse response (from renderer tool execution) ──
