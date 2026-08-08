@@ -98,7 +98,7 @@ public static class ProviderRetryPolicy
 
     private static bool IsRetryableStatus(int statusCode)
     {
-        return statusCode == 429 || statusCode >= 500;
+        return statusCode == 400 || statusCode == 429 || statusCode >= 500;
     }
 
     /// <summary>

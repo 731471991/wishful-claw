@@ -1,4 +1,4 @@
-using WishfulClaw.Core.Tools;
+﻿using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
 
@@ -32,8 +32,8 @@ internal sealed class ProjectToolsProvider : IToolProvider
             "get_project_details",
             "Get detailed information about a project, including its session list and task status. " +
             "Reads the project's .wishful-claw/project-status.md file for a clean summary of ongoing work. " +
-            "If the status file does not exist, it will automatically trigger the project session to generate one " +
-            "and wait for completion before returning.",
+            "If the status file does not exist or is stale, the response includes a statusUpdateTemplate " +
+            "that you can send to the project session via send_session_message to generate the status file.",
             ToolSchemaBuilder.Object(
                 new Dictionary<string, System.Text.Json.JsonElement>
                 {
@@ -67,7 +67,7 @@ internal sealed class ProjectToolsProvider : IToolProvider
             "Send a message as the user to an existing project session. " +
             "The target session will receive the message and the agent will process it automatically. " +
             "Use this to dispatch tasks, assign work, or send instructions to a project session. " +
-            "Returns the execution result after the target session completes its response.",
+            "Returns immediately after sending — the target session processes the message asynchronously. Use get_project_details to check results later.",
             ToolSchemaBuilder.Object(
                 new Dictionary<string, System.Text.Json.JsonElement>
                 {

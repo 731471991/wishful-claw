@@ -322,7 +322,8 @@ public static class DbMessageTools
         var session = db.Queryable<SessionEntity>().First(s => s.Id == sessionId);
         if (session is null) return;
         session.MessageCount = Math.Max(0, session.MessageCount + delta);
-        db.Updateable(session).UpdateColumns(s => new { s.MessageCount }).ExecuteCommand();
+        session.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        db.Updateable(session).UpdateColumns(s => new { s.MessageCount, s.UpdatedAt }).ExecuteCommand();
     }
 
     private static void SetMessageCount(ISqlSugarClient db, string sessionId, int count)

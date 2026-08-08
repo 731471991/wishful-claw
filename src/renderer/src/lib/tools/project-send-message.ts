@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Project Send-Session-Message Handler
  *
  * Handles `project/send-session-message` reverse-request from the native worker.
@@ -6,8 +6,8 @@
  * via the normal sendMessage pipeline — fully simulating a user action.
  *
  * Before calling sendMessage, ensures the target session exists in the chat store
- * (injected if missing). After sendMessage completes, reads the target session's
- * last assistant message from the store and returns it as the tool result.
+ * (injected if missing). sendMessage is called fire-and-forget — the target session
+ * processes the message asynchronously. Returns immediately after dispatch.
  *
  * Flow:
  *   Worker (send_session_message tool)
@@ -112,23 +112,13 @@ export async function handleProjectSendSessionMessage(
       userRules: settings.systemPrompt || undefined,
       contextCompressionEnabled: settings.contextCompressionEnabled,
       contextCompressionThreshold: settings.contextCompressionThreshold
+    }).catch(err => {
+      writeLog('error', '[sendMsg] sendMessage async error: ' + (err instanceof Error ? err.message : String(err)))
     })
 
-    // Debug: check store state immediately after sendMessage
-    const storeAfter = useChatStore.getState()
-    const sessionAfter = storeAfter.sessions.find((s) => s.id === sessionId)
-    const msgCount = sessionAfter?.messages?.length ?? -1
-    const hasStreaming = !!(storeAfter as unknown as { streamingMessages?: Record<string, string> }).streamingMessages?.[sessionId]
-    const sessionTitle = sessionAfter?.title ?? 'unknown'
-    const storeSessionCount = storeAfter.sessions.length
-
-    // Don't wait for completion — return immediately after sending
     return {
       success: true,
-      result: `Message sent to session "${sessionTitle}" (${sessionId}). ` +
-        `Store state: sessionExists=${!!sessionAfter}, msgCount=${msgCount}, ` +
-        `streamingSet=${hasStreaming}, totalSessionsInStore=${storeSessionCount}. ` +
-        `The target session is now processing. Check back later with get_project_details.`
+      result: `Message sent to session "${sessionId}". The target session is now processing. Check back later with get_project_details.`
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

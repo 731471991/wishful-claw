@@ -337,7 +337,8 @@ export const useChatStore = create<ChatStore>()(
 
       const state = get()
 
-      const runId = state.streamingMessageId
+      const sessionId = state.activeSessionId
+      const runId = sessionId ? state.streamingMessages[sessionId] : null
 
       if (!runId) return
 
@@ -355,9 +356,9 @@ export const useChatStore = create<ChatStore>()(
 
 
 
-      const sessionId = state.activeSessionId
-
       if (sessionId) {
+
+        useAgentStore.getState().setSessionRequestRetryState(sessionId, null)
 
         state.setStreamingMessageId(sessionId, null)
 
