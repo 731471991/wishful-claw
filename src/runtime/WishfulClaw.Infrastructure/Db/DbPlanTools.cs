@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -15,7 +16,7 @@ public static class DbPlanTools
             var db = DbClient.GetClient(parameters);
             var entities = db.Query("SELECT * FROM plans ORDER BY updated_at DESC", EntityMappers.MapPlan);
             var rows = entities.Select(PlanRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListPlanRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbPlanTools.List failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -28,12 +29,12 @@ public static class DbPlanTools
             var db = DbClient.GetClient(parameters);
             var id = parameters.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (string.IsNullOrEmpty(id))
-                return WorkerResponse.Json(new PlanFindResult(false, null, "id is required"));
+                return WorkerResponse.Json(new PlanFindResult(false, null, "id is required"), InfrastructureJsonContext.Default.PlanFindResult);
 
             var entity = db.QueryFirstOrDefault("SELECT * FROM plans WHERE id = @id", EntityMappers.MapPlan,
                 new SqliteParameter("@id", id));
             var row = entity != null ? PlanRow.FromEntity(entity) : null;
-            return WorkerResponse.Json(new PlanFindResult(true, row, null));
+            return WorkerResponse.Json(new PlanFindResult(true, row, null), InfrastructureJsonContext.Default.PlanFindResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbPlanTools.Get failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -46,13 +47,13 @@ public static class DbPlanTools
             var db = DbClient.GetClient(parameters);
             var sessionId = parameters.TryGetProperty("sessionId", out var sidEl) ? sidEl.GetString() : null;
             if (string.IsNullOrEmpty(sessionId))
-                return WorkerResponse.Json(new PlanFindResult(false, null, "sessionId is required"));
+                return WorkerResponse.Json(new PlanFindResult(false, null, "sessionId is required"), InfrastructureJsonContext.Default.PlanFindResult);
 
             var entity = db.QueryFirstOrDefault(
                 "SELECT * FROM plans WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
                 EntityMappers.MapPlan, new SqliteParameter("@sid", sessionId));
             var row = entity != null ? PlanRow.FromEntity(entity) : null;
-            return WorkerResponse.Json(new PlanFindResult(true, row, null));
+            return WorkerResponse.Json(new PlanFindResult(true, row, null), InfrastructureJsonContext.Default.PlanFindResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbPlanTools.GetBySession failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -78,7 +79,7 @@ public static class DbPlanTools
                 new SqliteParameter("@ca", entity.CreatedAt),
                 new SqliteParameter("@ua", entity.UpdatedAt));
 
-            return WorkerResponse.Json(new PlanMutationResult(true, 1, null));
+            return WorkerResponse.Json(new PlanMutationResult(true, 1, null), InfrastructureJsonContext.Default.PlanMutationResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbPlanTools.Create failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -91,12 +92,12 @@ public static class DbPlanTools
             var db = DbClient.GetClient(parameters);
             var id = parameters.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (string.IsNullOrEmpty(id))
-                return WorkerResponse.Json(new PlanMutationResult(false, 0, "id is required"));
+                return WorkerResponse.Json(new PlanMutationResult(false, 0, "id is required"), InfrastructureJsonContext.Default.PlanMutationResult);
 
             var entity = db.QueryFirstOrDefault("SELECT * FROM plans WHERE id = @id", EntityMappers.MapPlan,
                 new SqliteParameter("@id", id));
             if (entity == null)
-                return WorkerResponse.Json(new PlanMutationResult(false, 0, "Plan not found"));
+                return WorkerResponse.Json(new PlanMutationResult(false, 0, "Plan not found"), InfrastructureJsonContext.Default.PlanMutationResult);
 
             if (parameters.TryGetProperty("patch", out var patch) && patch.ValueKind == JsonValueKind.Object)
             {
@@ -124,7 +125,7 @@ public static class DbPlanTools
                 new SqliteParameter("@ua", entity.UpdatedAt),
                 new SqliteParameter("@id", id));
 
-            return WorkerResponse.Json(new PlanMutationResult(true, changed, null));
+            return WorkerResponse.Json(new PlanMutationResult(true, changed, null), InfrastructureJsonContext.Default.PlanMutationResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbPlanTools.Update failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -137,10 +138,10 @@ public static class DbPlanTools
             var db = DbClient.GetClient(parameters);
             var id = parameters.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (string.IsNullOrEmpty(id))
-                return WorkerResponse.Json(new PlanMutationResult(false, 0, "id is required"));
+                return WorkerResponse.Json(new PlanMutationResult(false, 0, "id is required"), InfrastructureJsonContext.Default.PlanMutationResult);
 
             var changed = db.Execute("DELETE FROM plans WHERE id = @id", new SqliteParameter("@id", id));
-            return WorkerResponse.Json(new PlanMutationResult(true, changed, null));
+            return WorkerResponse.Json(new PlanMutationResult(true, changed, null), InfrastructureJsonContext.Default.PlanMutationResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbPlanTools.Delete failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }

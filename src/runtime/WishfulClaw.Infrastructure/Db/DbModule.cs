@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -103,6 +104,6 @@ public sealed class DbModule : IWorkerModule
     {
         var dbPath = DbClient.ResolveDbPath(parameters);
         var result = DbClient.Initialize(dbPath);
-        return WorkerResponse.Json(result);
+        return WorkerResponse.Json(result, InfrastructureJsonContext.Default.DbInitializeResult);
     }
 }

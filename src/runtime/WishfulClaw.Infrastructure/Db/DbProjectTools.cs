@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -27,7 +28,7 @@ public static class DbProjectTools
                 return ProjectRow.FromEntity(e, count);
             }).ToList();
 
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListProjectRow);
         }
         catch (Exception ex)
         {
@@ -48,11 +49,11 @@ public static class DbProjectTools
                 "SELECT * FROM projects WHERE id = @id",
                 EntityMappers.MapProject,
                 new SqliteParameter("@id", id));
-            return WorkerResponse.Json(new ProjectFindResult(true, entity is null ? null : ProjectRow.FromEntity(entity), null));
+            return WorkerResponse.Json(new ProjectFindResult(true, entity is null ? null : ProjectRow.FromEntity(entity), null), InfrastructureJsonContext.Default.ProjectFindResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new ProjectFindResult(false, null, ex.Message));
+            return WorkerResponse.Json(new ProjectFindResult(false, null, ex.Message), InfrastructureJsonContext.Default.ProjectFindResult);
         }
     }
 
@@ -97,7 +98,7 @@ public static class DbProjectTools
                 Pinned = pinned, CreatedAt = createdAt, UpdatedAt = updatedAt
             };
 
-            return WorkerResponse.Json(ProjectRow.FromEntity(entity));
+            return WorkerResponse.Json(ProjectRow.FromEntity(entity), InfrastructureJsonContext.Default.ProjectRow);
         }
         catch (Exception ex)
         {
@@ -112,7 +113,7 @@ public static class DbProjectTools
             var id = RequireString(parameters, "id");
             if (!parameters.TryGetProperty("patch", out var patch) || patch.ValueKind != JsonValueKind.Object)
             {
-                return WorkerResponse.Json(new ProjectFindResult(true, null, null));
+                return WorkerResponse.Json(new ProjectFindResult(true, null, null), InfrastructureJsonContext.Default.ProjectFindResult);
             }
 
             DbClient.EnsureInitialized(parameters);
@@ -124,7 +125,7 @@ public static class DbProjectTools
                 new SqliteParameter("@id", id));
             if (current is null)
             {
-                return WorkerResponse.Json(new ProjectFindResult(true, null, null));
+                return WorkerResponse.Json(new ProjectFindResult(true, null, null), InfrastructureJsonContext.Default.ProjectFindResult);
             }
 
             ApplyProjectPatch(patch, current);
@@ -139,11 +140,11 @@ public static class DbProjectTools
                 new SqliteParameter("@ua", current.UpdatedAt),
                 new SqliteParameter("@id", id));
 
-            return WorkerResponse.Json(new ProjectFindResult(true, ProjectRow.FromEntity(current), null));
+            return WorkerResponse.Json(new ProjectFindResult(true, ProjectRow.FromEntity(current), null), InfrastructureJsonContext.Default.ProjectFindResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new ProjectFindResult(false, null, ex.Message));
+            return WorkerResponse.Json(new ProjectFindResult(false, null, ex.Message), InfrastructureJsonContext.Default.ProjectFindResult);
         }
     }
 
@@ -161,7 +162,7 @@ public static class DbProjectTools
                 new SqliteParameter("@id", id));
             if (project is null)
             {
-                return WorkerResponse.Json(new ProjectDeleteResult(true, false, null, new List<string>(), null));
+                return WorkerResponse.Json(new ProjectDeleteResult(true, false, null, new List<string>(), null), InfrastructureJsonContext.Default.ProjectDeleteResult);
             }
 
             var sessionIds = db.Query(
@@ -182,11 +183,11 @@ public static class DbProjectTools
             db.Execute("DELETE FROM projects WHERE id = @id",
                 new SqliteParameter("@id", id));
 
-            return WorkerResponse.Json(new ProjectDeleteResult(true, true, id, sessionIds, null));
+            return WorkerResponse.Json(new ProjectDeleteResult(true, true, id, sessionIds, null), InfrastructureJsonContext.Default.ProjectDeleteResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new ProjectDeleteResult(false, false, null, new List<string>(), ex.Message));
+            return WorkerResponse.Json(new ProjectDeleteResult(false, false, null, new List<string>(), ex.Message), InfrastructureJsonContext.Default.ProjectDeleteResult);
         }
     }
 
@@ -203,7 +204,7 @@ public static class DbProjectTools
 
             if (existing is not null)
             {
-                return WorkerResponse.Json(ProjectRow.FromEntity(existing));
+                return WorkerResponse.Json(ProjectRow.FromEntity(existing), InfrastructureJsonContext.Default.ProjectRow);
             }
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -219,7 +220,7 @@ public static class DbProjectTools
             {
                 Id = id, Name = "Default Project", CreatedAt = now, UpdatedAt = now
             };
-            return WorkerResponse.Json(ProjectRow.FromEntity(entity));
+            return WorkerResponse.Json(ProjectRow.FromEntity(entity), InfrastructureJsonContext.Default.ProjectRow);
         }
         catch (Exception ex)
         {

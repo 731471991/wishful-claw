@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -47,7 +48,7 @@ public static class DbSessionTools
 
             var entities = db.Query(sql, EntityMappers.MapSession, sqlParams);
             var rows = entities.Select(SessionRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListSessionRow);
         }
         catch (Exception ex)
         {
@@ -68,11 +69,11 @@ public static class DbSessionTools
                 "SELECT * FROM sessions WHERE id = @id",
                 EntityMappers.MapSession,
                 new SqliteParameter("@id", id));
-            return WorkerResponse.Json(new SessionFindResult(true, entity is null ? null : SessionRow.FromEntity(entity), null));
+            return WorkerResponse.Json(new SessionFindResult(true, entity is null ? null : SessionRow.FromEntity(entity), null), InfrastructureJsonContext.Default.SessionFindResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SessionFindResult(false, null, ex.Message));
+            return WorkerResponse.Json(new SessionFindResult(false, null, ex.Message), InfrastructureJsonContext.Default.SessionFindResult);
         }
     }
 
@@ -207,12 +208,12 @@ public static class DbSessionTools
             var deletedSessions = db.Execute("DELETE FROM sessions WHERE plugin_id IS NULL");
 
             return WorkerResponse.Json(
-                new SessionClearAllResult(true, sessionIds, sessionIds.Count, deletedSessions, null));
+                new SessionClearAllResult(true, sessionIds, sessionIds.Count, deletedSessions, null), InfrastructureJsonContext.Default.SessionClearAllResult);
         }
         catch (Exception ex)
         {
             return WorkerResponse.Json(
-                new SessionClearAllResult(false, new List<string>(), 0, 0, ex.Message));
+                new SessionClearAllResult(false, new List<string>(), 0, 0, ex.Message), InfrastructureJsonContext.Default.SessionClearAllResult);
         }
     }
 
@@ -238,11 +239,11 @@ public static class DbSessionTools
                 new SqliteParameter("@ua", updatedAt),
                 new SqliteParameter("@id", sessionId));
 
-            return WorkerResponse.Json(new SessionResetResult(true, deleted, updatedAt, null));
+            return WorkerResponse.Json(new SessionResetResult(true, deleted, updatedAt, null), InfrastructureJsonContext.Default.SessionResetResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SessionResetResult(false, 0, 0, ex.Message));
+            return WorkerResponse.Json(new SessionResetResult(false, 0, 0, ex.Message), InfrastructureJsonContext.Default.SessionResetResult);
         }
     }
 
@@ -260,7 +261,7 @@ public static class DbSessionTools
                 new SqliteParameter("@id", sessionId));
             if (session is null)
             {
-                return WorkerResponse.Json(new SessionStatusResult(true, false, null, null, null, 0, null));
+                return WorkerResponse.Json(new SessionStatusResult(true, false, null, null, null, 0, null), InfrastructureJsonContext.Default.SessionStatusResult);
             }
 
             var messageCount = db.QueryScalar<int>(
@@ -268,11 +269,11 @@ public static class DbSessionTools
                 new SqliteParameter("@id", sessionId));
 
             return WorkerResponse.Json(new SessionStatusResult(
-                true, true, session.Title, session.CreatedAt, session.UpdatedAt, messageCount, null));
+                true, true, session.Title, session.CreatedAt, session.UpdatedAt, messageCount, null), InfrastructureJsonContext.Default.SessionStatusResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SessionStatusResult(false, false, null, null, null, 0, ex.Message));
+            return WorkerResponse.Json(new SessionStatusResult(false, false, null, null, null, 0, ex.Message), InfrastructureJsonContext.Default.SessionStatusResult);
         }
     }
 
@@ -388,11 +389,11 @@ public static class DbSessionTools
 
     private static WorkerResponse Mutation(int changed)
     {
-        return WorkerResponse.Json(new SessionMutationResult(true, changed, null));
+        return WorkerResponse.Json(new SessionMutationResult(true, changed, null), InfrastructureJsonContext.Default.SessionMutationResult);
     }
 
     private static WorkerResponse MutationError(string error)
     {
-        return WorkerResponse.Json(new SessionMutationResult(false, 0, error));
+        return WorkerResponse.Json(new SessionMutationResult(false, 0, error), InfrastructureJsonContext.Default.SessionMutationResult);
     }
 }

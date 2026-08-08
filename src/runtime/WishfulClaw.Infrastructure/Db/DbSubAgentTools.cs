@@ -1,4 +1,5 @@
-using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -21,13 +22,11 @@ public static class DbSubAgentTools
                 EntityMappers.MapSubAgentRun, new SqliteParameter("@id", toolUseId));
 
             if (entity is null)
-                return WorkerResponse.Json(new { found = false });
+                return WorkerResponse.Json(new SubAgentFindResult(false), InfrastructureJsonContext.Default.SubAgentFindResult);
 
-            return WorkerResponse.Json(new
-            {
-                found = true,
-                data = JsonSerializer.Deserialize<JsonElement>(entity.Data, WorkerJsonHelper.JsonOptions)
-            });
+            // JsonDocument.Parse is AOT-safe (no reflection needed for DOM types).
+            using var doc = JsonDocument.Parse(entity.Data);
+            return WorkerResponse.Json(new SubAgentFindResult(true, doc.RootElement.Clone()), InfrastructureJsonContext.Default.SubAgentFindResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSubAgentTools.ReadByToolUseId failed: {ex.GetType().Name}: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -45,7 +44,7 @@ public static class DbSubAgentTools
                 EntityMappers.MapSubAgentRun, new SqliteParameter("@sid", sessionId));
 
             var rows = entities.Select(SubAgentRunRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListSubAgentRunRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSubAgentTools.ReadSession failed: {ex.GetType().Name}: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -60,10 +59,10 @@ public static class DbSubAgentTools
             var sessions = db.Query(
                 "SELECT session_id, COUNT(*) AS cnt, MAX(started_at) AS latest " +
                 "FROM sub_agent_runs GROUP BY session_id ORDER BY latest DESC",
-                r => new { SessionId = r.GetString("session_id"), Count = r.GetInt32("cnt"), LatestStartedAt = r.GetInt64("latest") });
+                r => new SubAgentSessionSummary(r.GetString("session_id"), r.GetInt32("cnt"), r.GetInt64("latest")));
 
             var total = db.QueryScalar<int>("SELECT COUNT(*) FROM sub_agent_runs");
-            return WorkerResponse.Json(new { total, sessions });
+            return WorkerResponse.Json(new SubAgentIndexResult(total, sessions), InfrastructureJsonContext.Default.SubAgentIndexResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSubAgentTools.Index failed: {ex.GetType().Name}: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -125,7 +124,7 @@ public static class DbSubAgentTools
                 }
             }
 
-            return WorkerResponse.Json(new { ok = true });
+            return WorkerResponse.Json(new SubAgentSimpleResult(true), InfrastructureJsonContext.Default.SubAgentSimpleResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSubAgentTools.Apply failed: {ex.GetType().Name}: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -167,7 +166,7 @@ public static class DbSubAgentTools
                 }
             }
 
-            return WorkerResponse.Json(new { ok = true });
+            return WorkerResponse.Json(new SubAgentSimpleResult(true), InfrastructureJsonContext.Default.SubAgentSimpleResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSubAgentTools.Replace failed: {ex.GetType().Name}: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }

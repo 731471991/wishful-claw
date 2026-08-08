@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -206,11 +207,11 @@ public static class DbMessageTools
                 IncrementMessageCount(db, sessionId, -1);
             }
 
-            return WorkerResponse.Json(new MessageDeleteResult(true, deleted > 0, null));
+            return WorkerResponse.Json(new MessageDeleteResult(true, deleted > 0, null), InfrastructureJsonContext.Default.MessageDeleteResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new MessageDeleteResult(false, false, ex.Message));
+            return WorkerResponse.Json(new MessageDeleteResult(false, false, ex.Message), InfrastructureJsonContext.Default.MessageDeleteResult);
         }
     }
 
@@ -225,11 +226,11 @@ public static class DbMessageTools
             var count = db.QueryScalar<int>(
                 "SELECT COUNT(*) FROM messages WHERE session_id = @sid",
                 new SqliteParameter("@sid", sessionId));
-            return WorkerResponse.Json(new MessageCountResult(true, count, null));
+            return WorkerResponse.Json(new MessageCountResult(true, count, null), InfrastructureJsonContext.Default.MessageCountResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new MessageCountResult(false, 0, ex.Message));
+            return WorkerResponse.Json(new MessageCountResult(false, 0, ex.Message), InfrastructureJsonContext.Default.MessageCountResult);
         }
     }
 
@@ -253,17 +254,17 @@ public static class DbMessageTools
 
             if (last is null)
             {
-                return WorkerResponse.Json(new MessageDeleteLastResult(true, null, null));
+                return WorkerResponse.Json(new MessageDeleteLastResult(true, null, null), InfrastructureJsonContext.Default.MessageDeleteLastResult);
             }
 
             db.Execute("DELETE FROM messages WHERE id = @id", new SqliteParameter("@id", last.Id));
             IncrementMessageCount(db, sessionId, -1);
 
-            return WorkerResponse.Json(new MessageDeleteLastResult(true, MessageRow.FromEntity(last), null));
+            return WorkerResponse.Json(new MessageDeleteLastResult(true, MessageRow.FromEntity(last), null), InfrastructureJsonContext.Default.MessageDeleteLastResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new MessageDeleteLastResult(false, null, ex.Message));
+            return WorkerResponse.Json(new MessageDeleteLastResult(false, null, ex.Message), InfrastructureJsonContext.Default.MessageDeleteLastResult);
         }
     }
 
@@ -344,11 +345,11 @@ public static class DbMessageTools
             var entities = db.Query(sql, EntityMappers.MapMessage, [.. paramList]);
             var rows = entities.Select(MessageRow.FromEntity).ToList();
 
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListMessageRow);
         }
         catch (Exception)
         {
-            return WorkerResponse.Json(new List<MessageRow>());
+            return WorkerResponse.Json(new List<MessageRow>(), InfrastructureJsonContext.Default.ListMessageRow);
         }
     }
 
@@ -400,11 +401,11 @@ public static class DbMessageTools
 
     private static WorkerResponse Mutation(int changed)
     {
-        return WorkerResponse.Json(new MessageMutationResult(true, changed, null));
+        return WorkerResponse.Json(new MessageMutationResult(true, changed, null), InfrastructureJsonContext.Default.MessageMutationResult);
     }
 
     private static WorkerResponse MutationError(string error)
     {
-        return WorkerResponse.Json(new MessageMutationResult(false, 0, error));
+        return WorkerResponse.Json(new MessageMutationResult(false, 0, error), InfrastructureJsonContext.Default.MessageMutationResult);
     }
 }

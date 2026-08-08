@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -18,7 +19,7 @@ public static class DbSshTools
                 "SELECT * FROM ssh_connections ORDER BY sort_order ASC, updated_at DESC",
                 EntityMappers.MapSshConnection);
             var rows = entities.Select(SshConnectionDbRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListSshConnectionDbRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSshTools.List failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -31,13 +32,13 @@ public static class DbSshTools
             var db = DbClient.GetClient(parameters);
             var id = parameters.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (string.IsNullOrEmpty(id))
-                return WorkerResponse.Json(new SshConnectionFindResult(false, null, "id is required"));
+                return WorkerResponse.Json(new SshConnectionFindResult(false, null, "id is required"), InfrastructureJsonContext.Default.SshConnectionFindResult);
 
             var entity = db.QueryFirstOrDefault(
                 "SELECT * FROM ssh_connections WHERE id = @id", EntityMappers.MapSshConnection,
                 new SqliteParameter("@id", id));
             var row = entity != null ? SshConnectionDbRow.FromEntity(entity) : null;
-            return WorkerResponse.Json(new SshConnectionFindResult(true, row, null));
+            return WorkerResponse.Json(new SshConnectionFindResult(true, row, null), InfrastructureJsonContext.Default.SshConnectionFindResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSshTools.Get failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -50,7 +51,7 @@ public static class DbSshTools
             var db = DbClient.GetClient(parameters);
             var entity = ParseCreateParameters(parameters);
             ExecuteInsertSsh(db, entity);
-            return WorkerResponse.Json(new SshMutationResult(true, 1, null));
+            return WorkerResponse.Json(new SshMutationResult(true, 1, null), InfrastructureJsonContext.Default.SshMutationResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSshTools.Create failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -63,20 +64,20 @@ public static class DbSshTools
             var db = DbClient.GetClient(parameters);
             var id = parameters.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (string.IsNullOrEmpty(id))
-                return WorkerResponse.Json(new SshMutationResult(false, 0, "id is required"));
+                return WorkerResponse.Json(new SshMutationResult(false, 0, "id is required"), InfrastructureJsonContext.Default.SshMutationResult);
             if (!parameters.TryGetProperty("patch", out var patchEl))
-                return WorkerResponse.Json(new SshMutationResult(false, 0, "patch is required"));
+                return WorkerResponse.Json(new SshMutationResult(false, 0, "patch is required"), InfrastructureJsonContext.Default.SshMutationResult);
 
             var entity = db.QueryFirstOrDefault(
                 "SELECT * FROM ssh_connections WHERE id = @id", EntityMappers.MapSshConnection,
                 new SqliteParameter("@id", id));
             if (entity == null)
-                return WorkerResponse.Json(new SshMutationResult(false, 0, "Connection not found"));
+                return WorkerResponse.Json(new SshMutationResult(false, 0, "Connection not found"), InfrastructureJsonContext.Default.SshMutationResult);
 
             ApplyPatch(entity, patchEl);
             entity.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             ExecuteUpdateSsh(db, entity);
-            return WorkerResponse.Json(new SshMutationResult(true, 1, null));
+            return WorkerResponse.Json(new SshMutationResult(true, 1, null), InfrastructureJsonContext.Default.SshMutationResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSshTools.Update failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -89,10 +90,10 @@ public static class DbSshTools
             var db = DbClient.GetClient(parameters);
             var id = parameters.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
             if (string.IsNullOrEmpty(id))
-                return WorkerResponse.Json(new SshMutationResult(false, 0, "id is required"));
+                return WorkerResponse.Json(new SshMutationResult(false, 0, "id is required"), InfrastructureJsonContext.Default.SshMutationResult);
 
             var changed = db.Execute("DELETE FROM ssh_connections WHERE id = @id", new SqliteParameter("@id", id));
-            return WorkerResponse.Json(new SshMutationResult(true, changed, null));
+            return WorkerResponse.Json(new SshMutationResult(true, changed, null), InfrastructureJsonContext.Default.SshMutationResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbSshTools.Delete failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -23,7 +24,7 @@ public static class DbPluginSessionTools
             var rows = entities.Select(e => new PluginProjectRow
             { Id = e.Id, Name = e.Name, WorkingFolder = e.WorkingFolder, SshConnectionId = e.SshConnectionId,
               PluginId = e.PluginId, Pinned = e.Pinned, CreatedAt = e.CreatedAt, UpdatedAt = e.UpdatedAt }).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListPluginProjectRow);
         }
         catch (Exception ex) { return WorkerResponse.Error(ex.Message); }
     }
@@ -108,7 +109,7 @@ public static class DbPluginSessionTools
             var entities = db.Query("SELECT * FROM sessions WHERE plugin_id = @pid ORDER BY updated_at DESC",
                 EntityMappers.MapSession, new SqliteParameter("@pid", pluginId));
             var rows = entities.Select(SessionToPluginRow).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListPluginSessionRow);
         }
         catch (Exception ex) { return WorkerResponse.Error(ex.Message); }
     }
@@ -169,9 +170,9 @@ public static class DbPluginSessionTools
                 "SELECT * FROM sessions WHERE external_chat_id = @key", EntityMappers.MapSession,
                 new SqliteParameter("@key", externalChatId));
             var row = entity is null ? null : SessionToPluginRow(entity);
-            return WorkerResponse.Json(new PluginSessionFindResult(true, row, null));
+            return WorkerResponse.Json(new PluginSessionFindResult(true, row, null), InfrastructureJsonContext.Default.PluginSessionFindResult);
         }
-        catch (Exception ex) { return WorkerResponse.Json(new PluginSessionFindResult(false, null, ex.Message)); }
+        catch (Exception ex) { return WorkerResponse.Json(new PluginSessionFindResult(false, null, ex.Message), InfrastructureJsonContext.Default.PluginSessionFindResult); }
     }
 
     public static WorkerResponse ListAllPluginSessions(JsonElement parameters)
@@ -184,7 +185,7 @@ public static class DbPluginSessionTools
                 "SELECT * FROM sessions WHERE plugin_id IS NOT NULL AND plugin_id != '' ORDER BY updated_at DESC",
                 EntityMappers.MapSession);
             var rows = entities.Select(SessionToPluginRow).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListPluginSessionRow);
         }
         catch (Exception ex) { return WorkerResponse.Error(ex.Message); }
     }
@@ -204,7 +205,7 @@ public static class DbPluginSessionTools
                 new SqliteParameter("@sid", sessionId), new SqliteParameter("@limit", limit), new SqliteParameter("@offset", offset));
             var rows = entities.Select(m => new PluginSessionMessageRow
             { Id = m.Id, Role = m.Role, Content = m.Content, CreatedAt = m.CreatedAt }).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListPluginSessionMessageRow);
         }
         catch (Exception ex) { return WorkerResponse.Error(ex.Message); }
     }
@@ -270,10 +271,10 @@ public static class DbPluginSessionTools
     };
 
     public static WorkerResponse Mutation(int changed, int deleted)
-        => WorkerResponse.Json(new PluginSessionMutationResult(true, changed, deleted, null));
+        => WorkerResponse.Json(new PluginSessionMutationResult(true, changed, deleted, null), InfrastructureJsonContext.Default.PluginSessionMutationResult);
 
     public static WorkerResponse MutationError(string error)
-        => WorkerResponse.Json(new PluginSessionMutationResult(false, 0, 0, error));
+        => WorkerResponse.Json(new PluginSessionMutationResult(false, 0, 0, error), InfrastructureJsonContext.Default.PluginSessionMutationResult);
 
     public static string RequireString(JsonElement parameters, string name)
         => JsonHelpers.GetString(parameters, name) is { Length: > 0 } value

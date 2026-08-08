@@ -49,7 +49,7 @@ internal sealed class MemoryModule : IWorkerModule
                 ColdCount = 0,
                 TopicsCount = 0,
                 DailyCount = 0
-            }));
+            }, WishfulClawJsonContext.Default.MemoryStats));
         });
     }
 
@@ -65,7 +65,7 @@ internal sealed class MemoryModule : IWorkerModule
                 await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
             }
             var content = await File.ReadAllTextAsync(path);
-            return WorkerResponse.Json(new MemoryReadResult(content));
+            return WorkerResponse.Json(new MemoryReadResult(content), WishfulClawJsonContext.Default.MemoryReadResult);
         });
     }
 
@@ -131,7 +131,7 @@ internal sealed class MemoryModule : IWorkerModule
                 new SqliteParameter("@status", entry.Status),
                 new SqliteParameter("@ca", entry.CreatedAt),
                 new SqliteParameter("@ua", entry.UpdatedAt));
-            return Task.FromResult(WorkerResponse.Json(new MemoryMutationResult(true, Id: id)));
+            return Task.FromResult(WorkerResponse.Json(new MemoryMutationResult(true, Id: id), WishfulClawJsonContext.Default.MemoryMutationResult));
         });
     }
 
@@ -148,7 +148,7 @@ internal sealed class MemoryModule : IWorkerModule
                 "SELECT * FROM memory_entries WHERE id = @id",
                 EntityMappers.MapMemoryEntry, new SqliteParameter("@id", id));
             if (entry is null)
-                return Task.FromResult(WorkerResponse.Json(new SimpleOkResult(false, Error: "Entry not found")));
+                return Task.FromResult(WorkerResponse.Json(new SimpleOkResult(false, Error: "Entry not found"), WishfulClawJsonContext.Default.SimpleOkResult));
 
             if (content is not null) entry.Content = content;
             if (priority is not null) entry.Priority = priority.ToLowerInvariant();
@@ -261,7 +261,7 @@ private static IMemorySearch GetSearch() =>
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SimpleOkResult(false, Error: ex.Message));
+            return WorkerResponse.Json(new SimpleOkResult(false, Error: ex.Message), WishfulClawJsonContext.Default.SimpleOkResult);
         }
     }
 }

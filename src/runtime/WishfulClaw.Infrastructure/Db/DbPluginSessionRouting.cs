@@ -1,4 +1,5 @@
-using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -54,16 +55,25 @@ public static class DbPluginSessionRouting
                     ExternalChatId = compositeKey, ProviderId = providerId, ModelId = modelId,
                     ModelSelectionMode = modelSelectionMode
                 };
-                DbSessionTools.Create(JsonSerializer.SerializeToElement(new Dictionary<string, object?>
+                WorkerJsonHelper.BuildJsonElement(w =>
                 {
-                    ["id"] = entity.Id, ["title"] = entity.Title, ["mode"] = entity.Mode,
-                    ["createdAt"] = entity.CreatedAt, ["updatedAt"] = entity.UpdatedAt,
-                    ["projectId"] = entity.ProjectId, ["workingFolder"] = entity.WorkingFolder,
-                    ["sshConnectionId"] = entity.SshConnectionId, ["pinned"] = false,
-                    ["pluginId"] = entity.PluginId, ["externalChatId"] = entity.ExternalChatId,
-                    ["providerId"] = entity.ProviderId, ["modelId"] = entity.ModelId,
-                    ["modelSelectionMode"] = entity.ModelSelectionMode
-                }));
+                    w.WriteStartObject();
+                    w.WriteString("id", entity.Id);
+                    w.WriteString("title", entity.Title);
+                    w.WriteString("mode", entity.Mode);
+                    w.WriteNumber("createdAt", entity.CreatedAt);
+                    w.WriteNumber("updatedAt", entity.UpdatedAt);
+                    w.WriteString("projectId", entity.ProjectId);
+                    w.WriteString("workingFolder", entity.WorkingFolder);
+                    w.WriteString("sshConnectionId", entity.SshConnectionId);
+                    w.WriteBoolean("pinned", false);
+                    w.WriteString("pluginId", entity.PluginId);
+                    w.WriteString("externalChatId", entity.ExternalChatId);
+                    w.WriteString("providerId", entity.ProviderId);
+                    w.WriteString("modelId", entity.ModelId);
+                    w.WriteString("modelSelectionMode", entity.ModelSelectionMode);
+                    w.WriteEndObject();
+                });
             }
             else
             {
@@ -110,11 +120,11 @@ public static class DbPluginSessionRouting
 
             return WorkerResponse.Json(new PluginRouteSessionResult(
                 true, sessionId, sessionTitle, sessionProjectId,
-                DbPluginSessionTools.EmptyToNull(project?.WorkingFolder), project?.SshConnectionId, null));
+                DbPluginSessionTools.EmptyToNull(project?.WorkingFolder), project?.SshConnectionId, null), InfrastructureJsonContext.Default.PluginRouteSessionResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new PluginRouteSessionResult(false, null, null, null, null, null, ex.Message));
+            return WorkerResponse.Json(new PluginRouteSessionResult(false, null, null, null, null, null, ex.Message), InfrastructureJsonContext.Default.PluginRouteSessionResult);
         }
     }
 

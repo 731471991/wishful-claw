@@ -1,4 +1,5 @@
-using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -15,7 +16,7 @@ public static class DbGoalTools
             var db = DbClient.GetClient(parameters);
             var entities = db.Query("SELECT * FROM goals ORDER BY updated_at DESC", EntityMappers.MapGoal);
             var rows = entities.Select(GoalRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListGoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.List failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -28,13 +29,15 @@ public static class DbGoalTools
             var db = DbClient.GetClient(parameters);
             var sessionId = parameters.TryGetProperty("sessionId", out var sidEl) ? sidEl.GetString() : null;
             if (string.IsNullOrEmpty(sessionId))
-                return WorkerResponse.Json(new GoalFindResult(false, null, "sessionId is required"));
+                return WorkerResponse.Json(new GoalFindResult(false, null, "sessionId is required"), InfrastructureJsonContext.Default.GoalFindResult);
 
             var entity = db.QueryFirstOrDefault(
                 "SELECT * FROM goals WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
                 EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
             var row = entity != null ? GoalRow.FromEntity(entity) : null;
-            return WorkerResponse.Json(row ?? (object)new GoalFindResult(false, null, null));
+            if (row != null)
+                return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
+            return WorkerResponse.Json(new GoalFindResult(false, null, null), InfrastructureJsonContext.Default.GoalFindResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Get failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -76,7 +79,7 @@ public static class DbGoalTools
                 CompletedPlanCount = GetInt(parameters, "completedPlanCount", 0),
                 CurrentPlanIndex = GetInt(parameters, "currentPlanIndex", -1),
                 WorkingFolder = GetString(parameters, "workingFolder"), CreatedAt = now, UpdatedAt = now };
-            return WorkerResponse.Json(GoalRow.FromEntity(entity));
+            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Create failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -112,7 +115,7 @@ public static class DbGoalTools
             var entity = new GoalEntity { GoalId = goalId, SessionId = sessionId, Objective = objective,
                 Status = GetString(parameters, "status") ?? "active", TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
                 WorkingFolder = GetString(parameters, "workingFolder"), CreatedAt = now, UpdatedAt = now };
-            return WorkerResponse.Json(GoalRow.FromEntity(entity));
+            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Set failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -129,7 +132,7 @@ public static class DbGoalTools
                 EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
 
             if (entity == null)
-                return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"));
+                return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"), InfrastructureJsonContext.Default.GoalMutationResult);
 
             if (parameters.TryGetProperty("patch", out var patch) && patch.ValueKind == JsonValueKind.Object)
             {
@@ -173,7 +176,7 @@ public static class DbGoalTools
                 new SqliteParameter("@ua", entity.UpdatedAt),
                 new SqliteParameter("@gid", entity.GoalId));
 
-            return WorkerResponse.Json(GoalRow.FromEntity(entity));
+            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Update failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -194,7 +197,7 @@ public static class DbGoalTools
                 InsertEvent(db, sessionId, entity.GoalId, "cleared", "Goal cleared", null, now);
 
             var changed = db.Execute("DELETE FROM goals WHERE session_id = @sid", new SqliteParameter("@sid", sessionId));
-            return WorkerResponse.Json(new { success = true, cleared = changed > 0 });
+            return WorkerResponse.Json(new GoalClearResult(true, changed > 0), InfrastructureJsonContext.Default.GoalClearResult);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Clear failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -213,7 +216,7 @@ public static class DbGoalTools
                 "SELECT * FROM goals WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
                 EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
             if (entity == null)
-                return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"));
+                return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"), InfrastructureJsonContext.Default.GoalMutationResult);
 
             entity.TokensUsed += tokenDelta;
             entity.TimeUsedSeconds += timeDeltaSeconds;
@@ -227,7 +230,7 @@ public static class DbGoalTools
 
             InsertEvent(db, sessionId, entity.GoalId, "usage_accounted",
                 $"Usage: +{tokenDelta} tokens, +{timeDeltaSeconds}s", null, entity.UpdatedAt);
-            return WorkerResponse.Json(GoalRow.FromEntity(entity));
+            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.AccountUsage failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -242,7 +245,7 @@ public static class DbGoalTools
                 "SELECT * FROM goals WHERE status = 'active' OR status = 'paused' ORDER BY updated_at DESC",
                 EntityMappers.MapGoal);
             var rows = entities.Select(GoalRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListGoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.ListActive failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -267,7 +270,7 @@ public static class DbGoalTools
 
             var entities = db.Query(sql, EntityMappers.MapGoalEvent, [.. paramList]);
             var rows = entities.Select(GoalEventRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListGoalEventRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.ListEvents failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -295,7 +298,7 @@ public static class DbGoalTools
             var row = new GoalEventRow { SessionId = sessionId, GoalId = GetString(parameters, "goalId"),
                 EventType = eventType, Message = GetString(parameters, "message"),
                 MetadataJson = GetString(parameters, "metadataJson"), CreatedAt = now };
-            return WorkerResponse.Json(row);
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalEventRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.AddEvent failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }

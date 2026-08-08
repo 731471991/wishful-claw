@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using System.Buffers;
 using System.Text;
 using System.Text.Json;
@@ -25,7 +26,7 @@ public static class DbMessageCompactTools
 
             if (messages.Count < 6)
             {
-                return WorkerResponse.Json(new MessageCompactResult(true, messages.Count, 0, null));
+                return WorkerResponse.Json(new MessageCompactResult(true, messages.Count, 0, null), InfrastructureJsonContext.Default.MessageCompactResult);
             }
 
             var cutoff = messages.Count - 6;
@@ -43,11 +44,11 @@ public static class DbMessageCompactTools
                 compacted++;
             }
 
-            return WorkerResponse.Json(new MessageCompactResult(true, messages.Count, compacted, null));
+            return WorkerResponse.Json(new MessageCompactResult(true, messages.Count, compacted, null), InfrastructureJsonContext.Default.MessageCompactResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new MessageCompactResult(false, 0, 0, ex.Message));
+            return WorkerResponse.Json(new MessageCompactResult(false, 0, 0, ex.Message), InfrastructureJsonContext.Default.MessageCompactResult);
         }
     }
 
@@ -89,11 +90,11 @@ public static class DbMessageCompactTools
                 stats.AssistantReplies,
                 stats.FirstCreatedAt,
                 stats.LastCreatedAt,
-                null));
+                null), InfrastructureJsonContext.Default.MessageUsageStatsResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new MessageUsageStatsResult(false, false, 0, 0, 0, 0, 0, 0, 0, 0, null, null, ex.Message));
+            return WorkerResponse.Json(new MessageUsageStatsResult(false, false, 0, 0, 0, 0, 0, 0, 0, 0, null, null, ex.Message), InfrastructureJsonContext.Default.MessageUsageStatsResult);
         }
     }
 
