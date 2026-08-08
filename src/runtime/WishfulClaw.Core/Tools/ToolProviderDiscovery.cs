@@ -1,10 +1,10 @@
-using System.Reflection;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Core.Tools;
 
 /// <summary>
 /// Registers known IToolProvider implementations.
-/// AOT-safe: uses explicit type list provided by the caller instead of Assembly.GetTypes().
+/// AOT-safe: uses pre-created instances, no reflection.
 /// </summary>
 public static class ToolProviderDiscovery
 {
@@ -28,41 +28,5 @@ public static class ToolProviderDiscovery
                     $"[ToolProviderDiscovery] Failed to register provider '{provider.GetType().Name}': {ex.Message}");
             }
         }
-    }
-
-    /// <summary>
-    /// Legacy overload for backward compatibility.
-    /// </summary>
-    public static void DiscoverAndRegister(ToolRegistry registry, Type[] providerTypes)
-    {
-        foreach (var type in providerTypes.OrderBy(t => t.Name, StringComparer.Ordinal))
-        {
-            try
-            {
-                var provider = (IToolProvider)Activator.CreateInstance(type)!;
-                registry.PushCategory(provider.Category);
-                provider.RegisterTools(registry);
-                registry.PopCategory();
-            }
-            catch (Exception ex)
-            {
-                System.Console.Error.WriteLine(
-                    $"[ToolProviderDiscovery] Failed to register provider '{type.Name}': {ex.Message}");
-            }
-        }
-    }
-
-    /// <summary>
-    /// Legacy overload for backward compatibility (non-AOT scenarios).
-    /// Uses Assembly.GetTypes() — will fail under AOT.
-    /// </summary>
-    public static void DiscoverAndRegister(ToolRegistry registry, Assembly assembly)
-    {
-        var providerTypes = assembly.GetTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false }
-                && typeof(IToolProvider).IsAssignableFrom(t))
-            .ToArray();
-
-        DiscoverAndRegister(registry, providerTypes);
     }
 }
