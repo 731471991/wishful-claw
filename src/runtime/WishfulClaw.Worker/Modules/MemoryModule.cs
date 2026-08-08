@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Text.Json;
 using WishfulClaw.Contracts;
@@ -65,7 +65,7 @@ internal sealed class MemoryModule : IWorkerModule
                 await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
             }
             var content = await File.ReadAllTextAsync(path);
-            return WorkerResponse.Json(new { content });
+            return WorkerResponse.Json(new MemoryReadResult(content));
         });
     }
 
@@ -83,7 +83,7 @@ internal sealed class MemoryModule : IWorkerModule
             }
             await File.WriteAllTextAsync(path, content);
             MemoryUpdateQueue.Enqueue("", "Hot memory file was overwritten via memory/write endpoint.");
-            return WorkerResponse.Json(new { ok = true });
+            return WorkerResponse.Json(new SimpleOkResult(true), WishfulClawJsonContext.Default.SimpleOkResult);
         });
     }
 
@@ -97,7 +97,7 @@ internal sealed class MemoryModule : IWorkerModule
         return RunAsync(async () =>
         {
             var hits = await search.SearchAsync(query, scope, limit, includeDeprecated);
-            return WorkerResponse.Json(new { hits });
+            return WorkerResponse.Json(new MemorySearchResponse(hits.ToList()), WishfulClawJsonContext.Default.MemorySearchResponse);
         });
     }
 
@@ -131,7 +131,7 @@ internal sealed class MemoryModule : IWorkerModule
                 new SqliteParameter("@status", entry.Status),
                 new SqliteParameter("@ca", entry.CreatedAt),
                 new SqliteParameter("@ua", entry.UpdatedAt));
-            return Task.FromResult(WorkerResponse.Json(new { ok = true, id }));
+            return Task.FromResult(WorkerResponse.Json(new MemoryMutationResult(true, Id: id)));
         });
     }
 
@@ -148,7 +148,7 @@ internal sealed class MemoryModule : IWorkerModule
                 "SELECT * FROM memory_entries WHERE id = @id",
                 EntityMappers.MapMemoryEntry, new SqliteParameter("@id", id));
             if (entry is null)
-                return Task.FromResult(WorkerResponse.Json(new { ok = false, error = "Entry not found" }));
+                return Task.FromResult(WorkerResponse.Json(new SimpleOkResult(false, Error: "Entry not found")));
 
             if (content is not null) entry.Content = content;
             if (priority is not null) entry.Priority = priority.ToLowerInvariant();
@@ -163,7 +163,7 @@ internal sealed class MemoryModule : IWorkerModule
                 new SqliteParameter("@status", entry.Status),
                 new SqliteParameter("@ua", entry.UpdatedAt),
                 new SqliteParameter("@id", id));
-            return Task.FromResult(WorkerResponse.Json(new { ok = true }));
+            return Task.FromResult(WorkerResponse.Json(new SimpleOkResult(true), WishfulClawJsonContext.Default.SimpleOkResult));
         });
     }
 
@@ -261,7 +261,7 @@ private static IMemorySearch GetSearch() =>
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new { ok = false, error = ex.Message });
+            return WorkerResponse.Json(new SimpleOkResult(false, Error: ex.Message));
         }
     }
 }
