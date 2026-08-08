@@ -1,7 +1,8 @@
 ﻿# 开发进度
 
 ## v2-iter-11：Native AOT 打包 — SqlSugar → Microsoft.Data.Sqlite 迁移
-- 状态：代码完成，AOT 打包阻塞（缺 C++ 工具链）
+- 状态：已完成 PASS
+- Tag: v2.11.0
 - 分支：dev/v2-iter-11
 - Commit: 32409a3
 - 日期: 2026-08-08
@@ -15,7 +16,8 @@
   - 清除 AOT 逃避配置：删除 rd.xml、移除 StaticConfig.EnableAot、移除 JsonSerializerIsReflectionEnabledByDefault
   - C# 编译：0 错误，10 警告（SQLitePCLRaw 传递依赖漏洞警告）
   - TypeScript 编译：3/3 配置 PASS
-  - AOT 打包：失败 — 系统缺少 Visual Studio C++ 工具链（cl.exe/link.exe），需安装 "Desktop development for C++" 工作负载
+  - AOT 打包：成功 — Worker.exe = 14.6 MB（不含 pdb），0 错误，158 个 trim/AOT 分析警告（JsonSerializer 反射警告，后续可用 source generation 消除）
+  - C++ 工具链：VS 2026 Build Tools (MSVC 14.44)，位于 C:\Program Files (x86)\Microsoft Visual Studio8\BuildTools，需设置 PATH/INCLUDE/LIB 环境变量（run_aot.sh 脚本）
 
 ## v2-iter-10：全局会话 + 项目编排工具
 - 状态：已完成
