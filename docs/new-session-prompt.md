@@ -1,4 +1,4 @@
-# 新会话启动提示语
+﻿# 新会话启动提示语
 
 > 复制以下内容到新会话作为第一条消息发送。
 
@@ -56,7 +56,7 @@
 | v2-iter-7 | 主聊天折叠块模式 — ExecutionProcessBlock 折叠块组件 + 过程/最终文本拆分 + 按工具分类摘要 + 缓存命中率 token 级修复 | ✅ 已完成，tag v2.7.0 |
 | v2-iter-8 | 计划模式（人机协同执行引擎）— explore→plan→confirm→execute→verify 状态机 + 计划文件/状态文件落盘 + SubmitPlanReview reverse request 用户确认 + PlanReviewCard + UpdatePlanStep 步骤跟踪 | ✅ 已完成，tag v2.8.0 |
 | v2-iter-9 | Goal 模式（自主跑完迭代）— GoalOrchestrator 编排层 + 自确认/自检评估 + 429 限流长退避 + 可中断 + 前端 Goal 进度面板 + 上下文压缩阈值统一 + 内置浏览器修复 + 配色默认远航蓝 + AOT 兼容配置 | ✅ 已完成，tag v2.9.0，已合并 main |
-| v2-iter-10 | 全局会话 + 项目编排工具（规划中，需与老大讨论确认范围） | ⏳ 待规划 |
+| v2-iter-10 | 全局会话 + 项目编排工具 — 4 个项目工具（list_projects/get_project_details/create_session/send_session_message），global sessionMode，ToolProvider availableModes 扩展，send_session_message reverse request 链路 | ✅ 已完成，tag v2.10.0 |
 | v2-iter-11 | Native AOT 打包（SqlSugar → Dapper 迁移）— 真正 AOT 裁剪让包尽量小（规划中，需与老大讨论确认） | ⏳ 待规划 |
 
 ## 当前项目架构（7 层）
@@ -79,9 +79,9 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，最新 tag：`v2.9.0`
-- v2-iter-9（Goal 模式）已完成，已合并 main 并打 tag v2.9.0，开发分支已清理
-- 下一步：v2-iter-10 / v2-iter-11（均需先与老大讨论确认范围和需求）
+- 当前分支：`main`，最新 tag：`v2.10.0`
+- v2-iter-10（全局会话 + 项目编排工具）已完成，已合并 main 并打 tag v2.10.0，开发分支已清理
+- 下一步：v2-iter-11（Native AOT 打包，需与老大讨论确认范围和需求）
 - TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`（三个 tsconfig 配置均需验证）
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
 
@@ -98,11 +98,22 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 - **DB 层** — PlanEntity + DbPlanTools（6 个 DB 端点），CodeFirst 自动建表
 - **PromptBuilder guidance** — 计划模式引导通过工具返回值注入而非 system prompt
 
+## v2-iter-10 实际实现
+
+全局会话作为"项目经理"小助手，不绑项目目录，通过 4 个项目工具与各项目下的会话交互。
+
+- **工具注册**（`ProjectToolsProvider.cs`）— list_projects / get_project_details / create_session / send_session_message 四个工具定义，Category="project"，AvailableModes=["global"]
+- **后端执行器**（`AgentRuntimeProjectExecutor.cs`）— list_projects 查 DB 返回项目列表（含活跃会话数），get_project_details 查项目会话 + 读 `.wishful-claw/project-status.md` 文件（不存在时返回 statusUpdateTemplate 让 Agent 自主决定是否触发整理），create_session 给项目建新会话，send_session_message 通过 reverse request 转发到 renderer
+- **send_session_message 链路** — Worker → reverse request "project/send-session-message" → Main 进程 rendererMethods → Renderer renderer-tool-bridge → chat-store.sendMessage()（fire-and-forget，异步执行）
+- **ToolDispatchRouter 路由** — 新增 `AgentRuntimeProjectExecutor.IsProjectTool()` 分支分发 4 工具
+- **ToolPreset** — chat/coding preset 的 AllowedCategories 加入 "project" 类别
+- **sessionMode** — 新增 "global" 模式，InputArea 根据 `!activeProjectId` 自动设置 sessionMode="global"，各 ToolProvider 的 availableModes 扩展 "global"
+- **状态文件** — 固定目录 `.wishful-claw/project-status.md`，项目会话收到固定模版消息后自行整理输出，get_project_details 只读此文件，不扫描 plans/goals 目录兜底
+
 ## 下一步（需与老大讨论确认后确定）
 
-当前已完成 v2-iter-9（tag v2.9.0）。候选迭代（范围待与老大讨论确认）：
+当前已完成 v2-iter-10（tag v2.10.0）。候选迭代（范围待与老大讨论确认）：
 
-- **v2-iter-10**：全局会话 + 项目编排工具（详见 `docs/iteration-plan.md`）
 - **v2-iter-11**：Native AOT 打包（SqlSugar → Dapper 迁移）（详见 `docs/iteration-plan.md`）
 
 **开工前先与老大确认本次迭代具体做什么、优先级、边界。**
@@ -123,7 +134,7 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## Git 工作流
 
-- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-9`
+- 新迭代分支从 main 创建：`git checkout main && git checkout -b dev/v2-iter-{N}`
 - **功能单元测试通过后才 commit**，不要改一点就提交
 - Plan 执行期间只 commit 不 push，Plan 完成后才 push
 - 迭代是否完结由用户确认，Agent 不得自行合并 main / 打 tag / 删分支
@@ -140,9 +151,9 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.9.0`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.10.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看候选迭代（v2-iter-10 / v2-iter-11）定义
+3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看候选迭代（v2-iter-11）定义
 4. **与老大讨论确认本次迭代范围**（做什么、优先级、边界、验证标准），确认后再开工
 5. 新迭代从 main 创建分支：`git checkout main && git pull origin main && git checkout -b dev/v2-iter-{N}`
 

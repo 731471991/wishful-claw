@@ -296,7 +296,9 @@ git branch -d dev/v2-iter-{N}
 git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin --delete dev/v2-iter-{N}
 ```
 
-收尾完成后更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）。
+6. 更新 `docs/new-session-prompt.md` — 新会话提示词中的迭代表格状态、最新 tag、当前状态、候选迭代、会话开始指令等。
+
+7. 更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）。
 
 **关键要求**：收尾完成后，当前会话结束。下个会话直接从 main 拉取最新代码开始新迭代，不需要关心旧分支。
 
