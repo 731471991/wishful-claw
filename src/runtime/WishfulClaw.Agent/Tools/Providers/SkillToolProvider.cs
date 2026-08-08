@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// AgentRuntimeSkillExecutor is still used by use_capability for skill execution.
 /// This provider is kept as a no-op so reflection discovery doesn't break.
 /// </summary>
-internal sealed class SkillToolProvider : IToolProvider
+public sealed class SkillToolProvider : IToolProvider
 {
     public string Category => "skill";
 

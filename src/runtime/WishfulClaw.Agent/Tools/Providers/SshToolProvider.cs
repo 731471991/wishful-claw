@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers SSH-related tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeSshToolExecutor (reverse-request to main process).
 /// </summary>
-internal sealed class SshToolProvider : IToolProvider
+public sealed class SshToolProvider : IToolProvider
 {
     public string Category => "ssh";
 

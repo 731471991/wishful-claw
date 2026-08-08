@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Execution: ToolDispatchRouter → AgentRuntimeDesktopExecutor (reverse-request to main process).
 /// Available in normal and goal modes only (not sub-agent).
 /// </summary>
-internal sealed class DesktopToolProvider : IToolProvider
+public sealed class DesktopToolProvider : IToolProvider
 {
     public string Category => "desktop";
 

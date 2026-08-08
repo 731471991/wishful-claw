@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers notebook editing tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeNotebookEditExecutor.
 /// </summary>
-internal sealed class NotebookToolProvider : IToolProvider
+public sealed class NotebookToolProvider : IToolProvider
 {
     public string Category => "notebook";
 

@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers team collaboration tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeTeamExecutor (in-memory + reverse-request).
 /// </summary>
-internal sealed class TeamToolProvider : IToolProvider
+public sealed class TeamToolProvider : IToolProvider
 {
     public string Category => "team";
 

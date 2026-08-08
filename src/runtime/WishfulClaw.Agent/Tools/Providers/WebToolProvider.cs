@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers web search and fetch tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeWebSearchExecutor / AgentRuntimeWebFetchExecutor (direct HTTP in Worker).
 /// </summary>
-internal sealed class WebToolProvider : IToolProvider
+public sealed class WebToolProvider : IToolProvider
 {
     public string Category => "web";
 

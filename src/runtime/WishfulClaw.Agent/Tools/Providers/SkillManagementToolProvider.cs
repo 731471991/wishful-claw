@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Category "skill-management" is proxied via use_capability in normal chat/coding,
 /// but directly visible to the skill-installer sub-agent preset.
 /// </summary>
-internal sealed class SkillManagementToolProvider : IToolProvider
+public sealed class SkillManagementToolProvider : IToolProvider
 {
     public string Category => "skill-management";
 

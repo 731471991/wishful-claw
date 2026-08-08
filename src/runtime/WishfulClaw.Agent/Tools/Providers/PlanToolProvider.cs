@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Execution: ToolDispatchRouter → AgentRuntimePlanExecutor (file-based + DB).
 /// Available in normal mode only (not in goal mode — orchestrator handles planning).
 /// </summary>
-internal sealed class PlanToolProvider : IToolProvider
+public sealed class PlanToolProvider : IToolProvider
 {
     public string Category => "plan";
 

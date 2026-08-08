@@ -12,7 +12,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Inspired by Reasonix's use_capability design.
 /// Execution: ToolDispatchRouter → AgentRuntimeUseCapabilityExecutor.
 /// </summary>
-internal sealed class UseCapabilityToolProvider : IToolProvider
+public sealed class UseCapabilityToolProvider : IToolProvider
 {
     public string Category => "capability";
 

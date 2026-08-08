@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers channel-agnostic plugin messaging tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimePluginExecutor (reverse-request to main process).
 /// </summary>
-internal sealed class PluginToolProvider : IToolProvider
+public sealed class PluginToolProvider : IToolProvider
 {
     public string Category => "plugin";
 
