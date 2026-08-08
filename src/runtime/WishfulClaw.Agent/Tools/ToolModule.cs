@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Reflection;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Agent.Tools.FileTools;
@@ -31,11 +30,8 @@ public sealed class ToolModule : IWorkerModule
         // ── Mode 1: Direct registration (tools with real executors) ──
         RegisterDirectExecutors(registry);
 
-        // ── Mode 2: Auto-discover all IToolProvider implementations ──
-        // Scans the Worker assembly for IToolProvider classes and calls RegisterTools on each.
-        // Adding a new category = add a new file in Tools/Providers/, no edits needed here.
-        // AOT-safe: explicit type list instead of Assembly.GetTypes() reflection scan.
-        ToolProviderDiscovery.DiscoverAndRegister(registry,
+        // ── Mode 2: Direct registration of all IToolProvider implementations ──
+        IToolProvider[] providers =
         [
             new Providers.AskUserToolProvider(),
             new Providers.BrowserToolProvider(),
@@ -57,7 +53,13 @@ public sealed class ToolModule : IWorkerModule
             new Providers.UseCapabilityToolProvider(),
             new Providers.WebToolProvider(),
             new Providers.WidgetToolProvider(),
-        ]);
+        ];
+        foreach (var provider in providers.OrderBy(p => p.GetType().Name, StringComparer.Ordinal))
+        {
+            registry.PushCategory(provider.Category);
+            provider.RegisterTools(registry);
+            registry.PopCategory();
+        }
 
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;
