@@ -6,8 +6,9 @@
  * via the normal sendMessage pipeline — fully simulating a user action.
  *
  * Before calling sendMessage, ensures the target session exists in the chat store
- * (injected if missing). After sendMessage completes, reads the target session's
- * last assistant message from the store and returns it as the tool result.
+ * (injected if missing). Uses Promise.race with a short timeout so dbUpsertMessage
+ * (now awaited) completes before returning, but doesn't block the global session
+ * waiting for the full agent/run to finish.
  *
  * Flow:
  *   Worker (send_session_message tool)
@@ -15,8 +16,7 @@
  *     → Main process (rendererMethods)
  *     → Renderer (this handler)
  *     → Ensure session in store → chatStore.sendMessage() → agent/run
- *     → Read target session's reply from store
- *     → Response back to Worker
+ *     → Response back to Worker (after timeout, agent/run continues in background)
  */
 
 import { useChatStore } from '@renderer/stores/chat-store'
@@ -40,7 +40,6 @@ export async function handleProjectSendSessionMessage(
   }
 
   // 1. Ensure target session exists in the chat store
-  //    (sendMessage's beginUserTurn silently fails if session is not in store)
   const chatStore = useChatStore.getState()
   const existingSession = chatStore.sessions.find((s) => s.id === sessionId)
   if (!existingSession) {
@@ -88,31 +87,33 @@ export async function handleProjectSendSessionMessage(
     thinkingEnabled: false
   }
 
-  // 3. Fire-and-forget sendMessage — global session doesn't need to wait for result
-  //    The Agent can check back later via get_project_details.
+  // 3. Send message with short timeout — enough for dbUpsertMessage to persist,
+  //    but doesn't block the global session waiting for agent/run to complete.
   try {
-    // Fire-and-forget: don't await, let the target session execute in background
-    useChatStore.getState().sendMessage({
-      sessionMode: 'normal',
-      provider,
-      messages: [{ role: 'user', content }],
-      sessionId,
-      toolPreset: workingFolder ? 'coding' : 'chat',
-      webSearchEnabled: settings.webSearchEnabled,
-      workingFolder: workingFolder || undefined,
-      projectId: projectId || undefined,
-      maxIterations: 0,
-      maxParallelTools: settings.maxParallelToolCalls,
-      maxToolCallsPerTurn: settings.maxToolCallsPerTurn,
-      maxConcurrentSubAgents: settings.maxConcurrentSubAgents,
-      personaId: settings.defaultPersonaId ?? undefined,
-      language: settings.language,
-      userRules: settings.systemPrompt || undefined,
-      contextCompressionEnabled: settings.contextCompressionEnabled,
-      contextCompressionThreshold: settings.contextCompressionThreshold
-    })
+    await Promise.race([
+      useChatStore.getState().sendMessage({
+        sessionMode: 'normal',
+        provider,
+        messages: [{ role: 'user', content }],
+        sessionId,
+        toolPreset: workingFolder ? 'coding' : 'chat',
+        webSearchEnabled: settings.webSearchEnabled,
+        workingFolder: workingFolder || undefined,
+        projectId: projectId || undefined,
+        maxIterations: 0,
+        maxParallelTools: settings.maxParallelToolCalls,
+        maxToolCallsPerTurn: settings.maxToolCallsPerTurn,
+        maxConcurrentSubAgents: settings.maxConcurrentSubAgents,
+        personaId: settings.defaultPersonaId ?? undefined,
+        language: settings.language,
+        userRules: settings.systemPrompt || undefined,
+        contextCompressionEnabled: settings.contextCompressionEnabled,
+        contextCompressionThreshold: settings.contextCompressionThreshold
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 500))
+    ])
 
-    // Debug: check store state immediately after sendMessage
+    // Debug: check store state after sendMessage (or timeout)
     const storeAfter = useChatStore.getState()
     const sessionAfter = storeAfter.sessions.find((s) => s.id === sessionId)
     const msgCount = sessionAfter?.messages?.length ?? -1
@@ -120,7 +121,6 @@ export async function handleProjectSendSessionMessage(
     const sessionTitle = sessionAfter?.title ?? 'unknown'
     const storeSessionCount = storeAfter.sessions.length
 
-    // Don't wait for completion — return immediately after sending
     return {
       success: true,
       result: `Message sent to session "${sessionTitle}" (${sessionId}). ` +
@@ -133,4 +133,3 @@ export async function handleProjectSendSessionMessage(
     return { success: false, error: `Failed to send message: ${msg}` }
   }
 }
-
