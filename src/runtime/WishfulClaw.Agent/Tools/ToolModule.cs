@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using WishfulClaw.Contracts;
+using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Agent.Tools.FileTools;
 using WishfulClaw.Agent.Tools.MemoryTools;
@@ -56,9 +57,16 @@ public sealed class ToolModule : IWorkerModule
         ];
         foreach (var provider in providers.OrderBy(p => p.GetType().Name, StringComparer.Ordinal))
         {
-            registry.PushCategory(provider.Category);
-            provider.RegisterTools(registry);
-            registry.PopCategory();
+            try
+            {
+                registry.PushCategory(provider.Category);
+                provider.RegisterTools(registry);
+                registry.PopCategory();
+            }
+            catch (Exception ex)
+            {
+                WorkerLog.Warn($"[ToolModule] Failed to register provider '{provider.GetType().Name}': {ex.Message}");
+            }
         }
 
         // Expose via shared state for AgentLoop to access
