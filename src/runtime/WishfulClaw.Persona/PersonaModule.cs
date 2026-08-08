@@ -39,7 +39,7 @@ public sealed class PersonaModule : IWorkerModule
         var array = new JsonArray();
         foreach (var p in personas)
         {
-            array.Add(new JsonObject
+            array.Add((JsonNode)new JsonObject
             {
                 ["id"] = p.Id,
                 ["name"] = p.Name,
