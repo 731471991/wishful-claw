@@ -24,7 +24,7 @@ internal sealed class TeamToolProvider : IToolProvider
                 },
                 ["name"]
             ),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ));
 
         registry.Register(new ToolDefinitionPlaceholder(
@@ -34,7 +34,7 @@ internal sealed class TeamToolProvider : IToolProvider
                 new() { ["name"] = ToolSchemaBuilder.String("Team name.") },
                 ["name"]
             ),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ));
 
         registry.Register(new ToolDefinitionPlaceholder(
@@ -44,7 +44,7 @@ internal sealed class TeamToolProvider : IToolProvider
                 new() { ["name"] = ToolSchemaBuilder.String("Team name.") },
                 ["name"]
             ),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ));
 
         registry.Register(new ToolDefinitionPlaceholder(
@@ -59,7 +59,7 @@ internal sealed class TeamToolProvider : IToolProvider
                 },
                 ["team", "member", "message"]
             ),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ));
     }
 }

@@ -27,7 +27,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["imagePath"] = ToolSchemaBuilder.String("Local path to the image file.")
                 },
                 ["chatId", "imagePath"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuSendFile",
@@ -39,7 +39,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["filePath"] = ToolSchemaBuilder.String("Local path to the file.")
                 },
                 ["chatId", "filePath"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuListChatMembers",
@@ -47,7 +47,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["chatId"] = chatIdProp },
                 ["chatId"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuAtMember",
@@ -60,7 +60,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["content"] = ToolSchemaBuilder.String("Message content.")
                 },
                 ["chatId", "userId", "content"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuSendUrgent",
@@ -73,7 +73,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["urgentType"] = ToolSchemaBuilder.String("Urgent type.", ["app", "sms"])
                 },
                 ["messageId"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         // ── Feishu Bitable ──
         RegisterFeishuBitableTools(registry);
@@ -89,7 +89,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["imagePath"] = ToolSchemaBuilder.String("Local path to the image file.")
                 },
                 ["chatId", "imagePath"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "WeixinSendFile",
@@ -101,7 +101,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["filePath"] = ToolSchemaBuilder.String("Local path to the file.")
                 },
                 ["chatId", "filePath"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
     }
 
     private static void RegisterFeishuBitableTools(ToolRegistry registry)
@@ -114,7 +114,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
             "List Feishu Bitable (多维表格) apps.",
             ToolSchemaBuilder.Object(
                 new() { ["pageSize"] = ToolSchemaBuilder.Number("Page size. Defaults to 50.") }),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableListTables",
@@ -122,7 +122,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["appToken"] = appToken },
                 ["appToken"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableListFields",
@@ -130,7 +130,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["appToken"] = appToken, ["tableId"] = tableId },
                 ["appToken", "tableId"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableGetRecords",
@@ -144,7 +144,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["filter"] = ToolSchemaBuilder.String("Optional filter condition.")
                 },
                 ["appToken", "tableId"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableCreateRecords",
@@ -157,7 +157,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["records"] = ToolSchemaBuilder.ArraySchema("Records to create.", ToolSchemaBuilder.String("Record JSON."))
                 },
                 ["appToken", "tableId", "records"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableUpdateRecords",
@@ -170,7 +170,7 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["records"] = ToolSchemaBuilder.ArraySchema("Records to update.", ToolSchemaBuilder.String("Record JSON."))
                 },
                 ["appToken", "tableId", "records"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "FeishuBitableDeleteRecords",
@@ -183,6 +183,6 @@ internal sealed class ChannelPluginToolProvider : IToolProvider
                     ["recordIds"] = ToolSchemaBuilder.ArraySchema("Record IDs to delete.", ToolSchemaBuilder.String("Record ID."))
                 },
                 ["appToken", "tableId", "recordIds"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
     }
 }

@@ -282,7 +282,7 @@ public static class DbMessageTools
                 query = query.Where(m => m.Role == role);
             }
 
-            query = query.OrderBy("sort_order ASC, created_at ASC");
+            query = query.OrderBy("created_at ASC, sort_order ASC");
 
             if (paged)
             {
