@@ -179,8 +179,6 @@ export const useChatStore = create<ChatStore>()(
 
       }
 
-      console.log('[sendMessage] userText:', userText, 'sessionId:', sessionId, 'msgId:', userMessage.id)
-
       const assistantMessage: ChatMessage = {
 
         id: runId,
@@ -203,11 +201,6 @@ export const useChatStore = create<ChatStore>()(
 
       state.beginUserTurn(sessionId, userMessage, assistantMessage, assistantMessage.id)
 
-      const _afterTurn = get().sessions.find((s) => s.id === sessionId)
-      console.log('[sendMessage] after beginUserTurn: sessionExists=', !!_afterTurn,
-        'msgCount=', _afterTurn?.messages?.length,
-        'lastMsgText=', _afterTurn?.messages?.[_afterTurn.messages.length - 1]?.text)
-
 
 
       // Persist user message to DB (fire-and-forget)
@@ -218,7 +211,7 @@ export const useChatStore = create<ChatStore>()(
 
       const _userSortOrder = _sessForUserSort ? _sessForUserSort.messages.findIndex((m) => m.id === userMessage.id) : 0
 
-      await dbUpsertMessage(sessionId, userMessage, Math.max(0, _userSortOrder))
+      void dbUpsertMessage(sessionId, userMessage, Math.max(0, _userSortOrder))
 
 
 
