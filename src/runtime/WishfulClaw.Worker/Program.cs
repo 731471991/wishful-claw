@@ -1,6 +1,16 @@
-using System.Text;
+﻿using System.Text;
+using System.Text.Json.Serialization.Metadata;
+using WishfulClaw.Contracts;
+using WishfulClaw.Agent;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Worker;
+
+// Configure AOT-safe JSON serialization
+WorkerJsonHelper.ConfigureAotResolver(
+    JsonTypeInfoResolver.Combine(
+        WishfulClawJsonContext.Default,
+        AgentRuntimeJsonContext.Default,
+        new DefaultJsonTypeInfoResolver()));
 
 Console.OutputEncoding = Encoding.UTF8;
 

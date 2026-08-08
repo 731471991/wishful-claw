@@ -34,7 +34,30 @@ public sealed class ToolModule : IWorkerModule
         // ── Mode 2: Auto-discover all IToolProvider implementations ──
         // Scans the Worker assembly for IToolProvider classes and calls RegisterTools on each.
         // Adding a new category = add a new file in Tools/Providers/, no edits needed here.
-        ToolProviderDiscovery.DiscoverAndRegister(registry, typeof(ToolModule).Assembly);
+        // AOT-safe: explicit type list instead of Assembly.GetTypes() reflection scan.
+        ToolProviderDiscovery.DiscoverAndRegister(registry,
+        [
+            new Providers.AskUserToolProvider(),
+            new Providers.BrowserToolProvider(),
+            new Providers.ChannelPluginToolProvider(),
+            new Providers.CodeCompatibleToolProvider(),
+            new Providers.CronToolProvider(),
+            new Providers.DesktopToolProvider(),
+            new Providers.GoalToolProvider(),
+            new Providers.ImageGenerateToolProvider(),
+            new Providers.NotebookToolProvider(),
+            new Providers.PlanToolProvider(),
+            new Providers.PluginToolProvider(),
+            new Providers.ProjectToolsProvider(),
+            new Providers.SkillManagementToolProvider(),
+            new Providers.SkillToolProvider(),
+            new Providers.SshToolProvider(),
+            new Providers.TaskToolProvider(),
+            new Providers.TeamToolProvider(),
+            new Providers.UseCapabilityToolProvider(),
+            new Providers.WebToolProvider(),
+            new Providers.WidgetToolProvider(),
+        ]);
 
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;
