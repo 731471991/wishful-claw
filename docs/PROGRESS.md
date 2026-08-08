@@ -1,5 +1,22 @@
 # 开发进度
 
+## v2-iter-10：全局会话 + 项目编排工具
+- 状态：执行完成（待验证）
+- 分支：dev/v2-iter-10
+- VERDICT: —
+- Tag: —
+- Commit: b665e28
+- 日期: 2026-08-07
+- 备注：6 个步骤全部完成，编译通过。
+  - 步骤1：ProjectToolsProvider.cs - 4 工具定义注册
+  - 步骤2+3：AgentRuntimeProjectExecutor.cs - 后端 Executor 实现
+  - 步骤4：ToolDispatchRouter 路由接入 + ToolPreset project 类别
+  - 步骤5：Main 进程 rendererMethods 注册
+  - 步骤6：renderer bridge + project-send-message.ts handler
+  - 待老大确认验证
+
+
+
 ## 迭代一：项目骨架
 - 状态：已完成
 - 分支：dev/iter-1

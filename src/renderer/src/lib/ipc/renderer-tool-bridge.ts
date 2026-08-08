@@ -4,6 +4,7 @@ import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'
 import { handleNativePlanUiUpdate, handleNativePlanReviewRequest } from '@renderer/lib/tools/plan-native-ui'
 import { handleSkillManagementExecute } from '@renderer/lib/tools/skill-management-bridge'
+import { handleProjectSendSessionMessage } from '@renderer/lib/tools/project-send-message'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
   SIDECAR_RENDERER_TOOL_REQUEST_MSGPACK_CHANNEL,
@@ -125,6 +126,15 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
     if (payload.method === 'plan/review-request') {
       // Plan review waits for explicit user interaction (approve/reject).
       const result = await handleNativePlanReviewRequest(payload.params)
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'project/send-session-message') {
+      const result = await handleProjectSendSessionMessage(payload.params)
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result

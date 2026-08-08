@@ -24,7 +24,7 @@ internal sealed class CronToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["schedule"] = cronSchedule, ["prompt"] = cronPrompt, ["title"] = cronTitle },
                 ["schedule", "prompt"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronCreate",
@@ -32,7 +32,7 @@ internal sealed class CronToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["schedule"] = cronSchedule, ["prompt"] = cronPrompt, ["title"] = cronTitle },
                 ["schedule", "prompt"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronUpdate",
@@ -46,7 +46,7 @@ internal sealed class CronToolProvider : IToolProvider
                     ["title"] = cronTitle
                 },
                 ["task_id"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronRemove",
@@ -54,7 +54,7 @@ internal sealed class CronToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["task_id"] = ToolSchemaBuilder.String("Task ID to remove.") },
                 ["task_id"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronDelete",
@@ -62,12 +62,12 @@ internal sealed class CronToolProvider : IToolProvider
             ToolSchemaBuilder.Object(
                 new() { ["task_id"] = ToolSchemaBuilder.String("Task ID to delete.") },
                 ["task_id"]),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
 
         registry.Register(new ToolDefinitionPlaceholder(
             "CronList",
             "List all scheduled tasks.",
             ToolSchemaBuilder.Object(),
-            availableModes: ["normal", "goal"]));
+            availableModes: ["normal", "goal", "global"]));
     }
 }

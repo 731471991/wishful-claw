@@ -1,6 +1,6 @@
 ﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { GitBranch, Plus, Pin, Trash2, Pencil, Folder, FolderOpen, Eraser, Copy, Archive } from 'lucide-react'
+import { GitBranch, Plus, Pin, Trash2, Pencil, Folder, FolderOpen, Eraser, Copy, Archive, Loader2 } from 'lucide-react'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -129,6 +129,7 @@ export function SessionItem({ session, isActive, onClick }: SessionItemProps): R
   const duplicateSession = useChatStore((s) => s.duplicateSession)
   const togglePinSession = useChatStore((s) => s.togglePinSession)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
+  const isStreaming = useChatStore((s) => Boolean(s.streamingMessages[session.id]))
 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(session.title)
@@ -203,9 +204,13 @@ export function SessionItem({ session, isActive, onClick }: SessionItemProps): R
         >
           {session.pinned && <Pin className="size-3 shrink-0 text-primary/60" />}
           <span className="flex-1 truncate">{session.title}</span>
-          <span className="shrink-0 text-[10px] text-muted-foreground/40">
-            {formatRelativeTime(session.updatedAt)}
-          </span>
+          {isStreaming ? (
+            <Loader2 className="size-3 shrink-0 animate-spin text-primary" />
+          ) : (
+            <span className="shrink-0 text-[10px] text-muted-foreground/40">
+              {formatRelativeTime(session.updatedAt)}
+            </span>
+          )}
         </button>
       </ContextMenuTrigger>
       <ContextMenuContent>

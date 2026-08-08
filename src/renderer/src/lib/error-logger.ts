@@ -56,7 +56,7 @@ export function installRendererErrorLogger(): void {
   }
 }
 
-async function writeLog(
+export async function writeLog(
   level: string,
   message: string,
   stack?: string,

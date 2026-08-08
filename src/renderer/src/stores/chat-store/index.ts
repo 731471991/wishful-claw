@@ -18,6 +18,7 @@ import { createProjectSlice, type ProjectSlice } from './project-slice'
 import { createStreamingSlice, type StreamingSlice } from './streaming-slice'
 
 import type { ChatMessage } from './types'
+import { writeLog } from '@renderer/lib/error-logger'
 
 import { dbUpsertMessage, dbUpdateSession, awaitSessionCreated } from './db-helpers'
 
@@ -79,7 +80,7 @@ export interface AgentActions {
     sshConnectionId?: string
     projectId?: string
     enablePlanMode?: boolean
-    sessionMode?: 'normal' | 'goal'
+    sessionMode?: 'normal' | 'goal' | 'global'
 
   }) => Promise<void>
 
@@ -195,11 +196,15 @@ export const useChatStore = create<ChatStore>()(
 
       }
 
+      writeLog('info', '[sendMessage] userText: ' + userText + ' sessionId: ' + sessionId + ' runId: ' + runId)
+
 
 
       // Add messages to session
 
       state.beginUserTurn(sessionId, userMessage, assistantMessage, assistantMessage.id)
+      const _afterTurn = get().sessions.find((s) => s.id === sessionId)
+      writeLog('info', '[sendMessage] after beginUserTurn: sessionExists=' + (!!_afterTurn) + ' msgCount=' + (_afterTurn?.messages?.length ?? -1) + ' lastMsgId=' + (_afterTurn?.messages?.[_afterTurn.messages.length - 1]?.id ?? 'none'))
 
 
 
@@ -212,6 +217,7 @@ export const useChatStore = create<ChatStore>()(
       const _userSortOrder = _sessForUserSort ? _sessForUserSort.messages.findIndex((m) => m.id === userMessage.id) : 0
 
       void dbUpsertMessage(sessionId, userMessage, Math.max(0, _userSortOrder))
+      writeLog('info', '[sendMessage] dbUpsertMessage called for sessionId: ' + sessionId + ' msgId: ' + userMessage.id)
 
 
 
@@ -331,7 +337,8 @@ export const useChatStore = create<ChatStore>()(
 
       const state = get()
 
-      const runId = state.streamingMessageId
+      const sessionId = state.activeSessionId
+      const runId = sessionId ? state.streamingMessages[sessionId] : null
 
       if (!runId) return
 
@@ -349,9 +356,9 @@ export const useChatStore = create<ChatStore>()(
 
 
 
-      const sessionId = state.activeSessionId
-
       if (sessionId) {
+
+        useAgentStore.getState().setSessionRequestRetryState(sessionId, null)
 
         state.setStreamingMessageId(sessionId, null)
 

@@ -48,7 +48,7 @@ public sealed class FileListTool : IToolExecutor
 
     public JsonElement InputSchema { get; } = ParseSchema(
 
-        """{"type":"object","properties":{"path":{"type":"string","description":"Directory path to list. Defaults to working folder."},"hidden":{"type":"boolean","description":"Include hidden files. Default: false","default":false}},"required":[]}""");
+        """{"type":"object","properties":{"path":{"type":"string","description":"Directory path to list. Defaults to working folder."},"hidden":{"type":"boolean","description":"Include hidden files. Default: true","default":true}},"required":[]}""");
 
 
 
@@ -124,7 +124,7 @@ public sealed class FileListTool : IToolExecutor
 
                 // Skip hidden files by default
 
-                if (name.StartsWith('.') && !GetBool(input, "hidden", false))
+                if (name.StartsWith('.') && !GetBool(input, "hidden", true))
 
                 {
 

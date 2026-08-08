@@ -19,7 +19,7 @@ internal sealed class SkillManagementToolProvider : IToolProvider
             "list_installed_skills",
             "List all skills currently installed in the local skills directory. Returns each skill's name, description, and enabled status.",
             ToolSchemaBuilder.Object(),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ), Category);
 
         registry.Register(new ToolDefinitionPlaceholder(
@@ -29,7 +29,7 @@ internal sealed class SkillManagementToolProvider : IToolProvider
                 new() { ["query"] = ToolSchemaBuilder.String("Search query for finding skills") },
                 new[] { "query" }
             ),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ), Category);
 
         registry.Register(new ToolDefinitionPlaceholder(
@@ -41,7 +41,7 @@ internal sealed class SkillManagementToolProvider : IToolProvider
                     ["url"] = ToolSchemaBuilder.String("Direct download URL for the skill")
                 }
             ),
-            availableModes: ["normal", "goal"]
+            availableModes: ["normal", "goal", "global"]
         ), Category);
     }
 }

@@ -36,7 +36,7 @@ internal static class SessionRestoreTools
             // Load all messages ordered by sort_order
             var entities = db.Queryable<MessageEntity>()
                 .Where(m => m.SessionId == sessionId)
-                .OrderBy("sort_order ASC, created_at ASC")
+                .OrderBy("created_at ASC, sort_order ASC")
                 .ToList();
 
             if (entities.Count == 0)
