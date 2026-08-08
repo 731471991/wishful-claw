@@ -22,6 +22,7 @@
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import { writeLog } from '@renderer/lib/error-logger'
 
 interface SendSessionMessageParams {
   sessionId: string
@@ -92,6 +93,7 @@ export async function handleProjectSendSessionMessage(
   //    The Agent can check back later via get_project_details.
   try {
     // Fire-and-forget: don't await, let the target session execute in background
+    writeLog('info', '[sendMsg] sending to session: ' + sessionId + ' content: ' + content)
     useChatStore.getState().sendMessage({
       sessionMode: 'normal',
       provider,
