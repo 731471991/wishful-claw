@@ -1,34 +1,24 @@
-using SqlSugar;
 
 namespace WishfulClaw.Infrastructure.Db;
 
 // ─── Message Entity ───
 
-[SugarTable("messages")]
 public class MessageEntity
 {
-    [SugarColumn(IsPrimaryKey = true, ColumnName = "id")]
     public string Id { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "session_id")]
     public string SessionId { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "role")]
     public string Role { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "content")]
     public string Content { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "meta", IsNullable = true)]
     public string? Meta { get; set; }
 
-    [SugarColumn(ColumnName = "created_at")]
     public long CreatedAt { get; set; }
 
-    [SugarColumn(ColumnName = "usage", IsNullable = true)]
     public string? Usage { get; set; }
 
-    [SugarColumn(ColumnName = "sort_order")]
     public int SortOrder { get; set; }
 }
 
@@ -47,14 +37,14 @@ public sealed class MessageRow
 
     public static MessageRow FromEntity(MessageEntity e) => new()
     {
-        Id = e.Id,
-        SessionId = e.SessionId,
-        Role = e.Role,
-        Content = e.Content,
-        Meta = e.Meta,
-        CreatedAt = e.CreatedAt,
-        Usage = e.Usage,
-        SortOrder = e.SortOrder
+    Id = e.Id,
+    SessionId = e.SessionId,
+    Role = e.Role,
+    Content = e.Content,
+    Meta = e.Meta,
+    CreatedAt = e.CreatedAt,
+    Usage = e.Usage,
+    SortOrder = e.SortOrder
     };
 }
 

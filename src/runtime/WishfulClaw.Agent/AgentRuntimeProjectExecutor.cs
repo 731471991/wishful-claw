@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Agent;
@@ -51,26 +52,24 @@ public static class AgentRuntimeProjectExecutor
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var query = db.Queryable<ProjectEntity>()
-                .OrderBy("pinned DESC")
-                .OrderBy("updated_at DESC");
-
-            if (filter.Length > 0)
-            {
-                query = query.Where(p => p.Name.Contains(filter));
-            }
-
-            var entities = query.ToList();
+            string sql = filter.Length > 0
+                ? "SELECT * FROM projects WHERE name LIKE @filter ORDER BY pinned DESC, updated_at DESC"
+                : "SELECT * FROM projects ORDER BY pinned DESC, updated_at DESC";
+            var filterParam = filter.Length > 0
+                ? new[] { new SqliteParameter("@filter", $"%{filter}%") }
+                : Array.Empty<SqliteParameter>();
+            var entities = db.Query(sql, EntityMappers.MapProject, filterParam);
 
             var rows = entities.Select(e =>
             {
-                var sessionCount = db.Queryable<SessionEntity>()
-                    .Where(s => s.ProjectId == e.Id)
-                    .Count();
+                var sessionCount = db.QueryScalar<int>(
+                    "SELECT COUNT(*) FROM sessions WHERE project_id = @id",
+                    new SqliteParameter("@id", e.Id));
 
-                var activeSessionCount = db.Queryable<SessionEntity>()
-                    .Where(s => s.ProjectId == e.Id && s.UpdatedAt > (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 3600000))
-                    .Count();
+                var activeSessionCount = db.QueryScalar<int>(
+                    "SELECT COUNT(*) FROM sessions WHERE project_id = @id AND updated_at > @cutoff",
+                    new SqliteParameter("@id", e.Id),
+                    new SqliteParameter("@cutoff", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 3600000));
 
                 return new
                 {
@@ -111,18 +110,17 @@ public static class AgentRuntimeProjectExecutor
             var db = DbClient.GetClient(parameters);
 
             // Find project
-            var project = db.Queryable<ProjectEntity>().First(p => p.Id == projectId);
+            var project = db.QueryFirstOrDefault("SELECT * FROM projects WHERE id = @id",
+                EntityMappers.MapProject, new SqliteParameter("@id", projectId));
             if (project is null)
             {
                 return EncodeError($"Project not found: {projectId}");
             }
 
             // Get sessions for this project (last 20)
-            var sessions = db.Queryable<SessionEntity>()
-                .Where(s => s.ProjectId == projectId)
-                .OrderBy("updated_at DESC")
-                .Take(20)
-                .ToList();
+            var sessions = db.Query(
+                "SELECT * FROM sessions WHERE project_id = @pid ORDER BY updated_at DESC LIMIT 20",
+                EntityMappers.MapSession, new SqliteParameter("@pid", projectId));
 
             var sessionRows = sessions.Select(s => new
             {
@@ -209,7 +207,8 @@ public static class AgentRuntimeProjectExecutor
             var db = DbClient.GetClient(parameters);
 
             // Find project to get working folder
-            var project = db.Queryable<ProjectEntity>().First(p => p.Id == projectId);
+            var project = db.QueryFirstOrDefault("SELECT * FROM projects WHERE id = @id",
+                EntityMappers.MapProject, new SqliteParameter("@id", projectId));
             if (project is null)
             {
                 return Task.FromResult(EncodeError($"Project not found: {projectId}"));
@@ -232,7 +231,18 @@ public static class AgentRuntimeProjectExecutor
                 Pinned = 0
             };
 
-            db.Insertable(entity).ExecuteCommand();
+            db.Execute(
+                "INSERT INTO sessions (id, title, mode, created_at, updated_at, message_count, " +
+                "project_id, working_folder, ssh_connection_id, pinned) " +
+                "VALUES (@id, @title, @mode, @ca, @ua, 0, @pid, @wf, @ssh, 0)",
+                new SqliteParameter("@id", entity.Id),
+                new SqliteParameter("@title", entity.Title),
+                new SqliteParameter("@mode", entity.Mode),
+                new SqliteParameter("@ca", entity.CreatedAt),
+                new SqliteParameter("@ua", entity.UpdatedAt),
+                new SqliteParameter("@pid", (object?)entity.ProjectId ?? DBNull.Value),
+                new SqliteParameter("@wf", (object?)entity.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ssh", (object?)entity.SshConnectionId ?? DBNull.Value));
 
             var result = JsonSerializer.Serialize(new
             {

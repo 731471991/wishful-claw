@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Infrastructure.Db;
@@ -14,16 +15,15 @@ public static class DbProjectTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var entities = db.Queryable<ProjectEntity>()
-                .OrderBy("pinned DESC")
-                .OrderBy("updated_at DESC")
-                .ToList();
+            var entities = db.Query(
+                "SELECT * FROM projects ORDER BY pinned DESC, updated_at DESC",
+                EntityMappers.MapProject);
 
             var rows = entities.Select(e =>
             {
-                var count = db.Queryable<SessionEntity>()
-                    .Where(s => s.ProjectId == e.Id)
-                    .Count();
+                var count = db.QueryScalar<int>(
+                    "SELECT COUNT(*) FROM sessions WHERE project_id = @id",
+                    new SqliteParameter("@id", e.Id));
                 return ProjectRow.FromEntity(e, count);
             }).ToList();
 
@@ -44,7 +44,10 @@ public static class DbProjectTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var entity = db.Queryable<ProjectEntity>().First(p => p.Id == id);
+            var entity = db.QueryFirstOrDefault(
+                "SELECT * FROM projects WHERE id = @id",
+                EntityMappers.MapProject,
+                new SqliteParameter("@id", id));
             return WorkerResponse.Json(new ProjectFindResult(true, entity is null ? null : ProjectRow.FromEntity(entity), null));
         }
         catch (Exception ex)
@@ -75,19 +78,24 @@ public static class DbProjectTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
+            db.Execute(
+                "INSERT INTO projects (id, name, working_folder, ssh_connection_id, plugin_id, pinned, created_at, updated_at) " +
+                "VALUES (@id, @name, @wf, @ssh, @plugin, @pinned, @ca, @ua)",
+                new SqliteParameter("@id", id),
+                new SqliteParameter("@name", name),
+                new SqliteParameter("@wf", (object?)workingFolder ?? DBNull.Value),
+                new SqliteParameter("@ssh", (object?)sshConnectionId ?? DBNull.Value),
+                new SqliteParameter("@plugin", (object?)pluginId ?? DBNull.Value),
+                new SqliteParameter("@pinned", pinned),
+                new SqliteParameter("@ca", createdAt),
+                new SqliteParameter("@ua", updatedAt));
+
             var entity = new ProjectEntity
             {
-                Id = id,
-                Name = name,
-                WorkingFolder = workingFolder,
-                SshConnectionId = sshConnectionId,
-                PluginId = pluginId,
-                Pinned = pinned,
-                CreatedAt = createdAt,
-                UpdatedAt = updatedAt
+                Id = id, Name = name, WorkingFolder = workingFolder,
+                SshConnectionId = sshConnectionId, PluginId = pluginId,
+                Pinned = pinned, CreatedAt = createdAt, UpdatedAt = updatedAt
             };
-
-            db.Insertable(entity).ExecuteCommand();
 
             return WorkerResponse.Json(ProjectRow.FromEntity(entity));
         }
@@ -110,14 +118,26 @@ public static class DbProjectTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var current = db.Queryable<ProjectEntity>().First(p => p.Id == id);
+            var current = db.QueryFirstOrDefault(
+                "SELECT * FROM projects WHERE id = @id",
+                EntityMappers.MapProject,
+                new SqliteParameter("@id", id));
             if (current is null)
             {
                 return WorkerResponse.Json(new ProjectFindResult(true, null, null));
             }
 
             ApplyProjectPatch(patch, current);
-            db.Updateable(current).ExecuteCommand();
+            db.Execute(
+                "UPDATE projects SET name = @name, working_folder = @wf, ssh_connection_id = @ssh, " +
+                "plugin_id = @plugin, pinned = @pinned, updated_at = @ua WHERE id = @id",
+                new SqliteParameter("@name", current.Name),
+                new SqliteParameter("@wf", (object?)current.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ssh", (object?)current.SshConnectionId ?? DBNull.Value),
+                new SqliteParameter("@plugin", (object?)current.PluginId ?? DBNull.Value),
+                new SqliteParameter("@pinned", current.Pinned),
+                new SqliteParameter("@ua", current.UpdatedAt),
+                new SqliteParameter("@id", id));
 
             return WorkerResponse.Json(new ProjectFindResult(true, ProjectRow.FromEntity(current), null));
         }
@@ -135,27 +155,32 @@ public static class DbProjectTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var project = db.Queryable<ProjectEntity>().First(p => p.Id == id);
+            var project = db.QueryFirstOrDefault(
+                "SELECT * FROM projects WHERE id = @id",
+                EntityMappers.MapProject,
+                new SqliteParameter("@id", id));
             if (project is null)
             {
                 return WorkerResponse.Json(new ProjectDeleteResult(true, false, null, new List<string>(), null));
             }
 
-            var sessionIds = db.Queryable<SessionEntity>()
-                .Where(s => s.ProjectId == id)
-                .Select(s => s.Id)
-                .ToList();
+            var sessionIds = db.Query(
+                "SELECT id FROM sessions WHERE project_id = @id",
+                r => r.GetString("id"),
+                new SqliteParameter("@id", id));
 
-            // Delete messages for all sessions in this project
             if (sessionIds.Count > 0)
             {
-                db.Deleteable<MessageEntity>()
-                    .Where(m => sessionIds.Contains(m.SessionId))
-                    .ExecuteCommand();
+                // Delete messages for all sessions in this project
+                var placeholders = string.Join(",", sessionIds.Select((_, i) => $"@s{i}"));
+                var msgParams = sessionIds.Select((sid, i) => new SqliteParameter($"@s{i}", sid)).ToArray();
+                db.Execute($"DELETE FROM messages WHERE session_id IN ({placeholders})", msgParams);
             }
 
-            db.Deleteable<SessionEntity>().Where(s => s.ProjectId == id).ExecuteCommand();
-            db.Deleteable<ProjectEntity>().Where(p => p.Id == id).ExecuteCommand();
+            db.Execute("DELETE FROM sessions WHERE project_id = @id",
+                new SqliteParameter("@id", id));
+            db.Execute("DELETE FROM projects WHERE id = @id",
+                new SqliteParameter("@id", id));
 
             return WorkerResponse.Json(new ProjectDeleteResult(true, true, id, sessionIds, null));
         }
@@ -172,11 +197,9 @@ public static class DbProjectTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var existing = db.Queryable<ProjectEntity>()
-                .Where(p => p.PluginId == null)
-                .OrderBy("pinned DESC")
-                .OrderBy("updated_at DESC")
-                .First();
+            var existing = db.QueryFirstOrDefault(
+                "SELECT * FROM projects WHERE plugin_id IS NULL ORDER BY pinned DESC, updated_at DESC LIMIT 1",
+                EntityMappers.MapProject);
 
             if (existing is not null)
             {
@@ -184,15 +207,18 @@ public static class DbProjectTools
             }
 
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var id = CreateId();
+            db.Execute(
+                "INSERT INTO projects (id, name, created_at, updated_at) VALUES (@id, @name, @ca, @ua)",
+                new SqliteParameter("@id", id),
+                new SqliteParameter("@name", "Default Project"),
+                new SqliteParameter("@ca", now),
+                new SqliteParameter("@ua", now));
+
             var entity = new ProjectEntity
             {
-                Id = CreateId(),
-                Name = "Default Project",
-                CreatedAt = now,
-                UpdatedAt = now
+                Id = id, Name = "Default Project", CreatedAt = now, UpdatedAt = now
             };
-            db.Insertable(entity).ExecuteCommand();
-
             return WorkerResponse.Json(ProjectRow.FromEntity(entity));
         }
         catch (Exception ex)

@@ -1,21 +1,14 @@
-using SqlSugar;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 using WishfulClaw.Workspace.Memory;
 
 namespace WishfulClaw.Workspace.Memory;
 
-/// <summary>
-/// Memory search service using SQLite FTS5 (trigram tokenizer) with LIKE fallback.
-/// All memory data lives in the memory_entries table; FTS index is auto-maintained by triggers.
-/// </summary>
 public sealed class MemoryFtsService : IMemorySearch
 {
     public Task<IReadOnlyList<MemorySearchResult>> SearchAsync(
-        string query,
-        string? scope = null,
-        int limit = 10,
-        bool includeDeprecated = false,
-        CancellationToken ct = default)
+        string query, string? scope = null, int limit = 10,
+        bool includeDeprecated = false, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || limit <= 0)
             return Task.FromResult<IReadOnlyList<MemorySearchResult>>([]);
@@ -26,8 +19,7 @@ public sealed class MemoryFtsService : IMemorySearch
         var results = new List<MemorySearchResult>();
         var statusFilter = includeDeprecated ? "" : " AND status = 'active'";
         var scopeFilter = string.IsNullOrWhiteSpace(scope) || scope == "global"
-            ? ""
-            : $" AND scope = '{EscapeSql(scope)}'";
+            ? "" : $" AND scope = '{EscapeSql(scope)}'";
 
         // ── Method 1: FTS trigram search ──
         try
@@ -40,13 +32,13 @@ public sealed class MemoryFtsService : IMemorySearch
                 ORDER BY rank
                 LIMIT @limit
                 """;
-            var dt = db.Ado.GetDataTable(ftsSql,
-                new SugarParameter("@query", q),
-                new SugarParameter("@limit", limit));
-            foreach (System.Data.DataRow row in dt.Rows)
+            using var reader = db.QueryDataTable(ftsSql,
+                new SqliteParameter("@query", q),
+                new SqliteParameter("@limit", limit)).CreateDataReader();
+            while (reader.Read())
             {
                 ct.ThrowIfCancellationRequested();
-                results.Add(RowToResult(row));
+                results.Add(RowToResult(reader));
             }
         }
         catch
@@ -54,7 +46,7 @@ public sealed class MemoryFtsService : IMemorySearch
             // FTS failed — will fall through to LIKE
         }
 
-        // ── Method 2: LIKE fallback (if FTS returned nothing) ──
+        // ── Method 2: LIKE fallback ──
         if (results.Count == 0)
         {
             var likeSql = $"""
@@ -64,20 +56,20 @@ public sealed class MemoryFtsService : IMemorySearch
                 ORDER BY updated_at DESC
                 LIMIT @limit
                 """;
-            var dt = db.Ado.GetDataTable(likeSql,
-                new SugarParameter("@pattern", $"%{q}%"),
-                new SugarParameter("@limit", limit));
-            foreach (System.Data.DataRow row in dt.Rows)
+            using var reader = db.QueryDataTable(likeSql,
+                new SqliteParameter("@pattern", $"%{q}%"),
+                new SqliteParameter("@limit", limit)).CreateDataReader();
+            while (reader.Read())
             {
                 ct.ThrowIfCancellationRequested();
-                results.Add(RowToResult(row));
+                results.Add(RowToResult(reader));
             }
         }
 
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
 
-    private static MemorySearchResult RowToResult(System.Data.DataRow row)
+    private static MemorySearchResult RowToResult(System.Data.Common.DbDataReader row)
     {
         var id = row["id"] is long l ? l : Convert.ToInt64(row["id"]);
         var title = row["title"]?.ToString() ?? "";
@@ -92,13 +84,8 @@ public sealed class MemoryFtsService : IMemorySearch
 
         return new MemorySearchResult
         {
-            Id = id,
-            Title = title,
-            Content = content,
-            Scope = scope,
-            Priority = priority,
-            Status = status,
-            UpdatedAt = updatedAt
+            Id = id, Title = title, Content = content, Scope = scope,
+            Priority = priority, Status = status, UpdatedAt = updatedAt
         };
     }
 

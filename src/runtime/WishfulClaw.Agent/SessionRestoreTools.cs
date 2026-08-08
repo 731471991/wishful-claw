@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Agent;
@@ -34,10 +35,9 @@ internal static class SessionRestoreTools
             var db = DbClient.GetClient(parameters);
 
             // Load all messages ordered by sort_order
-            var entities = db.Queryable<MessageEntity>()
-                .Where(m => m.SessionId == sessionId)
-                .OrderBy("created_at ASC, sort_order ASC")
-                .ToList();
+            var entities = db.Query(
+                "SELECT * FROM messages WHERE session_id = @sid ORDER BY created_at ASC, sort_order ASC",
+                EntityMappers.MapMessage, new SqliteParameter("@sid", sessionId));
 
             if (entities.Count == 0)
             {

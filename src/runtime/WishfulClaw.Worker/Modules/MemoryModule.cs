@@ -5,6 +5,7 @@ using WishfulClaw.Contracts;
 using WishfulClaw.Workspace.Memory;
 using WishfulClaw.Agent.Tools;
 using WishfulClaw.Agent;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Worker.Modules;
@@ -120,7 +121,16 @@ internal sealed class MemoryModule : IWorkerModule
                 CreatedAt = now,
                 UpdatedAt = now
             };
-            var id = db.Insertable(entry).ExecuteReturnIdentity();
+            var id = db.ExecuteReturnIdentity(
+                "INSERT INTO memory_entries (scope, title, content, priority, status, created_at, updated_at) " +
+                "VALUES (@scope, @title, @content, @priority, @status, @ca, @ua)",
+                new SqliteParameter("@scope", entry.Scope),
+                new SqliteParameter("@title", (object?)entry.Title ?? DBNull.Value),
+                new SqliteParameter("@content", entry.Content),
+                new SqliteParameter("@priority", entry.Priority),
+                new SqliteParameter("@status", entry.Status),
+                new SqliteParameter("@ca", entry.CreatedAt),
+                new SqliteParameter("@ua", entry.UpdatedAt));
             return Task.FromResult(WorkerResponse.Json(new { ok = true, id }));
         });
     }
@@ -134,7 +144,9 @@ internal sealed class MemoryModule : IWorkerModule
         return RunAsync(() =>
         {
             var db = DbClient.GetClient();
-            var entry = db.Queryable<MemoryEntryEntity>().Where(e => e.Id == id).First();
+            var entry = db.QueryFirstOrDefault(
+                "SELECT * FROM memory_entries WHERE id = @id",
+                EntityMappers.MapMemoryEntry, new SqliteParameter("@id", id));
             if (entry is null)
                 return Task.FromResult(WorkerResponse.Json(new { ok = false, error = "Entry not found" }));
 
@@ -142,7 +154,15 @@ internal sealed class MemoryModule : IWorkerModule
             if (priority is not null) entry.Priority = priority.ToLowerInvariant();
             if (status is not null) entry.Status = status.ToLowerInvariant();
             entry.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            db.Updateable(entry).ExecuteCommand();
+            db.Execute(
+                "UPDATE memory_entries SET title = @title, content = @content, priority = @priority, " +
+                "status = @status, updated_at = @ua WHERE id = @id",
+                new SqliteParameter("@title", (object?)entry.Title ?? DBNull.Value),
+                new SqliteParameter("@content", entry.Content),
+                new SqliteParameter("@priority", entry.Priority),
+                new SqliteParameter("@status", entry.Status),
+                new SqliteParameter("@ua", entry.UpdatedAt),
+                new SqliteParameter("@id", id));
             return Task.FromResult(WorkerResponse.Json(new { ok = true }));
         });
     }

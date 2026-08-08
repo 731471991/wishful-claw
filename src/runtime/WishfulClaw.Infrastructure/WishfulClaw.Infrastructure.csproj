@@ -12,12 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SqlSugarCore" Version="5.1.4.216" />
-    <!-- SQLitePCLRaw.lib.e_sqlite3 2.1.11 has GHSA-2m69-gcr7-jv3q (SQLite engine vuln).
-         This is a transitive dep via SqlSugarCore -> Microsoft.Data.Sqlite 10.0.9.
-         Cannot upgrade independently without breaking SqlSugar compatibility.
-         Suppress until SqlSugarCore bumps its Microsoft.Data.Sqlite dependency. -->
-    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.11" NoWarn="NU1903" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

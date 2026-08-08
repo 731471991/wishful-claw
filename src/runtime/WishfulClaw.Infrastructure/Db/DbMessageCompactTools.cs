@@ -1,17 +1,13 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
-using SqlSugar;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Infrastructure.Db;
 
-/// <summary>
-/// Message compaction and usage statistics tools.
-/// Extracted from DbMessageTools to keep file sizes manageable.
-/// </summary>
 public static class DbMessageCompactTools
 {
     public static WorkerResponse CompactSession(JsonElement parameters)
@@ -22,10 +18,10 @@ public static class DbMessageCompactTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var messages = db.Queryable<MessageEntity>()
-                .Where(m => m.SessionId == sessionId)
-                .OrderBy(m => m.CreatedAt)
-                .ToList();
+            var messages = db.Query(
+                "SELECT * FROM messages WHERE session_id = @sid ORDER BY created_at ASC",
+                EntityMappers.MapMessage,
+                new SqliteParameter("@sid", sessionId));
 
             if (messages.Count < 6)
             {
@@ -40,8 +36,10 @@ public static class DbMessageCompactTools
                 var compactedContent = TryCompactMessageContent(row.Content);
                 if (compactedContent is null) continue;
 
-                row.Content = compactedContent;
-                db.Updateable(row).UpdateColumns(m => m.Content).ExecuteCommand();
+                db.Execute(
+                    "UPDATE messages SET content = @content WHERE id = @id",
+                    new SqliteParameter("@content", compactedContent),
+                    new SqliteParameter("@id", row.Id));
                 compacted++;
             }
 
@@ -61,10 +59,10 @@ public static class DbMessageCompactTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var messages = db.Queryable<MessageEntity>()
-                .Where(m => m.SessionId == sessionId && m.Role == "assistant" && m.Usage != null)
-                .OrderBy(m => m.CreatedAt)
-                .ToList();
+            var messages = db.Query(
+                "SELECT * FROM messages WHERE session_id = @sid AND role = 'assistant' AND usage IS NOT NULL ORDER BY created_at ASC",
+                EntityMappers.MapMessage,
+                new SqliteParameter("@sid", sessionId));
 
             var stats = new UsageStatsAccumulator();
             foreach (var msg in messages)
@@ -99,7 +97,7 @@ public static class DbMessageCompactTools
         }
     }
 
-    // ─── Compaction helpers ───
+    // ─── Compaction helpers (unchanged from original) ───
 
     private static string? TryCompactMessageContent(string content)
     {
@@ -168,7 +166,7 @@ public static class DbMessageCompactTools
             : element.GetRawText().Length;
     }
 
-    // ─── Usage parsing helpers ───
+    // ─── Usage parsing helpers (unchanged from original) ───
 
     private static bool TryAddUsage(UsageStatsAccumulator stats, string usageJson)
     {
@@ -206,14 +204,17 @@ public static class DbMessageCompactTools
         return 1;
     }
 
-    private static double GetDouble(JsonElement element, string propertyName)
-        => GetDoubleNullable(element, propertyName) ?? 0;
-
-    private static double? GetDoubleNullable(JsonElement element, string propertyName)
+    private static double GetDouble(JsonElement obj, string name)
     {
-        if (!element.TryGetProperty(propertyName, out var prop)) return null;
-        if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDouble(out var value)) return value;
-        if (prop.ValueKind == JsonValueKind.String && double.TryParse(prop.GetString(), out value)) return value;
+        if (obj.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number)
+            return el.GetDouble();
+        return 0;
+    }
+
+    private static double? GetDoubleNullable(JsonElement obj, string name)
+    {
+        if (obj.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number)
+            return el.GetDouble();
         return null;
     }
 
