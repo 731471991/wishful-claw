@@ -38,7 +38,7 @@ export async function handleNativeGoalConfirmRequest(params: unknown): Promise<G
     return { confirmed: false }
   }
 
-  // Store the pending goal info in the goal store so the GoalSessionBar can show it
+  // Store the pending goal info in the goal store so the GoalConfirmCard can show it
   useGoalStore.getState().applyGoalProgress({
     sessionId,
     goalId,
@@ -52,11 +52,8 @@ export async function handleNativeGoalConfirmRequest(params: unknown): Promise<G
     timestamp: Date.now()
   })
 
-  // Open the right panel to show the goal confirmation card
-  const { useUIStore } = await import('@renderer/stores/ui-store')
-  useUIStore.getState().openGoalPanel(sessionId)
-
-  // Wait for user to confirm or discard
+  // Wait for user to confirm or discard (the GoalConfirmCard in the chat window
+  // will call resolveGoalConfirm or cancelGoalConfirm when buttons are clicked)
   return await new Promise<GoalConfirmResponse>((resolve) => {
     const previous = goalConfirmResolvers.get(goalId)
     if (previous) {

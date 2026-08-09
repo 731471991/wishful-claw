@@ -12,6 +12,7 @@ import {
 } from '../execution-outline'
 import { AskUserQuestionCard } from '../AskUserQuestionCard'
 import { PlanReviewCard } from '../PlanReviewCard'
+import { GoalConfirmCard } from '../GoalConfirmCard'
 import { ToolCallCard, WidgetOutputBlock } from '../ToolCallCard'
 import { FileChangeCard } from '../FileChangeCard'
 import { BashArtifactsCard } from '../BashArtifactsCard'
@@ -118,6 +119,13 @@ export function ToolBlockRenderer({
           isLive={!!isStreaming}
           sessionId={sessionId}
         />
+      </ScaleIn>
+    )
+  }
+  if (block.name === 'create_goal') {
+    return (
+      <ScaleIn className={liveScaleInClassName}>
+        <GoalConfirmCard sessionId={sessionId} />
       </ScaleIn>
     )
   }
