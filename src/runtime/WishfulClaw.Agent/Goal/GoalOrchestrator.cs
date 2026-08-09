@@ -308,6 +308,14 @@ public static partial class GoalOrchestrator
         }
         return null;
     }
+
+    /// <summary>
+    /// Remove a pending goal (e.g. when the user discards it).
+    /// </summary>
+    public static void RemovePendingGoal(string goalId)
+    {
+        PendingGoals.TryRemove(goalId, out _);
+    }
 }
 
 /// <summary>

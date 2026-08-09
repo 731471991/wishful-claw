@@ -84,29 +84,78 @@ public static class AgentRuntimeGoalExecutor
         if (existingGoalId != null)
         {
             var existingStatus = GoalOrchestrator.GetActiveGoalId(sessionId) != null ? "active" : "pending";
-            // Re-emit the pending event so the frontend shows the confirmation card again
             if (existingStatus == "pending")
             {
+                // Re-send reverse request for existing pending goal
                 var existingText = GoalOrchestrator.GetPendingGoal(existingGoalId)?.GoalText ?? objective;
-                _ = GoalOrchestrator.EmitPendingGoalAsync(existingGoalId, sessionId, existingText, context);
+                var existingGoal = new GoalRecord(objective, "pending", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId);
+                Goals[sessionId] = existingGoal;
+                return await AwaitGoalConfirmationAsync(existingGoal, existingGoalId, sessionId, existingText, context);
             }
             return EncodeGoal(new GoalRecord(objective, existingStatus, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId));
         }
 
-        // Create a pending goal - does NOT start the orchestrator yet.
-        // The orchestrator will be started when the user confirms via the frontend.
+        // Create a pending goal
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
         var goalId = GoalOrchestrator.CreatePendingGoal(
             objective, sessionId, workingFolder, parameters);
-
-        // Notify the frontend of the pending goal so it can show the confirmation card
-        _ = GoalOrchestrator.EmitPendingGoalAsync(goalId, sessionId, objective, context);
 
         // Store in memory with pending status
         var goal = new GoalRecord(objective, "pending", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId);
         Goals[sessionId] = goal;
 
-        return EncodeGoal(goal);
+        // Send reverse request and wait for user confirmation
+        return await AwaitGoalConfirmationAsync(goal, goalId, sessionId, objective, context);
+    }
+
+    private static async Task<string> AwaitGoalConfirmationAsync(
+        GoalRecord goal, string goalId, string sessionId, string goalText, IWorkerRequestContext context)
+    {
+        // Notify the frontend of the pending goal via reverse request (blocking)
+        // The agent waits until the user confirms or discards the goal.
+        var confirmParams = WorkerJsonHelper.BuildJsonElement(w =>
+        {
+            w.WriteStartObject();
+            w.WriteString("goalId", goalId);
+            w.WriteString("sessionId", sessionId);
+            w.WriteString("objective", goalText);
+            w.WriteString("status", "pending");
+            w.WriteEndObject();
+        });
+
+        try
+        {
+            var response = await AgentRuntimeReverseRequests.RequestAsync(
+                context, "goal/confirm-request", confirmParams, CancellationToken.None);
+
+            var confirmed = response.TryGetProperty("confirmed", out var c) && c.GetBoolean();
+            if (confirmed)
+            {
+                // User confirmed — start the orchestrator
+                var workingFolder = GoalOrchestrator.GetPendingGoal(goalId)?.WorkingFolder;
+                var pendingParams = GoalOrchestrator.GetPendingGoal(goalId)?.Parameters ?? new JsonElement();
+                var goalTextFromPending = GoalOrchestrator.GetPendingGoal(goalId)?.GoalText ?? goalText;
+                var goalId2 = await GoalOrchestrator.StartAsync(
+                    goalTextFromPending, sessionId, workingFolder, pendingParams,
+                    new AgentRuntimeRunState($"goal-{goalId}", sessionId), context);
+                // Update in-memory state
+                Goals[sessionId] = new GoalRecord(goal.Objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2);
+                return EncodeGoal(new GoalRecord(goal.Objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2));
+            }
+            else
+            {
+                // User discarded — remove pending goal
+                GoalOrchestrator.RemovePendingGoal(goalId);
+                Goals.TryRemove(sessionId, out _);
+                // Return the pending goal with discarded status so the agent knows
+                return EncodeError("Goal was discarded by user.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Request cancelled (e.g. agent loop stopped)
+            return EncodeError("Goal confirmation was cancelled.");
+        }
     }
 
     private static string UpdateGoal(JsonElement input, string sessionId)

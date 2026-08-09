@@ -34,6 +34,7 @@ import {
   GoalUsageLine
 } from './goal-session-utils'
 import { GoalEventTimeline, LatestGoalNotice, useGoalActions } from './goal-session-views'
+import { resolveGoalConfirm, cancelGoalConfirm } from '@renderer/lib/tools/goal-native-ui'
 
 function GoalManagerDialog({
   goal,
@@ -267,7 +268,10 @@ export function GoalSessionBar({
                   size="sm"
                   className="h-8 gap-1.5 text-destructive"
                   disabled={actions.clearing}
-                  onClick={() => void actions.clearGoal()}
+                  onClick={() => {
+                    cancelGoalConfirm(goal.goalId)
+                    void actions.clearGoal()
+                  }}
                 >
                   <Trash2 className="size-3.5" />
                   {t('goal.discard', { defaultValue: 'Discard' })}
@@ -276,7 +280,10 @@ export function GoalSessionBar({
                   size="sm"
                   className="h-8 gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
                   disabled={actions.confirming}
-                  onClick={() => void actions.confirmGoal()}
+                  onClick={() => {
+                    resolveGoalConfirm(goal.goalId, true)
+                    void actions.confirmGoal()
+                  }}
                 >
                   {actions.confirming ? (
                     <Loader2 className="size-3.5 animate-spin" />

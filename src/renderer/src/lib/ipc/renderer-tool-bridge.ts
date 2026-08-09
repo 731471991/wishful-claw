@@ -3,6 +3,7 @@ import { handleMcpCapabilityList, handleMcpCapabilityInspect } from '@renderer/l
 import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'
 import { handleNativePlanUiUpdate, handleNativePlanReviewRequest } from '@renderer/lib/tools/plan-native-ui'
+import { handleNativeGoalConfirmRequest } from '@renderer/lib/tools/goal-native-ui'
 import { handleSkillManagementExecute } from '@renderer/lib/tools/skill-management-bridge'
 import { handleProjectSendSessionMessage } from '@renderer/lib/tools/project-send-message'
 import { decodeIpcMessagePack, invokeMessagePack } from '@renderer/lib/ipc/messagepack-ipc-client'
@@ -126,6 +127,16 @@ async function handleRendererToolRequest(payload: RendererToolRequestPayload): P
     if (payload.method === 'plan/review-request') {
       // Plan review waits for explicit user interaction (approve/reject).
       const result = await handleNativePlanReviewRequest(payload.params)
+      await sendRendererToolResponse({
+        requestId: payload.requestId,
+        result
+      })
+      return
+    }
+
+    if (payload.method === 'goal/confirm-request') {
+      // Goal confirmation waits for explicit user interaction (confirm/discard).
+      const result = await handleNativeGoalConfirmRequest(payload.params)
       await sendRendererToolResponse({
         requestId: payload.requestId,
         result
