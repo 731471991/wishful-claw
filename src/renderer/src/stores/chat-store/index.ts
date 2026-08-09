@@ -439,22 +439,24 @@ export const useChatStore = create<ChatStore>()(
         // (emitted by GoalOrchestrator with a custom runId, not matching any streaming message).
         if (eventType === 'goal_progress') {
           const gp = event as { goalId?: string; sessionId?: string; objective?: string; eventType?: string; message?: string; status?: string; currentPlanIndex?: number; planCount?: number; completedPlans?: number; timestamp?: number; input?: Record<string, unknown> }
-          // sessionId is inside the Input JSON (written by EmitGoalEventAsync),
-          // not a top-level field of the stream event
-          const gpSessionId = gp.sessionId ?? (gp.input?.sessionId as string | undefined) ?? targetSessionId
-          console.warn('[handleEnvelope] goal_progress event', JSON.stringify({ gpSessionId, eventType: gp.eventType, status: gp.status }))
-          if (gpSessionId && gp.eventType) {
+          // All fields are inside the Input JSON (written by EmitGoalEventAsync),
+          // not top-level fields of the stream event
+          const input = (gp.input ?? {}) as Record<string, unknown>
+          const gpSessionId = (gp.sessionId ?? input.sessionId ?? targetSessionId) as string | undefined
+          const gpEventType = (gp.eventType ?? input.eventType) as string | undefined
+          console.warn('[handleEnvelope] goal_progress event', JSON.stringify({ gpSessionId, eventType: gpEventType, status: gp.status ?? input.status }))
+          if (gpSessionId && gpEventType) {
             useGoalStore.getState().applyGoalProgress({
               sessionId: gpSessionId,
-              goalId: gp.goalId ?? '',
-              objective: gp.objective ?? '',
-              eventType: gp.eventType,
-              message: gp.message ?? '',
-              status: gp.status ?? '',
-              currentPlanIndex: gp.currentPlanIndex ?? 0,
-              planCount: gp.planCount ?? 0,
-              completedPlans: gp.completedPlans ?? 0,
-              timestamp: gp.timestamp ?? Date.now()
+              goalId: (gp.goalId ?? input.goalId) as string ?? '',
+              objective: (gp.objective ?? input.objective) as string ?? '',
+              eventType: gpEventType,
+              message: (gp.message ?? input.message) as string ?? '',
+              status: (gp.status ?? input.status) as string ?? '',
+              currentPlanIndex: (gp.currentPlanIndex ?? input.currentPlanIndex) as number ?? 0,
+              planCount: (gp.planCount ?? input.planCount) as number ?? 0,
+              completedPlans: (gp.completedPlans ?? input.completedPlans) as number ?? 0,
+              timestamp: (gp.timestamp ?? input.timestamp) as number ?? Date.now()
             })
           }
           continue
