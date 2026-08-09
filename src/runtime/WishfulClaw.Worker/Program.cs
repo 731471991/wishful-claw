@@ -9,8 +9,7 @@ using WishfulClaw.Worker;
 WorkerJsonHelper.ConfigureAotResolver(
     JsonTypeInfoResolver.Combine(
         WishfulClawJsonContext.Default,
-        AgentRuntimeJsonContext.Default,
-        new DefaultJsonTypeInfoResolver()));
+        AgentRuntimeJsonContext.Default));
 
 Console.OutputEncoding = Encoding.UTF8;
 

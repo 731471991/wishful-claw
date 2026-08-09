@@ -1,3 +1,4 @@
+﻿using WishfulClaw.Contracts;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -77,13 +78,7 @@ public static class GoalFileTools
         EnsureGoalDirectory(workingFolder);
         var filePath = GetGoalStateFilePath(workingFolder, goalId);
 
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
-
-        var json = JsonSerializer.Serialize(state, options);
+        var json = JsonSerializer.Serialize(state, WorkerJsonHelper.GetTypeInfo<GoalState>());
         File.WriteAllText(filePath, json);
     }
 
@@ -96,7 +91,7 @@ public static class GoalFileTools
             return null;
 
         var json = File.ReadAllText(filePath);
-        return JsonSerializer.Deserialize<GoalState>(json);
+        return JsonSerializer.Deserialize(json, WorkerJsonHelper.GetTypeInfo<GoalState>());
     }
 
     // ─── Update Single Plan in State ───

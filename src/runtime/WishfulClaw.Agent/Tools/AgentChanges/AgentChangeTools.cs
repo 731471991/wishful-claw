@@ -74,15 +74,26 @@ public static class AgentChangeTools
             var sessionId = JsonHelpers.GetString(parameters, "sessionId")?.Trim();
             if (string.IsNullOrEmpty(sessionId))
             {
-                return Task.FromResult(SuccessResult(new { changeSets = new List<object>() }));
+                return Task.FromResult(SuccessResult(w =>
+                {
+                    w.WritePropertyName("changeSets");
+                    w.WriteStartArray();
+                    w.WriteEndArray();
+                }));
             }
 
             var sets = _changeSets.Values
                 .Where(cs => cs.SessionId == sessionId)
-                .Select(HydrateChangeSet)
                 .ToList();
 
-            return Task.FromResult(SuccessResult(new { changeSets = sets }));
+            return Task.FromResult(SuccessResult(w =>
+            {
+                w.WritePropertyName("changeSets");
+                w.WriteStartArray();
+                foreach (var cs in sets)
+                    WriteHydratedChangeSet(w, cs);
+                w.WriteEndArray();
+            }));
         }
         catch (Exception ex)
         {
@@ -102,10 +113,17 @@ public static class AgentChangeTools
 
             if (!_changeSets.TryGetValue(runId, out var set))
             {
-                return Task.FromResult(SuccessResult(new { changeSet = (object?)null }));
+                return Task.FromResult(SuccessResult(w =>
+                {
+                    w.WriteNull("changeSet");
+                }));
             }
 
-            return Task.FromResult(SuccessResult(new { changeSet = HydrateChangeSet(set) }));
+            return Task.FromResult(SuccessResult(w =>
+            {
+                w.WritePropertyName("changeSet");
+                WriteHydratedChangeSet(w, set);
+            }));
         }
         catch (Exception ex)
         {
@@ -332,54 +350,67 @@ public static class AgentChangeTools
         return change is null ? null : (set, change);
     }
 
-    private static object HydrateChangeSet(ChangeSet set)
+    private static void WriteHydratedChangeSet(Utf8JsonWriter w, ChangeSet set)
     {
-        return new
+        w.WriteStartObject();
+        w.WriteString("runId", set.RunId);
+        w.WriteString("sessionId", set.SessionId);
+        w.WriteString("status", set.Status);
+        w.WritePropertyName("changes");
+        w.WriteStartArray();
+        foreach (var c in set.Changes)
         {
-            runId = set.RunId,
-            sessionId = set.SessionId,
-            status = set.Status,
-            changes = set.Changes.Select(c => new
-            {
-                id = c.Id,
-                runId = c.RunId,
-                sessionId = c.SessionId,
-                filePath = c.FilePath,
-                transport = c.Transport,
-                op = c.Op,
-                status = c.Status,
-                before = SnapshotToObject(c.Before),
-                after = SnapshotToObject(c.After),
-                createdAt = c.CreatedAt,
-                revertedAt = c.RevertedAt
-            }).ToList(),
-            createdAt = set.CreatedAt,
-            updatedAt = set.UpdatedAt
-        };
+            w.WriteStartObject();
+            w.WriteString("id", c.Id);
+            w.WriteString("runId", c.RunId);
+            w.WriteString("sessionId", c.SessionId);
+            w.WriteString("filePath", c.FilePath);
+            w.WriteString("transport", c.Transport);
+            w.WriteString("op", c.Op);
+            w.WriteString("status", c.Status);
+            w.WritePropertyName("before");
+            WriteSnapshot(w, c.Before);
+            w.WritePropertyName("after");
+            WriteSnapshot(w, c.After);
+            w.WriteNumber("createdAt", c.CreatedAt);
+            if (c.RevertedAt.HasValue)
+                w.WriteNumber("revertedAt", c.RevertedAt.Value);
+            else
+                w.WriteNull("revertedAt");
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteNumber("createdAt", set.CreatedAt);
+        w.WriteNumber("updatedAt", set.UpdatedAt);
+        w.WriteEndObject();
     }
 
-    private static object SnapshotToObject(FileSnapshot snap)
+    private static void WriteSnapshot(Utf8JsonWriter w, FileSnapshot snap)
     {
-        return new
-        {
-            exists = snap.Exists,
-            text = snap.Text,
-            fullText = snap.FullText,
-            previewText = snap.PreviewText,
-            textOmitted = snap.TextOmitted,
-            hash = snap.Hash,
-            size = snap.Size,
-            lineCount = snap.LineCount
-        };
+        w.WriteStartObject();
+        w.WriteBoolean("exists", snap.Exists);
+        w.WriteString("text", snap.Text);
+        w.WriteString("fullText", snap.FullText);
+        w.WriteString("previewText", snap.PreviewText);
+        if (snap.TextOmitted.HasValue)
+            w.WriteBoolean("textOmitted", snap.TextOmitted.Value);
+        else
+            w.WriteNull("textOmitted");
+        w.WriteString("hash", snap.Hash);
+        w.WriteNumber("size", snap.Size);
+        if (snap.LineCount.HasValue)
+            w.WriteNumber("lineCount", snap.LineCount.Value);
+        else
+            w.WriteNull("lineCount");
+        w.WriteEndObject();
     }
 
-    private static WorkerResponse SuccessResult(object result) =>
+    private static WorkerResponse SuccessResult(Action<Utf8JsonWriter> writeProperties) =>
         WorkerResponse.FromWriter(w =>
         {
             w.WriteStartObject();
             w.WriteBoolean("success", true);
-            w.WritePropertyName("changeSets");
-            JsonSerializer.Serialize(w, result);
+            writeProperties(w);
             w.WriteEndObject();
         });
 

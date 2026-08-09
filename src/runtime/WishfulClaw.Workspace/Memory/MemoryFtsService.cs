@@ -32,9 +32,9 @@ public sealed class MemoryFtsService : IMemorySearch
                 ORDER BY rank
                 LIMIT @limit
                 """;
-            using var reader = db.QueryDataTable(ftsSql,
+            using var reader = db.ExecuteReader(ftsSql,
                 new SqliteParameter("@query", q),
-                new SqliteParameter("@limit", limit)).CreateDataReader();
+                new SqliteParameter("@limit", limit));
             while (reader.Read())
             {
                 ct.ThrowIfCancellationRequested();
@@ -56,9 +56,9 @@ public sealed class MemoryFtsService : IMemorySearch
                 ORDER BY updated_at DESC
                 LIMIT @limit
                 """;
-            using var reader = db.QueryDataTable(likeSql,
+            using var reader = db.ExecuteReader(likeSql,
                 new SqliteParameter("@pattern", $"%{q}%"),
-                new SqliteParameter("@limit", limit)).CreateDataReader();
+                new SqliteParameter("@limit", limit));
             while (reader.Read())
             {
                 ct.ThrowIfCancellationRequested();
@@ -69,23 +69,21 @@ public sealed class MemoryFtsService : IMemorySearch
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
 
-    private static MemorySearchResult RowToResult(System.Data.Common.DbDataReader row)
+    private static MemorySearchResult RowToResult(SqliteDataReader row)
     {
-        var id = row["id"] is long l ? l : Convert.ToInt64(row["id"]);
-        var title = row["title"]?.ToString() ?? "";
-        var content = row["content"]?.ToString() ?? "";
-        var scope = row["scope"]?.ToString() ?? "global";
-        var priority = row["priority"]?.ToString() ?? "standard";
-        var status = row["status"]?.ToString() ?? "active";
-        var updatedAtVal = row["updated_at"];
-        var updatedAt = updatedAtVal is long u
-            ? DateTimeOffset.FromUnixTimeSeconds(u)
-            : DateTimeOffset.UtcNow;
+        var id = row.GetInt64(row.GetOrdinal("id"));
+        var title = row.GetString("title");
+        var content = row.GetString("content");
+        var scope = row.GetString("scope");
+        var priority = row.GetString("priority");
+        var status = row.GetString("status");
+        var updatedAt = row.GetNullableInt64("updated_at") ?? 0;
 
         return new MemorySearchResult
         {
             Id = id, Title = title, Content = content, Scope = scope,
-            Priority = priority, Status = status, UpdatedAt = updatedAt
+            Priority = priority, Status = status,
+            UpdatedAt = DateTimeOffset.FromUnixTimeSeconds(updatedAt)
         };
     }
 

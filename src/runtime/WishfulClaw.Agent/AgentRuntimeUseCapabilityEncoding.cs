@@ -1,3 +1,4 @@
+﻿using WishfulClaw.Contracts;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
@@ -32,16 +33,23 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
 
     private static JsonElement CreateInspectRequest(string serverId, string toolName)
     {
-        var json = JsonSerializer.Serialize(new { serverId, toolName });
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.Clone();
+        return WorkerJsonHelper.BuildJsonElement(w =>
+        {
+            w.WriteStartObject();
+            w.WriteString("serverId", serverId);
+            w.WriteString("toolName", toolName);
+            w.WriteEndObject();
+        });
     }
 
     private static JsonElement CreateSkillInput(string skillName)
     {
-        var json = JsonSerializer.Serialize(new { SkillName = skillName });
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.Clone();
+        return WorkerJsonHelper.BuildJsonElement(w =>
+        {
+            w.WriteStartObject();
+            w.WriteString("skillName", skillName);
+            w.WriteEndObject();
+        });
     }
 
     private static JsonElement? FindServer(JsonElement listResult, string serverName)

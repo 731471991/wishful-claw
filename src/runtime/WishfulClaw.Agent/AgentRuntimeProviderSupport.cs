@@ -14,11 +14,6 @@ public static class AgentRuntimeProviderSupport
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    private static readonly JsonSerializerOptions StringSerializeOptions = new()
-    {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-    };
-
     public static JsonElement CreateEmptyObjectElement()
     {
         using var document = JsonDocument.Parse("{}");
@@ -27,7 +22,13 @@ public static class AgentRuntimeProviderSupport
 
     public static JsonElement CreateStringElement(string value)
     {
-        return JsonSerializer.SerializeToElement(value, StringSerializeOptions);
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer, WriterOptions))
+        {
+            writer.WriteStringValue(value);
+        }
+        using var document = JsonDocument.Parse(buffer.WrittenMemory);
+        return document.RootElement.Clone();
     }
 
     public static JsonElement CreateObjectElement(Action<Utf8JsonWriter> writeProperties)

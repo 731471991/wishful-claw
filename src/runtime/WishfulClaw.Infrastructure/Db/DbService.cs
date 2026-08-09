@@ -121,14 +121,16 @@ public sealed class DbService
     /// Execute a query and return results as a DataTable.
     /// Used by MemoryFtsService for FTS5 search results.
     /// </summary>
-    public System.Data.DataTable QueryDataTable(string sql, params SqliteParameter[] parameters)
+    /// <summary>
+    /// Execute a query and return a SqliteDataReader for direct row access.
+    /// AOT-safe: avoids DataTable.Load which uses reflection.
+    /// Caller must dispose the reader.
+    /// </summary>
+    public SqliteDataReader ExecuteReader(string sql, params SqliteParameter[] parameters)
     {
-        using var conn = CreateConnection();
-        using var cmd = BuildCommand(conn, sql, parameters);
-        using var reader = cmd.ExecuteReader();
-        var dt = new System.Data.DataTable();
-        dt.Load(reader);
-        return dt;
+        var conn = CreateConnection();
+        var cmd = BuildCommand(conn, sql, parameters);
+        return cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
     }
 
     // ─── Helpers ───

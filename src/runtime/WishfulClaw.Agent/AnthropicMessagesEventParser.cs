@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -155,7 +155,7 @@ internal static partial class AnthropicMessagesProvider
                     new AgentRuntimeStreamEvent(
                         "tool_use_args_delta",
                         ToolCallId: buffer.Id,
-                        PartialInput: JsonSerializer.SerializeToElement(partialJson)));
+                        PartialInput: JsonSerializer.SerializeToElement(partialJson, WorkerJsonHelper.GetTypeInfo<string>())));
             }
         }
     }

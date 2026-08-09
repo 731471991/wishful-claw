@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Contracts;
@@ -429,7 +429,7 @@ public static partial class AgentRuntimePlanExecutor
             try
             {
                 var stateJson = await File.ReadAllTextAsync(stateFilePath, cancellationToken);
-                state = JsonSerializer.Deserialize<PlanState>(stateJson);
+                state = JsonSerializer.Deserialize(stateJson, WorkerJsonHelper.GetTypeInfo<PlanState>());
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

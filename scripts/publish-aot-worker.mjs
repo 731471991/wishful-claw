@@ -48,7 +48,7 @@ const dotnetCmd = [
   `-o "${join(projectRoot, 'resources/worker')}"`
 ].join(' ')
 
-const cmd = `call "${vcvarsPath}" >nul 2>&1 && ${dotnetCmd}`
+const cmd = `call "${vcvarsPath}" >nul 2>&1 && set "PATH=C:\\Windows\\System32;C:\\Windows;%PATH%;C:\\Program Files\\dotnet" && ${dotnetCmd}`
 
 console.log('[AOT Worker] 开始 AOT 编译...')
 console.log('[AOT Worker] 这可能需要几分钟，请耐心等待...')
@@ -56,7 +56,7 @@ console.log('[AOT Worker] 这可能需要几分钟，请耐心等待...')
 try {
   execSync(cmd, {
     cwd: projectRoot,
-    shell: 'cmd.exe',
+    shell: 'C:\\Windows\\System32\\cmd.exe',
     stdio: 'inherit',
     timeout: 600000 // 10 分钟超时
   })
@@ -72,7 +72,7 @@ const workerDir = join(projectRoot, 'resources/worker')
 if (existsSync(workerDir)) {
   const pdbFiles = ['*.pdb']
   for (const pattern of pdbFiles) {
-    const files = execSync(`dir /b "${workerDir}\\${pattern}" 2>nul`, { shell: 'cmd.exe' })
+    const files = execSync(`dir /b "${workerDir}\\${pattern}" 2>nul`, { shell: 'C:\\Windows\\System32\\cmd.exe' })
       .toString().trim().split('\n').filter(Boolean)
     for (const f of files) {
       rmSync(join(workerDir, f.trim()))
@@ -82,7 +82,7 @@ if (existsSync(workerDir)) {
 }
 
 // 显示产物
-const result = execSync(`dir "${workerDir}\\WishfulClaw.Worker.exe"`, { shell: 'cmd.exe' }).toString()
+const result = execSync(`dir "${workerDir}\\WishfulClaw.Worker.exe"`, { shell: 'C:\\Windows\\System32\\cmd.exe' }).toString()
 console.log('[AOT Worker] 产物:')
 console.log(result)
 console.log('[AOT Worker] 完成！')

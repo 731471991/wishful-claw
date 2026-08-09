@@ -6,6 +6,7 @@ using WishfulClaw.Workspace.Memory;
 using WishfulClaw.Agent;
 using WishfulClaw.Agent.Modules.Git;
 using WishfulClaw.Agent.Modules.Extensions;
+using WishfulClaw.Worker.Modules;
 
 namespace WishfulClaw.Worker;
 
@@ -123,6 +124,9 @@ namespace WishfulClaw.Worker;
 [JsonSerializable(typeof(CreateSessionResult))]
 [JsonSerializable(typeof(List<ProjectListRow>))]
 [JsonSerializable(typeof(List<SessionListRow>))]
+[JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(ProviderTestModelsResult))]
+[JsonSerializable(typeof(SystemMemorySnapshot))]
 public sealed partial class WishfulClawJsonContext : JsonSerializerContext
 {
 }

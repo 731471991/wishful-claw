@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using Microsoft.Data.Sqlite;
@@ -71,21 +71,13 @@ public static class AgentRuntimeProjectExecutor
                     new SqliteParameter("@id", e.Id),
                     new SqliteParameter("@cutoff", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 3600000));
 
-                return new
-                {
-                    id = e.Id,
-                    name = e.Name,
-                    workingFolder = e.WorkingFolder,
-                    sessionCount,
-                    activeSessionCount
-                };
+                return new ProjectListRow(
+                    e.Id, e.Name, e.WorkingFolder, sessionCount, activeSessionCount);
             }).ToList();
 
-            var result = JsonSerializer.Serialize(new
-            {
-                projects = rows,
-                total = rows.Count
-            });
+            var result = JsonSerializer.Serialize(
+                new ProjectListResult(rows, rows.Count),
+                WorkerJsonHelper.GetTypeInfo<ProjectListResult>());
 
             return Task.FromResult(result);
         }
@@ -122,15 +114,8 @@ public static class AgentRuntimeProjectExecutor
                 "SELECT * FROM sessions WHERE project_id = @pid ORDER BY updated_at DESC LIMIT 20",
                 EntityMappers.MapSession, new SqliteParameter("@pid", projectId));
 
-            var sessionRows = sessions.Select(s => new
-            {
-                id = s.Id,
-                title = s.Title,
-                mode = s.Mode,
-                messageCount = s.MessageCount,
-                createdAt = s.CreatedAt,
-                updatedAt = s.UpdatedAt
-            }).ToList();
+            var sessionRows = sessions.Select(s => new SessionListRow(
+                s.Id, s.Title, s.Mode, s.MessageCount, s.CreatedAt, s.UpdatedAt)).ToList();
 
             // Check project-status.md: exists, stale, and provide update template
             string? taskStatus = null;
@@ -169,18 +154,18 @@ public static class AgentRuntimeProjectExecutor
                 .Select(s => s.Id)
                 .FirstOrDefault() ?? sessions.FirstOrDefault()?.Id;
 
-            var result = JsonSerializer.Serialize(new
-            {
-                id = project.Id,
-                name = project.Name,
-                workingFolder = project.WorkingFolder,
-                sessions = sessionRows,
-                taskStatus = taskStatus ?? "",
-                hasTaskStatus = taskStatus is not null,
-                statusFileNeedsUpdate,
-                statusUpdateTemplate,
-                suggestedSessionId = activeSessionId ?? ""
-            });
+            var result = JsonSerializer.Serialize(
+                new ProjectDetailResult(
+                    project.Id,
+                    project.Name,
+                    project.WorkingFolder,
+                    sessionRows,
+                    taskStatus ?? "",
+                    taskStatus is not null,
+                    statusFileNeedsUpdate,
+                    statusUpdateTemplate,
+                    activeSessionId ?? ""),
+                WorkerJsonHelper.GetTypeInfo<ProjectDetailResult>());
 
             return result;
         }
@@ -244,13 +229,9 @@ public static class AgentRuntimeProjectExecutor
                 new SqliteParameter("@wf", (object?)entity.WorkingFolder ?? DBNull.Value),
                 new SqliteParameter("@ssh", (object?)entity.SshConnectionId ?? DBNull.Value));
 
-            var result = JsonSerializer.Serialize(new
-            {
-                sessionId,
-                title,
-                projectId,
-                createdAt = now
-            });
+            var result = JsonSerializer.Serialize(
+                new CreateSessionResult(sessionId, title, projectId, now),
+                WorkerJsonHelper.GetTypeInfo<CreateSessionResult>());
 
             return Task.FromResult(result);
         }
@@ -275,12 +256,14 @@ public static class AgentRuntimeProjectExecutor
             var projectId = JsonHelpers.GetString(input, "projectId")?.Trim();
 
             // Build reverse request params
-            var reverseParams = JsonSerializer.SerializeToElement(new
+            var reverseParams = WorkerJsonHelper.BuildJsonElement(w =>
             {
-                sessionId,
-                content,
-                workingFolder = workingFolder ?? string.Empty,
-                projectId = projectId ?? string.Empty
+                w.WriteStartObject();
+                w.WriteString("sessionId", sessionId);
+                w.WriteString("content", content);
+                w.WriteString("workingFolder", workingFolder ?? string.Empty);
+                w.WriteString("projectId", projectId ?? string.Empty);
+                w.WriteEndObject();
             });
 
             // Emit reverse request to renderer
@@ -319,9 +302,15 @@ public static class AgentRuntimeProjectExecutor
 
     private static string EncodeError(string message)
     {
-        return JsonSerializer.Serialize(new { error = message });
+        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(buffer))
+        {
+            writer.WriteStartObject();
+            writer.WriteString("error", message);
+            writer.WriteEndObject();
+        }
+        return System.Text.Encoding.UTF8.GetString(buffer.WrittenSpan);
     }
-
     /// <summary>
     /// Generate a fixed template message for the Agent to send to a project session,
     /// instructing it to organize and write a clean project-status.md summary.

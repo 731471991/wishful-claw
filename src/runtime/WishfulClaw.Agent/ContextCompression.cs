@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -395,12 +395,20 @@ public static partial class ContextCompression
         var baseUrl = (JsonHelpers.GetString(provider, "baseUrl") ?? "https://api.anthropic.com").Trim().TrimEnd('/');
         var url = $"{baseUrl}/v1/messages";
 
-        var bodyJson = JsonSerializer.Serialize(new
+        var bodyJson = WorkerJsonHelper.BuildJsonString(w =>
         {
-            model,
-            max_tokens = 4096,
-            system = SummarySystemPrompt,
-            messages = new[] { new { role = "user", content = transcript } }
+            w.WriteStartObject();
+            w.WriteString("model", model);
+            w.WriteNumber("max_tokens", 4096);
+            w.WriteString("system", SummarySystemPrompt);
+            w.WritePropertyName("messages");
+            w.WriteStartArray();
+            w.WriteStartObject();
+            w.WriteString("role", "user");
+            w.WriteString("content", transcript);
+            w.WriteEndObject();
+            w.WriteEndArray();
+            w.WriteEndObject();
         });
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
@@ -435,15 +443,23 @@ public static partial class ContextCompression
         var baseUrl = (JsonHelpers.GetString(provider, "baseUrl") ?? "https://api.openai.com").Trim().TrimEnd('/');
         var url = $"{baseUrl}/v1/chat/completions";
 
-        var bodyJson = JsonSerializer.Serialize(new
+        var bodyJson = WorkerJsonHelper.BuildJsonString(w =>
         {
-            model,
-            max_tokens = 4096,
-            messages = new object[]
-            {
-                new { role = "system", content = SummarySystemPrompt },
-                new { role = "user", content = transcript }
-            }
+            w.WriteStartObject();
+            w.WriteString("model", model);
+            w.WriteNumber("max_tokens", 4096);
+            w.WritePropertyName("messages");
+            w.WriteStartArray();
+            w.WriteStartObject();
+            w.WriteString("role", "system");
+            w.WriteString("content", SummarySystemPrompt);
+            w.WriteEndObject();
+            w.WriteStartObject();
+            w.WriteString("role", "user");
+            w.WriteString("content", transcript);
+            w.WriteEndObject();
+            w.WriteEndArray();
+            w.WriteEndObject();
         });
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);

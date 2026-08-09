@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 
 namespace WishfulClaw.Agent;
@@ -50,12 +50,14 @@ public static class AgentRuntimeSkillManagementExecutor
 
     private static JsonElement CreateRequestPayload(AgentRuntimeNativeToolCall call)
     {
-        var json = JsonSerializer.Serialize(new
+        var element = WorkerJsonHelper.BuildJsonElement(w =>
         {
-            toolName = call.Name,
-            input = call.Input
+            w.WriteStartObject();
+            w.WriteString("toolName", call.Name);
+            w.WritePropertyName("input");
+            call.Input.WriteTo(w);
+            w.WriteEndObject();
         });
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.Clone();
+        return element;
     }
 }

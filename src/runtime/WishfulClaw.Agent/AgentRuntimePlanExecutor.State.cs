@@ -1,3 +1,4 @@
+﻿using WishfulClaw.Contracts;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
@@ -16,7 +17,7 @@ public static partial class AgentRuntimePlanExecutor
         try
         {
             var json = await File.ReadAllTextAsync(stateFilePath, cancellationToken);
-            return JsonSerializer.Deserialize<PlanState>(json);
+            return JsonSerializer.Deserialize(json, WorkerJsonHelper.GetTypeInfo<PlanState>());
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -42,11 +43,8 @@ public static partial class AgentRuntimePlanExecutor
             Steps = steps,
             UpdatedAt = Now()
         };
-        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = true
-        });
+        // Use IndentedJsonOptions (has TypeInfoResolver from ConfigureAotResolver) for indented output.
+        var json = JsonSerializer.Serialize(state, WorkerJsonHelper.GetTypeInfo<PlanState>());
 
         // Retry up to 3 times to handle file lock contention from rapid UpdatePlanStep calls
         for (var attempt = 0; attempt < 3; attempt++)
@@ -68,7 +66,7 @@ public static partial class AgentRuntimePlanExecutor
 
 // ── Plan State Model (for .state.json) ──
 
-internal sealed class PlanState
+public sealed class PlanState
 {
     public string PlanId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
@@ -77,7 +75,7 @@ internal sealed class PlanState
     public long UpdatedAt { get; set; }
 }
 
-internal sealed class PlanStep
+public sealed class PlanStep
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
