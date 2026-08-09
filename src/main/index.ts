@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog } from 'electron'
+import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -28,6 +28,8 @@ import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
 let channelManager: ChannelManager | null = null
+let tray: Tray | null = null
+let isQuiting = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -64,6 +66,14 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
+  // Minimize to tray on close (Exit via tray menu only)
+  mainWindow.on('close', (event) => {
+    if (!isQuiting) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
+  })
+
   mainWindow.webContents.on("console-message", (_e, level, message, line, src) => {
     const levelStr = ["LOG","WARN","ERROR"][level] ?? "LOG"
     console.log(`[renderer:${levelStr}] ${message} (${src}:${line})`)
@@ -85,6 +95,28 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+// ── Tray ──
+
+function getTrayIcon(): Electron.NativeImage {
+  const iconPath = app.isPackaged
+    ? join(app.getAppPath(), '..', 'icon-256.png')
+    : join(app.getAppPath(), 'resources', 'icon-256.png')
+  return nativeImage.createFromPath(iconPath)
+}
+
+function createTray(): void {
+  if (tray) return
+  tray = new Tray(getTrayIcon())
+  tray.setToolTip('Wishful Claw')
+  const contextMenu = Menu.buildFromTemplate([
+    { label: '显示主窗口', click: () => { mainWindow?.show() } },
+    { type: 'separator' },
+    { label: '退出', click: () => { isQuiting = true; app.quit() } }
+  ])
+  tray.setContextMenu(contextMenu)
+  tray.on('click', () => mainWindow?.show())
 }
 
 function registerWindowControlHandlers(): void {
@@ -528,6 +560,7 @@ registerWebSearchHandlers()
   )
 
   createWindow()
+  createTray()
 
   // Auto-start enabled channels after window is ready
   if (channelManager) {
@@ -540,7 +573,8 @@ registerWebSearchHandlers()
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // Don't quit when minimized to tray (isQuiting false + tray active)
+  if (process.platform !== 'darwin' && (isQuiting || !tray)) {
     app.quit()
   }
 })
