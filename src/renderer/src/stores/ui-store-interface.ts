@@ -269,6 +269,7 @@ export interface UIStore {
     sessionId?: string | null
   ) => void
   openSubAgentsPanel: (toolUseId?: string | null, sessionId?: string | null) => void
+  openGoalPanel: (sessionId: string) => void
   ensureTerminalTab: () => void
   ensureFilesTab: (sessionId?: string | null) => void
   getBrowserWebviewRef: (sessionId?: string | null, projectId?: string | null) => React.RefObject<Electron.WebviewTag | null> | null

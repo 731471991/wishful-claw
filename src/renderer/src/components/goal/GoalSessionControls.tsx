@@ -14,6 +14,7 @@ import { Textarea } from '@renderer/components/ui/textarea'
 import { CollapsibleHeightPanel } from '@renderer/components/chat/CollapsibleHeightPanel'
 import { cn } from '@renderer/lib/utils'
 import { useSettingsStore } from '@renderer/stores/settings-store'
+import { useUIStore } from '@renderer/stores/ui-store'
 import { formatGoalElapsedSeconds, formatGoalTokens } from '@renderer/lib/agent/goal-context'
 import { useGoalStore, type SessionGoal, type SessionGoalEvent, type SessionGoalEventType } from '@renderer/stores/goal-store'
 
@@ -296,7 +297,10 @@ export function GoalSessionBar({
   return (
     <>
       <div className={cn('mx-auto w-full max-w-[820px]', className)}>
-        <div className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 shadow-sm backdrop-blur">
+        <div
+          className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 shadow-sm backdrop-blur cursor-pointer hover:bg-muted/60 transition-colors"
+          onClick={() => useUIStore.getState().openGoalPanel(sessionId)}
+        >
           <div className="flex items-start gap-2">
             <Target className="mt-0.5 size-3.5 shrink-0 text-primary/80" />
             <div className="min-w-0 flex-1">
