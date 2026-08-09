@@ -162,6 +162,7 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     'ask-user/request',
     'plan/ui-update',
     'plan/review-request',
+    'goal/confirm-request',
     'sub-agent:approve-tool',
     'mcp:capability-list',
     'mcp:capability-inspect',
