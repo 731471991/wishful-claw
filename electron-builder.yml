@@ -58,6 +58,10 @@ extraResources:
     to: worker
     filter:
       - '**/*'
+  - from: resources/icon-256.png
+    to: icon-256.png
+  - from: resources/icon.ico
+    to: icon.ico
 
 asarUnpack:
   - resources/**
