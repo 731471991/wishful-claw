@@ -226,6 +226,7 @@ public static partial class GoalOrchestrator
     {
         try
         {
+            WorkerLog.Info($"EmitPendingGoalAsync goalId={goalId} sessionId={sessionId} goalText={goalText.Substring(0, Math.Min(50, goalText.Length))}");
             var eventPayload = new AgentRuntimeStreamEvent(
                 "goal_progress",
                 SubAgentName: $"Goal: {goalText.Substring(0, Math.Min(50, goalText.Length))}",

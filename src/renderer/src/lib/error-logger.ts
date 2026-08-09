@@ -31,6 +31,26 @@ export function installRendererErrorLogger(): void {
     void writeLog('error', 'Unhandled Promise Rejection: ' + message, stack)
   })
 
+  // Patch console.warn to also write to log file
+  const originalConsoleWarn = console.warn
+  console.warn = (...args: unknown[]): void => {
+    originalConsoleWarn.apply(console, args)
+    const message = args
+      .map((arg) => {
+        if (arg instanceof Error) return arg.message + (arg.stack ? '\n' + arg.stack : '')
+        if (typeof arg === 'string') return arg
+        try {
+          return JSON.stringify(arg)
+        } catch {
+          return String(arg)
+        }
+      })
+      .join(' ')
+    if (message.trim()) {
+      void writeLog('warn', message)
+    }
+  }
+
   // Patch console.error to also write to log file
   const originalConsoleError = console.error
   console.error = (...args: unknown[]): void => {

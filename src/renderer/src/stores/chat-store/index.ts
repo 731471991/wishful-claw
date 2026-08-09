@@ -438,8 +438,11 @@ export const useChatStore = create<ChatStore>()(
         // because goal_progress events carry their own sessionId in the payload
         // (emitted by GoalOrchestrator with a custom runId, not matching any streaming message).
         if (eventType === 'goal_progress') {
-          const gp = event as { goalId?: string; sessionId?: string; objective?: string; eventType?: string; message?: string; status?: string; currentPlanIndex?: number; planCount?: number; completedPlans?: number; timestamp?: number }
-          const gpSessionId = gp.sessionId ?? targetSessionId
+          const gp = event as { goalId?: string; sessionId?: string; objective?: string; eventType?: string; message?: string; status?: string; currentPlanIndex?: number; planCount?: number; completedPlans?: number; timestamp?: number; input?: Record<string, unknown> }
+          // sessionId is inside the Input JSON (written by EmitGoalEventAsync),
+          // not a top-level field of the stream event
+          const gpSessionId = gp.sessionId ?? (gp.input?.sessionId as string | undefined) ?? targetSessionId
+          console.warn('[handleEnvelope] goal_progress event', JSON.stringify({ gpSessionId, eventType: gp.eventType, status: gp.status }))
           if (gpSessionId && gp.eventType) {
             useGoalStore.getState().applyGoalProgress({
               sessionId: gpSessionId,
