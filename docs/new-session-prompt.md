@@ -57,7 +57,7 @@
 | v2-iter-8 | 计划模式（人机协同执行引擎）— explore→plan→confirm→execute→verify 状态机 + 计划文件/状态文件落盘 + SubmitPlanReview reverse request 用户确认 + PlanReviewCard + UpdatePlanStep 步骤跟踪 | ✅ 已完成，tag v2.8.0 |
 | v2-iter-9 | Goal 模式（自主跑完迭代）— GoalOrchestrator 编排层 + 自确认/自检评估 + 429 限流长退避 + 可中断 + 前端 Goal 进度面板 + 上下文压缩阈值统一 + 内置浏览器修复 + 配色默认远航蓝 + AOT 兼容配置 | ✅ 已完成，tag v2.9.0，已合并 main |
 | v2-iter-10 | 全局会话 + 项目编排工具 — 4 个项目工具（list_projects/get_project_details/create_session/send_session_message），global sessionMode，ToolProvider availableModes 扩展，send_session_message reverse request 链路 | ✅ 已完成，tag v2.10.0 |
-| v2-iter-11 | Native AOT 打包（SqlSugar → Dapper 迁移）— 真正 AOT 裁剪让包尽量小（规划中，需与老大讨论确认） | ⏳ 待规划 |
+| v2-iter-11 | Native AOT 打包 — SqlSugar → Microsoft.Data.Sqlite 迁移 + AOT 反射序列化消除 + Json 显式传参 + 系统托盘 | ✅ 已完成，tag v2.11.0，已合并 main |
 
 ## 当前项目架构（7 层）
 
@@ -79,9 +79,9 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，最新 tag：`v2.10.0`
-- v2-iter-10（全局会话 + 项目编排工具）已完成，已合并 main 并打 tag v2.10.0，开发分支已清理
-- 下一步：v2-iter-11（Native AOT 打包，需与老大讨论确认范围和需求）
+- 当前分支：`main`，最新 tag：`v2.11.0`
+- v2-iter-11（Native AOT 打包）已完成，已合并 main 并打 tag v2.11.0，开发分支已清理
+- 下一步：待定（等待老大决定下一迭代方向）
 - TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`（三个 tsconfig 配置均需验证）
 - C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
 
