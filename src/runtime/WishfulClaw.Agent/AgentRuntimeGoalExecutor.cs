@@ -49,6 +49,19 @@ public static class AgentRuntimeGoalExecutor
         if (sessionId.Length == 0)
             return EncodeError("No active session.");
 
+        if (call.Name == "get_goal")
+        {
+            // Re-emit pending confirmation event if a pending goal exists,
+            // so the frontend can show the confirmation card again
+            var goal = Goals.TryGetValue(sessionId, out var g) ? g : null;
+            if (goal?.Status == "pending" && goal.GoalId != null)
+            {
+                var pendingText = GoalOrchestrator.GetPendingGoal(goal.GoalId)?.GoalText ?? goal.Objective;
+                _ = GoalOrchestrator.EmitPendingGoalAsync(goal.GoalId, sessionId, pendingText, context);
+            }
+            return Execute(call, state.Parameters);
+        }
+
         if (call.Name != "create_goal")
             return Execute(call, state.Parameters);
 
@@ -71,6 +84,12 @@ public static class AgentRuntimeGoalExecutor
         if (existingGoalId != null)
         {
             var existingStatus = GoalOrchestrator.GetActiveGoalId(sessionId) != null ? "active" : "pending";
+            // Re-emit the pending event so the frontend shows the confirmation card again
+            if (existingStatus == "pending")
+            {
+                var existingText = GoalOrchestrator.GetPendingGoal(existingGoalId)?.GoalText ?? objective;
+                _ = GoalOrchestrator.EmitPendingGoalAsync(existingGoalId, sessionId, existingText, context);
+            }
             return EncodeGoal(new GoalRecord(objective, existingStatus, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId));
         }
 
