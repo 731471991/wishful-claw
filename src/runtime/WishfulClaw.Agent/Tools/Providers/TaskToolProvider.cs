@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Execution: ToolDispatchRouter → AgentRuntimeTaskExecutor (in-memory).
 /// Note: The SubAgent "Task" tool is a separate IToolExecutor (TaskTool.cs) registered directly.
 /// </summary>
-internal sealed class TaskToolProvider : IToolProvider
+public sealed class TaskToolProvider : IToolProvider
 {
     public string Category => "task";
 

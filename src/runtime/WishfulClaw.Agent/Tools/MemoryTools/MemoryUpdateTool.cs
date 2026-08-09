@@ -4,6 +4,7 @@ using WishfulClaw.Core.Tools;
 
 using WishfulClaw.Core.Protocol;
 
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 
 
@@ -66,7 +67,9 @@ public sealed class MemoryUpdateTool : IToolExecutor
 
             var db = DbClient.GetClient();
 
-            var entry = db.Queryable<MemoryEntryEntity>().Where(e => e.Id == id).First();
+            var entry = db.QueryFirstOrDefault(
+                "SELECT * FROM memory_entries WHERE id = @id",
+                EntityMappers.MapMemoryEntry, new SqliteParameter("@id", id));
 
             if (entry is null)
 
@@ -128,7 +131,15 @@ public sealed class MemoryUpdateTool : IToolExecutor
 
             // Use WhereColumns to update by primary key, only SET changed columns
 
-            db.Updateable(entry).WhereColumns(e => e.Id).ExecuteCommand();
+            db.Execute(
+                "UPDATE memory_entries SET title = @title, content = @content, priority = @priority, " +
+                "status = @status, updated_at = @ua WHERE id = @id",
+                new SqliteParameter("@title", (object?)entry.Title ?? DBNull.Value),
+                new SqliteParameter("@content", entry.Content),
+                new SqliteParameter("@priority", entry.Priority),
+                new SqliteParameter("@status", entry.Status),
+                new SqliteParameter("@ua", entry.UpdatedAt),
+                new SqliteParameter("@id", id));
 
 
 

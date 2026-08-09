@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers widget tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeWidgetExecutor (pure Worker, no I/O).
 /// </summary>
-internal sealed class WidgetToolProvider : IToolProvider
+public sealed class WidgetToolProvider : IToolProvider
 {
     public string Category => "widget";
 

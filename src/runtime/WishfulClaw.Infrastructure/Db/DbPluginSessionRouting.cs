@@ -1,16 +1,12 @@
+using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
-using SqlSugar;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Infrastructure.Db;
 
-/// <summary>
-/// Plugin session routing logic and internal helpers for auto-reply pipeline.
-/// Extracted from DbPluginSessionTools to keep file sizes manageable.
-/// Shared helpers are accessed via DbPluginSessionTools.* (internal static).
-/// </summary>
 public static class DbPluginSessionRouting
 {
     public static WorkerResponse RoutePluginSession(JsonElement parameters)
@@ -30,52 +26,54 @@ public static class DbPluginSessionRouting
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            // Resolve project
             ProjectEntity? project = null;
             if (requestedProjectId is not null)
             {
-                project = db.Queryable<ProjectEntity>().First(p => p.Id == requestedProjectId);
+                project = db.QueryFirstOrDefault("SELECT * FROM projects WHERE id = @id", EntityMappers.MapProject,
+                    new SqliteParameter("@id", requestedProjectId));
             }
 
-            // Find existing session by external chat ID
-            var session = db.Queryable<SessionEntity>()
-                .Where(s => s.ExternalChatId == compositeKey)
-                .First();
+            var session = db.QueryFirstOrDefault(
+                "SELECT * FROM sessions WHERE external_chat_id = @key", EntityMappers.MapSession,
+                new SqliteParameter("@key", compositeKey));
 
-            var modelSelectionMode = providerId is not null && modelId is not null
-                ? "manual"
-                : "inherit";
-
-            string sessionId;
-            string sessionTitle;
+            var modelSelectionMode = providerId is not null && modelId is not null ? "manual" : "inherit";
+            string sessionId, sessionTitle;
             string? sessionProjectId;
 
             if (session is null)
             {
-                // Create new session
                 sessionId = DbPluginSessionTools.CreateSessionId();
                 sessionTitle = DbPluginSessionTools.FirstNonEmpty(chatName, senderName, chatId) ?? chatId;
                 sessionProjectId = project?.Id;
 
                 var entity = new SessionEntity
                 {
-                    Id = sessionId,
-                    Title = sessionTitle,
-                    Mode = "cowork",
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    ProjectId = project?.Id,
-                    WorkingFolder = DbPluginSessionTools.EmptyToNull(project?.WorkingFolder),
-                    SshConnectionId = project?.SshConnectionId,
-                    Pinned = 0,
-                    PluginId = pluginId,
-                    ExternalChatId = compositeKey,
-                    ProviderId = providerId,
-                    ModelId = modelId,
+                    Id = sessionId, Title = sessionTitle, Mode = "cowork", CreatedAt = now, UpdatedAt = now,
+                    ProjectId = project?.Id, WorkingFolder = DbPluginSessionTools.EmptyToNull(project?.WorkingFolder),
+                    SshConnectionId = project?.SshConnectionId, Pinned = 0, PluginId = pluginId,
+                    ExternalChatId = compositeKey, ProviderId = providerId, ModelId = modelId,
                     ModelSelectionMode = modelSelectionMode
                 };
-
-                db.Insertable(entity).ExecuteCommand();
+                WorkerJsonHelper.BuildJsonElement(w =>
+                {
+                    w.WriteStartObject();
+                    w.WriteString("id", entity.Id);
+                    w.WriteString("title", entity.Title);
+                    w.WriteString("mode", entity.Mode);
+                    w.WriteNumber("createdAt", entity.CreatedAt);
+                    w.WriteNumber("updatedAt", entity.UpdatedAt);
+                    w.WriteString("projectId", entity.ProjectId);
+                    w.WriteString("workingFolder", entity.WorkingFolder);
+                    w.WriteString("sshConnectionId", entity.SshConnectionId);
+                    w.WriteBoolean("pinned", false);
+                    w.WriteString("pluginId", entity.PluginId);
+                    w.WriteString("externalChatId", entity.ExternalChatId);
+                    w.WriteString("providerId", entity.ProviderId);
+                    w.WriteString("modelId", entity.ModelId);
+                    w.WriteString("modelSelectionMode", entity.ModelSelectionMode);
+                    w.WriteEndObject();
+                });
             }
             else
             {
@@ -83,71 +81,52 @@ public static class DbPluginSessionRouting
                 sessionTitle = session.Title;
                 sessionProjectId = session.ProjectId;
 
-                // Update existing session
                 if (project is not null)
                 {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity
-                        {
-                            UpdatedAt = now,
-                            ProjectId = project.Id,
-                            WorkingFolder = DbPluginSessionTools.EmptyToNull(project.WorkingFolder),
-                            SshConnectionId = project.SshConnectionId
-                        })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
+                    db.Execute(
+                        "UPDATE sessions SET updated_at = @ua, project_id = @pid, working_folder = @wf, " +
+                        "ssh_connection_id = @ssh WHERE id = @id",
+                        new SqliteParameter("@ua", now),
+                        new SqliteParameter("@pid", project.Id),
+                        new SqliteParameter("@wf", (object?)DbPluginSessionTools.EmptyToNull(project.WorkingFolder) ?? DBNull.Value),
+                        new SqliteParameter("@ssh", (object?)project.SshConnectionId ?? DBNull.Value),
+                        new SqliteParameter("@id", sessionId));
                     sessionProjectId = project.Id;
                 }
                 else
                 {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity { UpdatedAt = now })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
+                    db.Execute("UPDATE sessions SET updated_at = @ua WHERE id = @id",
+                        new SqliteParameter("@ua", now), new SqliteParameter("@id", sessionId));
                 }
 
                 if (providerId is not null || modelId is not null)
                 {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity
-                        {
-                            ProviderId = providerId,
-                            ModelId = modelId,
-                            ModelSelectionMode = modelSelectionMode
-                        })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
+                    db.Execute(
+                        "UPDATE sessions SET provider_id = @prov, model_id = @model, model_selection_mode = @msm WHERE id = @id",
+                        new SqliteParameter("@prov", (object?)providerId ?? DBNull.Value),
+                        new SqliteParameter("@model", (object?)modelId ?? DBNull.Value),
+                        new SqliteParameter("@msm", modelSelectionMode),
+                        new SqliteParameter("@id", sessionId));
                 }
 
-                // Replace title if we have a better one
                 var betterTitle = DbPluginSessionTools.FirstNonEmpty(chatName, senderName);
                 if (DbPluginSessionTools.ShouldReplaceSessionTitle(sessionTitle, betterTitle))
                 {
-                    db.Updateable<SessionEntity>()
-                        .SetColumns(s => new SessionEntity { Title = betterTitle! })
-                        .Where(s => s.Id == sessionId)
-                        .ExecuteCommand();
+                    db.Execute("UPDATE sessions SET title = @title WHERE id = @id",
+                        new SqliteParameter("@title", betterTitle!), new SqliteParameter("@id", sessionId));
                     sessionTitle = betterTitle!;
                 }
             }
 
             return WorkerResponse.Json(new PluginRouteSessionResult(
-                true,
-                sessionId,
-                sessionTitle,
-                sessionProjectId,
-                DbPluginSessionTools.EmptyToNull(project?.WorkingFolder),
-                project?.SshConnectionId,
-                null));
+                true, sessionId, sessionTitle, sessionProjectId,
+                DbPluginSessionTools.EmptyToNull(project?.WorkingFolder), project?.SshConnectionId, null), InfrastructureJsonContext.Default.PluginRouteSessionResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(
-                new PluginRouteSessionResult(false, null, null, null, null, null, ex.Message));
+            return WorkerResponse.Json(new PluginRouteSessionResult(false, null, null, null, null, null, ex.Message), InfrastructureJsonContext.Default.PluginRouteSessionResult);
         }
     }
-
-    // ── Internal helpers (used by auto-reply pipeline) ──
 
     public static PluginSessionFindResult FindPluginSessionRecordByChat(string externalChatId)
     {
@@ -155,11 +134,9 @@ public static class DbPluginSessionRouting
         {
             DbClient.EnsureInitialized();
             var db = DbClient.GetClient();
-
-            var entity = db.Queryable<SessionEntity>()
-                .Where(s => s.ExternalChatId == externalChatId)
-                .First();
-
+            var entity = db.QueryFirstOrDefault(
+                "SELECT * FROM sessions WHERE external_chat_id = @key", EntityMappers.MapSession,
+                new SqliteParameter("@key", externalChatId));
             var row = entity is null ? null : DbPluginSessionTools.SessionToPluginRow(entity);
             return new PluginSessionFindResult(true, row, null);
         }
@@ -169,27 +146,18 @@ public static class DbPluginSessionRouting
         }
     }
 
-    public static List<PluginSessionMessageRow> ListPluginSessionMessageRecords(
-        string sessionId,
-        int limit,
-        int offset = 0)
+    public static List<PluginSessionMessageRow> ListPluginSessionMessageRecords(string sessionId, int limit, int offset = 0)
     {
         DbClient.EnsureInitialized();
         var db = DbClient.GetClient();
-
-        var entities = db.Queryable<MessageEntity>()
-            .Where(m => m.SessionId == sessionId)
-            .OrderBy("sort_order ASC")
-            .Take(Math.Clamp(limit, 1, 500))
-            .Skip(Math.Max(0, offset))
-            .ToList();
+        var entities = db.Query(
+            "SELECT * FROM messages WHERE session_id = @sid ORDER BY sort_order ASC LIMIT @limit OFFSET @offset",
+            EntityMappers.MapMessage,
+            new SqliteParameter("@sid", sessionId),
+            new SqliteParameter("@limit", Math.Clamp(limit, 1, 500)),
+            new SqliteParameter("@offset", Math.Max(0, offset)));
 
         return entities.Select(m => new PluginSessionMessageRow
-        {
-            Id = m.Id,
-            Role = m.Role,
-            Content = m.Content,
-            CreatedAt = m.CreatedAt
-        }).ToList();
+        { Id = m.Id, Role = m.Role, Content = m.Content, CreatedAt = m.CreatedAt }).ToList();
     }
 }

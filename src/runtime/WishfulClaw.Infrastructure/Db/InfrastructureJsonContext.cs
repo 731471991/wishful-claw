@@ -1,0 +1,62 @@
+using System.Text.Json.Serialization;
+using WishfulClaw.Infrastructure.Db;
+using WishfulClaw.Contracts;
+
+namespace WishfulClaw.Infrastructure;
+
+[JsonSourceGenerationOptions(
+    GenerationMode = JsonSourceGenerationMode.Metadata,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(GoalClearResult))]
+[JsonSerializable(typeof(DbInitializeResult))]
+[JsonSerializable(typeof(GoalFindResult))]
+[JsonSerializable(typeof(GoalMutationResult))]
+[JsonSerializable(typeof(GoalRow))]
+[JsonSerializable(typeof(List<GoalRow>))]
+[JsonSerializable(typeof(GoalEventRow))]
+[JsonSerializable(typeof(List<GoalEventRow>))]
+[JsonSerializable(typeof(MessageCompactResult))]
+[JsonSerializable(typeof(MessageCountResult))]
+[JsonSerializable(typeof(MessageDeleteLastResult))]
+[JsonSerializable(typeof(MessageDeleteResult))]
+[JsonSerializable(typeof(MessageMutationResult))]
+[JsonSerializable(typeof(MessageUsageStatsResult))]
+[JsonSerializable(typeof(MessageRow))]
+[JsonSerializable(typeof(List<MessageRow>))]
+[JsonSerializable(typeof(PlanFindResult))]
+[JsonSerializable(typeof(PlanMutationResult))]
+[JsonSerializable(typeof(PlanRow))]
+[JsonSerializable(typeof(List<PlanRow>))]
+[JsonSerializable(typeof(PluginRouteSessionResult))]
+[JsonSerializable(typeof(PluginSessionFindResult))]
+[JsonSerializable(typeof(PluginSessionMutationResult))]
+[JsonSerializable(typeof(PluginProjectRow))]
+[JsonSerializable(typeof(List<PluginProjectRow>))]
+[JsonSerializable(typeof(PluginSessionRow))]
+[JsonSerializable(typeof(List<PluginSessionRow>))]
+[JsonSerializable(typeof(PluginSessionMessageRow))]
+[JsonSerializable(typeof(List<PluginSessionMessageRow>))]
+[JsonSerializable(typeof(ProjectDeleteResult))]
+[JsonSerializable(typeof(ProjectFindResult))]
+[JsonSerializable(typeof(ProjectRow))]
+[JsonSerializable(typeof(List<ProjectRow>))]
+[JsonSerializable(typeof(SessionClearAllResult))]
+[JsonSerializable(typeof(SessionFindResult))]
+[JsonSerializable(typeof(SessionMutationResult))]
+[JsonSerializable(typeof(SessionResetResult))]
+[JsonSerializable(typeof(SessionStatusResult))]
+[JsonSerializable(typeof(SessionRow))]
+[JsonSerializable(typeof(List<SessionRow>))]
+[JsonSerializable(typeof(SshConnectionFindResult))]
+[JsonSerializable(typeof(SshMutationResult))]
+[JsonSerializable(typeof(SshConnectionDbRow))]
+[JsonSerializable(typeof(List<SshConnectionDbRow>))]
+[JsonSerializable(typeof(SubAgentFindResult))]
+[JsonSerializable(typeof(SubAgentIndexResult))]
+[JsonSerializable(typeof(SubAgentSimpleResult))]
+[JsonSerializable(typeof(SubAgentRunRow))]
+[JsonSerializable(typeof(List<SubAgentRunRow>))]
+public sealed partial class InfrastructureJsonContext : JsonSerializerContext
+{
+}

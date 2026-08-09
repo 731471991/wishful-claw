@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers AskUser tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeAskUserExecutor (reverse-request to renderer).
 /// </summary>
-internal sealed class AskUserToolProvider : IToolProvider
+public sealed class AskUserToolProvider : IToolProvider
 {
     public string Category => "ask-user";
 

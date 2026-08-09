@@ -41,7 +41,7 @@ public static class ProviderStore
                 var provider = ReadProviderFile(id);
                 if (provider is not null)
                 {
-                    providers.Add(provider);
+                    providers.Add(provider as JsonNode);
                 }
             }
 

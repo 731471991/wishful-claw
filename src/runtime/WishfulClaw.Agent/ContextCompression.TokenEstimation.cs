@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using WishfulClaw.Contracts;
 
 namespace WishfulClaw.Agent;
 
@@ -60,7 +61,7 @@ public static partial class ContextCompression
 
     private static JsonElement CreateSummaryWireMessage(string content)
     {
-        var json = $"{{\"role\":\"user\",\"content\":{JsonSerializer.Serialize(content)}}}";
+        var json = $"{{\"role\":\"user\",\"content\":{JsonSerializer.Serialize(content, WorkerJsonHelper.GetTypeInfo<string>())}}}";
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
     }

@@ -1,21 +1,22 @@
 ﻿using System.Text.Json;
-using SqlSugar;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Core.Protocol;
 
 namespace WishfulClaw.Infrastructure.Db;
 
 /// <summary>
-/// SqlSugar 客户端单例 + DB 初始化。
+/// Database client singleton + DB initialization.
+/// Replaces SqlSugarScope with DbService (Microsoft.Data.Sqlite, zero reflection, AOT-safe).
 /// dbPath = ~/.wishful-claw/index.db
 /// </summary>
 public static class DbClient
 {
-    private static SqlSugarScope? _db;
+    private static DbService? _db;
     private static string? _dbPath;
     private static bool _initialized;
 
     /// <summary>
-    /// 解析 dbPath。优先用参数传入的 dbPath，否则用默认路径 ~/.wishful-claw/index.db
+    /// Resolve dbPath. Prioritize parameter, fallback to ~/.wishful-claw/index.db
     /// </summary>
     public static string ResolveDbPath(JsonElement? parameters = null)
     {
@@ -35,8 +36,8 @@ public static class DbClient
     }
 
     /// <summary>
-    /// 初始化 DB：创建目录、打开连接、CodeFirst 建表、PRAGMA 配置。
-    /// 线程安全，只执行一次。
+    /// Initialize DB: create directory, open connection, hand-written CREATE TABLE, PRAGMA.
+    /// Thread-safe, executes once.
     /// </summary>
     public static DbInitializeResult Initialize(string? dbPathOverride = null)
     {
@@ -50,59 +51,154 @@ public static class DbClient
             }
 
             _dbPath = dbPath;
-            _db = new SqlSugarScope(new ConnectionConfig
+            var connectionString = $"Data Source={dbPath}";
+            _db = new DbService(connectionString);
+
+            WorkerLog.Info("DbClient: starting table creation");
+
+            // ── Create tables (hand-written DDL, replaces SqlSugar CodeFirst) ──
+            var tableSqls = new[]
             {
-                ConnectionString = $"Data Source={dbPath}",
-                DbType = DbType.Sqlite,
-                IsAutoCloseConnection = true,
-                InitKeyType = InitKeyType.Attribute
-            },
-            client =>
+                @"CREATE TABLE IF NOT EXISTS projects (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    name TEXT NOT NULL DEFAULT '',
+                    working_folder TEXT,
+                    ssh_connection_id TEXT,
+                    plugin_id TEXT,
+                    pinned INTEGER NOT NULL DEFAULT 0,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS sessions (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    title TEXT NOT NULL DEFAULT '',
+                    icon TEXT,
+                    mode TEXT NOT NULL DEFAULT 'chat',
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    message_count INTEGER NOT NULL DEFAULT 0,
+                    project_id TEXT,
+                    working_folder TEXT,
+                    ssh_connection_id TEXT,
+                    plan_id TEXT,
+                    pinned INTEGER NOT NULL DEFAULT 0,
+                    plugin_id TEXT,
+                    external_chat_id TEXT,
+                    provider_id TEXT,
+                    model_id TEXT,
+                    model_selection_mode TEXT NOT NULL DEFAULT 'inherit',
+                    persona_id TEXT
+                );",
+                @"CREATE TABLE IF NOT EXISTS messages (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    session_id TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL DEFAULT '',
+                    meta TEXT,
+                    created_at INTEGER NOT NULL,
+                    usage TEXT,
+                    sort_order INTEGER NOT NULL DEFAULT 0
+                );",
+                @"CREATE TABLE IF NOT EXISTS sub_agent_runs (
+                    tool_use_id TEXT PRIMARY KEY NOT NULL,
+                    session_id TEXT NOT NULL,
+                    agent_name TEXT NOT NULL DEFAULT '',
+                    data TEXT NOT NULL DEFAULT '',
+                    started_at INTEGER NOT NULL,
+                    completed_at INTEGER,
+                    success INTEGER
+                );",
+                @"CREATE TABLE IF NOT EXISTS ssh_connections (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    group_id TEXT,
+                    name TEXT NOT NULL DEFAULT '',
+                    host TEXT NOT NULL DEFAULT '',
+                    port INTEGER NOT NULL DEFAULT 22,
+                    username TEXT NOT NULL DEFAULT '',
+                    auth_type TEXT NOT NULL DEFAULT 'password',
+                    encrypted_password TEXT,
+                    private_key_path TEXT,
+                    encrypted_passphrase TEXT,
+                    startup_command TEXT,
+                    default_directory TEXT,
+                    keep_alive_interval INTEGER NOT NULL DEFAULT 60,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    last_connected_at INTEGER,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS plans (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    session_id TEXT NOT NULL,
+                    title TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'drafting',
+                    file_path TEXT,
+                    content TEXT,
+                    spec_json TEXT,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS goals (
+                    goal_id TEXT PRIMARY KEY NOT NULL,
+                    session_id TEXT NOT NULL,
+                    objective TEXT NOT NULL DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    token_budget INTEGER,
+                    tokens_used INTEGER NOT NULL DEFAULT 0,
+                    time_used_seconds INTEGER NOT NULL DEFAULT 0,
+                    plans_json TEXT,
+                    plan_count INTEGER NOT NULL DEFAULT 0,
+                    completed_plan_count INTEGER NOT NULL DEFAULT 0,
+                    current_plan_index INTEGER NOT NULL DEFAULT -1,
+                    working_folder TEXT,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS goal_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    goal_id TEXT,
+                    event_type TEXT NOT NULL,
+                    message TEXT,
+                    metadata_json TEXT,
+                    created_at INTEGER NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS memory_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    scope TEXT NOT NULL DEFAULT 'global',
+                    title TEXT,
+                    content TEXT NOT NULL DEFAULT '',
+                    priority TEXT NOT NULL DEFAULT 'standard',
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );",
+                @"CREATE TABLE IF NOT EXISTS memory_archive (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    scope TEXT NOT NULL DEFAULT 'global',
+                    key TEXT NOT NULL DEFAULT '',
+                    title TEXT,
+                    content TEXT NOT NULL DEFAULT '',
+                    priority TEXT NOT NULL DEFAULT 'standard',
+                    created_at INTEGER NOT NULL,
+                    archived_at INTEGER NOT NULL
+                );"
+            };
+
+            foreach (var sql in tableSqls)
             {
-                // PRAGMA 配置
-                client.Ado.ExecuteCommand("PRAGMA journal_mode = WAL;");
-                client.Ado.ExecuteCommand("PRAGMA synchronous = NORMAL;");
-                client.Ado.ExecuteCommand("PRAGMA busy_timeout = 5000;");
-                client.Ado.ExecuteCommand("PRAGMA foreign_keys = ON;");
-            });
+                _db.Execute(sql);
+            }
+            WorkerLog.Info($"DbClient: {tableSqls.Length} tables created/verified");
 
-            // CodeFirst 建表（已存在则跳过）
-            WorkerLog.Info("DbClient: starting CodeFirst.InitTables");
-            _db.CodeFirst.InitTables(
-                typeof(ProjectEntity),
-                typeof(SessionEntity),
-                typeof(MessageEntity),
-                typeof(SubAgentRunEntity),
-                typeof(SshConnectionEntity),
-                typeof(PlanEntity),
-                typeof(GoalEntity),
-                typeof(GoalEventEntity));
-            WorkerLog.Info("DbClient: CodeFirst.InitTables completed (8 entities, MemoryArchiveEntity excluded)");
-
-            // memory_entries 表（手动创建，不通过 CodeFirst）
-            WorkerLog.Info("DbClient: creating memory_entries table");
-            _db!.Ado.ExecuteCommand(
-                "CREATE TABLE IF NOT EXISTS memory_entries (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "scope TEXT NOT NULL DEFAULT 'global', " +
-                "title TEXT, " +
-                "content TEXT NOT NULL DEFAULT '', " +
-                "priority TEXT NOT NULL DEFAULT 'standard', " +
-                "status TEXT NOT NULL DEFAULT 'active', " +
-                "created_at INTEGER NOT NULL, " +
-                "updated_at INTEGER NOT NULL);");
-            WorkerLog.Info("DbClient: memory_entries table ready");
-
-            // FTS5 虚拟表（记忆全文搜索）— 外部内容表模式 + trigram 分词器
-            // content='memory_entries' 让 FTS5 通过主表 rowid 关联，支持 'delete' 命令
+            // ── FTS5 virtual table (external content + trigram tokenizer) ──
             WorkerLog.Info("DbClient: creating memory_fts virtual table (external content)");
-            _db!.Ado.ExecuteCommand(
+            _db.Execute(
                 "CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(" +
                 "title, content, content='memory_entries', content_rowid='id', tokenize='trigram');");
             WorkerLog.Info("DbClient: memory_fts virtual table ready");
 
-            // memory_entries → memory_fts 同步触发器（自动维护索引）
-            // 使用原生 Microsoft.Data.Sqlite 执行触发器创建，避免 SqlSugar ExecuteCommand 对 SQL 做预处理
+            // ── FTS5 sync triggers ──
             var triggerSqls = new[]
             {
                 "CREATE TRIGGER IF NOT EXISTS memory_entries_ai AFTER INSERT ON memory_entries BEGIN " +
@@ -118,23 +214,36 @@ public static class DbClient
                 "INSERT INTO memory_fts(rowid, title, content) " +
                 "VALUES (new.id, COALESCE(new.title, ''), new.content); END;"
             };
-            WorkerLog.Info($"DbClient: creating {triggerSqls.Length} triggers via raw SqliteCommand");
-            using (var trigConn = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}"))
+            WorkerLog.Info($"DbClient: creating {triggerSqls.Length} FTS triggers");
+            foreach (var tsql in triggerSqls)
             {
-                trigConn.Open();
-                foreach (var tsql in triggerSqls)
-                {
-                    using var tcmd = trigConn.CreateCommand();
-                    tcmd.CommandText = tsql;
-                    tcmd.ExecuteNonQuery();
-                }
-                WorkerLog.Info("DbClient: all triggers created successfully");
+                _db.Execute(tsql);
             }
+            WorkerLog.Info("DbClient: all triggers created successfully");
 
-            // ── Migrations: add columns that CodeFirst doesn't add to existing tables ──
+            // ── Migrations: add columns to existing tables ──
             WorkerLog.Info("DbClient: running EnsureColumn migrations");
-            EnsureColumn(_db, "sessions", "persona_id", "TEXT");
-            EnsureGoalEventsTable(_db);
+            EnsureColumn("sessions", "persona_id", "TEXT");
+            EnsureColumn("sessions", "plan_id", "TEXT");
+            EnsureColumn("sessions", "external_chat_id", "TEXT");
+            EnsureColumn("sessions", "provider_id", "TEXT");
+            EnsureColumn("sessions", "model_id", "TEXT");
+            EnsureColumn("sessions", "model_selection_mode", "TEXT");
+            EnsureColumn("sessions", "plugin_id", "TEXT");
+            EnsureColumn("sessions", "ssh_connection_id", "TEXT");
+            EnsureColumn("sessions", "working_folder", "TEXT");
+            EnsureColumn("sessions", "icon", "TEXT");
+            EnsureColumn("projects", "ssh_connection_id", "TEXT");
+            EnsureColumn("projects", "plugin_id", "TEXT");
+            EnsureColumn("messages", "usage", "TEXT");
+            EnsureColumn("messages", "sort_order", "INTEGER");
+            EnsureColumn("goals", "plans_json", "TEXT");
+            EnsureColumn("goals", "plan_count", "INTEGER");
+            EnsureColumn("goals", "completed_plan_count", "INTEGER");
+            EnsureColumn("goals", "current_plan_index", "INTEGER");
+            EnsureColumn("goals", "working_folder", "TEXT");
+            EnsureColumn("goals", "token_budget", "INTEGER");
+            EnsureColumn("goals", "time_used_seconds", "INTEGER");
             WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;
@@ -150,9 +259,9 @@ public static class DbClient
     }
 
     /// <summary>
-    /// 获取已初始化的 DB 客户端。如未初始化则用默认路径初始化。
+    /// Get the initialized DbService. Auto-initializes with default path if needed.
     /// </summary>
-    public static SqlSugarScope GetClient(JsonElement? parameters = null)
+    public static DbService GetClient(JsonElement? parameters = null)
     {
         if (_db is null || !_initialized)
         {
@@ -168,7 +277,7 @@ public static class DbClient
     }
 
     /// <summary>
-    /// 确保 DB 已初始化（从 IPC 参数中解析 dbPath）。
+    /// Ensure DB is initialized (from IPC parameters).
     /// </summary>
     public static void EnsureInitialized(JsonElement parameters)
     {
@@ -182,9 +291,9 @@ public static class DbClient
             }
         }
     }
+
     /// <summary>
-    /// 确保 DB 已初始化（无参版本，用于非 IPC 上下文调用）。
-    /// 要求 DB 已通过 IPC handler 初始化过。
+    /// Ensure DB is initialized (no-arg version, for non-IPC contexts).
     /// </summary>
     public static void EnsureInitialized()
     {
@@ -195,69 +304,26 @@ public static class DbClient
     }
 
     /// <summary>
-    /// Adds a column to an existing table if it doesn't exist.
-    /// CodeFirst.InitTables only creates new tables, not new columns on existing ones.
+    /// Add a column to an existing table if it doesn't exist.
     /// </summary>
-    private static void EnsureColumn(SqlSugarScope db, string table, string column, string columnType)
+    private static void EnsureColumn(string table, string column, string columnType)
     {
         try
         {
-            // Check if column exists (SQLite PRAGMA table_info)
-            var columns = db.Ado.SqlQuery<string>($"PRAGMA table_info({table});");
-            var hasColumn = false;
-            // PRAGMA table_info returns rows with columns: cid, name, type, notnull, dflt_value, pk
-            // SqlSugar might return the name column; let's use a safer approach
-            var dt = db.Ado.GetDataTable($"PRAGMA table_info({table});");
-            if (dt.Columns.Contains("name"))
-            {
-                foreach (System.Data.DataRow row in dt.Rows)
-                {
-                    if (string.Equals(row["name"]?.ToString(), column, StringComparison.OrdinalIgnoreCase))
-                    {
-                        hasColumn = true;
-                        break;
-                    }
-                }
-            }
+            var columns = _db!.Query(
+                $"PRAGMA table_info({table});",
+                r => r.GetString("name"));
+            var hasColumn = columns.Any(c =>
+                string.Equals(c, column, StringComparison.OrdinalIgnoreCase));
 
             if (!hasColumn)
             {
-                db.Ado.ExecuteCommand($"ALTER TABLE {table} ADD COLUMN {column} {columnType};");
+                _db.Execute($"ALTER TABLE {table} ADD COLUMN {column} {columnType};");
             }
         }
         catch
         {
             // Ignore migration errors (column may already exist or table not created yet)
-        }
-    }
-
-    /// <summary>
-    /// Creates the goal_events table if it doesn't exist.
-    /// CodeFirst.InitTables may skip new tables on existing databases.
-    /// </summary>
-    private static void EnsureGoalEventsTable(SqlSugarScope db)
-    {
-        try
-        {
-            var dt = db.Ado.GetDataTable("SELECT name FROM sqlite_master WHERE type='table' AND name='goal_events';");
-            var exists = dt.Rows.Count > 0;
-            if (!exists)
-            {
-                db.Ado.ExecuteCommand(@"CREATE TABLE IF NOT EXISTS goal_events (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    session_id VARCHAR(255) NOT NULL,
-                    goal_id VARCHAR(255),
-                    event_type VARCHAR(255) NOT NULL,
-                    message TEXT,
-                    metadata_json TEXT,
-                    created_at BIGINT NOT NULL
-                );");
-                WorkerLog.Info("DbClient: goal_events table created via migration");
-            }
-        }
-        catch (Exception ex)
-        {
-            WorkerLog.Error($"DbClient: EnsureGoalEventsTable failed: {ex.Message}");
         }
     }
 }

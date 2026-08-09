@@ -1,5 +1,6 @@
-﻿using System.Text.Json;
-using SqlSugar;
+using System.Text.Json.Serialization.Metadata;
+using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Infrastructure.Db;
@@ -22,23 +23,32 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var query = db.Queryable<SessionEntity>().OrderBy("updated_at DESC");
+            string sql;
+            SqliteParameter[] sqlParams;
 
             if (hasProjectFilter)
             {
                 if (projectId is null)
-                    query = query.Where(s => s.ProjectId == null);
+                {
+                    sql = "SELECT * FROM sessions WHERE project_id IS NULL ORDER BY updated_at DESC LIMIT @limit OFFSET @offset";
+                }
                 else
-                    query = query.Where(s => s.ProjectId == projectId);
+                {
+                    sql = "SELECT * FROM sessions WHERE project_id = @pid ORDER BY updated_at DESC LIMIT @limit OFFSET @offset";
+                }
+                sqlParams = projectId is null
+                    ? [new("@limit", limit), new("@offset", offset)]
+                    : [new("@pid", projectId), new("@limit", limit), new("@offset", offset)];
+            }
+            else
+            {
+                sql = "SELECT * FROM sessions ORDER BY updated_at DESC LIMIT @limit OFFSET @offset";
+                sqlParams = [new("@limit", limit), new("@offset", offset)];
             }
 
-            var entities = query
-                .Take(limit)
-                .Skip(offset)
-                .ToList();
-
+            var entities = db.Query(sql, EntityMappers.MapSession, sqlParams);
             var rows = entities.Select(SessionRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows);
+            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListSessionRow);
         }
         catch (Exception ex)
         {
@@ -55,12 +65,15 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var entity = db.Queryable<SessionEntity>().First(s => s.Id == id);
-            return WorkerResponse.Json(new SessionFindResult(true, entity is null ? null : SessionRow.FromEntity(entity), null));
+            var entity = db.QueryFirstOrDefault(
+                "SELECT * FROM sessions WHERE id = @id",
+                EntityMappers.MapSession,
+                new SqliteParameter("@id", id));
+            return WorkerResponse.Json(new SessionFindResult(true, entity is null ? null : SessionRow.FromEntity(entity), null), InfrastructureJsonContext.Default.SessionFindResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SessionFindResult(false, null, ex.Message));
+            return WorkerResponse.Json(new SessionFindResult(false, null, ex.Message), InfrastructureJsonContext.Default.SessionFindResult);
         }
     }
 
@@ -74,7 +87,29 @@ public static class DbSessionTools
 
             ApplyProjectDefaults(db, input);
 
-            db.Insertable(input).ExecuteCommand();
+            db.Execute(
+                "INSERT INTO sessions (id, title, icon, mode, created_at, updated_at, message_count, " +
+                "project_id, working_folder, ssh_connection_id, plan_id, pinned, plugin_id, " +
+                "external_chat_id, provider_id, model_id, model_selection_mode, persona_id) " +
+                "VALUES (@id, @title, @icon, @mode, @ca, @ua, 0, @pid, @wf, @ssh, @plan, @pinned, @plugin, " +
+                "@ext, @prov, @model, @msm, @persona)",
+                new SqliteParameter("@id", input.Id),
+                new SqliteParameter("@title", input.Title),
+                new SqliteParameter("@icon", (object?)input.Icon ?? DBNull.Value),
+                new SqliteParameter("@mode", input.Mode),
+                new SqliteParameter("@ca", input.CreatedAt),
+                new SqliteParameter("@ua", input.UpdatedAt),
+                new SqliteParameter("@pid", (object?)input.ProjectId ?? DBNull.Value),
+                new SqliteParameter("@wf", (object?)input.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ssh", (object?)input.SshConnectionId ?? DBNull.Value),
+                new SqliteParameter("@plan", (object?)input.PlanId ?? DBNull.Value),
+                new SqliteParameter("@pinned", input.Pinned),
+                new SqliteParameter("@plugin", (object?)input.PluginId ?? DBNull.Value),
+                new SqliteParameter("@ext", (object?)input.ExternalChatId ?? DBNull.Value),
+                new SqliteParameter("@prov", (object?)input.ProviderId ?? DBNull.Value),
+                new SqliteParameter("@model", (object?)input.ModelId ?? DBNull.Value),
+                new SqliteParameter("@msm", input.ModelSelectionMode),
+                new SqliteParameter("@persona", (object?)input.PersonaId ?? DBNull.Value));
             return Mutation(1);
         }
         catch (Exception ex)
@@ -96,14 +131,36 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var current = db.Queryable<SessionEntity>().First(s => s.Id == id);
+            var current = db.QueryFirstOrDefault(
+                "SELECT * FROM sessions WHERE id = @id",
+                EntityMappers.MapSession,
+                new SqliteParameter("@id", id));
             if (current is null)
             {
                 return Mutation(0);
             }
 
             ApplySessionPatch(patch, current);
-            var changed = db.Updateable(current).ExecuteCommand();
+            var changed = db.Execute(
+                "UPDATE sessions SET title = @title, icon = @icon, mode = @mode, updated_at = @ua, " +
+                "project_id = @pid, working_folder = @wf, ssh_connection_id = @ssh, plan_id = @plan, " +
+                "plugin_id = @plugin, provider_id = @prov, model_id = @model, " +
+                "model_selection_mode = @msm, persona_id = @persona, pinned = @pinned WHERE id = @id",
+                new SqliteParameter("@title", current.Title),
+                new SqliteParameter("@icon", (object?)current.Icon ?? DBNull.Value),
+                new SqliteParameter("@mode", current.Mode),
+                new SqliteParameter("@ua", current.UpdatedAt),
+                new SqliteParameter("@pid", (object?)current.ProjectId ?? DBNull.Value),
+                new SqliteParameter("@wf", (object?)current.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ssh", (object?)current.SshConnectionId ?? DBNull.Value),
+                new SqliteParameter("@plan", (object?)current.PlanId ?? DBNull.Value),
+                new SqliteParameter("@plugin", (object?)current.PluginId ?? DBNull.Value),
+                new SqliteParameter("@prov", (object?)current.ProviderId ?? DBNull.Value),
+                new SqliteParameter("@model", (object?)current.ModelId ?? DBNull.Value),
+                new SqliteParameter("@msm", current.ModelSelectionMode),
+                new SqliteParameter("@persona", (object?)current.PersonaId ?? DBNull.Value),
+                new SqliteParameter("@pinned", current.Pinned),
+                new SqliteParameter("@id", id));
             return Mutation(changed);
         }
         catch (Exception ex)
@@ -120,8 +177,8 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            db.Deleteable<MessageEntity>().Where(m => m.SessionId == id).ExecuteCommand();
-            var changed = db.Deleteable<SessionEntity>().Where(s => s.Id == id).ExecuteCommand();
+            db.Execute("DELETE FROM messages WHERE session_id = @id", new SqliteParameter("@id", id));
+            var changed = db.Execute("DELETE FROM sessions WHERE id = @id", new SqliteParameter("@id", id));
             return Mutation(changed);
         }
         catch (Exception ex)
@@ -137,29 +194,26 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var sessionIds = db.Queryable<SessionEntity>()
-                .Where(s => s.PluginId == null)
-                .Select(s => s.Id)
-                .ToList();
+            var sessionIds = db.Query(
+                "SELECT id FROM sessions WHERE plugin_id IS NULL",
+                r => r.GetString("id"));
 
             if (sessionIds.Count > 0)
             {
-                db.Deleteable<MessageEntity>()
-                    .Where(m => sessionIds.Contains(m.SessionId))
-                    .ExecuteCommand();
+                var placeholders = string.Join(",", sessionIds.Select((_, i) => $"@s{i}"));
+                var msgParams = sessionIds.Select((sid, i) => new SqliteParameter($"@s{i}", sid)).ToArray();
+                db.Execute($"DELETE FROM messages WHERE session_id IN ({placeholders})", msgParams);
             }
 
-            var deletedSessions = db.Deleteable<SessionEntity>()
-                .Where(s => s.PluginId == null)
-                .ExecuteCommand();
+            var deletedSessions = db.Execute("DELETE FROM sessions WHERE plugin_id IS NULL");
 
             return WorkerResponse.Json(
-                new SessionClearAllResult(true, sessionIds, sessionIds.Count, deletedSessions, null));
+                new SessionClearAllResult(true, sessionIds, sessionIds.Count, deletedSessions, null), InfrastructureJsonContext.Default.SessionClearAllResult);
         }
         catch (Exception ex)
         {
             return WorkerResponse.Json(
-                new SessionClearAllResult(false, new List<string>(), 0, 0, ex.Message));
+                new SessionClearAllResult(false, new List<string>(), 0, 0, ex.Message), InfrastructureJsonContext.Default.SessionClearAllResult);
         }
     }
 
@@ -175,24 +229,21 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var deleted = db.Deleteable<MessageEntity>()
-                .Where(m => m.SessionId == sessionId)
-                .ExecuteCommand();
+            var deleted = db.Execute(
+                "DELETE FROM messages WHERE session_id = @id",
+                new SqliteParameter("@id", sessionId));
 
-            var session = db.Queryable<SessionEntity>().First(s => s.Id == sessionId);
-            if (session is not null)
-            {
-                session.Title = "New Conversation";
-                session.UpdatedAt = updatedAt;
-                session.MessageCount = 0;
-                db.Updateable(session).UpdateColumns(s => new { s.Title, s.UpdatedAt, s.MessageCount }).ExecuteCommand();
-            }
+            db.Execute(
+                "UPDATE sessions SET title = @title, updated_at = @ua, message_count = 0 WHERE id = @id",
+                new SqliteParameter("@title", "New Conversation"),
+                new SqliteParameter("@ua", updatedAt),
+                new SqliteParameter("@id", sessionId));
 
-            return WorkerResponse.Json(new SessionResetResult(true, deleted, updatedAt, null));
+            return WorkerResponse.Json(new SessionResetResult(true, deleted, updatedAt, null), InfrastructureJsonContext.Default.SessionResetResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SessionResetResult(false, 0, 0, ex.Message));
+            return WorkerResponse.Json(new SessionResetResult(false, 0, 0, ex.Message), InfrastructureJsonContext.Default.SessionResetResult);
         }
     }
 
@@ -204,20 +255,25 @@ public static class DbSessionTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            var session = db.Queryable<SessionEntity>().First(s => s.Id == sessionId);
+            var session = db.QueryFirstOrDefault(
+                "SELECT * FROM sessions WHERE id = @id",
+                EntityMappers.MapSession,
+                new SqliteParameter("@id", sessionId));
             if (session is null)
             {
-                return WorkerResponse.Json(new SessionStatusResult(true, false, null, null, null, 0, null));
+                return WorkerResponse.Json(new SessionStatusResult(true, false, null, null, null, 0, null), InfrastructureJsonContext.Default.SessionStatusResult);
             }
 
-            var messageCount = db.Queryable<MessageEntity>().Where(m => m.SessionId == sessionId).Count();
+            var messageCount = db.QueryScalar<int>(
+                "SELECT COUNT(*) FROM messages WHERE session_id = @id",
+                new SqliteParameter("@id", sessionId));
 
             return WorkerResponse.Json(new SessionStatusResult(
-                true, true, session.Title, session.CreatedAt, session.UpdatedAt, messageCount, null));
+                true, true, session.Title, session.CreatedAt, session.UpdatedAt, messageCount, null), InfrastructureJsonContext.Default.SessionStatusResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new SessionStatusResult(false, false, null, null, null, 0, ex.Message));
+            return WorkerResponse.Json(new SessionStatusResult(false, false, null, null, null, 0, ex.Message), InfrastructureJsonContext.Default.SessionStatusResult);
         }
     }
 
@@ -250,7 +306,7 @@ public static class DbSessionTools
         };
     }
 
-    private static void ApplyProjectDefaults(ISqlSugarClient db, SessionEntity input)
+    private static void ApplyProjectDefaults(DbService db, SessionEntity input)
     {
         if (input.ProjectId is null ||
             (input.WorkingFolder is not null && input.SshConnectionId is not null))
@@ -258,7 +314,10 @@ public static class DbSessionTools
             return;
         }
 
-        var project = db.Queryable<ProjectEntity>().First(p => p.Id == input.ProjectId);
+        var project = db.QueryFirstOrDefault(
+            "SELECT * FROM projects WHERE id = @id",
+            EntityMappers.MapProject,
+            new SqliteParameter("@id", input.ProjectId));
         if (project is null) return;
 
         input.WorkingFolder ??= project.WorkingFolder;
@@ -330,11 +389,11 @@ public static class DbSessionTools
 
     private static WorkerResponse Mutation(int changed)
     {
-        return WorkerResponse.Json(new SessionMutationResult(true, changed, null));
+        return WorkerResponse.Json(new SessionMutationResult(true, changed, null), InfrastructureJsonContext.Default.SessionMutationResult);
     }
 
     private static WorkerResponse MutationError(string error)
     {
-        return WorkerResponse.Json(new SessionMutationResult(false, 0, error));
+        return WorkerResponse.Json(new SessionMutationResult(false, 0, error), InfrastructureJsonContext.Default.SessionMutationResult);
     }
 }

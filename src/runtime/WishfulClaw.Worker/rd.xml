@@ -1,6 +1,0 @@
-<Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
-  <Application>
-    <!-- SqlSugar AOT: preserve types needed by InstanceFactory reflection -->
-    <Assembly Name="SqlSugar" Dynamic="Required All" />
-  </Application>
-</Directives>

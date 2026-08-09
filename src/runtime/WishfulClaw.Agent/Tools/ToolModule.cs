@@ -1,6 +1,6 @@
 ﻿using System.Linq;
-using System.Reflection;
 using WishfulClaw.Contracts;
+using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Agent.Tools.FileTools;
 using WishfulClaw.Agent.Tools.MemoryTools;
@@ -31,10 +31,43 @@ public sealed class ToolModule : IWorkerModule
         // ── Mode 1: Direct registration (tools with real executors) ──
         RegisterDirectExecutors(registry);
 
-        // ── Mode 2: Auto-discover all IToolProvider implementations ──
-        // Scans the Worker assembly for IToolProvider classes and calls RegisterTools on each.
-        // Adding a new category = add a new file in Tools/Providers/, no edits needed here.
-        ToolProviderDiscovery.DiscoverAndRegister(registry, typeof(ToolModule).Assembly);
+        // ── Mode 2: Direct registration of all IToolProvider implementations ──
+        IToolProvider[] providers =
+        [
+            new Providers.AskUserToolProvider(),
+            new Providers.BrowserToolProvider(),
+            new Providers.ChannelPluginToolProvider(),
+            new Providers.CodeCompatibleToolProvider(),
+            new Providers.CronToolProvider(),
+            new Providers.DesktopToolProvider(),
+            new Providers.GoalToolProvider(),
+            new Providers.ImageGenerateToolProvider(),
+            new Providers.NotebookToolProvider(),
+            new Providers.PlanToolProvider(),
+            new Providers.PluginToolProvider(),
+            new Providers.ProjectToolsProvider(),
+            new Providers.SkillManagementToolProvider(),
+            new Providers.SkillToolProvider(),
+            new Providers.SshToolProvider(),
+            new Providers.TaskToolProvider(),
+            new Providers.TeamToolProvider(),
+            new Providers.UseCapabilityToolProvider(),
+            new Providers.WebToolProvider(),
+            new Providers.WidgetToolProvider(),
+        ];
+        foreach (var provider in providers.OrderBy(p => p.GetType().Name, StringComparer.Ordinal))
+        {
+            try
+            {
+                registry.PushCategory(provider.Category);
+                provider.RegisterTools(registry);
+                registry.PopCategory();
+            }
+            catch (Exception ex)
+            {
+                WorkerLog.Warn($"[ToolModule] Failed to register provider '{provider.GetType().Name}': {ex.Message}");
+            }
+        }
 
         // Expose via shared state for AgentLoop to access
         ToolModuleState.Registry = registry;

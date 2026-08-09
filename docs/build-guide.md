@@ -6,7 +6,7 @@
 |------|------|----------|
 | `electron-vite` | 编译 Electron 主进程 + Preload + React 渲染进程 | `electron.vite.config.ts` |
 | `electron-builder` | 打包为安装包/绿色版 | `electron-builder.yml` |
-| `dotnet publish` | 编译 .NET Worker 子进程（自包含） | `package.json` 的 `build:worker:prod` 脚本 |
+| `dotnet publish` | 编译 .NET Worker 子进程（AOT 自包含） | `scripts/publish-aot-worker.mjs`（自动检测 VS + C++ 环境） |
 
 ## 前置条件
 

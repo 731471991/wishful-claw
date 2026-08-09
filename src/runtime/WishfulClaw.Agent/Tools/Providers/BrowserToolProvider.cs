@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers browser tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeBrowserExecutor (reverse-request to renderer).
 /// </summary>
-internal sealed class BrowserToolProvider : IToolProvider
+public sealed class BrowserToolProvider : IToolProvider
 {
     public string Category => "browser";
 

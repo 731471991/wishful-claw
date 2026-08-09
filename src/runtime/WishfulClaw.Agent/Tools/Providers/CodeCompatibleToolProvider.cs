@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers code-compatible tool definitions (PowerShell, Monitor).
 /// Execution: ToolDispatchRouter → AgentRuntimeCodeCompatibleExecutor.
 /// </summary>
-internal sealed class CodeCompatibleToolProvider : IToolProvider
+public sealed class CodeCompatibleToolProvider : IToolProvider
 {
     public string Category => "code-compatible";
 

@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers project management tools for the "global session" (project manager) mode.
 /// Execution: ToolDispatchRouter -> AgentRuntimeProjectExecutor.
 /// </summary>
-internal sealed class ProjectToolsProvider : IToolProvider
+public sealed class ProjectToolsProvider : IToolProvider
 {
     public string Category => "project";
 

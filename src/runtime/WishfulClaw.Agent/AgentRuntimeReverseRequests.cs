@@ -74,7 +74,7 @@ public static class AgentRuntimeReverseRequests
         var id = ReadId(parameters);
         if (string.IsNullOrEmpty(id) || !Pending.TryRemove(id, out var pending))
         {
-            return WorkerResponse.Json(new AgentRuntimeReverseResponseResult(false));
+            return WorkerResponse.Json(new AgentRuntimeReverseResponseResult(false), AgentRuntimeJsonContext.Default.AgentRuntimeReverseResponseResult);
         }
 
         var error = JsonHelpers.GetString(parameters, "error");
@@ -92,7 +92,7 @@ public static class AgentRuntimeReverseRequests
             pending.TrySetResult(CreateNullElement());
         }
 
-        return WorkerResponse.Json(new AgentRuntimeReverseResponseResult(true));
+        return WorkerResponse.Json(new AgentRuntimeReverseResponseResult(true), AgentRuntimeJsonContext.Default.AgentRuntimeReverseResponseResult);
     }
 
     private static string? ReadId(JsonElement parameters)

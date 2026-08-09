@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Execution: ToolDispatchRouter → AgentRuntimeChannelPluginExecutor (reverse-request to main process).
 /// Available in normal and goal modes only (not sub-agent).
 /// </summary>
-internal sealed class ChannelPluginToolProvider : IToolProvider
+public sealed class ChannelPluginToolProvider : IToolProvider
 {
     public string Category => "channel-plugin";
 

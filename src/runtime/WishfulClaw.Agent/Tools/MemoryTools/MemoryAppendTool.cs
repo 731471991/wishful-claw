@@ -2,6 +2,7 @@
 
 using WishfulClaw.Core.Tools;
 
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 
 using WishfulClaw.Workspace.Memory;
@@ -100,7 +101,16 @@ public sealed class MemoryAppendTool : IToolExecutor
 
         };
 
-        var id = db.Insertable(entry).ExecuteReturnIdentity();
+        var id = db.ExecuteReturnIdentity(
+            "INSERT INTO memory_entries (scope, title, content, priority, status, created_at, updated_at) " +
+            "VALUES (@scope, @title, @content, @priority, @status, @ca, @ua)",
+            new SqliteParameter("@scope", entry.Scope),
+            new SqliteParameter("@title", (object?)entry.Title ?? DBNull.Value),
+            new SqliteParameter("@content", entry.Content),
+            new SqliteParameter("@priority", entry.Priority),
+            new SqliteParameter("@status", entry.Status),
+            new SqliteParameter("@ca", entry.CreatedAt),
+            new SqliteParameter("@ua", entry.UpdatedAt));
 
 
 

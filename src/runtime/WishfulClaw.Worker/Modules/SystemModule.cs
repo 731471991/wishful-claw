@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization.Metadata;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -11,11 +12,11 @@ public sealed class SystemModule : IWorkerModule
     public void Register(IWorkerModuleContext context)
     {
         context.Register("worker/ping", _ =>
-            WorkerResponse.Json(new StatusResult(true, Environment.ProcessId)));
+            WorkerResponse.Json(new StatusResult(true, Environment.ProcessId), WishfulClawJsonContext.Default.StatusResult));
         context.Register("worker/routes", _ =>
-            WorkerResponse.Json(new WorkerRoutesResult(context.GetRegisteredMethods())));
+            WorkerResponse.Json(new WorkerRoutesResult(context.GetRegisteredMethods()), WishfulClawJsonContext.Default.WorkerRoutesResult));
         context.Register("worker/memory", _ =>
-            WorkerResponse.Json(SystemMemorySnapshot.Capture()));
+            WorkerResponse.Json(SystemMemorySnapshot.Capture(), WishfulClawJsonContext.Default.SystemMemorySnapshot));
     }
 }
 

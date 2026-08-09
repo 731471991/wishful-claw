@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog } from 'electron'
+import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -28,6 +28,8 @@ import { safeSendMessagePackToWindow } from './window-ipc'
 
 let mainWindow: BrowserWindow | null = null
 let channelManager: ChannelManager | null = null
+let tray: Tray | null = null
+let isQuiting = false
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -42,7 +44,9 @@ function createWindow(): void {
       ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 12, y: 12 } }
       : { frame: false }),
     autoHideMenuBar: true,
-    icon: join(app.getAppPath(), 'resources', 'icon-256.png'),
+    icon: app.isPackaged
+      ? join(app.getAppPath(), '..', 'icon-256.png')
+      : join(app.getAppPath(), 'resources', 'icon-256.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -60,6 +64,14 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow!.show()
+  })
+
+  // Minimize to tray on close (Exit via tray menu only)
+  mainWindow.on('close', (event) => {
+    if (!isQuiting) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
   })
 
   mainWindow.webContents.on("console-message", (_e, level, message, line, src) => {
@@ -83,6 +95,28 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+}
+
+// ── Tray ──
+
+function getTrayIcon(): Electron.NativeImage {
+  const iconPath = app.isPackaged
+    ? join(app.getAppPath(), '..', 'icon-256.png')
+    : join(app.getAppPath(), 'resources', 'icon-256.png')
+  return nativeImage.createFromPath(iconPath)
+}
+
+function createTray(): void {
+  if (tray) return
+  tray = new Tray(getTrayIcon())
+  tray.setToolTip('Wishful Claw')
+  const contextMenu = Menu.buildFromTemplate([
+    { label: '显示主窗口', click: () => { mainWindow?.show() } },
+    { type: 'separator' },
+    { label: '退出', click: () => { isQuiting = true; app.quit() } }
+  ])
+  tray.setContextMenu(contextMenu)
+  tray.on('click', () => mainWindow?.show())
 }
 
 function registerWindowControlHandlers(): void {
@@ -526,6 +560,7 @@ registerWebSearchHandlers()
   )
 
   createWindow()
+  createTray()
 
   // Auto-start enabled channels after window is ready
   if (channelManager) {
@@ -538,7 +573,8 @@ registerWebSearchHandlers()
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // Don't quit when minimized to tray (isQuiting false + tray active)
+  if (process.platform !== 'darwin' && (isQuiting || !tray)) {
     app.quit()
   }
 })

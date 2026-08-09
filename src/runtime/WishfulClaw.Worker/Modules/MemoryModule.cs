@@ -1,10 +1,11 @@
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Workspace.Memory;
 using WishfulClaw.Agent.Tools;
 using WishfulClaw.Agent;
+using Microsoft.Data.Sqlite;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Worker.Modules;
@@ -48,7 +49,7 @@ internal sealed class MemoryModule : IWorkerModule
                 ColdCount = 0,
                 TopicsCount = 0,
                 DailyCount = 0
-            }));
+            }, WishfulClawJsonContext.Default.MemoryStats));
         });
     }
 
@@ -64,7 +65,7 @@ internal sealed class MemoryModule : IWorkerModule
                 await File.WriteAllTextAsync(path, "# Long-Term Memory\n");
             }
             var content = await File.ReadAllTextAsync(path);
-            return WorkerResponse.Json(new { content });
+            return WorkerResponse.Json(new MemoryReadResult(content), WishfulClawJsonContext.Default.MemoryReadResult);
         });
     }
 
@@ -82,7 +83,7 @@ internal sealed class MemoryModule : IWorkerModule
             }
             await File.WriteAllTextAsync(path, content);
             MemoryUpdateQueue.Enqueue("", "Hot memory file was overwritten via memory/write endpoint.");
-            return WorkerResponse.Json(new { ok = true });
+            return WorkerResponse.Json(new SimpleOkResult(true), WishfulClawJsonContext.Default.SimpleOkResult);
         });
     }
 
@@ -96,7 +97,7 @@ internal sealed class MemoryModule : IWorkerModule
         return RunAsync(async () =>
         {
             var hits = await search.SearchAsync(query, scope, limit, includeDeprecated);
-            return WorkerResponse.Json(new { hits });
+            return WorkerResponse.Json(new MemorySearchResponse(hits.ToList()), WishfulClawJsonContext.Default.MemorySearchResponse);
         });
     }
 
@@ -120,8 +121,17 @@ internal sealed class MemoryModule : IWorkerModule
                 CreatedAt = now,
                 UpdatedAt = now
             };
-            var id = db.Insertable(entry).ExecuteReturnIdentity();
-            return Task.FromResult(WorkerResponse.Json(new { ok = true, id }));
+            var id = db.ExecuteReturnIdentity(
+                "INSERT INTO memory_entries (scope, title, content, priority, status, created_at, updated_at) " +
+                "VALUES (@scope, @title, @content, @priority, @status, @ca, @ua)",
+                new SqliteParameter("@scope", entry.Scope),
+                new SqliteParameter("@title", (object?)entry.Title ?? DBNull.Value),
+                new SqliteParameter("@content", entry.Content),
+                new SqliteParameter("@priority", entry.Priority),
+                new SqliteParameter("@status", entry.Status),
+                new SqliteParameter("@ca", entry.CreatedAt),
+                new SqliteParameter("@ua", entry.UpdatedAt));
+            return Task.FromResult(WorkerResponse.Json(new MemoryMutationResult(true, Id: id), WishfulClawJsonContext.Default.MemoryMutationResult));
         });
     }
 
@@ -134,16 +144,26 @@ internal sealed class MemoryModule : IWorkerModule
         return RunAsync(() =>
         {
             var db = DbClient.GetClient();
-            var entry = db.Queryable<MemoryEntryEntity>().Where(e => e.Id == id).First();
+            var entry = db.QueryFirstOrDefault(
+                "SELECT * FROM memory_entries WHERE id = @id",
+                EntityMappers.MapMemoryEntry, new SqliteParameter("@id", id));
             if (entry is null)
-                return Task.FromResult(WorkerResponse.Json(new { ok = false, error = "Entry not found" }));
+                return Task.FromResult(WorkerResponse.Json(new SimpleOkResult(false, Error: "Entry not found"), WishfulClawJsonContext.Default.SimpleOkResult));
 
             if (content is not null) entry.Content = content;
             if (priority is not null) entry.Priority = priority.ToLowerInvariant();
             if (status is not null) entry.Status = status.ToLowerInvariant();
             entry.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            db.Updateable(entry).ExecuteCommand();
-            return Task.FromResult(WorkerResponse.Json(new { ok = true }));
+            db.Execute(
+                "UPDATE memory_entries SET title = @title, content = @content, priority = @priority, " +
+                "status = @status, updated_at = @ua WHERE id = @id",
+                new SqliteParameter("@title", (object?)entry.Title ?? DBNull.Value),
+                new SqliteParameter("@content", entry.Content),
+                new SqliteParameter("@priority", entry.Priority),
+                new SqliteParameter("@status", entry.Status),
+                new SqliteParameter("@ua", entry.UpdatedAt),
+                new SqliteParameter("@id", id));
+            return Task.FromResult(WorkerResponse.Json(new SimpleOkResult(true), WishfulClawJsonContext.Default.SimpleOkResult));
         });
     }
 
@@ -241,7 +261,7 @@ private static IMemorySearch GetSearch() =>
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new { ok = false, error = ex.Message });
+            return WorkerResponse.Json(new SimpleOkResult(false, Error: ex.Message), WishfulClawJsonContext.Default.SimpleOkResult);
         }
     }
 }

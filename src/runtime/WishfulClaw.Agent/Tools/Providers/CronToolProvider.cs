@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Execution: ToolDispatchRouter → AgentRuntimeCronExecutor (reverse-request to main process).
 /// Available in normal and goal modes only (not sub-agent).
 /// </summary>
-internal sealed class CronToolProvider : IToolProvider
+public sealed class CronToolProvider : IToolProvider
 {
     public string Category => "cron";
 

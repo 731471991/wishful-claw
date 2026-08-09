@@ -1,6 +1,7 @@
 ﻿using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -34,7 +35,7 @@ public static class ProviderTestService
         var provider = ExtractProviderConfig(parameters);
         if (provider is null)
         {
-            return WorkerResponse.Json(new { ok = false, error = "Invalid provider parameters" });
+            return WorkerResponse.Json(new ProviderTestResult(false, Error: "Invalid provider parameters"), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
 
         try
@@ -45,7 +46,7 @@ public static class ProviderTestService
 
             if (response.IsSuccessStatusCode)
             {
-                return WorkerResponse.Json(new { ok = true, statusCode = (int)response.StatusCode });
+                return WorkerResponse.Json(new ProviderTestResult(true, StatusCode: (int)response.StatusCode), AgentRuntimeJsonContext.Default.ProviderTestResult);
             }
 
             var error = response.StatusCode switch
@@ -55,15 +56,15 @@ public static class ProviderTestService
                 _ => $"HTTP {(int)response.StatusCode}: {Truncate(body, 200)}"
             };
 
-            return WorkerResponse.Json(new { ok = false, statusCode = (int)response.StatusCode, error });
+            return WorkerResponse.Json(new ProviderTestResult(false, StatusCode: (int)response.StatusCode, Error: error), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
         catch (TaskCanceledException)
         {
-            return WorkerResponse.Json(new { ok = false, error = "Request timed out (30s)" });
+            return WorkerResponse.Json(new ProviderTestResult(false, Error: "Request timed out (30s)"), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new { ok = false, error = $"{ex.GetType().Name}: {ex.Message}" });
+            return WorkerResponse.Json(new ProviderTestResult(false, Error: $"{ex.GetType().Name}: {ex.Message}"), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
     }
 
@@ -74,7 +75,7 @@ public static class ProviderTestService
         var provider = ExtractProviderConfig(parameters);
         if (provider is null)
         {
-            return WorkerResponse.Json(new { ok = false, error = "Invalid provider parameters" });
+            return WorkerResponse.Json(new ProviderTestResult(false, Error: "Invalid provider parameters"), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
 
         try
@@ -85,24 +86,19 @@ public static class ProviderTestService
 
             if (!response.IsSuccessStatusCode)
             {
-                return WorkerResponse.Json(new
-                {
-                    ok = false,
-                    statusCode = (int)response.StatusCode,
-                    error = $"HTTP {(int)response.StatusCode}: {Truncate(body, 200)}"
-                });
+                return WorkerResponse.Json(new ProviderTestResult(false, StatusCode: (int)response.StatusCode, Error: $"HTTP {(int)response.StatusCode}: {Truncate(body, 200)}"), AgentRuntimeJsonContext.Default.ProviderTestResult);
             }
 
             var models = ParseModelsResponse(body, provider.Type);
-            return WorkerResponse.Json(new { ok = true, models });
+            return WorkerResponse.Json(new ProviderTestModelsResult(true, Models: models), AgentRuntimeJsonContext.Default.ProviderTestModelsResult);
         }
         catch (TaskCanceledException)
         {
-            return WorkerResponse.Json(new { ok = false, error = "Request timed out (30s)" });
+            return WorkerResponse.Json(new ProviderTestResult(false, Error: "Request timed out (30s)"), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
         catch (Exception ex)
         {
-            return WorkerResponse.Json(new { ok = false, error = $"{ex.GetType().Name}: {ex.Message}" });
+            return WorkerResponse.Json(new ProviderTestResult(false, Error: $"{ex.GetType().Name}: {ex.Message}"), AgentRuntimeJsonContext.Default.ProviderTestResult);
         }
     }
 
@@ -155,11 +151,19 @@ public static class ProviderTestService
             request.Headers.Add("x-api-key", provider.ApiKey);
             request.Headers.Add("anthropic-version", "2023-06-01");
             request.Content = new StringContent(
-                JsonSerializer.Serialize(new
+                WorkerJsonHelper.BuildJsonString(w =>
                 {
-                    model = provider.ModelId ?? "claude-3-5-haiku-20241022",
-                    max_tokens = 1,
-                    messages = new[] { new { role = "user", content = "Hi" } }
+                    w.WriteStartObject();
+                    w.WriteString("model", provider.ModelId ?? "claude-3-5-haiku-20241022");
+                    w.WriteNumber("max_tokens", 1);
+                    w.WritePropertyName("messages");
+                    w.WriteStartArray();
+                    w.WriteStartObject();
+                    w.WriteString("role", "user");
+                    w.WriteString("content", "Hi");
+                    w.WriteEndObject();
+                    w.WriteEndArray();
+                    w.WriteEndObject();
                 }),
                 Encoding.UTF8,
                 "application/json");
@@ -174,11 +178,19 @@ public static class ProviderTestService
             req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.ApiKey);
         }
         req.Content = new StringContent(
-            JsonSerializer.Serialize(new
+            WorkerJsonHelper.BuildJsonString(w =>
             {
-                model = provider.ModelId ?? "gpt-4o-mini",
-                max_tokens = 1,
-                messages = new[] { new { role = "user", content = "Hi" } }
+                w.WriteStartObject();
+                w.WriteString("model", provider.ModelId ?? "gpt-4o-mini");
+                w.WriteNumber("max_tokens", 1);
+                w.WritePropertyName("messages");
+                w.WriteStartArray();
+                w.WriteStartObject();
+                w.WriteString("role", "user");
+                w.WriteString("content", "Hi");
+                w.WriteEndObject();
+                w.WriteEndArray();
+                w.WriteEndObject();
             }),
             Encoding.UTF8,
             "application/json");

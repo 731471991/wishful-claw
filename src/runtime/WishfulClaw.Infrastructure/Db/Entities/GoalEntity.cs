@@ -1,74 +1,54 @@
-using SqlSugar;
 
 namespace WishfulClaw.Infrastructure.Db;
 
 // ─── Goal Entity ───
 
-[SugarTable("goals")]
 public class GoalEntity
 {
-    [SugarColumn(IsPrimaryKey = true, ColumnName = "goal_id")]
     public string GoalId { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "session_id")]
     public string SessionId { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "objective", ColumnDataType = "TEXT")]
     public string Objective { get; set; } = string.Empty;
 
     /// <summary>
     /// active | paused | blocked | usage_limited | budget_limited | complete
     /// </summary>
-    [SugarColumn(ColumnName = "status")]
     public string Status { get; set; } = "active";
 
-    [SugarColumn(ColumnName = "token_budget", IsNullable = true)]
     public long? TokenBudget { get; set; }
 
-    [SugarColumn(ColumnName = "tokens_used")]
     public long TokensUsed { get; set; }
 
-    [SugarColumn(ColumnName = "time_used_seconds")]
     public long TimeUsedSeconds { get; set; }
 
     /// <summary>
     /// JSON array of plan items: [{ planId, title, description, status, retryCount, resultSummary }]
     /// Used by GoalOrchestrator for plan management.
     /// </summary>
-    [SugarColumn(ColumnName = "plans_json", IsNullable = true, ColumnDataType = "TEXT")]
     public string? PlansJson { get; set; }
 
-    [SugarColumn(ColumnName = "plan_count")]
     public int PlanCount { get; set; }
 
-    [SugarColumn(ColumnName = "completed_plan_count")]
     public int CompletedPlanCount { get; set; }
 
-    [SugarColumn(ColumnName = "current_plan_index")]
     public int CurrentPlanIndex { get; set; } = -1;
 
-    [SugarColumn(ColumnName = "working_folder", IsNullable = true)]
     public string? WorkingFolder { get; set; }
 
-    [SugarColumn(ColumnName = "created_at")]
     public long CreatedAt { get; set; }
 
-    [SugarColumn(ColumnName = "updated_at")]
     public long UpdatedAt { get; set; }
 }
 
 // ─── Goal Event Entity ───
 
-[SugarTable("goal_events")]
 public class GoalEventEntity
 {
-    [SugarColumn(IsPrimaryKey = true, ColumnName = "id", IsIdentity = true, ColumnDataType = "INTEGER")]
     public long Id { get; set; }
 
-    [SugarColumn(ColumnName = "session_id")]
     public string SessionId { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "goal_id", IsNullable = true)]
     public string? GoalId { get; set; }
 
     /// <summary>
@@ -76,16 +56,12 @@ public class GoalEventEntity
     /// usage_limited | budget_limited | completion_deferred | blocked | completed | stall_paused |
     /// auto_continue_blocked | cleared
     /// </summary>
-    [SugarColumn(ColumnName = "event_type")]
     public string EventType { get; set; } = "created";
 
-    [SugarColumn(ColumnName = "message", IsNullable = true, ColumnDataType = "TEXT")]
     public string? Message { get; set; }
 
-    [SugarColumn(ColumnName = "metadata_json", IsNullable = true, ColumnDataType = "TEXT")]
     public string? MetadataJson { get; set; }
 
-    [SugarColumn(ColumnName = "created_at")]
     public long CreatedAt { get; set; }
 }
 
@@ -110,20 +86,20 @@ public sealed class GoalRow
 
     public static GoalRow FromEntity(GoalEntity e) => new()
     {
-        GoalId = e.GoalId,
-        SessionId = e.SessionId,
-        Objective = e.Objective,
-        Status = e.Status,
-        TokenBudget = e.TokenBudget,
-        TokensUsed = e.TokensUsed,
-        TimeUsedSeconds = e.TimeUsedSeconds,
-        PlansJson = e.PlansJson,
-        PlanCount = e.PlanCount,
-        CompletedPlanCount = e.CompletedPlanCount,
-        CurrentPlanIndex = e.CurrentPlanIndex,
-        WorkingFolder = e.WorkingFolder,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
+    GoalId = e.GoalId,
+    SessionId = e.SessionId,
+    Objective = e.Objective,
+    Status = e.Status,
+    TokenBudget = e.TokenBudget,
+    TokensUsed = e.TokensUsed,
+    TimeUsedSeconds = e.TimeUsedSeconds,
+    PlansJson = e.PlansJson,
+    PlanCount = e.PlanCount,
+    CompletedPlanCount = e.CompletedPlanCount,
+    CurrentPlanIndex = e.CurrentPlanIndex,
+    WorkingFolder = e.WorkingFolder,
+    CreatedAt = e.CreatedAt,
+    UpdatedAt = e.UpdatedAt
     };
 }
 
@@ -141,13 +117,13 @@ public sealed class GoalEventRow
 
     public static GoalEventRow FromEntity(GoalEventEntity e) => new()
     {
-        Id = e.Id,
-        SessionId = e.SessionId,
-        GoalId = e.GoalId,
-        EventType = e.EventType,
-        Message = e.Message,
-        MetadataJson = e.MetadataJson,
-        CreatedAt = e.CreatedAt
+    Id = e.Id,
+    SessionId = e.SessionId,
+    GoalId = e.GoalId,
+    EventType = e.EventType,
+    Message = e.Message,
+    MetadataJson = e.MetadataJson,
+    CreatedAt = e.CreatedAt
     };
 }
 

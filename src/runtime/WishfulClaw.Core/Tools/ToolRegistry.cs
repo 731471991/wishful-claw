@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
@@ -205,78 +205,81 @@ public sealed class ToolRegistry
     /// </summary>
     private static JsonElement CanonicalizeSchema(JsonElement schema)
     {
-        var canonical = CanonicalizeElement(schema);
-        var json = JsonSerializer.Serialize(canonical);
-        try
+        // AOT-safe: use Utf8JsonWriter to serialize the canonicalized structure directly.
+        // No JsonSerializer.Serialize — avoids reflection-based serialization entirely.
+        var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+        using (var writer = new System.Text.Json.Utf8JsonWriter(buffer))
         {
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.Clone();
+            WriteCanonicalElement(writer, schema);
         }
-        catch (Exception ex)
-        {
-            System.Console.Error.WriteLine($"[CanonicalizeSchema] Parse failed: {ex.Message}");
-            System.Console.Error.WriteLine($"[CanonicalizeSchema] Serialized JSON (len={json.Length}): {json}");
-            System.Console.Error.WriteLine($"[CanonicalizeSchema] Canonical type: {canonical?.GetType().FullName ?? "null"}");
-            if (canonical is System.Collections.IDictionary dict)
-            {
-                foreach (System.Collections.DictionaryEntry kvp in dict)
-                {
-                    System.Console.Error.WriteLine($"[CanonicalizeSchema]   Key '{kvp.Key}' -> Value type: {kvp.Value?.GetType().FullName ?? "null"}, Value: {kvp.Value}");
-                }
-            }
-            throw;
-        }
+        using var doc = JsonDocument.Parse(buffer.WrittenMemory);
+        return doc.RootElement.Clone();
     }
 
-    private static object? CanonicalizeElement(JsonElement element)
+    private static void WriteCanonicalElement(System.Text.Json.Utf8JsonWriter writer, JsonElement element)
     {
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:
-                var dict = new SortedDictionary<string, object?>(StringComparer.Ordinal);
+                writer.WriteStartObject();
+                var props = new List<(string Name, JsonElement Value)>(8);
                 foreach (var prop in element.EnumerateObject())
+                    props.Add((prop.Name, prop.Value));
+                props.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+                foreach (var (name, value) in props)
                 {
-                    // Special handling for "required" arrays — sort them
-                    if (prop.NameEquals("required") && prop.Value.ValueKind == JsonValueKind.Array)
+                    writer.WritePropertyName(name);
+                    if (name == "required" && value.ValueKind == JsonValueKind.Array)
                     {
                         var items = new List<string>();
-                        foreach (var item in prop.Value.EnumerateArray())
+                        foreach (var item in value.EnumerateArray())
                             items.Add(item.GetString() ?? "");
                         items.Sort(StringComparer.Ordinal);
-                        dict["required"] = items;
+                        writer.WriteStartArray();
+                        foreach (var item in items)
+                            writer.WriteStringValue(item);
+                        writer.WriteEndArray();
                     }
                     else
                     {
-                        dict[prop.Name] = CanonicalizeElement(prop.Value);
+                        WriteCanonicalElement(writer, value);
                     }
                 }
-                return dict;
+                writer.WriteEndObject();
+                break;
 
             case JsonValueKind.Array:
-                var arr = new List<object?>();
+                writer.WriteStartArray();
                 foreach (var item in element.EnumerateArray())
-                    arr.Add(CanonicalizeElement(item));
-                return arr;
+                    WriteCanonicalElement(writer, item);
+                writer.WriteEndArray();
+                break;
 
             case JsonValueKind.String:
-                return element.GetString();
+                writer.WriteStringValue(element.GetString());
+                break;
 
             case JsonValueKind.Number:
                 if (element.TryGetInt64(out var intVal))
-                    return intVal;
-                if (element.TryGetDouble(out var dblVal))
-                    return dblVal;
-                return element.GetRawText();
+                    writer.WriteNumberValue(intVal);
+                else if (element.TryGetDouble(out var dblVal))
+                    writer.WriteNumberValue(dblVal);
+                else
+                    writer.WriteRawValue(element.GetRawText());
+                break;
 
             case JsonValueKind.True:
-                return true;
+                writer.WriteBooleanValue(true);
+                break;
 
             case JsonValueKind.False:
-                return false;
+                writer.WriteBooleanValue(false);
+                break;
 
             case JsonValueKind.Null:
             default:
-                return null;
+                writer.WriteNullValue();
+                break;
         }
     }
 }

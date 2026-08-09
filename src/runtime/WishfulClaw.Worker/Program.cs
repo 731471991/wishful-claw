@@ -1,12 +1,18 @@
-using System.Text;
-using SqlSugar;
+﻿using System.Text;
+using System.Text.Json.Serialization.Metadata;
+using WishfulClaw.Contracts;
+using WishfulClaw.Agent;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Worker;
 
+// Configure AOT-safe JSON serialization
+WorkerJsonHelper.ConfigureAotResolver(
+    JsonTypeInfoResolver.Combine(
+        WishfulClawJsonContext.Default,
+        AgentRuntimeJsonContext.Default));
+
 Console.OutputEncoding = Encoding.UTF8;
 
-// Native AOT compatibility: SqlSugar switches to reflection-free mode
-StaticConfig.EnableAot = true;
 // Register global exception handlers so crashes are logged before the process dies
 AppDomain.CurrentDomain.UnhandledException += (_, e) =>
 {

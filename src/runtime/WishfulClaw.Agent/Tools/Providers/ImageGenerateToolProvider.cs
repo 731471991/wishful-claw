@@ -7,7 +7,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Registers image generation tool definitions.
 /// Execution: ToolDispatchRouter → AgentRuntimeImageGenerateExecutor (reverse-request to main process).
 /// </summary>
-internal sealed class ImageGenerateToolProvider : IToolProvider
+public sealed class ImageGenerateToolProvider : IToolProvider
 {
     public string Category => "image-generate";
 

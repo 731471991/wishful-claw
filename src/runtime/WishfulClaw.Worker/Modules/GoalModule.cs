@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using WishfulClaw.Agent;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -22,7 +23,7 @@ public sealed class GoalModule : IWorkerModule
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         if (!string.IsNullOrEmpty(goalId))
             GoalOrchestrator.Pause(goalId);
-        return WorkerResponse.Json(new { success = true });
+        return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
     }
 
     private static WorkerResponse ResumeGoal(JsonElement parameters)
@@ -30,7 +31,7 @@ public sealed class GoalModule : IWorkerModule
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         if (!string.IsNullOrEmpty(goalId))
             GoalOrchestrator.Resume(goalId);
-        return WorkerResponse.Json(new { success = true });
+        return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
     }
 
     private static WorkerResponse AbortGoal(JsonElement parameters)
@@ -38,7 +39,7 @@ public sealed class GoalModule : IWorkerModule
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         if (!string.IsNullOrEmpty(goalId))
             GoalOrchestrator.Abort(goalId);
-        return WorkerResponse.Json(new { success = true });
+        return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
     }
 
     private static async Task<WorkerResponse> ConfirmGoal(JsonElement parameters, IWorkerRequestContext context)
@@ -47,11 +48,11 @@ public sealed class GoalModule : IWorkerModule
         var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
 
         if (string.IsNullOrEmpty(goalId) || string.IsNullOrEmpty(sessionId))
-            return WorkerResponse.Json(new { success = false, error = "goalId and sessionId are required" });
+            return WorkerResponse.Json(new SimpleSuccessResult(false, Error: "goalId and sessionId are required"), WishfulClawJsonContext.Default.SimpleSuccessResult);
 
         var pending = GoalOrchestrator.GetPendingGoal(goalId);
         if (pending == null)
-            return WorkerResponse.Json(new { success = false, error = "No pending goal found with this goalId" });
+            return WorkerResponse.Json(new SimpleSuccessResult(false, Error: "No pending goal found with this goalId"), WishfulClawJsonContext.Default.SimpleSuccessResult);
 
         var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
         var workingFolder = JsonHelpers.GetString(pending.Parameters, "workingFolder");
@@ -59,24 +60,22 @@ public sealed class GoalModule : IWorkerModule
         var ok = await GoalOrchestrator.ConfirmGoalAsync(
             goalId, sessionId, workingFolder, pending.Parameters, parentState, context);
 
-        return WorkerResponse.Json(new { success = ok });
+        return WorkerResponse.Json(new SimpleSuccessResult(ok), WishfulClawJsonContext.Default.SimpleSuccessResult);
     }
 
     private static WorkerResponse GetGoalStatus(JsonElement parameters)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         if (string.IsNullOrEmpty(goalId))
-            return WorkerResponse.Json(new { active = false });
+            return WorkerResponse.Json(new GoalStatusResponse(false), WishfulClawJsonContext.Default.GoalStatusResponse);
 
         var ctx = GoalOrchestrator.GetContext(goalId);
-        return WorkerResponse.Json(new
-        {
-            active = ctx?.Status == "active",
-            status = ctx?.Status ?? "unknown",
-            goalId = goalId,
-            currentPlanIndex = ctx?.CurrentPlanIndex ?? -1,
-            planCount = ctx?.Plans.Count ?? 0,
-            completedPlans = ctx?.Plans.Count(p => p.Status == "completed") ?? 0
-        });
+        return WorkerResponse.Json(new GoalStatusResponse(
+            ctx?.Status == "active",
+            ctx?.Status ?? "unknown",
+            goalId,
+            ctx?.CurrentPlanIndex ?? -1,
+            ctx?.Plans.Count ?? 0,
+            ctx?.Plans.Count(p => p.Status == "completed") ?? 0), WishfulClawJsonContext.Default.GoalStatusResponse);
     }
 }

@@ -1,11 +1,12 @@
 using System.Text.Json.Serialization;
+using WishfulClaw.Contracts;
+using WishfulClaw.Agent.Modules.Git;
+using WishfulClaw.Agent.Modules.Extensions;
 
 namespace WishfulClaw.Agent;
 
 /// <summary>
-/// Source-generated JsonSerializerContext for AgentRuntime types used in reverse requests.
-/// Must use CamelCase to match the TypeScript side (native-agent-runtime.ts reads
-/// request.id, request.method, request.params — all lowercase).
+/// Source-generated JsonSerializerContext for AgentRuntime types.
 /// </summary>
 [JsonSourceGenerationOptions(
     GenerationMode = JsonSourceGenerationMode.Metadata,
@@ -14,6 +15,20 @@ namespace WishfulClaw.Agent;
 [JsonSerializable(typeof(AgentRuntimeReverseRequestEnvelope))]
 [JsonSerializable(typeof(AgentRuntimeReverseCancelEnvelope))]
 [JsonSerializable(typeof(AgentRuntimeReverseResponseResult))]
-internal sealed partial class AgentRuntimeJsonContext : JsonSerializerContext
+[JsonSerializable(typeof(AgentRuntimeRunResult))]
+[JsonSerializable(typeof(AgentRuntimeCancelResult))]
+[JsonSerializable(typeof(AgentRuntimeStopResult))]
+[JsonSerializable(typeof(AgentRuntimeAppendMessagesResult))]
+[JsonSerializable(typeof(ClearSessionResult))]
+[JsonSerializable(typeof(ProviderTestResult))]
+[JsonSerializable(typeof(ProviderTestModelsResult))]
+[JsonSerializable(typeof(SessionRestoreResponse))]
+[JsonSerializable(typeof(GitExecResult))]
+[JsonSerializable(typeof(GitStatusDetailedResult))]
+[JsonSerializable(typeof(GitQueryResult))]
+[JsonSerializable(typeof(GitRepositorySummary))]
+[JsonSerializable(typeof(List<GitRepositorySummary>))]
+[JsonSerializable(typeof(NativeExtensionToolExecutionResult))]
+public sealed partial class AgentRuntimeJsonContext : JsonSerializerContext
 {
 }

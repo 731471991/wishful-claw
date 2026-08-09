@@ -48,4 +48,5 @@ package-lock.json
 .reasonix/
 build_out
 release/
+dist-electron/
 scripts/

@@ -8,7 +8,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 /// Execution: ToolDispatchRouter → AgentRuntimeGoalExecutor (in-memory, no I/O).
 /// Available in goal mode only.
 /// </summary>
-internal sealed class GoalToolProvider : IToolProvider
+public sealed class GoalToolProvider : IToolProvider
 {
     public string Category => "goal";
 

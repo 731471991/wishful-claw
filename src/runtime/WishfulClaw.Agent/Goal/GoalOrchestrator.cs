@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Threading.Channels;
 using WishfulClaw.Contracts;
@@ -163,18 +163,20 @@ public static partial class GoalOrchestrator
                 "goal_progress",
                 SubAgentName: $"Goal: {goal.GoalText.Substring(0, Math.Min(50, goal.GoalText.Length))}",
                 ToolUseId: goal.GoalId,
-                Input: JsonSerializer.SerializeToElement(new
+                Input: WorkerJsonHelper.BuildJsonElement(w =>
                 {
-                    goalId = goal.GoalId,
-                    sessionId = goal.SessionId,
-                    objective = goal.GoalText,
-                    eventType = eventType.ToString(),
-                    message = message,
-                    status = goal.Status,
-                    currentPlanIndex = goal.CurrentPlanIndex,
-                    planCount = goal.Plans.Count,
-                    completedPlans = goal.Plans.Count(p => p.Status == "completed"),
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    w.WriteStartObject();
+                    w.WriteString("goalId", goal.GoalId);
+                    w.WriteString("sessionId", goal.SessionId);
+                    w.WriteString("objective", goal.GoalText);
+                    w.WriteString("eventType", eventType.ToString());
+                    w.WriteString("message", message);
+                    w.WriteString("status", goal.Status);
+                    w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);
+                    w.WriteNumber("planCount", goal.Plans.Count);
+                    w.WriteNumber("completedPlans", goal.Plans.Count(p => p.Status == "completed"));
+                    w.WriteNumber("timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    w.WriteEndObject();
                 }));
 
             await AgentRuntimeTools.EmitAsync(
@@ -228,18 +230,20 @@ public static partial class GoalOrchestrator
                 "goal_progress",
                 SubAgentName: $"Goal: {goalText.Substring(0, Math.Min(50, goalText.Length))}",
                 ToolUseId: goalId,
-                Input: JsonSerializer.SerializeToElement(new
+                Input: WorkerJsonHelper.BuildJsonElement(w =>
                 {
-                    goalId = goalId,
-                    sessionId = sessionId,
-                    objective = goalText,
-                    eventType = "GoalPending",
-                    message = $"Goal created: {goalText}. Awaiting your confirmation.",
-                    status = "pending",
-                    currentPlanIndex = -1,
-                    planCount = 0,
-                    completedPlans = 0,
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    w.WriteStartObject();
+                    w.WriteString("goalId", goalId);
+                    w.WriteString("sessionId", sessionId);
+                    w.WriteString("objective", goalText);
+                    w.WriteString("eventType", "GoalPending");
+                    w.WriteString("message", $"Goal created: {goalText}. Awaiting your confirmation.");
+                    w.WriteString("status", "pending");
+                    w.WriteNumber("currentPlanIndex", -1);
+                    w.WriteNumber("planCount", 0);
+                    w.WriteNumber("completedPlans", 0);
+                    w.WriteNumber("timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                    w.WriteEndObject();
                 }));
 
             await AgentRuntimeTools.EmitAsync(

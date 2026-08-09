@@ -1,64 +1,44 @@
-using SqlSugar;
 
 namespace WishfulClaw.Infrastructure.Db;
 
 // ─── Session Entity ───
 
-[SugarTable("sessions")]
 public class SessionEntity
 {
-    [SugarColumn(IsPrimaryKey = true, ColumnName = "id")]
     public string Id { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "title")]
     public string Title { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnName = "icon", IsNullable = true)]
     public string? Icon { get; set; }
 
-    [SugarColumn(ColumnName = "mode")]
     public string Mode { get; set; } = "chat";
 
-    [SugarColumn(ColumnName = "created_at")]
     public long CreatedAt { get; set; }
 
-    [SugarColumn(ColumnName = "updated_at")]
     public long UpdatedAt { get; set; }
 
-    [SugarColumn(ColumnName = "message_count")]
     public int MessageCount { get; set; }
 
-    [SugarColumn(ColumnName = "project_id", IsNullable = true)]
     public string? ProjectId { get; set; }
 
-    [SugarColumn(ColumnName = "working_folder", IsNullable = true)]
     public string? WorkingFolder { get; set; }
 
-    [SugarColumn(ColumnName = "ssh_connection_id", IsNullable = true)]
     public string? SshConnectionId { get; set; }
 
-    [SugarColumn(ColumnName = "plan_id", IsNullable = true)]
     public string? PlanId { get; set; }
 
-    [SugarColumn(ColumnName = "pinned")]
     public int Pinned { get; set; }
 
-    [SugarColumn(ColumnName = "plugin_id", IsNullable = true)]
     public string? PluginId { get; set; }
 
-    [SugarColumn(ColumnName = "external_chat_id", IsNullable = true)]
     public string? ExternalChatId { get; set; }
 
-    [SugarColumn(ColumnName = "provider_id", IsNullable = true)]
     public string? ProviderId { get; set; }
 
-    [SugarColumn(ColumnName = "model_id", IsNullable = true)]
     public string? ModelId { get; set; }
 
-    [SugarColumn(ColumnName = "model_selection_mode")]
     public string ModelSelectionMode { get; set; } = "inherit";
 
-    [SugarColumn(ColumnName = "persona_id", IsNullable = true)]
     public string? PersonaId { get; set; }
 }
 
@@ -87,24 +67,24 @@ public sealed class SessionRow
 
     public static SessionRow FromEntity(SessionEntity e) => new()
     {
-        Id = e.Id,
-        Title = e.Title,
-        Icon = e.Icon,
-        Mode = e.Mode,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt,
-        MessageCount = e.MessageCount,
-        ProjectId = e.ProjectId,
-        WorkingFolder = e.WorkingFolder,
-        SshConnectionId = e.SshConnectionId,
-        PlanId = e.PlanId,
-        Pinned = e.Pinned != 0,
-        PluginId = e.PluginId,
-        ExternalChatId = e.ExternalChatId,
-        ProviderId = e.ProviderId,
-        ModelId = e.ModelId,
-        ModelSelectionMode = e.ModelSelectionMode,
-        PersonaId = e.PersonaId
+    Id = e.Id,
+    Title = e.Title,
+    Icon = e.Icon,
+    Mode = e.Mode,
+    CreatedAt = e.CreatedAt,
+    UpdatedAt = e.UpdatedAt,
+    MessageCount = e.MessageCount,
+    ProjectId = e.ProjectId,
+    WorkingFolder = e.WorkingFolder,
+    SshConnectionId = e.SshConnectionId,
+    PlanId = e.PlanId,
+    Pinned = e.Pinned != 0,
+    PluginId = e.PluginId,
+    ExternalChatId = e.ExternalChatId,
+    ProviderId = e.ProviderId,
+    ModelId = e.ModelId,
+    ModelSelectionMode = e.ModelSelectionMode,
+    PersonaId = e.PersonaId
     };
 }
 
