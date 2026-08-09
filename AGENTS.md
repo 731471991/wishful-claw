@@ -204,6 +204,21 @@ Worker
 - 新增工具时实现工具基类并在对应 Module 中注册
 - 记忆和人格的配置文件使用 Markdown 格式（.wishful-claw/ 目录下）
 
+### AOT 编译规范
+
+> 项目使用 Native AOT 编译（`PublishAot=true`），AOT 编译禁用反射和动态代码生成。以下规范必须遵守：
+
+1. **禁止 `Activator.CreateInstance` 反射创建实例**：改用 `new` 直接构造，或通过 `IToolProvider[]` 等显式列表注册
+2. **禁止 `Assembly.GetTypes()` 等反射扫描**：改用显式类型列表或手动注册
+3. **禁止匿名类型 JSON 序列化**：`new { ... }` 不能用于 `JsonSerializer.Serialize` 或 `WorkerResponse.Json`，必须使用具名 `record` 或 `class`
+4. **`WorkerResponse.Json` 必须显式传 `JsonTypeInfo`**：`WorkerResponse.Json(value, SomeContext.Default.SomeType)`，不能依赖泛型推断
+5. **所有 `JsonSerializer.Serialize`/`SerializeToElement` 调用必须使用已注册的 `JsonTypeInfo`**：新增的序列化类型必须添加到对应的 `JsonSerializerContext`（`WishfulClawJsonContext`/`AgentRuntimeJsonContext`/`InfrastructureJsonContext`）
+6. **`JsonSerializerOptions` 必须通过 `WorkerJsonHelper.ConfigureAotResolver` 配置**：不能直接 `new JsonSerializerOptions()` 独立使用，必须继承 `WorkerJsonHelper.JsonOptions`
+7. **禁止 `System.Reflection` 命名空间**：除非有明确且必要的理由（如读取自定义特性），否则不得使用反射 API
+8. **新增 `JsonSerializerContext` 时必须注册所有序列化类型**：包括 `List<T>` 泛型版本（如 `[JsonSerializable(typeof(List<ProjectRow>))]`）
+9. **`JsonArray.Add<T>(T)` 改用非泛型 `Add(JsonNode)`**：避免 IL3050/IL2026 AOT 警告
+10. **新增 AOT 编译后，必须验证 `dotnet build` 0 错误 + `AOT 0 警告`**：在 `scripts/publish-aot-worker.mjs` 中编译验证
+
 ### 大文件拆分
 
 1. 按职责拆分为多个文件，每个文件 200~500 行为宜，前提是不影响逻辑内聚性，可以适当超出
