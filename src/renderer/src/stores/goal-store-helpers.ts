@@ -155,6 +155,7 @@ export interface GoalStore {
   applySyncedGoalClear: (sessionId: string) => void
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
   applyGoalProgress: (progress: GoalProgressState) => void
+  clearGoalProgress: (sessionId: string) => void
 }
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {
