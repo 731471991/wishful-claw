@@ -63,6 +63,7 @@ public static partial class GoalOrchestrator
         // Fire and forget the orchestration loop
         _ = Task.Run(async () =>
         {
+            goal.LoopStarted = true;
             try
             {
                 await RunAsync(goal, parameters, parentState, context);
@@ -165,41 +166,41 @@ public static partial class GoalOrchestrator
 
         WorkerLog.Info($"ResumeFromDb: restored goal {goalId} session={sessionId} status={goal.Status} planCount={plans.Count}");
 
-        // If active, start the orchestration loop
-        if (goal.Status == "active")
-        {
-            // Build minimal parameters from workingFolder for DB sync
-            var minParams = string.IsNullOrEmpty(goal.WorkingFolder)
-                ? new JsonElement()
-                : WorkerJsonHelper.BuildJsonElement(w =>
-                {
-                    w.WriteStartObject();
-                    w.WriteString("workingFolder", goal.WorkingFolder);
-                    w.WriteEndObject();
-                });
-
-            var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
-            _ = Task.Run(async () =>
+        // Start the orchestration loop for both active and paused goals.
+        // Paused goals will immediately wait in RunAsync's paused loop at the start.
+        // If context is not available (startup recovery), defer loop start to Resume.
+        var effectiveContext = context ?? NoopWorkerRequestContext.Instance;
+        var minParams = string.IsNullOrEmpty(goal.WorkingFolder)
+            ? new JsonElement()
+            : WorkerJsonHelper.BuildJsonElement(w =>
             {
-                try
-                {
-                    await RunAsync(goal, minParams, parentState, context!);
-                }
-                catch (OperationCanceledException)
-                {
-                    goal.Status = "aborted";
-                }
-                catch (Exception ex)
-                {
-                    goal.Status = "failed";
-                    WorkerLog.Warn($"ResumeFromDb RunAsync failed: {ex.Message}");
-                }
-                finally
-                {
-                    ActiveGoals.TryRemove(goalId, out _);
-                }
-            }, goal.CancellationTokenSource.Token);
-        }
+                w.WriteStartObject();
+                w.WriteString("workingFolder", goal.WorkingFolder);
+                w.WriteEndObject();
+            });
+
+        var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
+        _ = Task.Run(async () =>
+        {
+            goal.LoopStarted = true;
+            try
+            {
+                await RunAsync(goal, minParams, parentState, effectiveContext);
+            }
+            catch (OperationCanceledException)
+            {
+                goal.Status = "aborted";
+            }
+            catch (Exception ex)
+            {
+                goal.Status = "failed";
+                WorkerLog.Warn($"ResumeFromDb RunAsync failed: {ex.Message}");
+            }
+            finally
+            {
+                ActiveGoals.TryRemove(goalId, out _);
+            }
+        }, goal.CancellationTokenSource.Token);
 
         return true;
     }
@@ -428,4 +429,35 @@ public sealed class PendingGoal
     public string GoalText { get; set; } = string.Empty;
     public string? WorkingFolder { get; set; }
     public JsonElement Parameters { get; set; }
+}
+
+/// <summary>
+/// No-op IWorkerRequestContext for startup recovery when no active IPC request is available.
+/// All event emission is silently dropped (logs a warning).
+/// </summary>
+internal sealed class NoopWorkerRequestContext : IWorkerRequestContext
+{
+    public static readonly NoopWorkerRequestContext Instance = new();
+    public CancellationToken CancellationToken => CancellationToken.None;
+    public CancellationToken ConnectionCancellationToken => CancellationToken.None;
+
+    public IWorkerRequestContext ForBackgroundOperation() => this;
+
+    public ValueTask EmitEventAsync<T>(string eventName, T parameters, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
+    {
+        WorkerLog.Warn($"NoopWorkerRequestContext: dropping event {eventName} (no active IPC context)");
+        return default;
+    }
+
+    public ValueTask EmitEventIgnoringCancellationAsync<T>(string eventName, T parameters, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
+    {
+        WorkerLog.Warn($"NoopWorkerRequestContext: dropping event {eventName} (no active IPC context)");
+        return default;
+    }
+
+    public ValueTask EmitMessagePackEventAsync(string eventName, ReadOnlyMemory<byte> payload)
+    {
+        WorkerLog.Warn($"NoopWorkerRequestContext: dropping msgpack event {eventName} (no active IPC context)");
+        return default;
+    }
 }

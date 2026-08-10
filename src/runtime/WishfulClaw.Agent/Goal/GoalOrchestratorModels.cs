@@ -55,6 +55,11 @@ public sealed class GoalContext
     public int CurrentPlanIndex { get; set; } = -1;
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// 编排循环是否已启动。启动恢复时若 context 不可用则不启动循环，
+    /// 待前端 Resume 后补启动。
+    /// </summary>
+    public bool LoopStarted { get; set; }
 }
 
 /// <summary>

@@ -28,6 +28,13 @@ public static partial class GoalOrchestrator
     {
         var ct = goal.CancellationTokenSource.Token;
 
+        // If the goal is paused (e.g. recovered from DB as paused), wait for resume
+        // before doing any work (decomposition, execution).
+        if (goal.Status == "paused")
+        {
+            await WaitForResumeIfPausedAsync(goal, context, ct);
+        }
+
         // 1. Decompose goal into plans (skip if already has plans from DB recovery)
         if (goal.Plans.Count == 0)
         {
@@ -78,19 +85,13 @@ public static partial class GoalOrchestrator
             // Check for pause
             if (goal.Status == "paused")
             {
-                await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
-                // Wait for resume or abort
-                while (goal.Status == "paused" && !ct.IsCancellationRequested)
-                {
-                    await Task.Delay(1000, ct);
-                }
+                await WaitForResumeIfPausedAsync(goal, context, ct);
                 if (ct.IsCancellationRequested)
                 {
                     goal.Status = "aborted";
                     await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
                     break;
                 }
-                await EmitGoalEventAsync(goal, GoalEventType.GoalResumed, "Goal resumed", context);
             }
 
             goal.CurrentPlanIndex = i;
@@ -462,6 +463,24 @@ public static partial class GoalOrchestrator
         catch (Exception ex)
         {
             WorkerLog.Warn($"Failed to sync goal to DB: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Wait for resume if the goal is paused. Shared between the start-of-loop
+    /// check (for recovered paused goals) and the per-plan pause check.
+    /// </summary>
+    private static async Task WaitForResumeIfPausedAsync(
+        GoalContext goal, IWorkerRequestContext context, CancellationToken ct)
+    {
+        await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
+        while (goal.Status == "paused" && !ct.IsCancellationRequested)
+        {
+            await Task.Delay(1000, ct);
+        }
+        if (!ct.IsCancellationRequested)
+        {
+            await EmitGoalEventAsync(goal, GoalEventType.GoalResumed, "Goal resumed", context);
         }
     }
 }
