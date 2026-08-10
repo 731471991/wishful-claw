@@ -445,34 +445,3 @@ public sealed class PendingGoal
     public string? WorkingFolder { get; set; }
     public JsonElement Parameters { get; set; }
 }
-
-/// <summary>
-/// No-op IWorkerRequestContext for startup recovery when no active IPC request is available.
-/// All event emission is silently dropped (logs a warning).
-/// </summary>
-internal sealed class NoopWorkerRequestContext : IWorkerRequestContext
-{
-    public static readonly NoopWorkerRequestContext Instance = new();
-    public CancellationToken CancellationToken => CancellationToken.None;
-    public CancellationToken ConnectionCancellationToken => CancellationToken.None;
-
-    public IWorkerRequestContext ForBackgroundOperation() => this;
-
-    public ValueTask EmitEventAsync<T>(string eventName, T parameters, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
-    {
-        WorkerLog.Warn($"NoopWorkerRequestContext: dropping event {eventName} (no active IPC context)");
-        return default;
-    }
-
-    public ValueTask EmitEventIgnoringCancellationAsync<T>(string eventName, T parameters, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
-    {
-        WorkerLog.Warn($"NoopWorkerRequestContext: dropping event {eventName} (no active IPC context)");
-        return default;
-    }
-
-    public ValueTask EmitMessagePackEventAsync(string eventName, ReadOnlyMemory<byte> payload)
-    {
-        WorkerLog.Warn($"NoopWorkerRequestContext: dropping msgpack event {eventName} (no active IPC context)");
-        return default;
-    }
-}
