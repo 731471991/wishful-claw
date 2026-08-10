@@ -30,7 +30,7 @@ public static partial class GoalOrchestrator
 
         // If the goal is paused (e.g. recovered from DB as paused), wait for resume
         // before doing any work (decomposition, execution).
-        if (goal.Status == "paused")
+        if (goal.RunState == "paused")
         {
             await WaitForResumeIfPausedAsync(goal, context, ct);
         }
@@ -83,7 +83,7 @@ public static partial class GoalOrchestrator
             }
 
             // Check for pause
-            if (goal.Status == "paused")
+            if (goal.RunState == "paused")
             {
                 await WaitForResumeIfPausedAsync(goal, context, ct);
                 if (ct.IsCancellationRequested)
@@ -102,7 +102,7 @@ public static partial class GoalOrchestrator
         }
 
         // 3. Goal completion check
-        if (goal.Status != "aborted" && goal.Status != "paused")
+        if (goal.Status != "aborted" && goal.RunState != "paused")
         {
             var allCompleted = goal.Plans.All(p => p.Status == "completed");
             if (allCompleted)
@@ -474,7 +474,7 @@ public static partial class GoalOrchestrator
         GoalContext goal, IWorkerRequestContext context, CancellationToken ct)
     {
         await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
-        while (goal.Status == "paused" && !ct.IsCancellationRequested)
+        while (goal.RunState == "paused" && !ct.IsCancellationRequested)
         {
             await Task.Delay(1000, ct);
         }
