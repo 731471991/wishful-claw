@@ -1,142 +1,206 @@
-# Plan: v2-iter-12 Goal 系统全面修复 — 自动编排 + 中断重启
+# Plan: v2-iter-12 Goal 状态模型重构 — 目标状态与执行状态分离
 
 ## 目标
 
-全面修复 Goal 执行链路，让 Goal 真正能"自动编排、可暂停/恢复、进程重启后自动续跑、不丢进度"。一次性解决当前 Goal 系统"创建后不推进、重启后接不上、UI 与底层状态不匹配"的所有问题。
+彻底解决 Goal 系统的状态语义混乱问题：**DB（目标状态）与执行状态（内存）分离**，让 Goal 真正支持自动编排、暂停/恢复、进程重启恢复，且不伪造数据、不强行改写 DB。
 
 ## 背景
 
-当前 Goal 系统存在 4 层独立状态存储，Orchestrator 状态纯内存导致多重断点。详见 `docs/plans/iter-v2-12/exploration_findings.md`（规划验证阶段自动生成）。
+### 问题：单一 `status` 字段混用两种语义
+
+当前系统只有一个 `status` 字段，同时承担两个完全不同的语义，导致一系列错误：
+
+| 语义 | 含义 | 应该存哪 |
+|------|------|---------|
+| **目标状态** | 这个 goal 是否还存在、是否已完成 | 持久化（DB） |
+| **执行状态** | 是否在跑、暂停、空闲 | 运行时（内存） |
+
+### 已确认的方向（与老大讨论）
+
+1. **DB 层面的状态**：只有「进行中」和「已完成」——`active`（进行中，未完成）/ `complete` / `failed` / `aborted`（终态）
+2. **运行状态同步**：沿用现有 goal 事件流（`goal_progress`）
+3. **暂停不持久化**：暂停是运行时状态，不写 DB，进程重启后自动回到"未运行"
+
+### 之前犯的错误（需纠正）
+
+- ❌ 用 `planCount==0` 去"猜"goal 没执行过 → 不可靠
+- ❌ 把 DB 改成 `paused` → 混淆目标状态，把"进行中"改没了
+- ❌ 前端直接读 DB status 当执行状态 → 不知道真实是否在跑
 
 ## 设计决策
 
-- **不删数据**：已有的 active goal 通过恢复机制自动续跑
-- **状态以 DB 为唯一事实源**：Orchestrator 内存状态可从 DB 重建
-- **前端 Resume/Pause 必须真正作用于 Orchestrator**，而非只改 DB 标签
-- **AOT 合规**：所有新增/改造的序列化操作必须显式传 `JsonTypeInfo`
+### 两套状态完全分离
+
+| 维度 | 字段 | 存哪 | 值 | 谁写 |
+|------|------|------|----|------|
+| **目标状态** | `Status` | DB + 内存 | `active` / `complete` / `failed` / `aborted` | 编排完成/失败时写 |
+| **执行状态** | `RunState` | 仅内存 | `idle` / `running` / `paused` | Pause/Resume 按钮、启动恢复时写 |
+
+- `Status` **永不被** Pause/Resume 修改，**永不被**"启动时恢复"修改
+- `RunState` **不写进 DB**
+
+### 状态流转
+
+```
+启动恢复（DB=active）→ RunState: idle（目标进行中，未运行）
+  用户点 Resume → RunState: running（编排启动）
+  用户点 Pause  → RunState: paused（编排暂停，等待）
+  用户点 Resume → RunState: running（编排继续）
+  编排全部完成 → Status: complete（目标状态终态）
+```
 
 ## 步骤清单
 
-### 步骤 1：goalId 对齐 — StartAsync 接受 goalId 参数
+### 步骤 1：执行状态模型 — 新增 RunState
 
 **改动**：
-- `GoalOrchestrator.StartAsync` 增加 `string goalId` 参数，改用传入的 goalId 而非内部生成新 ID
-- `ConfirmGoalAsync` 调用 `StartAsync` 时传入 pending 的 goalId
-- `AgentRuntimeGoalExecutor.AwaitGoalConfirmationAsync` 确认后 DbGoalTools.Create 与 StartAsync 用同一 goalId
+- `GoalContext` 新增 `RunState` 属性（`idle` / `running` / `paused`），默认 `idle`
+- `StartAsync` 中 `RunState = "running"`
+- `Pause(goalId)` → `RunState = "paused"`（不再改 `Status`）
+- `Resume(goalId)` → `RunState = "running"`（不再改 `Status`）
 
 **涉及文件**：
-- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` — `StartAsync` 签名
-- `src/runtime/WishfulClaw.Agent/AgentRuntimeGoalExecutor.cs` — 确认后传 goalId
-
-**验证检查点**：
-- 编译通过（C# 0 错误）
-- 确认后 DB 中的 goalId 与 `ActiveGoals` 的 key 一致
-- 单元测试：assert(ActiveGoals[goalId] != null)
-
----
-
-### 步骤 2：新增 ResumeFromDb — 从 DB 恢复编排
-
-**改动**：
-- `GoalOrchestrator.cs` 新增 `ResumeFromDb(string goalId, string sessionId, JsonElement? parameters)`：
-  - 调用 `DbGoalTools.Get(sessionId)` 读 DB 记录
-  - 从 DB 的 `plansJson` 反序列化 `List<GoalPlanItem>`（AOT 合规：用 `AgentRuntimeJsonContext.Default.ListGoalPlanItem`）
-  - 构建 `GoalContext`（含 Plans/CurrentPlanIndex/Status/GoalText），放入 `ActiveGoals`
-  - 若 `Plans` 已有内容（>0）→ 跳过分解，启动 `RunAsync` 续跑
-  - 若 `Plans` 为空 → 正常走分解流程
-- `GoalOrchestrator.Resume(string goalId)` 在 `ActiveGoals.TryGetValue` 找不到时，回退到 `ResumeFromDb`
-- `AgentRuntimeGoalExecutor.ResumeGoal(string sessionId)` 在 `GetActiveGoalId(sessionId)` 为空时，同样回退到 `ResumeFromDb`（通过 sessionId 查 DB）
-
-**涉及文件**：
-- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` — 新增 `ResumeFromDb` + 改造 `Resume`
-- `src/runtime/WishfulClaw.Agent/AgentRuntimeGoalExecutor.cs` — `ResumeGoal` 增加 DB 兜底
+- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorModels.cs` — `GoalContext` 加 `RunState`
+- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` — Pause/Resume/StartAsync 改 `RunState`
 
 **验证检查点**：
 - 编译通过
-- `ResumeFromDb` 能正确从 DB 恢复 `GoalContext`（含 plans）
-- 恢复后 `ActiveGoals[goalId]` 存在，status 正确
+- Pause 后 `Status` 不变、`RunState` 变 paused
 
 ---
 
-### 步骤 3：RunAsync 支持续跑
+### 步骤 2：RunAsync 依据 RunState 暂停等待
 
 **改动**：
-- `GoalOrchestratorLoop.RunAsync` 在 `DecomposeGoalAsync` 前判断 `goal.Plans.Count > 0`：
-  - 若已有 plans → 跳过分解，从 `goal.CurrentPlanIndex + 1` 开始循环
-  - 若 `CurrentPlanIndex < 0` → 从 0 开始
-- `GoalOrchestratorLoop.SyncGoalToDb` 中 `JsonSerializer.Serialize(goal.Plans)` 改为显式传 `AgentRuntimeJsonContext.Default.ListGoalPlanItem`（AOT 合规修复）
+- `RunAsync` 循环中检测 `RunState == "paused"` 等待（不再检测 `Status`）
+- 开头对 `RunState == "paused"` 也等待（恢复场景）
+- `WaitForResumeIfPausedAsync` 共享方法改为检查 `RunState`
 
 **涉及文件**：
-- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorLoop.cs` — `RunAsync` 续跑逻辑 + AOT 修复
+- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorLoop.cs`
 
 **验证检查点**：
 - 编译通过
-- 已有 plans 的 goal 恢复后跳过分解步骤
-- 从正确的 `CurrentPlanIndex` 继续执行
+- paused 时循环挂起，resume 后继续
 
 ---
 
-### 步骤 4：Worker 启动时自动恢复
+### 步骤 3：ResumeFromDb 恢复为 idle，不写 DB
 
 **改动**：
-- `IWorkerModule` 接口增加 `Task InitializeAsync(IWorkerModuleContext context)` 方法（可选，默认空实现）
-- `WorkerHost.RunAsync` 在 `Register` 完成后，遍历所有模块调用 `InitializeAsync`
-- `GoalModule` 实现 `InitializeAsync`：
-  - 调用 `DbGoalTools.ListActive()` 获取所有 `active` / `paused` 的 goals
-  - 对每个 goal 调用 `GoalOrchestrator.ResumeFromDb(goalId, sessionId, parameters)`
-  - 日志记录恢复结果
+- `ResumeFromDb` 恢复时 `RunState = "idle"`，`Status = row.Status`（保持 DB 原样）
+- **不启动 RunAsync**（idle 状态下不自动编排）
+- **不写 DB**（不改变目标状态）
+- `InitializeAsync` 只是把 goal 放入 `ActiveGoals`，不启动循环
 
 **涉及文件**：
-- `src/runtime/WishfulClaw.Contracts/IWorkerModule.cs` — 新增 `InitializeAsync`
-- `src/runtime/WishfulClaw.Worker/WorkerHost.cs` — 启动时调用 `InitializeAsync`
-- `src/runtime/WishfulClaw.Worker/Modules/GoalModule.cs` — 实现 `InitializeAsync` + 自动恢复
+- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` — `ResumeFromDb`
+- `src/runtime/WishfulClaw.Worker/Modules/GoalModule.cs` — `InitializeAsync`
 
 **验证检查点**：
 - 编译通过
-- Worker 启动后日志出现 `[GoalModule] Restored N active/paused goals from DB`
-- `GetActiveGoalId(sessionId)` 能返回 DB 中的 goal
+- 重启后 goal 在 `ActiveGoals` 中，`RunState=idle`，DB 未被修改
+- 不自动计时、不自动编排
 
 ---
 
-### 步骤 5：前端 Resume 修正
+### 步骤 4：Resume 依据 RunState 启动/恢复循环
 
 **改动**：
-- `goal-session-views.tsx` 的 `setGoalStatus('active')` 中移除对 `dispatchNextQueuedMessageForSession(sessionId)` 的调用（空实现，无意义）
+- `GoalModule.ResumeGoal`（前端点击 Resume）：
+  - 若 `RunState == "idle"` → 启动 RunAsync + 设 `running`
+  - 若 `RunState == "paused"` → 设 `running`（循环已在跑，直接解除等待）
+- `Resume(goalId)` 只改 `RunState = "running"`，不负责启动循环
+- 启动循环的职责放 `ResumeGoal` 或 `StartAsync`
 
 **涉及文件**：
-- `src/renderer/src/components/goal/goal-session-views.tsx` — 移除空实现调用
+- `src/runtime/WishfulClaw.Worker/Modules/GoalModule.cs` — `ResumeGoal`
+- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` — `Resume`
 
 **验证检查点**：
-- TypeScript 编译通过（3/3 配置 0 错误）
-- 前端 Resume 按钮点击后，后端 `GoalOrchestrator.Resume` 被正确调用（日志确认）
+- 编译通过
+- idle goal 点 Resume → 真正启动编排
+- paused goal 点 Resume → 解除等待继续
 
 ---
+
+### 步骤 5：goal_progress 事件携带 RunState
+
+**改动**：
+- `EmitGoalEventAsync` 的 payload 加 `runState` 字段
+- `GoalProgressState`（前端）接口加 `runState` 可选字段
+- `applyGoalProgress` 解析 `runState` 存入 `goalRunStates` 字典
+
+**涉及文件**：
+- `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` — `EmitGoalEventAsync`
+- `src/renderer/src/stores/goal-store-helpers.ts` — `GoalProgressState`
+- `src/renderer/src/stores/goal-store.ts` — `applyGoalProgress`
+
+**验证检查点**：
+- 编译通过
+- 事件 payload 含 `runState`，前端成功解析
+
+---
+
+### 步骤 6：前端 UI 依据 RunState 显示 + 计时
+
+**改动**：
+- `useGoalSession` / `GoalSessionBar` 按钮显示依据 `goalRunStates[sessionId]`：
+  - `running` → 显示 Pause
+  - `paused` / `idle` → 显示 Resume
+- 计时器只在 `runState == 'running'` 时计时
+- `useLiveGoalElapsedSeconds` 依据 `runState` 而非 `goal.status`
+
+**涉及文件**：
+- `src/renderer/src/components/goal/goal-session-utils.tsx` — `useGoalSession`、`useLiveGoalElapsedSeconds`
+- `src/renderer/src/components/goal/GoalSessionControls.tsx` — 按钮显示
+- `src/renderer/src/stores/goal-store.ts` — `goalRunStates` 字典
+
+**验证检查点**：
+- TypeScript 编译通过（3/3）
+- idle goal 显示 Resume 且不计时
+- running goal 显示 Pause 且计时
+- paused goal 显示 Resume 且不计时
+
+---
+
+### 步骤 7：清理之前补丁方向
+
+**改动**：
+- 撤销 `ResumeFromDb` 中"降级 DB 为 paused"的逻辑（stash 中的改动）
+- 确认 DB 中的 `active` goal 保持原样
+
+**涉及文件**：
+- 检查 `git stash` / 还原
+
+**验证检查点**：
+- 编译通过
+- DB 无被错误修改的 goal
 
 ## 涉及文件完整清单
 
 | 文件路径 | 改动类型 | 说明 |
 |---------|---------|------|
-| `src/runtime/WishfulClaw.Contracts/IWorkerModule.cs` | 修改 | 新增 `InitializeAsync` 方法（可选默认空实现） |
-| `src/runtime/WishfulClaw.Worker/WorkerHost.cs` | 修改 | `RunAsync` 中 Register 后遍历调用 `InitializeAsync` |
-| `src/runtime/WishfulClaw.Worker/Modules/GoalModule.cs` | 修改 | 实现 `InitializeAsync`：扫描 DB 恢复 active/paused goals |
-| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` | 修改 | `StartAsync` 增加 goalId 参数；新增 `ResumeFromDb`；`Resume` 增加 DB 回退 |
-| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorLoop.cs` | 修改 | `RunAsync` 跳过分解；`SyncGoalToDb` AOT 修复 |
-| `src/runtime/WishfulClaw.Agent/AgentRuntimeGoalExecutor.cs` | 修改 | `ResumeGoal` DB 兜底；确认后传正确 goalId |
-| `src/renderer/src/components/goal/goal-session-views.tsx` | 修改 | 移除空实现 `dispatchNextQueuedMessageForSession` 调用 |
-
-## AOT 合规要点
-
-- `SyncGoalToDb` 中 `JsonSerializer.Serialize(goal.Plans)` → 改为 `JsonSerializer.Serialize(goal.Plans, AgentRuntimeJsonContext.Default.ListGoalPlanItem)`
-- `ResumeFromDb` 反序列化 `plansJson` → 用 `JsonSerializer.Deserialize(dbPlansJson, AgentRuntimeJsonContext.Default.ListGoalPlanItem)`
-- 若 `ListGoalPlanItem` 尚未注册 → 在 `AgentRuntimeJsonContext` 中新增 `[JsonSerializable(typeof(List<GoalPlanItem>))]`
-- 所有新增序列化/反序列化操作必须显式传 `JsonTypeInfo`，禁止依赖泛型推断
+| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorModels.cs` | 修改 | `GoalContext` 加 `RunState` |
+| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` | 修改 | Pause/Resume/StartAsync 改 RunState；ResumeFromDb 恢复 idle 不写 DB |
+| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorLoop.cs` | 修改 | RunAsync 检查 RunState |
+| `src/runtime/WishfulClaw.Agent/AgentRuntimeGoalExecutor.cs` | 修改 | ResumeGoal 兜底（如前） |
+| `src/runtime/WishfulClaw.Worker/Modules/GoalModule.cs` | 修改 | ResumeGoal 依据 RunState 启动循环；InitializeAsync 只恢复 idle |
+| `src/renderer/src/stores/goal-store-helpers.ts` | 修改 | `GoalProgressState` 加 `runState` |
+| `src/renderer/src/stores/goal-store.ts` | 修改 | `goalRunStates` 字典 + `applyGoalProgress` 解析 |
+| `src/renderer/src/components/goal/goal-session-utils.tsx` | 修改 | 计时 + 状态读取依据 runState |
+| `src/renderer/src/components/goal/GoalSessionControls.tsx` | 修改 | 按钮显示依据 runState |
 
 ## 验证标准
 
 1. **编译通过**：C# `dotnet build` 0 错误；TypeScript 3/3 配置 0 错误
-2. **自动编排**：创建并确认 goal 后，Orchestrator 自动分解并执行 plans
-3. **暂停/恢复**：编排运行时点 Pause → 循环暂停；点 Resume → 循环继续
-4. **进程重启恢复**：正在执行/暂停的 goal，重启 Worker 后自动恢复续跑，不重复分解，从断点继续
-5. **goalId 一致**：DB goalId 与 ActiveGoals key 一致，Resume 能找到
-6. **不删数据**：已有的 active goal 通过恢复机制续跑，无需重新创建
-7. **AOT 0 警告**：`scripts/publish-aot-worker.mjs` 运行 0 警告
+2. **DB 状态语义正确**：`active`=进行中，`complete/failed/aborted`=终态；Pause/Resume/重启都不改 DB
+3. **启动恢复**：重启后 DB=active 的 goal 显示"未运行"（idle），不计时，可手动 Resume
+4. **暂停/恢复**：running→Pause 暂停循环；paused→Resume 继续
+5. **自动编排**：用户点 Resume 后真正启动编排
+6. **不伪造数据**：不把 DB 改成分层语义外的值
+
+## 完成判定
+
+- 上述 6 项验证标准全部通过
+- 用户确认"UI 和内存状态一致、DB 状态语义正确"
