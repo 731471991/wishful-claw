@@ -159,7 +159,8 @@ public static class AgentRuntimeGoalExecutor
                 var pendingParams = GoalOrchestrator.GetPendingGoal(goalId)?.Parameters ?? new JsonElement();
                 var goalTextFromPending = GoalOrchestrator.GetPendingGoal(goalId)?.GoalText ?? goalText;
                 var goalId2 = await GoalOrchestrator.StartAsync(
-                    goalTextFromPending, sessionId, workingFolder, pendingParams,
+                    goalTextFromPending, sessionId, workingFolder, goalId,
+                    pendingParams,
                     new AgentRuntimeRunState($"goal-{goalId}", sessionId), context);
                 // Update in-memory state
                 Goals[sessionId] = new GoalRecord(goal.Objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2);

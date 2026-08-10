@@ -30,16 +30,18 @@ public static partial class GoalOrchestrator
     /// <summary>
     /// Start a new Goal execution asynchronously.
     /// Returns immediately; the orchestration loop runs in the background.
+    /// goalId is provided by the caller (from DB / PendingGoal) to ensure
+    /// ActiveGoals key matches the persisted goalId.
     /// </summary>
     public static async Task<string> StartAsync(
         string goalText,
         string sessionId,
         string? workingFolder,
+        string goalId,
         JsonElement parameters,
         AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
-        var goalId = $"goal-{Guid.NewGuid():N}".Substring(0, 21);
         var goal = new GoalContext
         {
             GoalId = goalId,
@@ -281,6 +283,7 @@ public static partial class GoalOrchestrator
             pending.GoalText,
             sessionId,
             workingFolder ?? pending.WorkingFolder,
+            goalId,
             actualParameters,
             parentState,
             context);
