@@ -24,7 +24,7 @@ export function GoalConfirmCard({ sessionId, className }: GoalConfirmCardProps):
 
   const handleConfirm = async (): Promise<void> => {
     setConfirming(true)
-    resolveGoalConfirm(goalId, true)
+    resolveGoalConfirm(goalId, true, sessionId)
   }
 
   const handleDiscard = async (): Promise<void> => {

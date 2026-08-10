@@ -11,11 +11,15 @@ export interface GoalConfirmResponse {
 
 const goalConfirmResolvers = new Map<string, (payload: GoalConfirmResponse) => void>()
 
-export function resolveGoalConfirm(goalId: string, confirmed: boolean): void {
+export function resolveGoalConfirm(goalId: string, confirmed: boolean, sessionId?: string): void {
   const resolve = goalConfirmResolvers.get(goalId)
   if (resolve) {
     resolve({ confirmed })
     goalConfirmResolvers.delete(goalId)
+  }
+  // Clear progress so the GoalConfirmCard hides after confirmation
+  if (confirmed && sessionId) {
+    useGoalStore.getState().clearGoalProgress(sessionId)
   }
 }
 

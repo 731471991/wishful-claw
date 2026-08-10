@@ -289,6 +289,13 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         [progress.sessionId]: progress
       }
     }))
+  },
+  clearGoalProgress: (sessionId) => {
+    set((state) => {
+      const next = { ...state.goalProgressBySession }
+      delete next[sessionId]
+      return { goalProgressBySession: next }
+    })
   }
 }))
 

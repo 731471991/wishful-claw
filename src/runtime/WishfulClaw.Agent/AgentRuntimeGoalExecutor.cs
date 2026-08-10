@@ -1,7 +1,9 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Buffers;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Agent;
 
@@ -90,7 +92,7 @@ public static class AgentRuntimeGoalExecutor
                 var existingText = GoalOrchestrator.GetPendingGoal(existingGoalId)?.GoalText ?? objective;
                 var existingGoal = new GoalRecord(objective, "pending", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId);
                 Goals[sessionId] = existingGoal;
-                return await AwaitGoalConfirmationAsync(existingGoal, existingGoalId, sessionId, existingText, context);
+                return await AwaitGoalConfirmationAsync(existingGoal, existingGoalId, sessionId, existingText, context, parameters);
             }
             return EncodeGoal(new GoalRecord(objective, existingStatus, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), existingGoalId));
         }
@@ -109,7 +111,7 @@ public static class AgentRuntimeGoalExecutor
     }
 
     private static async Task<string> AwaitGoalConfirmationAsync(
-        GoalRecord goal, string goalId, string sessionId, string goalText, IWorkerRequestContext context)
+        GoalRecord goal, string goalId, string sessionId, string goalText, IWorkerRequestContext context, JsonElement? parameters = null)
     {
         // Notify the frontend of the pending goal via reverse request (blocking)
         // The agent waits until the user confirms or discards the goal.
@@ -131,7 +133,28 @@ public static class AgentRuntimeGoalExecutor
             var confirmed = response.TryGetProperty("confirmed", out var c) && c.GetBoolean();
             if (confirmed)
             {
-                // User confirmed — start the orchestrator
+                // Persist goal to DB
+                try
+                {
+                    var wfValue = parameters?.TryGetProperty("workingFolder", out var wf) == true ? wf.GetString() : null;
+                    var dbParams = WorkerJsonHelper.BuildJsonElement(w =>
+                    {
+                        w.WriteStartObject();
+                        w.WriteString("sessionId", sessionId);
+                        w.WriteString("goalId", goalId);
+                        w.WriteString("objective", goalText);
+                        w.WriteString("status", "active");
+                        if (wfValue != null) w.WriteString("workingFolder", wfValue);
+                        w.WriteEndObject();
+                    });
+                    DbGoalTools.Create(dbParams);
+                }
+                catch (Exception ex)
+                {
+                    WorkerLog.Warn($"Failed to persist goal to DB: {ex.Message}");
+                }
+
+                // Start the orchestrator
                 var workingFolder = GoalOrchestrator.GetPendingGoal(goalId)?.WorkingFolder;
                 var pendingParams = GoalOrchestrator.GetPendingGoal(goalId)?.Parameters ?? new JsonElement();
                 var goalTextFromPending = GoalOrchestrator.GetPendingGoal(goalId)?.GoalText ?? goalText;
@@ -147,7 +170,6 @@ public static class AgentRuntimeGoalExecutor
                 // User discarded — remove pending goal
                 GoalOrchestrator.RemovePendingGoal(goalId);
                 Goals.TryRemove(sessionId, out _);
-                // Return the pending goal with discarded status so the agent knows
                 return EncodeError("Goal was discarded by user.");
             }
         }

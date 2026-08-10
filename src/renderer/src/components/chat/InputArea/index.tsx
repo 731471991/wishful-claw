@@ -347,7 +347,7 @@ export function InputArea({
         summarizeQueuedMessage={summarizeQueuedMessage}
       />
 
-      {!hideGoalSessionBar && isGoalMode && draftSessionId && (
+      {!hideGoalSessionBar && draftSessionId && (
         <GoalSessionBar sessionId={draftSessionId} className={cn('mb-2', fullWidth && 'max-w-none')} />
       )}
 
