@@ -9,7 +9,7 @@ import {
   type SessionGoalEvent,
   type SessionGoalEventType
 } from '@renderer/stores/goal-store'
-import { abortSession, dispatchNextQueuedMessageForSession } from '@renderer/hooks/use-chat-actions'
+import { abortSession } from '@renderer/hooks/use-chat-actions'
 import { useTranslation } from 'react-i18next'
 import {
   eventMetadataNumber,
@@ -187,7 +187,6 @@ export function useGoalActions(
         })
       }
       if (status === 'active' && result.goal?.status === 'active') {
-        dispatchNextQueuedMessageForSession(sessionId)
         try { await invokeMessagePackBinary(GOAL_RESUME_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
       if (status === 'paused' && result.goal?.status === 'paused') {
