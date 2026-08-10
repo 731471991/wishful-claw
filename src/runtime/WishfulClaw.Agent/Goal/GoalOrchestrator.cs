@@ -50,6 +50,7 @@ public static partial class GoalOrchestrator
             GoalText = goalText,
             WorkingFolder = workingFolder,
             Status = "active",
+            RunState = "running",
             StartedAt = DateTime.UtcNow
         };
 
@@ -63,7 +64,6 @@ public static partial class GoalOrchestrator
         // Fire and forget the orchestration loop
         _ = Task.Run(async () =>
         {
-            goal.LoopStarted = true;
             try
             {
                 await RunAsync(goal, parameters, parentState, context);
@@ -88,25 +88,27 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
-    /// Pause a running Goal.
+    /// Pause a running Goal — sets RunState to "paused" (memory only, not DB).
+    /// The RunAsync loop will detect this and wait for resume.
     /// </summary>
     public static void Pause(string goalId)
     {
-        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "active")
+        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.RunState == "running")
         {
-            goal.Status = "paused";
+            goal.RunState = "paused";
         }
     }
 
     /// <summary>
-    /// Resume a paused Goal. If the goal is not in ActiveGoals (e.g. after process restart),
+    /// Resume a paused Goal — sets RunState to "running" (memory only, not DB).
+    /// If the goal is not in ActiveGoals (e.g. after process restart),
     /// the caller should use ResumeFromDb instead.
     /// </summary>
     public static void Resume(string goalId)
     {
-        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "paused")
+        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.RunState == "paused")
         {
-            goal.Status = "active";
+            goal.RunState = "running";
         }
     }
 
@@ -182,7 +184,6 @@ public static partial class GoalOrchestrator
         var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
         _ = Task.Run(async () =>
         {
-            goal.LoopStarted = true;
             try
             {
                 await RunAsync(goal, minParams, parentState, effectiveContext);

@@ -50,16 +50,14 @@ public sealed class GoalContext
     public string SessionId { get; set; } = string.Empty;
     public string GoalText { get; set; } = string.Empty;
     public string? WorkingFolder { get; set; }
-    public string Status { get; set; } = "active"; // active | paused | completed | aborted
+    /// <summary>目标状态：active（进行中）| completed | failed | aborted（终态）。不写 DB。</summary>
+    public string Status { get; set; } = "active";
+    /// <summary>执行状态（仅内存）：idle（未运行）| running（编排中）| paused（暂停）。</summary>
+    public string RunState { get; set; } = "idle";
     public List<GoalPlanItem> Plans { get; set; } = new();
     public int CurrentPlanIndex { get; set; } = -1;
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
-    /// <summary>
-    /// 编排循环是否已启动。启动恢复时若 context 不可用则不启动循环，
-    /// 待前端 Resume 后补启动。
-    /// </summary>
-    public bool LoopStarted { get; set; }
 }
 
 /// <summary>
