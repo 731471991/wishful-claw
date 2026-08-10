@@ -327,4 +327,30 @@ public static class DbGoalTools
 
     private static int GetInt(JsonElement element, string name, int defaultValue)
         => element.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number ? el.GetInt32() : defaultValue;
+
+    /// <summary>
+    /// Internal: gets a goal by sessionId using the already-initialized DB client.
+    /// Used by GoalOrchestrator.ResumeFromDb for process restart recovery.
+    /// </summary>
+    public static GoalRow? GetBySessionId(string sessionId)
+    {
+        var db = DbClient.GetClient();
+        var entity = db.QueryFirstOrDefault(
+            "SELECT * FROM goals WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
+            EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
+        return entity != null ? GoalRow.FromEntity(entity) : null;
+    }
+
+    /// <summary>
+    /// Internal: gets all active/paused goals using the already-initialized DB client.
+    /// Used by GoalModule.InitializeAsync for startup recovery.
+    /// </summary>
+    public static List<GoalRow> ListActiveGoals()
+    {
+        var db = DbClient.GetClient();
+        var entities = db.Query(
+            "SELECT * FROM goals WHERE status = 'active' OR status = 'paused' ORDER BY updated_at DESC",
+            EntityMappers.MapGoal);
+        return entities.Select(GoalRow.FromEntity).ToList();
+    }
 }

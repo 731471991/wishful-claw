@@ -12,6 +12,8 @@ namespace WishfulClaw.Agent;
     GenerationMode = JsonSourceGenerationMode.Metadata,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(GoalPlanItem))]
+[JsonSerializable(typeof(List<GoalPlanItem>))]
 [JsonSerializable(typeof(AgentRuntimeReverseRequestEnvelope))]
 [JsonSerializable(typeof(AgentRuntimeReverseCancelEnvelope))]
 [JsonSerializable(typeof(AgentRuntimeReverseResponseResult))]

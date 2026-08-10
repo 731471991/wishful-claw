@@ -26,11 +26,21 @@ public sealed class GoalModule : IWorkerModule
         return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
     }
 
-    private static WorkerResponse ResumeGoal(JsonElement parameters)
+    private static async Task<WorkerResponse> ResumeGoal(JsonElement parameters, IWorkerRequestContext context)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
+        var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
+
         if (!string.IsNullOrEmpty(goalId))
+        {
+            // Try in-memory resume first
             GoalOrchestrator.Resume(goalId);
+            // If still not in ActiveGoals (e.g. after restart), try DB recovery
+            if (!GoalOrchestrator.IsActive(goalId) && !string.IsNullOrEmpty(sessionId))
+            {
+                await GoalOrchestrator.ResumeFromDb(goalId, sessionId, context);
+            }
+        }
         return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
     }
 

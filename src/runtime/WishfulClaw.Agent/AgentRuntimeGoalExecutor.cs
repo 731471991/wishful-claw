@@ -282,7 +282,16 @@ public static class AgentRuntimeGoalExecutor
     private static string ResumeGoal(string sessionId)
     {
         var goalId = GoalOrchestrator.GetActiveGoalId(sessionId);
-        if (goalId == null) return EncodeError("No paused goal to resume.");
+        if (goalId == null)
+        {
+            // Try DB recovery (sync, no RunAsync start — will be triggered by frontend Resume)
+            var row = DbGoalTools.GetBySessionId(sessionId);
+            if (row == null)
+                return EncodeError("No paused goal to resume.");
+            // Fire-and-forget DB recovery
+            _ = GoalOrchestrator.ResumeFromDb(row.GoalId, sessionId);
+            return EncodeGoal(new GoalRecord("", row.Status, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), row.GoalId));
+        }
         GoalOrchestrator.Resume(goalId);
         return EncodeGoal(new GoalRecord("", "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
     }

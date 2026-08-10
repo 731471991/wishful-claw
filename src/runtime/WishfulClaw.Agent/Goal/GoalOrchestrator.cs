@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Agent;
 
@@ -97,7 +98,8 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
-    /// Resume a paused Goal.
+    /// Resume a paused Goal. If the goal is not in ActiveGoals (e.g. after process restart),
+    /// the caller should use ResumeFromDb instead.
     /// </summary>
     public static void Resume(string goalId)
     {
@@ -105,6 +107,101 @@ public static partial class GoalOrchestrator
         {
             goal.Status = "active";
         }
+    }
+
+    /// <summary>
+    /// Resume a goal from DB persistence after process restart.
+    /// Reads the goal from the database, creates a GoalContext in ActiveGoals,
+    /// and starts the RunAsync loop if the goal was active.
+    /// </summary>
+    public static async Task<bool> ResumeFromDb(
+        string goalId,
+        string sessionId,
+        IWorkerRequestContext? context = null)
+    {
+        var row = DbGoalTools.GetBySessionId(sessionId);
+        if (row == null) return false;
+
+        // If already in ActiveGoals, nothing to do
+        if (ActiveGoals.ContainsKey(goalId)) return true;
+
+        // Deserialize plans from DB
+        List<GoalPlanItem> plans = new();
+        int currentPlanIndex = -1;
+        if (!string.IsNullOrEmpty(row.PlansJson))
+        {
+            try
+            {
+                plans = JsonSerializer.Deserialize(
+                    row.PlansJson,
+                    AgentRuntimeJsonContext.Default.ListGoalPlanItem) ?? new();
+                // Restore each plan's Guid if missing
+                foreach (var p in plans)
+                {
+                    if (string.IsNullOrEmpty(p.PlanId))
+                        p.PlanId = $"plan-{Guid.NewGuid():N}".Substring(0, 16);
+                }
+            }
+            catch (Exception ex)
+            {
+                WorkerLog.Warn($"ResumeFromDb: failed to deserialize plans: {ex.Message}");
+            }
+        }
+        currentPlanIndex = row.CurrentPlanIndex;
+
+        var goal = new GoalContext
+        {
+            GoalId = goalId,
+            SessionId = sessionId,
+            GoalText = row.Objective,
+            WorkingFolder = row.WorkingFolder,
+            Status = row.Status, // "active" or "paused"
+            Plans = plans,
+            CurrentPlanIndex = plans.Count > 0 ? currentPlanIndex : -1,
+            StartedAt = DateTime.UtcNow
+        };
+
+        ActiveGoals[goalId] = goal;
+
+        WorkerLog.Info($"ResumeFromDb: restored goal {goalId} session={sessionId} status={goal.Status} planCount={plans.Count}");
+
+        // If active, start the orchestration loop
+        if (goal.Status == "active")
+        {
+            // Build minimal parameters from workingFolder for DB sync
+            var minParams = string.IsNullOrEmpty(goal.WorkingFolder)
+                ? new JsonElement()
+                : WorkerJsonHelper.BuildJsonElement(w =>
+                {
+                    w.WriteStartObject();
+                    w.WriteString("workingFolder", goal.WorkingFolder);
+                    w.WriteEndObject();
+                });
+
+            var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await RunAsync(goal, minParams, parentState, context!);
+                }
+                catch (OperationCanceledException)
+                {
+                    goal.Status = "aborted";
+                }
+                catch (Exception ex)
+                {
+                    goal.Status = "failed";
+                    WorkerLog.Warn($"ResumeFromDb RunAsync failed: {ex.Message}");
+                }
+                finally
+                {
+                    ActiveGoals.TryRemove(goalId, out _);
+                }
+            }, goal.CancellationTokenSource.Token);
+        }
+
+        return true;
     }
 
     /// <summary>
