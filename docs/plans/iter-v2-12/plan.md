@@ -74,7 +74,9 @@
 **改动**：
 - `RunAsync` 循环中检测 `RunState == "paused"` 等待（不再检测 `Status`）
 - 开头对 `RunState == "paused"` 也等待（恢复场景）
+- 完成判断处 `if (goal.Status != "aborted" && goal.Status != "paused")` 改为 `if (goal.Status != "aborted" && goal.RunState != "paused")`
 - `WaitForResumeIfPausedAsync` 共享方法改为检查 `RunState`
+- 全部 `goal.Status == "paused"` 引用点一并改为 `RunState`（共 4 处：开头等待、循环内检查、完成判断、WaitForResumeIfPausedAsync）
 
 **涉及文件**：
 - `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorLoop.cs`
@@ -91,6 +93,7 @@
 - `ResumeFromDb` 恢复时 `RunState = "idle"`，`Status = row.Status`（保持 DB 原样）
 - **不启动 RunAsync**（idle 状态下不自动编排）
 - **不写 DB**（不改变目标状态）
+- `SyncGoalToDb` 只持久化 `Status`（终态），`RunState` 永不落库
 - `InitializeAsync` 只是把 goal 放入 `ActiveGoals`，不启动循环
 
 **涉及文件**：
@@ -199,6 +202,7 @@
 4. **暂停/恢复**：running→Pause 暂停循环；paused→Resume 继续
 5. **自动编排**：用户点 Resume 后真正启动编排
 6. **不伪造数据**：不把 DB 改成分层语义外的值
+7. **AOT 0 警告**：`scripts/publish-aot-worker.mjs` 运行 0 警告（本次改动不新增序列化类型，但需回归验证）
 
 ## 完成判定
 
