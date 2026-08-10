@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Text.Json;
 using WishfulClaw.Contracts;
+using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Agent;
 
@@ -43,6 +45,7 @@ public static partial class GoalOrchestrator
             $"Goal started: {goal.GoalText}. {goal.Plans.Count} plans generated.", context);
 
         WriteGoalState(goal);
+        SyncGoalToDb(goal, parameters);
 
         // 2. Serial execution loop
         for (int i = 0; i < goal.Plans.Count; i++)
@@ -99,6 +102,7 @@ public static partial class GoalOrchestrator
         }
 
         WriteGoalState(goal);
+        SyncGoalToDb(goal, parameters);
     }
 
     /// <summary>
@@ -162,6 +166,7 @@ public static partial class GoalOrchestrator
                 await EmitGoalEventAsync(goal, GoalEventType.PlanCompleted,
                     $"Plan {planIndex + 1} completed: {plan.Title}. {plan.ResultSummary}", context);
                 WriteGoalState(goal);
+                SyncGoalToDb(goal, parameters);
                 return;
             }
 
@@ -174,6 +179,7 @@ public static partial class GoalOrchestrator
                 await EmitGoalEventAsync(goal, GoalEventType.PlanFailed,
                     $"Plan {planIndex + 1} failed after {maxRetries} retries: {evaluation.Reasoning}", context);
                 WriteGoalState(goal);
+                SyncGoalToDb(goal, parameters);
                 return;
             }
 
@@ -196,6 +202,7 @@ public static partial class GoalOrchestrator
             }
 
             WriteGoalState(goal);
+        SyncGoalToDb(goal, parameters);
         }
     }
 
@@ -398,6 +405,46 @@ public static partial class GoalOrchestrator
         state.Plans = goal.Plans;
         state.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         GoalFileTools.WriteGoalState(goal.WorkingFolder, goal.GoalId, state);
+    }
+
+    // ─── DB Persistence ───
+
+    /// <summary>
+    /// Sync the goal's current state to the SQLite DB.
+    /// Called after each state change (status, plan progress, etc.).
+    /// </summary>
+    private static void SyncGoalToDb(GoalContext goal, JsonElement parameters)
+    {
+        try
+        {
+            var rootParams = parameters.ValueKind == JsonValueKind.Object
+                ? parameters
+                : new JsonElement();
+
+            // Build the update parameters: sessionId + patch fields
+            var updateParams = WorkerJsonHelper.BuildJsonElement(w =>
+            {
+                w.WriteStartObject();
+                w.WriteString("sessionId", goal.SessionId);
+                w.WriteStartObject("patch");
+                w.WriteString("status", goal.Status);
+                w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);
+                w.WriteNumber("planCount", goal.Plans.Count);
+                w.WriteNumber("completedPlanCount", goal.Plans.Count(p => p.Status == "completed"));
+                if (goal.Plans.Count > 0)
+                {
+                    w.WriteString("plansJson", JsonSerializer.Serialize(goal.Plans));
+                }
+                w.WriteEndObject();
+                w.WriteEndObject();
+            });
+
+            DbGoalTools.Update(updateParams);
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"Failed to sync goal to DB: {ex.Message}");
+        }
     }
 }
 
