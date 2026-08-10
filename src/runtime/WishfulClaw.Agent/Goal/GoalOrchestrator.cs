@@ -166,12 +166,27 @@ public static partial class GoalOrchestrator
 
         ActiveGoals[goalId] = goal;
 
-        WorkerLog.Info($"ResumeFromDb: restored goal {goalId} session={sessionId} status={goal.Status} planCount={plans.Count}");
+        WorkerLog.Info($"ResumeFromDb: restored goal {goalId} session={sessionId} status={goal.Status} planCount={plans.Count} runState=idle");
 
-        // Start the orchestration loop for both active and paused goals.
-        // Paused goals will immediately wait in RunAsync's paused loop at the start.
-        // If context is not available (startup recovery), defer loop start to Resume.
-        var effectiveContext = context ?? NoopWorkerRequestContext.Instance;
+        // 恢复为 idle 状态，不自动编排。用户点 Resume 后才会启动 RunAsync。
+        return true;
+    }
+
+    /// <summary>
+    /// Start the RunAsync loop for a goal in ActiveGoals.
+    /// Called by ResumeGoal when RunState is idle (needs loop start) or paused (loop already running, just resume).
+    /// </summary>
+    public static async Task StartRunLoopAsync(string goalId, IWorkerRequestContext context)
+    {
+        if (!ActiveGoals.TryGetValue(goalId, out var goal))
+            return;
+
+        if (goal.RunState == "running")
+            return; // already running
+
+        goal.RunState = "running";
+
+        // Build minimal parameters from workingFolder for DB sync
         var minParams = string.IsNullOrEmpty(goal.WorkingFolder)
             ? new JsonElement()
             : WorkerJsonHelper.BuildJsonElement(w =>
@@ -181,12 +196,12 @@ public static partial class GoalOrchestrator
                 w.WriteEndObject();
             });
 
-        var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
+        var parentState = new AgentRuntimeRunState($"goal-{goalId}", goal.SessionId);
         _ = Task.Run(async () =>
         {
             try
             {
-                await RunAsync(goal, minParams, parentState, effectiveContext);
+                await RunAsync(goal, minParams, parentState, context);
             }
             catch (OperationCanceledException)
             {
@@ -195,15 +210,13 @@ public static partial class GoalOrchestrator
             catch (Exception ex)
             {
                 goal.Status = "failed";
-                WorkerLog.Warn($"ResumeFromDb RunAsync failed: {ex.Message}");
+                WorkerLog.Warn($"StartRunLoopAsync RunAsync failed: {ex.Message}");
             }
             finally
             {
                 ActiveGoals.TryRemove(goalId, out _);
             }
         }, goal.CancellationTokenSource.Token);
-
-        return true;
     }
 
     /// <summary>

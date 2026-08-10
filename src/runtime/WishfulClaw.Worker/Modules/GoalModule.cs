@@ -58,16 +58,26 @@ public sealed class GoalModule : IWorkerModule
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
 
-        if (!string.IsNullOrEmpty(goalId))
+        if (string.IsNullOrEmpty(goalId))
+            return WorkerResponse.Json(new GoalSimpleResult(false), WishfulClawJsonContext.Default.GoalSimpleResult);
+
+        // Check if goal is in ActiveGoals
+        if (GoalOrchestrator.GetContext(goalId) != null)
         {
-            // Try in-memory resume first
-            GoalOrchestrator.Resume(goalId);
-            // If still not in ActiveGoals (e.g. after restart), try DB recovery
-            if (!GoalOrchestrator.IsActive(goalId) && !string.IsNullOrEmpty(sessionId))
+            // In memory: start/resume the loop
+            await GoalOrchestrator.StartRunLoopAsync(goalId, context);
+        }
+        else if (!string.IsNullOrEmpty(sessionId))
+        {
+            // Not in memory (e.g. after restart): try DB recovery
+            var restored = await GoalOrchestrator.ResumeFromDb(goalId, sessionId, context);
+            if (restored)
             {
-                await GoalOrchestrator.ResumeFromDb(goalId, sessionId, context);
+                // Now in ActiveGoals, start the loop
+                await GoalOrchestrator.StartRunLoopAsync(goalId, context);
             }
         }
+
         return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
     }
 
