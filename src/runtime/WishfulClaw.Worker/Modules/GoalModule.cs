@@ -3,6 +3,7 @@ using System.Text.Json.Serialization.Metadata;
 using WishfulClaw.Agent;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Worker.Modules;
 
@@ -17,6 +18,32 @@ public sealed class GoalModule : IWorkerModule
         context.Register("goal/abort", AbortGoal);
         context.Register("goal/status", GetGoalStatus);
         context.Register("goal/confirm", ConfirmGoal);
+    }
+
+    /// <summary>
+    /// 服务启动时自动恢复 DB 中 active/paused 的 goals。
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        try
+        {
+            var activeGoals = DbGoalTools.ListActiveGoals();
+            if (activeGoals.Count == 0) return;
+
+            WorkerLog.Info($"[GoalModule] Restoring {activeGoals.Count} active/paused goals from DB...");
+            foreach (var row in activeGoals)
+            {
+                if (string.IsNullOrEmpty(row.SessionId) || string.IsNullOrEmpty(row.GoalId))
+                    continue;
+
+                await GoalOrchestrator.ResumeFromDb(row.GoalId, row.SessionId);
+                WorkerLog.Info($"[GoalModule] Restored goal {row.GoalId} session={row.SessionId} status={row.Status}");
+            }
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"[GoalModule] InitializeAsync failed: {ex.Message}");
+        }
     }
     private static WorkerResponse PauseGoal(JsonElement parameters)
     {

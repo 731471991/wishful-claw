@@ -1,5 +1,6 @@
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
+using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.Worker;
 
@@ -50,6 +51,38 @@ public sealed class WorkerHostBuilder
             module.Register(context);
         }
 
+        // Initialize all modules (async, fire-and-forget — modules that need
+        // startup initialization, like Goal recovery, run here)
+        var initTask = InitializeModulesAsync();
+        // Intentionally not awaited — initialization runs in background;
+        // the server starts accepting requests immediately.
+        _ = initTask;
+
         return new WorkerHost(new LocalIpcWorkerServer(dispatcher, endpoint));
+    }
+
+    private async Task InitializeModulesAsync()
+    {
+        try
+        {
+            // Initialize DB first so modules can read from it
+            DbClient.GetClient();
+
+            foreach (var module in modules)
+            {
+                try
+                {
+                    await module.InitializeAsync();
+                }
+                catch (Exception ex)
+                {
+                    WorkerLog.Warn($"Module {module.Name} InitializeAsync failed: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"DB initialization for module init failed: {ex.Message}");
+        }
     }
 }
