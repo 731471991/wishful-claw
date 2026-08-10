@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronRight, CheckCircle2, Loader2, Pause, Pencil, Play, Plus, Save, Target, Trash2, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle2, Pause, Pencil, Play, Plus, Save, Target, Trash2, Zap } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import {
   Dialog,
@@ -34,7 +34,6 @@ import {
   GoalUsageLine
 } from './goal-session-utils'
 import { GoalEventTimeline, LatestGoalNotice, useGoalActions } from './goal-session-views'
-import { resolveGoalConfirm, cancelGoalConfirm } from '@renderer/lib/tools/goal-native-ui'
 
 function GoalManagerDialog({
   goal,
@@ -249,55 +248,24 @@ export function GoalSessionBar({
 
   if (goal.status === 'pending') {
     return (
-      <>
-        <div className={cn('mx-auto w-full max-w-[820px]', className)}>
-          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 px-4 py-3 shadow-sm backdrop-blur">
-            <div className="flex items-start gap-2">
-              <Target className="mt-0.5 size-4 shrink-0 text-sky-500" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground/90">
-                  {t('goal.pendingConfirmTitle', { defaultValue: 'Confirm this goal before execution' })}
-                </div>
-                <p className="mt-1 line-clamp-4 whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground">
-                  {goal.objective}
-                </p>
+      <div className={cn('mx-auto w-full max-w-[820px]', className)}>
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 shadow-sm backdrop-blur">
+          <div className="flex items-center gap-2">
+            <Target className="size-4 shrink-0 text-amber-500" />
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-semibold text-foreground/90">
+                {t('goal.pendingTitle', { defaultValue: 'Goal pending confirmation' })}
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1.5 text-destructive"
-                  disabled={actions.clearing}
-                  onClick={() => {
-                    cancelGoalConfirm(goal.goalId)
-                    void actions.clearGoal()
-                  }}
-                >
-                  <Trash2 className="size-3.5" />
-                  {t('goal.discard', { defaultValue: 'Discard' })}
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-8 gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
-                  disabled={actions.confirming}
-                  onClick={() => {
-                    resolveGoalConfirm(goal.goalId, true)
-                    void actions.confirmGoal()
-                  }}
-                >
-                  {actions.confirming ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <Play className="size-3.5" />
-                  )}
-                  {t('goal.confirmRun', { defaultValue: 'Confirm & start' })}
-                </Button>
-              </div>
+              <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap break-words text-[11px] leading-4 text-muted-foreground">
+                {goal.objective}
+              </p>
             </div>
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              {formatGoalElapsedSeconds(liveTimeUsedSeconds)}
+            </span>
           </div>
         </div>
-        <GoalManagerDialog goal={goal} events={events} actions={actions} />
-      </>
+      </div>
     )
   }
 
