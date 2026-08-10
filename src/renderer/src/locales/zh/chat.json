@@ -377,6 +377,9 @@
     "usageLimitedTitle": "受配额限制的目标",
     "completedTitle": "已完成的目标",
     "limitedTitle": "预算受限的目标",
+    "pendingConfirmTitle": "执行前确认此目标",
+    "discard": "放弃",
+    "confirmRun": "确认并启动",
     "notSet": "未设置",
     "noSessionGoal": "当前会话还没有长期目标。",
     "noUsage": "0 秒",
@@ -456,7 +459,10 @@
       "complete": "Goal 已完成。最终审计：{{usage}}；没有未完成任务、失败工具、排队用户消息或待处理 Plan gate。",
       "stallPaused": "Goal 已被停滞保护暂停：连续 {{count}} 轮续跑没有工具或任务进展。检查目标后可手动继续。",
       "autoContinueBlocked": "Goal 自动续跑正在等待：{{blockers}}。"
-    }
+    },
+    "createdAt": "创建",
+    "updatedAt": "更新",
+    "recentActivity": "近期动态"
   },
   "permission": {
     "title": "需要权限",

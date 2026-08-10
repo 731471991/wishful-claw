@@ -460,7 +460,10 @@
       "complete": "Goal complete. Final audit: {{usage}}; no unfinished tasks, failed tools, queued user messages, or pending plan gate.",
       "stallPaused": "Goal paused by the stall guard after {{count}} continuation rounds without tool or task progress. Review the goal or resume it when ready.",
       "autoContinueBlocked": "Goal auto-continue is waiting: {{blockers}}."
-    }
+    },
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "recentActivity": "Recent activity"
   },
   "permission": {
     "title": "Permission Required",

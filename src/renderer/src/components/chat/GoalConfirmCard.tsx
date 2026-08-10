@@ -17,7 +17,7 @@ export function GoalConfirmCard({ sessionId, className }: GoalConfirmCardProps):
   const [confirming, setConfirming] = React.useState(false)
   const [clearing, setClearing] = React.useState(false)
 
-  if (!sessionId || !progress) return null
+  if (!sessionId || !progress || progress.status !== 'pending') return null
 
   const goalId = progress.goalId
   const objective = progress.objective ?? ''
@@ -29,7 +29,7 @@ export function GoalConfirmCard({ sessionId, className }: GoalConfirmCardProps):
 
   const handleDiscard = async (): Promise<void> => {
     setClearing(true)
-    cancelGoalConfirm(goalId)
+    cancelGoalConfirm(goalId, sessionId)
   }
 
   return (

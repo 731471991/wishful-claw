@@ -53,12 +53,21 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
       const goal = asGoal(result) ?? undefined
       set((state) => {
         const next = { ...state.goalsBySession }
+        const nextActiveRuns = { ...state.activeGoalRunsBySession }
         if (goal) {
           next[sessionId] = goal
+          if (goal.status === 'active' && goal.goalId) {
+            if (!nextActiveRuns[sessionId] || nextActiveRuns[sessionId].goalId !== goal.goalId) {
+              nextActiveRuns[sessionId] = { goalId: goal.goalId, startedAt: Date.now() }
+            }
+          } else {
+            delete nextActiveRuns[sessionId]
+          }
         } else {
           delete next[sessionId]
+          delete nextActiveRuns[sessionId]
         }
-        return { goalsBySession: next }
+        return { goalsBySession: next, activeGoalRunsBySession: nextActiveRuns }
       })
       return goal
     } catch (error) {

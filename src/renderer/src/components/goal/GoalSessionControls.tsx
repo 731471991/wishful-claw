@@ -231,10 +231,8 @@ export function GoalSessionBar({
   if (!sessionId || !goal) return null
 
   const statusTitle =
-    goal.status === 'pending'
-      ? t('goal.pendingTitle', { defaultValue: 'Goal awaiting confirmation' })
-      : goal.status === 'active'
-        ? t('goal.runningTitle', { defaultValue: 'Pursuing goal' })
+    goal.status === 'active'
+      ? t('goal.runningTitle', { defaultValue: 'Pursuing goal' })
       : goal.status === 'paused'
         ? t('goal.pausedTitle', { defaultValue: 'Paused goal' })
         : goal.status === 'blocked'
@@ -246,28 +244,7 @@ export function GoalSessionBar({
               : t('goal.limitedTitle', { defaultValue: 'Budget-limited goal' })
   const hasBlockerNotice = events.some((event) => BLOCKER_EVENT_TYPES.has(event.eventType))
 
-  if (goal.status === 'pending') {
-    return (
-      <div className={cn('mx-auto w-full max-w-[820px]', className)}>
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-2">
-            <Target className="size-4 shrink-0 text-amber-500" />
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-foreground/90">
-                {t('goal.pendingTitle', { defaultValue: 'Goal pending confirmation' })}
-              </div>
-              <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap break-words text-[11px] leading-4 text-muted-foreground">
-                {goal.objective}
-              </p>
-            </div>
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {formatGoalElapsedSeconds(liveTimeUsedSeconds)}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (goal.status === 'pending') return null
 
   return (
     <>
@@ -414,13 +391,40 @@ export function GoalPanelCard({
         </div>
         {goal ? (
           <>
-            <p className="line-clamp-4 break-words text-xs leading-relaxed text-foreground/85">
+            <p className="break-words text-xs leading-relaxed text-foreground/85">
               {goal.objective}
             </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+              <span>{t('goal.createdAt', { defaultValue: 'Created' })}: {new Date(goal.createdAt).toLocaleString()}</span>
+              <span>{t('goal.updatedAt', { defaultValue: 'Updated' })}: {new Date(goal.updatedAt).toLocaleString()}</span>
+            </div>
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
               <GoalUsageLine goal={goal} timeUsedSeconds={liveTimeUsedSeconds} />
             </div>
+            {goal.tokenBudget !== undefined && goal.tokenBudget !== null && goal.tokenBudget > 0 ? (
+              <div className="space-y-0.5">
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{t('goal.budgetProgress')}</span>
+                  <span>{Math.min(100, (goal.tokensUsed / goal.tokenBudget) * 100).toFixed(0)}%</span>
+                </div>
+                <div className="h-1 rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      goal.tokensUsed / goal.tokenBudget >= 1 ? 'bg-red-500' : 'bg-emerald-500'
+                    )}
+                    style={{ width: `${Math.min(100, (goal.tokensUsed / goal.tokenBudget) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <LatestGoalNotice events={events} />
+            {events.length > 0 ? (
+              <div className="space-y-1.5 rounded-md border border-border/50 p-2">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t('goal.recentActivity', { defaultValue: 'Recent activity' })}</div>
+                <GoalEventTimeline events={events.slice(0, 3)} />
+              </div>
+            ) : null}
           </>
         ) : (
           <p className="text-xs text-muted-foreground">{t('goal.noSessionGoal')}</p>

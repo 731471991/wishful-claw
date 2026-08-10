@@ -52,26 +52,28 @@ export interface ActiveGoalRun {
 
 export const EMPTY_SESSION_GOAL_EVENTS: SessionGoalEvent[] = []
 
+// 后端 GoalRow / GoalEventRow 通过 InfrastructureJsonContext（CamelCase）或
+// GoalEventRow 序列化，字段名为 camelCase。前端按 backend 实际返回的字段名对齐。
 export interface SessionGoalRow {
-  session_id: string
-  goal_id: string
+  sessionId: string
+  goalId: string
   objective: string
   status: SessionGoalStatus
-  token_budget: number | null
-  tokens_used: number
-  time_used_seconds: number
-  created_at: number
-  updated_at: number
+  tokenBudget: number | null
+  tokensUsed: number
+  timeUsedSeconds: number
+  createdAt: number
+  updatedAt: number
 }
 
 export interface SessionGoalEventRow {
   id: string
-  session_id: string
-  goal_id: string | null
-  event_type: SessionGoalEventType
+  sessionId: string
+  goalId: string | null
+  eventType: SessionGoalEventType
   message: string | null
-  metadata_json: string | null
-  created_at: number
+  metadataJson: string | null
+  createdAt: number
 }
 
 export interface GoalMutationResult {
@@ -160,23 +162,23 @@ export interface GoalStore {
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {
   return {
-    sessionId: row.session_id,
-    goalId: row.goal_id,
+    sessionId: row.sessionId,
+    goalId: row.goalId,
     objective: row.objective,
     status: row.status,
-    tokenBudget: row.token_budget,
-    tokensUsed: row.tokens_used,
-    timeUsedSeconds: row.time_used_seconds,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    tokenBudget: row.tokenBudget,
+    tokensUsed: row.tokensUsed,
+    timeUsedSeconds: row.timeUsedSeconds,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
   }
 }
 
 export function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
   let metadata: Record<string, unknown> | null = null
-  if (row.metadata_json) {
+  if (row.metadataJson) {
     try {
-      const parsed = JSON.parse(row.metadata_json)
+      const parsed = JSON.parse(row.metadataJson)
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         metadata = parsed as Record<string, unknown>
       }
@@ -187,17 +189,17 @@ export function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
 
   return {
     id: row.id,
-    sessionId: row.session_id,
-    goalId: row.goal_id,
-    eventType: row.event_type,
+    sessionId: row.sessionId,
+    goalId: row.goalId,
+    eventType: row.eventType,
     message: row.message,
     metadata,
-    createdAt: row.created_at
+    createdAt: row.createdAt
   }
 }
 
 export function isGoalRow(value: GoalMutationResult | SessionGoalRow): value is SessionGoalRow {
-  return 'session_id' in value
+  return 'sessionId' in value
 }
 
 export function asGoal(

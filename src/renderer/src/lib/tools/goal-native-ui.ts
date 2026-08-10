@@ -23,11 +23,14 @@ export function resolveGoalConfirm(goalId: string, confirmed: boolean, sessionId
   }
 }
 
-export function cancelGoalConfirm(goalId: string): void {
+export function cancelGoalConfirm(goalId: string, sessionId?: string): void {
   const resolve = goalConfirmResolvers.get(goalId)
   if (resolve) {
     resolve({ confirmed: false })
     goalConfirmResolvers.delete(goalId)
+  }
+  if (sessionId) {
+    useGoalStore.getState().clearGoalProgress(sessionId)
   }
 }
 

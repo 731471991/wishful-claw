@@ -53,7 +53,7 @@ export function useGoalSession(sessionId?: string | null): {
 
   React.useEffect(() => {
     if (!sessionId) return
-    void useGoalStore.getState().loadGoalForSession(sessionId)
+    void useGoalStore.getState().loadGoalForSession(sessionId, true)
   }, [sessionId])
 
   React.useEffect(() => {
