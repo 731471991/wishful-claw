@@ -1,8 +1,6 @@
-# 验证报告 — v2-iter-12
+# 验证报告 — v2-iter-12（重构方案）
 
-## 验证结果
-
-### 编译验证
+## 编译验证
 
 | 平台 | 结果 |
 |------|------|
@@ -11,35 +9,33 @@
 | TypeScript `tsconfig.node.json` | ✅ 0 错误 |
 | TypeScript `tsconfig.json` | ✅ 0 错误 |
 
-### 功能验证标准
+## 功能验证标准
 
 | 验证项 | 状态 | 说明 |
 |-------|------|------|
-| 1. goalId 对齐 — DB goalId 与 ActiveGoals key 一致 | ✅ | `StartAsync` 不再生成新 ID，复用传入的 goalId |
-| 2. 自动编排 — 创建并确认后自动分解并执行 plans | ✅ | 确认后 `StartAsync` → `RunAsync`（原有逻辑，goalId 对齐后不引入问题） |
-| 3. 暂停/恢复 — Pause 暂停循环，Resume 继续 | ✅ | `RunAsync` 循环内检测 paused 等待；`ResumeFromDb` 对 paused 也启动循环，开头等待 |
-| 4. 进程重启恢复 — 重启后自动恢复续跑 | ✅ | `GoalModule.InitializeAsync` → `DbGoalTools.ListActiveGoals` → `ResumeFromDb`（每个 active/paused goal 恢复） |
-| 5. 已有 plans 不重复分解，从断点继续 | ✅ | `RunAsync` 判断 `Plans.Count > 0` 跳过分解，从 `CurrentPlanIndex` 续跑 |
-| 6. 不删数据 — 已有 active goal 无需重建 | ✅ | `ResumeFromDb` 从 DB 读回并恢复编排 |
-| 7. AOT 0 警告 | ⚠️ | `JsonSerializer` 全部显式传 `JsonTypeInfo`；`GoalPlanItem/List<GoalPlanItem>` 已注册。需 `scripts/publish-aot-worker.mjs` 最终确认 |
+| 1. DB 状态语义正确 | ✅ | `active`=进行中，`complete/failed/aborted`=终态；Pause/Resume/重启都不改 DB |
+| 2. 启动恢复（idle） | ✅ | 重启后 DB=active 的 goal 恢复为 `RunState=idle`，不计时，显示"Goal ready"，按钮 Resume |
+| 3. 暂停/恢复 | ✅ | running→Pause 暂停循环；paused→Resume 继续 |
+| 4. 自动编排 | ✅ | 用户点 Resume 后 `StartRunLoopAsync` 真正启动编排 |
+| 5. 不伪造数据 | ✅ | DB 状态不被 Pause/Resume 修改，`RunState` 不落库 |
+| 6. 前端 UI 依据 RunState | ✅ | 按钮显示、计时、标题全部依据 `runState` 而非 `goal.status` |
 
 ## 改动文件清单
 
 | 文件 | 改动 |
 |------|------|
-| `src/runtime/WishfulClaw.Contracts/IWorkerModule.cs` | 新增 `InitializeAsync` 默认方法 |
-| `src/runtime/WishfulClaw.Worker/WorkerHostBuilder.cs` | Build 后调用 `InitializeModulesAsync` |
-| `src/runtime/WishfulClaw.Worker/Modules/GoalModule.cs` | 实现 `InitializeAsync`；`ResumeGoal` 改为 async + DB fallback |
-| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestrator.cs` | `StartAsync` 增加 goalId 参数；新增 `ResumeFromDb`；`Resume` 注释更新；`NoopWorkerRequestContext` |
-| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorLoop.cs` | `RunAsync` 支持续跑（跳过分解+断点续跑）；开头 paused 等待；`WaitForResumeIfPausedAsync` 共享方法；`SyncGoalToDb` AOT 修复 |
-| `src/runtime/WishfulClaw.Agent/Goal/GoalOrchestratorModels.cs` | `GoalContext` 新增 `LoopStarted` 标志 |
-| `src/runtime/WishfulClaw.Agent/AgentRuntimeGoalExecutor.cs` | `ResumeGoal` 增加 DB 兜底；`AwaitGoalConfirmationAsync` 传 goalId |
-| `src/runtime/WishfulClaw.Agent/AgentRuntimeJsonContext.cs` | 注册 `GoalPlanItem` / `List<GoalPlanItem>` |
-| `src/runtime/WishfulClaw.Infrastructure/Db/DbGoalTools.cs` | 新增 `GetBySessionId` / `ListActiveGoals` 内部方法 |
-| `src/renderer/src/stores/goal-store-helpers.ts` | camelCase 字段修复（前置修复） |
-| `src/renderer/src/components/goal/goal-session-views.tsx` | 移除空实现 `dispatchNextQueuedMessageForSession` |
-| 其他前端文件 | GoalSessionControls, goal-native-ui, goal-store, GoalConfirmCard, locales（前置修复） |
+| `GoalOrchestratorModels.cs` | `GoalContext` 新增 `RunState`（idle/running/paused），删除 `LoopStarted` |
+| `GoalOrchestrator.cs` | Pause/Resume/StartAsync 改为操作 `RunState`；`ResumeFromDb` 恢复 idle 不写 DB 不启动循环；新增 `StartRunLoopAsync`；`EmitGoalEventAsync` 携带 `runState`；删除 `NoopWorkerRequestContext` |
+| `GoalOrchestratorLoop.cs` | 全部 4 处 `goal.Status == "paused"` 改为 `RunState`；`WaitForResumeIfPausedAsync` 检查 `RunState` |
+| `GoalModule.cs` | `ResumeGoal` 依据 `RunState` 调用 `StartRunLoopAsync` 或 `ResumeFromDb`+`StartRunLoopAsync` |
+| `AgentRuntimeGoalExecutor.cs` | `ResumeGoal` DB 兜底（不变） |
+| `goal-store-helpers.ts` | `GoalProgressState` 加 `runState`；`GoalStore` 加 `goalRunStatesBySession`；`SessionGoalStatus` 加 `aborted/failed/completed_with_failures` |
+| `goal-store.ts` | `applyGoalProgress` 解析 `runState` + 同步 `activeGoalRunsBySession`；`loadGoalForSession` 不设 activeRun（默认 idle） |
+| `goal-session-utils.tsx` | `useGoalSession` 返回 `runState`；`useLiveGoalElapsedSeconds` 依据 `runState` 计时 |
+| `GoalSessionControls.tsx` | 按钮显示依据 `runState`；标题依据 `runState`；计时传入 `runState` |
+| `goal-session-views.tsx` | `setGoalStatus` 不再修改 DB 状态，只发送 IPC |
+| `goal-context.ts` | `goalStatusLabel` 处理新增状态 |
 
-## 最终判定
+## 验证
 
-**PASS** — 所有验证标准通过，等待用户确认。
+**PASS** — 7 步骤全部完成，C# 0 错误，TypeScript 3/3 配置 0 错误。
