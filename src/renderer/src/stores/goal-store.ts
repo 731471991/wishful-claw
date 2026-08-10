@@ -21,6 +21,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   goalEventsBySession: {},
   activeGoalRunsBySession: {},
   goalProgressBySession: {},
+  goalRunStatesBySession: {},
   _loaded: false,
 
   loadGoalsFromDb: async () => {
@@ -56,13 +57,9 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         const nextActiveRuns = { ...state.activeGoalRunsBySession }
         if (goal) {
           next[sessionId] = goal
-          if (goal.status === 'active' && goal.goalId) {
-            if (!nextActiveRuns[sessionId] || nextActiveRuns[sessionId].goalId !== goal.goalId) {
-              nextActiveRuns[sessionId] = { goalId: goal.goalId, startedAt: Date.now() }
-            }
-          } else {
-            delete nextActiveRuns[sessionId]
-          }
+          // 从 DB 加载的 goal 默认是未运行（idle）状态，不设置 activeRun。
+          // 真正开始时由 goal_progress 事件（runState= running）驱动。
+          delete nextActiveRuns[sessionId]
         } else {
           delete next[sessionId]
           delete nextActiveRuns[sessionId]
@@ -292,12 +289,29 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   },
 
   applyGoalProgress: (progress) => {
-    set((state) => ({
-      goalProgressBySession: {
-        ...state.goalProgressBySession,
-        [progress.sessionId]: progress
+    set((state) => {
+      const nextRunStates = { ...state.goalRunStatesBySession }
+      const nextActiveRuns = { ...state.activeGoalRunsBySession }
+      if (progress.runState) {
+        nextRunStates[progress.sessionId] = progress.runState
+        // 当 runState 为 running 时，设置 activeRun 开始计时
+        if (progress.runState === 'running') {
+          if (!nextActiveRuns[progress.sessionId] || nextActiveRuns[progress.sessionId].goalId !== progress.goalId) {
+            nextActiveRuns[progress.sessionId] = { goalId: progress.goalId, startedAt: Date.now() }
+          }
+        } else {
+          delete nextActiveRuns[progress.sessionId]
+        }
       }
-    }))
+      return {
+        goalProgressBySession: {
+          ...state.goalProgressBySession,
+          [progress.sessionId]: progress
+        },
+        goalRunStatesBySession: nextRunStates,
+        activeGoalRunsBySession: nextActiveRuns
+      }
+    })
   },
   clearGoalProgress: (sessionId: string) => {
     set((state) => {

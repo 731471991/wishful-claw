@@ -67,6 +67,12 @@ export function goalStatusLabel(status: SessionGoal['status']): string {
       return 'limited by budget'
     case 'complete':
       return 'complete'
+    case 'aborted':
+      return 'aborted'
+    case 'failed':
+      return 'failed'
+    case 'completed_with_failures':
+      return 'completed with failures'
   }
 }
 

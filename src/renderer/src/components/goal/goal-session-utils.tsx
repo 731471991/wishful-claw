@@ -24,9 +24,11 @@ export function eventMetadataString(event: SessionGoalEvent, key: string): strin
 export function useGoalSession(sessionId?: string | null): {
   goal: SessionGoal | undefined
   events: SessionGoalEvent[]
+  runState: string | undefined
 } {
   const goal = useGoalStore((s) => (sessionId ? s.goalsBySession[sessionId] : undefined))
   const progress = useGoalStore((s) => (sessionId ? s.goalProgressBySession[sessionId] : undefined))
+  const runState = useGoalStore((s) => (sessionId ? s.goalRunStatesBySession[sessionId] : undefined))
   const events = useGoalStore((s) =>
     sessionId
       ? (s.goalEventsBySession[sessionId] ?? EMPTY_SESSION_GOAL_EVENTS)
@@ -63,7 +65,7 @@ export function useGoalSession(sessionId?: string | null): {
       .loadGoalEventsForSession(sessionId, { goalId: goal?.goalId, force: true })
   }, [sessionId, goal?.goalId])
 
-  return { goal: goal ?? fallbackGoal, events }
+  return { goal: goal ?? fallbackGoal, events, runState }
 }
 
 export function statusTone(status?: SessionGoal['status']): string {
@@ -124,7 +126,11 @@ export function GoalUsageLine({
   )
 }
 
-export function useLiveGoalElapsedSeconds(goal?: SessionGoal, activeRunStartedAt?: number | null): number {
+export function useLiveGoalElapsedSeconds(
+  goal?: SessionGoal,
+  activeRunStartedAt?: number | null,
+  runState?: string | undefined
+): number {
   const [now, setNow] = React.useState(() => Date.now())
 
   React.useEffect(() => {
@@ -137,7 +143,7 @@ export function useLiveGoalElapsedSeconds(goal?: SessionGoal, activeRunStartedAt
 
   if (!goal) return 0
   const activeRunSeconds =
-    goal.status === 'active' && activeRunStartedAt
+    runState === 'running' && activeRunStartedAt
       ? Math.max(0, Math.floor((now - activeRunStartedAt) / 1000))
       : 0
   return goal.timeUsedSeconds + activeRunSeconds

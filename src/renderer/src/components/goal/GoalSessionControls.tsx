@@ -213,7 +213,7 @@ export function GoalSessionBar({
   className?: string
 }): React.JSX.Element | null {
   const { t } = useTranslation('chat')
-  const { goal, events } = useGoalSession(sessionId)
+  const { goal, events, runState } = useGoalSession(sessionId)
   const actions = useGoalActions(sessionId, goal)
   const [expanded, setExpanded] = React.useState(true)
   const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
@@ -222,7 +222,7 @@ export function GoalSessionBar({
     const activeRun = s.activeGoalRunsBySession[sessionId]
     return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
   })
-  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt)
+  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt, runState)
 
   React.useEffect(() => {
     setExpanded(true)
@@ -231,9 +231,9 @@ export function GoalSessionBar({
   if (!sessionId || !goal) return null
 
   const statusTitle =
-    goal.status === 'active'
+    runState === 'running'
       ? t('goal.runningTitle', { defaultValue: 'Pursuing goal' })
-      : goal.status === 'paused'
+      : runState === 'paused'
         ? t('goal.pausedTitle', { defaultValue: 'Paused goal' })
         : goal.status === 'blocked'
           ? t('goal.blockedTitle', { defaultValue: 'Blocked goal' })
@@ -241,7 +241,9 @@ export function GoalSessionBar({
             ? t('goal.usageLimitedTitle', { defaultValue: 'Usage-limited goal' })
             : goal.status === 'complete'
               ? t('goal.completedTitle', { defaultValue: 'Completed goal' })
-              : t('goal.limitedTitle', { defaultValue: 'Budget-limited goal' })
+              : goal.status === 'aborted' || goal.status === 'failed'
+                ? t('goal.failedTitle', { defaultValue: 'Goal not running' })
+                : t('goal.idleTitle', { defaultValue: 'Goal ready' })
   const hasBlockerNotice = events.some((event) => BLOCKER_EVENT_TYPES.has(event.eventType))
 
   if (goal.status === 'pending') return null
@@ -298,7 +300,7 @@ export function GoalSessionBar({
               >
                 <Pencil className="size-3.5" />
               </Button>
-              {goal.status === 'active' ? (
+              {runState === 'running' ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -309,7 +311,7 @@ export function GoalSessionBar({
                 >
                   <Pause className="size-3.5" />
                 </Button>
-              ) : goal.status !== 'complete' ? (
+              ) : goal.status !== 'complete' && goal.status !== 'aborted' && goal.status !== 'failed' ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -368,14 +370,14 @@ export function GoalPanelCard({
   className?: string
 }): React.JSX.Element | null {
   const { t } = useTranslation('chat')
-  const { goal, events } = useGoalSession(sessionId)
+  const { goal, events, runState } = useGoalSession(sessionId)
   const actions = useGoalActions(sessionId, goal)
   const activeRunStartedAt = useGoalStore((s) => {
     if (!sessionId || !goal) return null
     const activeRun = s.activeGoalRunsBySession[sessionId]
     return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
   })
-  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt)
+  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt, runState)
 
   if (!sessionId) return null
 

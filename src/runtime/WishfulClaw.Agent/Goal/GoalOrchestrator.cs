@@ -286,6 +286,7 @@ public static partial class GoalOrchestrator
                     w.WriteString("eventType", eventType.ToString());
                     w.WriteString("message", message);
                     w.WriteString("status", goal.Status);
+                    w.WriteString("runState", goal.RunState);
                     w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);
                     w.WriteNumber("planCount", goal.Plans.Count);
                     w.WriteNumber("completedPlans", goal.Plans.Count(p => p.Status == "completed"));

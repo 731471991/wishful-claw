@@ -7,6 +7,9 @@ export type SessionGoalStatus =
   | 'usage_limited'
   | 'budget_limited'
   | 'complete'
+  | 'aborted'
+  | 'failed'
+  | 'completed_with_failures'
 export type SessionGoalEventType =
   | 'created'
   | 'replaced'
@@ -103,6 +106,7 @@ export interface GoalProgressState {
   eventType: string
   message: string
   status: string
+  runState?: string
   currentPlanIndex: number
   planCount: number
   completedPlans: number
@@ -114,6 +118,7 @@ export interface GoalStore {
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>
   goalProgressBySession: Record<string, GoalProgressState>
+  goalRunStatesBySession: Record<string, string>
   _loaded: boolean
 
   loadGoalsFromDb: () => Promise<void>

@@ -176,25 +176,17 @@ export function useGoalActions(
   const setGoalStatus = React.useCallback(
     async (status: 'active' | 'paused'): Promise<void> => {
       if (!sessionId) return
-      const result = await useGoalStore.getState().updateGoal(sessionId, { status })
-      if (!result.success) {
-        toast.error(t('goal.toasts.updateFailed'), { description: result.error })
-        return
-      }
-      if (status === 'active' && result.goal?.status === 'budget_limited') {
-        toast.info(t('goal.toasts.budgetStillExhausted'), {
-          description: t('goal.toasts.increaseBudget')
-        })
-      }
-      if (status === 'active' && result.goal?.status === 'active') {
+      // 执行状态（RunState）由后端 Orchestrator 管理，不修改 DB 目标状态（Status）。
+      // Resume/Pause 只发送 IPC 让后端切换 RunState。
+      if (status === 'active') {
         try { await invokeMessagePackBinary(GOAL_RESUME_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
-      if (status === 'paused' && result.goal?.status === 'paused') {
+      if (status === 'paused') {
         abortSession(sessionId)
         try { await invokeMessagePackBinary(GOAL_PAUSE_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
       }
     },
-    [sessionId, t, goal?.goalId]
+    [sessionId, goal?.goalId]
   )
 
   const abortGoal = React.useCallback(
