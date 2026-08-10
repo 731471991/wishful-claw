@@ -28,27 +28,45 @@ public static partial class GoalOrchestrator
     {
         var ct = goal.CancellationTokenSource.Token;
 
-        // 1. Decompose goal into plans
-        var decomposition = await DecomposeGoalAsync(
-            goal.GoalText, parameters, parentState, context, ct);
-
-        if (!decomposition.Success || decomposition.Plans.Count == 0)
+        // 1. Decompose goal into plans (skip if already has plans from DB recovery)
+        if (goal.Plans.Count == 0)
         {
-            goal.Status = "failed";
-            await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
-            return;
-        }
+            var decomposition = await DecomposeGoalAsync(
+                goal.GoalText, parameters, parentState, context, ct);
 
-        goal.Plans = decomposition.Plans;
-        await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
-            $"Goal started: {goal.GoalText}. {goal.Plans.Count} plans generated.", context);
+            if (!decomposition.Success || decomposition.Plans.Count == 0)
+            {
+                goal.Status = "failed";
+                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
+                    $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
+                return;
+            }
+
+            goal.Plans = decomposition.Plans;
+            await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
+                $"Goal started: {goal.GoalText}. {goal.Plans.Count} plans generated.", context);
+        }
+        else
+        {
+            await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
+                $"Goal resumed: {goal.GoalText}. Resuming from plan {Math.Max(0, goal.CurrentPlanIndex) + 1} of {goal.Plans.Count}.", context);
+        }
 
         WriteGoalState(goal);
         SyncGoalToDb(goal, parameters);
 
-        // 2. Serial execution loop
-        for (int i = 0; i < goal.Plans.Count; i++)
+        // 2. Serial execution loop — start from where we left off
+        var startIndex = goal.Plans.Count > 0 && goal.CurrentPlanIndex >= 0
+            ? goal.CurrentPlanIndex + 1 // resume from next plan
+            : 0;
+        // If the current plan was still executing (not completed/failed), re-execute it
+        if (goal.CurrentPlanIndex >= 0 && goal.CurrentPlanIndex < goal.Plans.Count
+            && goal.Plans[goal.CurrentPlanIndex].Status is "pending" or "executing")
+        {
+            startIndex = goal.CurrentPlanIndex;
+        }
+
+        for (int i = startIndex; i < goal.Plans.Count; i++)
         {
             if (ct.IsCancellationRequested)
             {
@@ -433,7 +451,7 @@ public static partial class GoalOrchestrator
                 w.WriteNumber("completedPlanCount", goal.Plans.Count(p => p.Status == "completed"));
                 if (goal.Plans.Count > 0)
                 {
-                    w.WriteString("plansJson", JsonSerializer.Serialize(goal.Plans));
+                    w.WriteString("plansJson", JsonSerializer.Serialize(goal.Plans, AgentRuntimeJsonContext.Default.ListGoalPlanItem));
                 }
                 w.WriteEndObject();
                 w.WriteEndObject();
