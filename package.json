@@ -12,7 +12,7 @@
     "build": "electron-vite build",
     "pack": "electron-vite build && electron-builder --dir",
     "pack:full": "npm run build:worker:prod && electron-vite build && electron-builder --dir",
-    "pack:zip": "electron-vite build && electron-builder --dir && cd release && powershell -Command \"Compress-Archive -Path win-unpacked -DestinationPath WishfulClaw-v${npm_package_version}-win-x64.zip -CompressionLevel Optimal\"",
+    "pack:zip": "npm run build:worker:prod && electron-vite build && electron-builder --dir && node scripts/zip-release.mjs",
     "pack:installer": "electron-vite build && electron-builder --win",
     "pack:installer:full": "npm run build:worker:prod && electron-vite build && electron-builder --win",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
@@ -44,6 +44,7 @@
     "bufferutil": "^4.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dingtalk-stream": "^2.1.6-beta.1",
     "gpt-tokenizer": "^3.4.0",
     "i18next": "^26.3.6",
     "immer": "^11.1.15",
@@ -76,6 +77,9 @@
     "ws": "^8.21.1",
     "xlsx": "^0.18.5",
     "zustand": "^5.0.14"
+  },
+  "overrides": {
+    "cpu-features": "npm:noop2@1.0.0"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^1.0.1",

@@ -24,6 +24,8 @@ namespace WishfulClaw.Agent;
 [JsonSerializable(typeof(ClearSessionResult))]
 [JsonSerializable(typeof(ProviderTestResult))]
 [JsonSerializable(typeof(ProviderTestModelsResult))]
+[JsonSerializable(typeof(ProviderModelInfo))]
+[JsonSerializable(typeof(List<ProviderModelInfo>))]
 [JsonSerializable(typeof(SessionRestoreResponse))]
 [JsonSerializable(typeof(GitExecResult))]
 [JsonSerializable(typeof(GitStatusDetailedResult))]

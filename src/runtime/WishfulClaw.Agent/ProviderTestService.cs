@@ -225,9 +225,9 @@ public static class ProviderTestService
         return (modelsUrl, req);
     }
 
-    private static List<object> ParseModelsResponse(string body, string type)
+    private static List<ProviderModelInfo> ParseModelsResponse(string body, string type)
     {
-        var models = new List<object>();
+        var models = new List<ProviderModelInfo>();
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
 
@@ -250,12 +250,7 @@ public static class ProviderTestService
                     continue;
                 }
 
-                models.Add(new
-                {
-                    id,
-                    name = id,
-                    enabled = true
-                });
+                models.Add(new ProviderModelInfo(id, id, true));
             }
         }
 

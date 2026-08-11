@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next'
 import {
   Bot, Check, Code2, Columns2, Copy, ExternalLink, Eye,
-  RefreshCw, Rows2, Save
+  RefreshCw, Rows2, Save, Send
 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import type { PreviewPanelTab } from '@renderer/stores/preview-panel-helpers'
@@ -25,12 +25,13 @@ interface PreviewToolbarProps {
   onSave: () => void
   onReload: () => void
   onOpenInSystem: () => void
+  onSendPathToChat: () => void
 }
 
 export function PreviewToolbar({
   activeTab, fileDisplayName, breadcrumbs, isMarkdown, isDiff,
   canToggleViewMode, canOpenInSystem, diffViewMode, copied,
-  onSetViewMode, onCopyMarkdown, onSetDiffViewMode, onSave, onReload, onOpenInSystem
+  onSetViewMode, onCopyMarkdown, onSetDiffViewMode, onSave, onReload, onOpenInSystem, onSendPathToChat
 }: PreviewToolbarProps): React.JSX.Element {
   const { t } = useTranslation('layout')
   return (
@@ -151,6 +152,15 @@ export function PreviewToolbar({
               title={t('action.refresh', { ns: 'common', defaultValue: 'Refresh' })}
             >
               <RefreshCw className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0"
+              onClick={onSendPathToChat}
+              title={t('preview.sendToChat')}
+            >
+              <Send className="size-3.5" />
             </Button>
           </>
         )}

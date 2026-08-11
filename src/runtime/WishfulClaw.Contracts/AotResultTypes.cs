@@ -23,11 +23,19 @@ public sealed record ProviderTestResult(
     int? StatusCode2 = null);
 
 /// <summary>
-/// Provider test result with object models (for ParseModelsResponse).
+/// Single model entry returned by provider/fetch-models.
+/// </summary>
+public sealed record ProviderModelInfo(
+    string Id,
+    string Name,
+    bool Enabled);
+
+/// <summary>
+/// Provider test result with model list.
 /// </summary>
 public sealed record ProviderTestModelsResult(
     bool Ok,
-    List<object>? Models = null);
+    List<ProviderModelInfo>? Models = null);
 
 // ── Goal module results ──
 public sealed record GoalSimpleResult(bool Success);

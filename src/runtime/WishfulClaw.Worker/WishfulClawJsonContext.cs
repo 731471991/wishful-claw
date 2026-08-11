@@ -126,6 +126,7 @@ namespace WishfulClaw.Worker;
 [JsonSerializable(typeof(List<SessionListRow>))]
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(ProviderTestModelsResult))]
+[JsonSerializable(typeof(ProviderModelInfo))]
 [JsonSerializable(typeof(SystemMemorySnapshot))]
 public sealed partial class WishfulClawJsonContext : JsonSerializerContext
 {

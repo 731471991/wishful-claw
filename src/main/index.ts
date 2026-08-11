@@ -2,6 +2,10 @@ import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImag
 import { join } from 'path'
 import * as fs from 'fs'
 
+// 用 Vite ?asset 导入图标，构建时自动复制到 out/main/，路径始终正确
+// 参考 OpenCowork 的做法（src/main/index.ts 第 28 行）
+import appIcon from '../../resources/icon-256.png?asset'
+
 import { getNativeWorker } from './lib/native-worker'
 import { logError, logWarn, logInfo, installGlobalExceptionHandlers, readRecentLogs } from './lib/logger'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
@@ -44,9 +48,9 @@ function createWindow(): void {
       ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 12, y: 12 } }
       : { frame: false }),
     autoHideMenuBar: true,
-    icon: app.isPackaged
-      ? join(app.getAppPath(), '..', 'icon-256.png')
-      : join(app.getAppPath(), 'resources', 'icon-256.png'),
+    // 用 Vite ?asset 导入的图标，打包后路径在 out/main/ 中，始终正确
+    // 参考 OpenCowork：frame:false 下构造器 icon 用 import 变量即可
+    icon: appIcon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -100,10 +104,8 @@ function createWindow(): void {
 // ── Tray ──
 
 function getTrayIcon(): Electron.NativeImage {
-  const iconPath = app.isPackaged
-    ? join(app.getAppPath(), '..', 'icon-256.png')
-    : join(app.getAppPath(), 'resources', 'icon-256.png')
-  return nativeImage.createFromPath(iconPath)
+  // 用 Vite ?asset 导入的图标路径，开发/打包通用
+  return nativeImage.createFromPath(appIcon)
 }
 
 function createTray(): void {
@@ -142,7 +144,20 @@ function registerWindowControlHandlers(): void {
 
 app.setName('WishfulClaw')
 
-app.whenReady().then(() => {
+// 单实例锁：双击 exe 时聚焦已有窗口，不启动新进程
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+
+  app.whenReady().then(() => {
   installGlobalExceptionHandlers()
   logInfo('main', 'Application started')
   app.setAppUserModelId('com.wishfulclaw.app')
@@ -571,6 +586,7 @@ registerWebSearchHandlers()
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+}
 
 app.on('window-all-closed', () => {
   // Don't quit when minimized to tray (isQuiting false + tray active)

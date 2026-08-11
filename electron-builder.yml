@@ -3,174 +3,88 @@ productName: Wishful Claw
 directories:
   output: release
   buildResources: build
+
 afterPack: build/after-pack-remove-files.cjs
 
-# 排除规则：Vite 已将前端依赖编译到 out/ 中，运行时不需要 node_modules 中的源码。
-# 新增排除规则前，请确认该包被 Vite 编译（前端包）或仅在编译时使用（开发工具）。
-# 参考 OpenCowork 的排除规则（D:\claw\OpenCowork\electron-builder.yml）。
+# ──────────────────────────────────────────────────────────────────
+# 打包文件规则：白名单策略
+#
+# electron-vite 编译时将 TS/React 源码及绝大多数依赖打包到 out/。
+# 运行时 node_modules 只需保留两类包：
+#   1. 原生模块（含 .node 二进制，Vite 无法打包）
+#   2. Vite external 或动态 require 子路径的包（Vite 无法静态分析）
+#
+# 先排除全部 node_modules，再按白名单收入运行时必需包。
+# 新增依赖后无需手动维护 — 只要 Vite 能打包就不会进 asar。
+# ──────────────────────────────────────────────────────────────────
 files:
   - out/**/*
+  - package.json
+  - resources/icon-256.png
+
+  # ── 项目文件排除 ──
   - '!src/*'
   - '!electron.vite.config.*'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,.npmrc,pnpm-lock.yaml}'
-  # 全局排除：源码文件、调试映射、文档、测试用例
+
+  # ── node_modules 白名单 ──
+  - '!node_modules/**/*'
+
+  # Vite external（运行时从 node_modules require）
+  - node_modules/node-pty/**
+  - node_modules/ssh2/**
+  - node_modules/dingtalk-stream/**
+
+  # 原生模块
+  - node_modules/@jitsi/**
+  - node_modules/node-gyp-build/**
+  - node_modules/bufferutil/**
+  - node_modules/utf-8-validate/**
+
+  # ssh2 传递依赖
+  - node_modules/asn1/**
+  - node_modules/bcrypt-pbkdf/**
+  - node_modules/safer-buffer/**
+  - node_modules/tweetnacl/**
+  - node_modules/ms/**
+
+  # dingtalk-stream 传递依赖
+  - node_modules/ws/**
+  - node_modules/axios/**
+  - node_modules/form-data/**
+  - node_modules/proxy-from-env/**
+  - node_modules/follow-redirects/**
+  - node_modules/combined-stream/**
+  - node_modules/mime-types/**
+  - node_modules/mime-db/**
+  - node_modules/asynckit/**
+  - node_modules/delayed-stream/**
+  - node_modules/agent-base/**
+  - node_modules/https-proxy-agent/**
+
+  # 动态 require 子路径（Vite 无法静态分析）
+  - node_modules/ajv/**
+  - node_modules/ajv-formats/**
+  - node_modules/protobufjs/**
+
+  # protobufjs / ajv 传递依赖
+  - node_modules/@protobufjs/**
+  - node_modules/long/**
+  - node_modules/fast-deep-equal/**
+  - node_modules/fast-uri/**
+  - node_modules/json-schema-traverse/**
+  - node_modules/require-from-string/**
+
+  # ── 全局裁剪：白名单包内的非运行时文件 ──
   - '!node_modules/**/*.ts'
   - '!node_modules/**/*.map'
-  - '!node_modules/**/{README.md,CHANGELOG.md,HISTORY.md,CONTRIBUTING.md,LICENSE,LICENSE.md}'
-  - '!node_modules/**/{test,tests,__tests__,__test__,bench,benchmarks,benchmark}'
-  - '!node_modules/**/{example,examples,demo,demos,sample,samples,docs,doc,man,guide}'
-  # 大型前端包（已由 Vite 编译，运行时不需要 node_modules 副本）
-  - '!node_modules/monaco-editor/**'
-  - '!node_modules/@monaco-editor/**'
-  - '!node_modules/mermaid/**'
-  - '!node_modules/katex/**'
-  - '!node_modules/react-pdf/**'
-  - '!node_modules/xlsx/**'
-  - '!node_modules/mammoth/**'
-  - '!node_modules/motion/**'
-  - '!node_modules/motion-dom/**'
-  - '!node_modules/motion-utils/**'
-  - '!node_modules/lucide-react/**'
-  - '!node_modules/react-markdown/**'
-  - '!node_modules/react-syntax-highlighter/**'
-  - '!node_modules/react/**'
-  - '!node_modules/react-dom/**'
-  - '!node_modules/react-i18next/**'
-  - '!node_modules/i18next/**'
-  - '!node_modules/zustand/**'
-  - '!node_modules/immer/**'
-  - '!node_modules/clsx/**'
-  - '!node_modules/class-variance-authority/**'
-  - '!node_modules/sonner/**'
-  - '!node_modules/cmdk/**'
-  - '!node_modules/framer-motion/**'
-  - '!node_modules/@emotion/**'
-  - '!node_modules/polished/**'
-  - '!node_modules/prismjs/**'
-  - '!node_modules/refractor/**'
-  - '!node_modules/marked/**'
-  - '!node_modules/dompurify/**'
-  - '!node_modules/html-to-image/**'
-  - '!node_modules/@lobehub/**'
-  - '!node_modules/tailwindcss/**'
-  - '!node_modules/@tailwindcss/**'
-  - '!node_modules/tw-animate-css/**'
-  - '!node_modules/lightningcss*/**'
-  - '!node_modules/tailwind-merge/**'
-  # Markdown 处理工具链（已编译进 Vite 产物）
-  - '!node_modules/remark*/**'
-  - '!node_modules/rehype*/**'
-  - '!node_modules/unified/**'
-  - '!node_modules/unist*/**'
-  - '!node_modules/hast*/**'
-  - '!node_modules/mdast*/**'
-  - '!node_modules/micromark*/**'
-  - '!node_modules/vfile*/**'
-  - '!node_modules/lowlight/**'
-  - '!node_modules/highlight.js/**'
-  - '!node_modules/prismjs/**'
-  - '!node_modules/refractor/**'
-  - '!node_modules/rehype-highlight/**'
-  # 语法解析 / AST 工具
-  - '!node_modules/parse5/**'
-  - '!node_modules/entities/**'
-  - '!node_modules/devlop/**'
-  - '!node_modules/ccount/**'
-  - '!node_modules/character-entities*/**'
-  - '!node_modules/decode-named-character-reference/**'
-  - '!node_modules/stringify-entities/**'
-  - '!node_modules/zwitch/**'
-  - '!node_modules/bail/**'
-  - '!node_modules/trough/**'
-  - '!node_modules/is-plain-obj/**'
-  - '!node_modules/fault/**'
-  - '!node_modules/format/**'
-  - '!node_modules/style-to-object/**'
-  - '!node_modules/property-information/**'
-  - '!node_modules/space-separated-tokens/**'
-  - '!node_modules/comma-separated-tokens/**'
-  - '!node_modules/ast-types/**'
-  - '!node_modules/tslib/**'
-  - '!node_modules/csstype/**'
-  - '!node_modules/scheduler/**'
-  - '!node_modules/source-map/**'
-  - '!node_modules/jiti/**'
-  # UI 组件库
-  - '!node_modules/@radix-ui/**'
-  - '!node_modules/radix-ui/**'
-  - '!node_modules/@tanstack/**'
-  - '!node_modules/@toon-format/**'
-  - '!node_modules/@base-ui/**'
-  # 大型图表库
-  - '!node_modules/cytoscape*/**'
-  - '!node_modules/d3*/**'
-  - '!node_modules/dagre*/**'
-  # 开发工具 / 编译时依赖
-  - '!node_modules/@types/**'
-  - '!node_modules/@vitejs/**'
-  - '!node_modules/@babel/**'
-  - '!node_modules/@esbuild/**'
-  - '!node_modules/@napi-rs/**'
-  - '!node_modules/esbuild*/**'
-  - '!node_modules/typescript/**'
-  # Electron 运行时/打包工具（运行时不需要）
-  - '!node_modules/electron/**'
-  - '!node_modules/electron-winstaller/**'
-  # 其他大包（运行时不需要）
-  - '!node_modules/gpt-tokenizer/**'
-  - '!node_modules/pdfjs-dist/**'
-  - '!node_modules/@larksuiteoapi/**'
-  - '!node_modules/cpu-features/**'
-  - '!node_modules/monaco-editor-workers/**'
-  # 剩余前端工具库（Vite 已编译，运行时不需要 node_modules 副本）
-  - '!node_modules/es-toolkit/**'
-  - '!node_modules/@mermaid-js/**'
-  - '!node_modules/codepage/**'
-  - '!node_modules/zod/**'
-  - '!node_modules/lodash-es/**'
-  - '!node_modules/underscore/**'
-  - '!node_modules/dayjs/**'
-  - '!node_modules/pngjs/**'
-  - '!node_modules/jszip/**'
-  - '!node_modules/@iconify/**'
-  - '!node_modules/bluebird/**'
-  - '!node_modules/khroma/**'
-  - '!node_modules/layout-base/**'
-  - '!node_modules/@floating-ui/**'
-  - '!node_modules/@jridgewell/**'
-  - '!node_modules/uuid/**'
-  - '!node_modules/qrcode/**'
-  - '!node_modules/enhanced-resolve/**'
-  - '!node_modules/yargs/**'
-  - '!node_modules/zod-to-json-schema/**'
-  - '!node_modules/entities/**'
-  - '!node_modules/devlop/**'
-  - '!node_modules/ccount/**'
-  - '!node_modules/character-entities*/**'
-  - '!node_modules/decode-named-character-reference/**'
-  - '!node_modules/stringify-entities/**'
-  - '!node_modules/zwitch/**'
-  - '!node_modules/bail/**'
-  - '!node_modules/trough/**'
-  - '!node_modules/is-plain-obj/**'
-  - '!node_modules/fault/**'
-  - '!node_modules/format/**'
-  - '!node_modules/style-to-object/**'
-  - '!node_modules/property-information/**'
-  - '!node_modules/space-separated-tokens/**'
-  - '!node_modules/comma-separated-tokens/**'
-  - '!node_modules/ast-types/**'
-  - '!node_modules/tslib/**'
-  - '!node_modules/csstype/**'
-  - '!node_modules/scheduler/**'
-  - '!node_modules/source-map/**'
-  - '!node_modules/jiti/**'
-  - '!node_modules/lowlight/**'
-  - '!node_modules/highlight.js/**'
-  - '!node_modules/rehype-highlight/**'
+  - '!node_modules/**/{README.md,CHANGELOG.md,LICENSE,LICENSE.md}'
+  - '!node_modules/**/{test,tests,docs,example,examples,demo,demos}'
+  - '!node_modules/@jitsi/robotjs/{build,src,test}/**'
+  - '!node_modules/@jitsi/robotjs/binding.gyp'
 
-# 只保留中英文，删除其余 50+ 语言包，节省约 40MB
+# 只保留中英文（删除其余 50+ 语言包，节省 ~40MB）
 electronLanguages:
   - en-US
   - zh-CN
@@ -188,8 +102,6 @@ extraResources:
 asarUnpack:
   - resources/**
   - node_modules/node-pty/**
-  - node_modules/ssh2/**
-  - node_modules/cpu-features/**
   - node_modules/@jitsi/robotjs/**
   - node_modules/node-gyp-build/**
 
@@ -197,7 +109,7 @@ npmRebuild: false
 
 win:
   executableName: WishfulClaw
-  icon: resources/icon.ico
+  icon: resources/icon-bmp.ico
   target:
     - target: nsis
       arch:

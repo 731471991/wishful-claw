@@ -22,6 +22,14 @@ import { isMainProcessMethod, dispatchReverseRequest } from './reverse-handlers'
 
 const SIDECAR_RENDERER_REQUEST_TIMEOUT_MS = 30_000
 
+// Methods that wait for explicit user interaction — no timeout.
+const USER_INTERACTION_METHODS = new Set([
+  'ask-user/request',
+  'plan/review-request',
+  'goal/confirm-request',
+  'sub-agent:approve-tool'
+])
+
 type RendererToolRequest = {
   id?: number | string
   method?: string
@@ -31,7 +39,7 @@ type RendererToolRequest = {
 type PendingRendererToolRequest = {
   resolve: (value: unknown) => void
   reject: (error: Error) => void
-  timer: ReturnType<typeof setTimeout>
+  timer?: ReturnType<typeof setTimeout>
 }
 
 const pendingRendererToolRequests = new Map<string, PendingRendererToolRequest>()
@@ -174,10 +182,13 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
 
     try {
       const result = await new Promise<unknown>((resolve, reject) => {
-        const timer = setTimeout(() => {
-          pendingRendererToolRequests.delete(requestId)
-          reject(new Error(`Renderer tool request timed out: ${method}`))
-        }, SIDECAR_RENDERER_REQUEST_TIMEOUT_MS)
+        const noTimeout = USER_INTERACTION_METHODS.has(method)
+        const timer = noTimeout
+          ? undefined
+          : setTimeout(() => {
+              pendingRendererToolRequests.delete(requestId)
+              reject(new Error(`Renderer tool request timed out: ${method}`))
+            }, SIDECAR_RENDERER_REQUEST_TIMEOUT_MS)
 
         pendingRendererToolRequests.set(requestId, { resolve, reject, timer })
 
@@ -192,7 +203,7 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
         )
 
         if (!sent) {
-          clearTimeout(timer)
+          if (timer) clearTimeout(timer)
           pendingRendererToolRequests.delete(requestId)
           reject(new Error(`Failed to deliver renderer tool request: ${method}`))
         }

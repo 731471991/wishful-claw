@@ -530,6 +530,7 @@ export function AssistantMessage({
         normalizedContent={normalizedContent}
         stringSegments={stringSegments}
         renderItemsWithInlineSummaries={renderItemsWithInlineSummaries}
+        renderMode={renderMode}
         thinkingModelName={thinkingModel.modelName}
         liveComponentClassName={liveComponentClassName}
         liveScaleInClassName={liveScaleInClassName}
