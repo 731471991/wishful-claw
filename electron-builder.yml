@@ -3,6 +3,7 @@ productName: Wishful Claw
 directories:
   output: release
   buildResources: build
+afterPack: build/after-pack-remove-files.cjs
 
 # 排除规则：Vite 已将前端依赖编译到 out/ 中，运行时不需要 node_modules 中的源码。
 # 新增排除规则前，请确认该包被 Vite 编译（前端包）或仅在编译时使用（开发工具）。
@@ -122,6 +123,52 @@ files:
   - '!node_modules/@larksuiteoapi/**'
   - '!node_modules/cpu-features/**'
   - '!node_modules/monaco-editor-workers/**'
+  # 剩余前端工具库（Vite 已编译，运行时不需要 node_modules 副本）
+  - '!node_modules/es-toolkit/**'
+  - '!node_modules/@mermaid-js/**'
+  - '!node_modules/codepage/**'
+  - '!node_modules/zod/**'
+  - '!node_modules/lodash-es/**'
+  - '!node_modules/underscore/**'
+  - '!node_modules/dayjs/**'
+  - '!node_modules/pngjs/**'
+  - '!node_modules/jszip/**'
+  - '!node_modules/@iconify/**'
+  - '!node_modules/bluebird/**'
+  - '!node_modules/khroma/**'
+  - '!node_modules/layout-base/**'
+  - '!node_modules/@floating-ui/**'
+  - '!node_modules/@jridgewell/**'
+  - '!node_modules/uuid/**'
+  - '!node_modules/qrcode/**'
+  - '!node_modules/enhanced-resolve/**'
+  - '!node_modules/yargs/**'
+  - '!node_modules/zod-to-json-schema/**'
+  - '!node_modules/entities/**'
+  - '!node_modules/devlop/**'
+  - '!node_modules/ccount/**'
+  - '!node_modules/character-entities*/**'
+  - '!node_modules/decode-named-character-reference/**'
+  - '!node_modules/stringify-entities/**'
+  - '!node_modules/zwitch/**'
+  - '!node_modules/bail/**'
+  - '!node_modules/trough/**'
+  - '!node_modules/is-plain-obj/**'
+  - '!node_modules/fault/**'
+  - '!node_modules/format/**'
+  - '!node_modules/style-to-object/**'
+  - '!node_modules/property-information/**'
+  - '!node_modules/space-separated-tokens/**'
+  - '!node_modules/comma-separated-tokens/**'
+  - '!node_modules/ast-types/**'
+  - '!node_modules/tslib/**'
+  - '!node_modules/csstype/**'
+  - '!node_modules/scheduler/**'
+  - '!node_modules/source-map/**'
+  - '!node_modules/jiti/**'
+  - '!node_modules/lowlight/**'
+  - '!node_modules/highlight.js/**'
+  - '!node_modules/rehype-highlight/**'
 
 # 只保留中英文，删除其余 50+ 语言包，节省约 40MB
 electronLanguages:
