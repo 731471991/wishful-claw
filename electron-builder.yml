@@ -4,17 +4,22 @@ directories:
   output: release
   buildResources: build
 
+# 排除规则：Vite 已将前端依赖编译到 out/ 中，运行时不需要 node_modules 中的源码。
+# 新增排除规则前，请确认该包被 Vite 编译（前端包）或仅在编译时使用（开发工具）。
+# 参考 OpenCowork 的排除规则（D:\claw\OpenCowork\electron-builder.yml）。
 files:
   - out/**/*
   - '!src/*'
   - '!electron.vite.config.*'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,.npmrc,pnpm-lock.yaml}'
+  # 全局排除：源码文件、调试映射、文档、测试用例
   - '!node_modules/**/*.ts'
   - '!node_modules/**/*.map'
   - '!node_modules/**/{README.md,CHANGELOG.md,HISTORY.md,CONTRIBUTING.md,LICENSE,LICENSE.md}'
   - '!node_modules/**/{test,tests,__tests__,__test__,bench,benchmarks,benchmark}'
   - '!node_modules/**/{example,examples,demo,demos,sample,samples,docs,doc,man,guide}'
+  # 大型前端包（已由 Vite 编译，运行时不需要 node_modules 副本）
   - '!node_modules/monaco-editor/**'
   - '!node_modules/@monaco-editor/**'
   - '!node_modules/mermaid/**'
@@ -28,6 +33,31 @@ files:
   - '!node_modules/lucide-react/**'
   - '!node_modules/react-markdown/**'
   - '!node_modules/react-syntax-highlighter/**'
+  - '!node_modules/react/**'
+  - '!node_modules/react-dom/**'
+  - '!node_modules/react-i18next/**'
+  - '!node_modules/i18next/**'
+  - '!node_modules/zustand/**'
+  - '!node_modules/immer/**'
+  - '!node_modules/clsx/**'
+  - '!node_modules/class-variance-authority/**'
+  - '!node_modules/sonner/**'
+  - '!node_modules/cmdk/**'
+  - '!node_modules/framer-motion/**'
+  - '!node_modules/@emotion/**'
+  - '!node_modules/polished/**'
+  - '!node_modules/prismjs/**'
+  - '!node_modules/refractor/**'
+  - '!node_modules/marked/**'
+  - '!node_modules/dompurify/**'
+  - '!node_modules/html-to-image/**'
+  - '!node_modules/@lobehub/**'
+  - '!node_modules/tailwindcss/**'
+  - '!node_modules/@tailwindcss/**'
+  - '!node_modules/tw-animate-css/**'
+  - '!node_modules/lightningcss*/**'
+  - '!node_modules/tailwind-merge/**'
+  # Markdown 处理工具链（已编译进 Vite 产物）
   - '!node_modules/remark*/**'
   - '!node_modules/rehype*/**'
   - '!node_modules/unified/**'
@@ -36,22 +66,67 @@ files:
   - '!node_modules/mdast*/**'
   - '!node_modules/micromark*/**'
   - '!node_modules/vfile*/**'
-  - '!node_modules/cytoscape*/**'
-  - '!node_modules/d3*/**'
+  - '!node_modules/lowlight/**'
+  - '!node_modules/highlight.js/**'
+  - '!node_modules/prismjs/**'
+  - '!node_modules/refractor/**'
+  - '!node_modules/rehype-highlight/**'
+  # 语法解析 / AST 工具
+  - '!node_modules/parse5/**'
+  - '!node_modules/entities/**'
+  - '!node_modules/devlop/**'
+  - '!node_modules/ccount/**'
+  - '!node_modules/character-entities*/**'
+  - '!node_modules/decode-named-character-reference/**'
+  - '!node_modules/stringify-entities/**'
+  - '!node_modules/zwitch/**'
+  - '!node_modules/bail/**'
+  - '!node_modules/trough/**'
+  - '!node_modules/is-plain-obj/**'
+  - '!node_modules/fault/**'
+  - '!node_modules/format/**'
+  - '!node_modules/style-to-object/**'
+  - '!node_modules/property-information/**'
+  - '!node_modules/space-separated-tokens/**'
+  - '!node_modules/comma-separated-tokens/**'
+  - '!node_modules/ast-types/**'
+  - '!node_modules/tslib/**'
+  - '!node_modules/csstype/**'
+  - '!node_modules/scheduler/**'
+  - '!node_modules/source-map/**'
+  - '!node_modules/jiti/**'
+  # UI 组件库
   - '!node_modules/@radix-ui/**'
   - '!node_modules/radix-ui/**'
   - '!node_modules/@tanstack/**'
   - '!node_modules/@toon-format/**'
-  - '!node_modules/dompurify/**'
-  - '!node_modules/html-to-image/**'
-  - '!node_modules/@lobehub/**'
+  - '!node_modules/@base-ui/**'
+  # 大型图表库
+  - '!node_modules/cytoscape*/**'
+  - '!node_modules/d3*/**'
+  - '!node_modules/dagre*/**'
+  # 开发工具 / 编译时依赖
   - '!node_modules/@types/**'
   - '!node_modules/@vitejs/**'
-  - '!node_modules/tailwindcss/**'
-  - '!node_modules/@tailwindcss/**'
-  - '!node_modules/tw-animate-css/**'
-  - '!node_modules/lightningcss*/**'
+  - '!node_modules/@babel/**'
+  - '!node_modules/@esbuild/**'
+  - '!node_modules/@napi-rs/**'
+  - '!node_modules/esbuild*/**'
+  - '!node_modules/typescript/**'
+  # Electron 运行时/打包工具（运行时不需要）
+  - '!node_modules/electron/**'
+  - '!node_modules/electron-winstaller/**'
+  # 其他大包（运行时不需要）
+  - '!node_modules/gpt-tokenizer/**'
+  - '!node_modules/pdfjs-dist/**'
+  - '!node_modules/@larksuiteoapi/**'
+  - '!node_modules/cpu-features/**'
   - '!node_modules/monaco-editor-workers/**'
+
+# 只保留中英文，删除其余 50+ 语言包，节省约 40MB
+electronLanguages:
+  - en-US
+  - zh-CN
 
 extraResources:
   - from: resources/worker
@@ -67,7 +142,9 @@ asarUnpack:
   - resources/**
   - node_modules/node-pty/**
   - node_modules/ssh2/**
+  - node_modules/cpu-features/**
   - node_modules/@jitsi/robotjs/**
+  - node_modules/node-gyp-build/**
 
 npmRebuild: false
 

@@ -116,9 +116,61 @@ npx electron-builder --win          # NSIS 安装器
 | CI/CD | GitHub Actions 多平台矩阵 | 未实现 |
 | 代码签名 | Windows + macOS 签名 | 未配置 |
 
-### 包体积优化参考
+### 包体积优化规则（必须遵守）
 
-OpenCowork 的 `electron-builder.yml` 中 `files` 排除了大量 node_modules 中的源码（已由 Vite 打包），这是减小安装包体积的关键。Wishful Claw 后续可参考此做法优化。
+> 以下规则参考 OpenCowork 的 `electron-builder.yml`（`D:\claw\OpenCowork\electron-builder.yml`），Wishful Claw 必须对齐执行。
+
+**核心原则：** Vite 已将前端依赖编译到 `out/` 中，运行时 `node_modules` 中不需要这些包的源代码副本。排除它们不会影响功能，只会减小包体积。
+
+**规则 1：`electron-builder.yml` 的 `files` 排除规则必须覆盖以下类别：**
+
+| 类别 | 排除规则 | 原因 |
+|------|---------|------|
+| 前端框架 | `react`, `react-dom`, `zustand`, `immer`, `i18next` 等 | Vite 编译后不依赖 node_modules |
+| UI 组件库 | `@radix-ui`, `@tanstack`, `sonner`, `cmdk`, `framer-motion` 等 | 同上 |
+| 大型图表库 | `monaco-editor`, `mermaid`, `d3*`, `cytoscape*`, `katex` 等 | 同上，且体积大 |
+| Markdown 工具链 | `remark*`, `rehype*`, `unified`, `micromark*` 等 | 同上 |
+| 语法解析器 | `parse5`, `entities`, `lowlight`, `highlight.js` 等 | 同上 |
+| 开发工具 | `typescript`, `@babel`, `@esbuild`, `@vitejs`, `@types` 等 | 编译时用时，运行时不需要 |
+| Electron 运行时 | `electron`（352MB）, `electron-winstaller` | electron-builder 自带 |
+| 全局排除 | `!node_modules/**/*.ts`, `!node_modules/**/*.map` | 源码和调试映射不打包 |
+| 文档/测试 | `README.md`, `CHANGELOG.md`, `test/`, `example/` 等 | 非运行时文件 |
+
+**规则 2：`electronLanguages` 必须按需裁剪**
+
+```yaml
+electronLanguages:
+  - en-US
+  - zh-CN
+```
+
+只保留中英文，删除其余 50+ 语言包，节省约 40MB。
+
+**规则 3：`asarUnpack` 必须包含原生模块**
+
+```yaml
+asarUnpack:
+  - resources/**
+  - node_modules/node-pty/**
+  - node_modules/ssh2/**
+  - node_modules/cpu-features/**
+  - node_modules/@jitsi/robotjs/**
+  - node_modules/node-gyp-build/**
+```
+
+**规则 4：每次打包前检查新增依赖**
+
+新增 `npm install` 依赖后，应检查该包是否为前端包（被 Vite 编译）且未被排除规则覆盖。若是，则补充到 `files` 排除列表中。
+
+**规则 5：每次打包必须重新编译 Worker**
+
+```bash
+npm run build:worker:prod
+```
+
+信不过历史编译产物，确保 AOT Worker 是最新的。
+
+**验证方式：** 打包后检查 `release/win-unpacked/` 的 asar 大小，应控制在 100MB 以内（当前约 80MB）。若超出，检查是否有新增依赖未被排除。
 
 ### 跨平台打包参考
 
