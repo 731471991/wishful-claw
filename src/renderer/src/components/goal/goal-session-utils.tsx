@@ -9,6 +9,7 @@ import {
   type SessionGoal,
   type SessionGoalEvent,
 } from '@renderer/stores/goal-store'
+import { isRuntimeGoalVisible } from '@renderer/stores/goal-state-transitions'
 
 
 
@@ -33,7 +34,7 @@ export function getGoalRuntimeControls(
   runState?: GoalRunState
 ): GoalRuntimeControls {
   const effectiveRunState = runState ?? 'idle'
-  const active = goal?.status === 'active'
+  const active = isRuntimeGoalVisible(goal)
   return {
     runState: effectiveRunState,
     canPause: active && effectiveRunState === 'running',

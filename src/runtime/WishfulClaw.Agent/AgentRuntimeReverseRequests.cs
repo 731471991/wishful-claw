@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -16,6 +16,8 @@ public static class AgentRuntimeReverseRequests
 {
     private static readonly ConcurrentDictionary<string, PendingReverseRequest> Pending = new(StringComparer.Ordinal);
     private static long nextId;
+
+    internal static int PendingCount => Pending.Count;
 
     public static async Task<JsonElement> RequestAsync(
         IWorkerRequestContext context,

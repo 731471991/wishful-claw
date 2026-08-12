@@ -239,13 +239,14 @@ public static partial class DbClient
             EnsureColumn("messages", "usage", "TEXT");
             EnsureColumn("messages", "sort_order", "INTEGER");
             EnsureColumn("goals", "plans_json", "TEXT");
-            EnsureColumn("goals", "plan_count", "INTEGER");
-            EnsureColumn("goals", "completed_plan_count", "INTEGER");
-            EnsureColumn("goals", "current_plan_index", "INTEGER");
+            EnsureColumn("goals", "plan_count", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn("goals", "completed_plan_count", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn("goals", "current_plan_index", "INTEGER NOT NULL DEFAULT -1");
             EnsureColumn("goals", "working_folder", "TEXT");
             EnsureColumn("goals", "token_budget", "INTEGER");
-            EnsureColumn("goals", "time_used_seconds", "INTEGER");
+            EnsureColumn("goals", "time_used_seconds", "INTEGER NOT NULL DEFAULT 0");
             EnsureColumn("goals", "project_id", "TEXT");
+            NormalizeGoalNumericColumns();
             NormalizeGoalStatuses();
             NormalizeGoalPlansJson();
             EnsureGoalHistorySchema();
@@ -306,6 +307,18 @@ public static partial class DbClient
         {
             throw new InvalidOperationException("DB has not been initialized. Call EnsureInitialized(parameters) from an IPC handler first.");
         }
+    }
+
+    private static void NormalizeGoalNumericColumns()
+    {
+        _db!.Execute(
+            "UPDATE goals SET " +
+            "plan_count = COALESCE(plan_count, 0), " +
+            "completed_plan_count = COALESCE(completed_plan_count, 0), " +
+            "current_plan_index = COALESCE(current_plan_index, -1), " +
+            "time_used_seconds = COALESCE(time_used_seconds, 0) " +
+            "WHERE plan_count IS NULL OR completed_plan_count IS NULL " +
+            "OR current_plan_index IS NULL OR time_used_seconds IS NULL");
     }
 
     private static void NormalizeGoalStatuses()

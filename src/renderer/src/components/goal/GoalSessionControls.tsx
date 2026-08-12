@@ -17,6 +17,7 @@ import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { formatGoalElapsedSeconds, formatGoalTokens } from '@renderer/lib/agent/goal-context'
 import { useGoalStore, type GoalRunState, type SessionGoal, type SessionGoalEvent, type SessionGoalEventType } from '@renderer/stores/goal-store'
+import { isRuntimeGoalVisible } from '@renderer/stores/goal-state-transitions'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',
@@ -233,7 +234,7 @@ export function GoalSessionBar({
     setExpanded(true)
   }, [sessionId])
 
-  if (!sessionId || goal?.status !== 'active') return null
+  if (!sessionId || !isRuntimeGoalVisible(goal)) return null
 
   const statusTitle =
     runState === 'running'

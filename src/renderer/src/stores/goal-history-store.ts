@@ -13,6 +13,7 @@ import {
   type SessionGoalEventRow,
   type SessionGoalRow
 } from './goal-store-helpers'
+import { applyGoalStatusToProjects } from './goal-state-transitions'
 
 interface GoalHistoryState {
   goalsByProject: Record<string, SessionGoal[]>
@@ -72,25 +73,15 @@ export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
       const keys = projectId === undefined
         ? Object.keys(state.goalsByProject)
         : [goalProjectKey(projectId)]
-      let changed = false
-      const goalsByProject = { ...state.goalsByProject }
-      for (const key of keys) {
-        const current = state.goalsByProject[key]
-        if (!current) continue
-        const goals = current
-          .map((goal) => {
-            if (goal.goalId !== goalId || goal.sessionId !== sessionId) return goal
-            changed = true
-            return { ...goal, status, updatedAt }
-          })
-          .sort((a, b) => {
-            const aCurrent = a.status === 'pending' || a.status === 'active' ? 1 : 0
-            const bCurrent = b.status === 'pending' || b.status === 'active' ? 1 : 0
-            return bCurrent - aCurrent || b.updatedAt - a.updatedAt
-          })
-        goalsByProject[key] = goals
-      }
-      return changed ? { goalsByProject } : {}
+      const goalsByProject = applyGoalStatusToProjects(
+        state.goalsByProject,
+        keys,
+        sessionId,
+        goalId,
+        status,
+        updatedAt
+      )
+      return goalsByProject === state.goalsByProject ? {} : { goalsByProject }
     })
   },
 

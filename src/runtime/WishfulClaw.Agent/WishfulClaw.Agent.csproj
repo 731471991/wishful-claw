@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -12,6 +12,10 @@
     <ProjectReference Include="..\WishfulClaw.Core\WishfulClaw.Core.csproj" />
     <ProjectReference Include="..\WishfulClaw.Persona\WishfulClaw.Persona.csproj" />
     <ProjectReference Include="..\WishfulClaw.Infrastructure\WishfulClaw.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="WishfulClaw.GoalRegressionTests" />
   </ItemGroup>
 
 </Project>

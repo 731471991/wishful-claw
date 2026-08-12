@@ -234,15 +234,14 @@ public static partial class DbGoalTools
         var objective = GetString(parameters, "objective") ?? throw new InvalidOperationException("objective is required");
         var status = GetString(parameters, "status") ?? GoalStatusValues.Active;
         var plansJson = GetJsonText(parameters, "plansJson");
-        var session = db.QueryFirstOrDefault(
-            "SELECT * FROM sessions WHERE id = @sessionId LIMIT 1",
-            EntityMappers.MapSession,
+        var projectId = db.QueryScalar<string?>(
+            "SELECT project_id FROM sessions WHERE id = @sessionId LIMIT 1",
             new SqliteParameter("@sessionId", sessionId));
         var entity = new GoalEntity
         {
             GoalId = goalId,
             SessionId = sessionId,
-            ProjectId = session?.ProjectId,
+            ProjectId = projectId,
             Objective = objective,
             Status = status,
             TokenBudget = GetLongOrNull(parameters, "tokenBudget"),

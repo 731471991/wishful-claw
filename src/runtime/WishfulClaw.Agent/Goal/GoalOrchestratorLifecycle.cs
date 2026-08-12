@@ -424,50 +424,6 @@ public static partial class GoalOrchestrator
             });
     }
 
-    private static GoalActionResult StartOrResumeRun(
-        GoalContext goal,
-        JsonElement parameters,
-        IWorkerRequestContext context)
-    {
-        lock (goal.LifecycleSync)
-        {
-            if (!IsCurrentGoalContext(goal))
-                return GoalActionNotFound("resume", goal.GoalId);
-
-            if (GoalStatusValues.IsTerminal(goal.Status))
-                return GoalActionTerminal("resume", goal);
-
-            if (goal.RunState == GoalRunStateValues.Paused
-                && goal.RunTask is { IsCompleted: false })
-            {
-                goal.RunState = GoalRunStateValues.Running;
-                return GoalAction(goal, true, "resumed");
-            }
-
-            if (goal.RunState == GoalRunStateValues.Running
-                && goal.RunTask is { IsCompleted: false })
-            {
-                return GoalAction(goal, true, "already_running");
-            }
-
-            goal.RunState = GoalRunStateValues.Running;
-            var generation = ++goal.RunGeneration;
-            var runtimeState = new AgentRuntimeRunState(
-                $"goal-{goal.GoalId}-{generation}",
-                goal.SessionId);
-            runtimeState.ReplaceParameters(parameters);
-            goal.RuntimeState = runtimeState;
-            var backgroundContext = context.ForBackgroundOperation();
-            goal.RunTask = Task.Run(() => RunOwnedAsync(
-                goal,
-                generation,
-                parameters,
-                runtimeState,
-                backgroundContext));
-            return GoalAction(goal, true, "started");
-        }
-    }
-
     private static bool IsCurrentGoalContext(GoalContext goal)
         => ActiveGoals.TryGetValue(goal.GoalId, out var activeGoal)
             && ReferenceEquals(activeGoal, goal);

@@ -1,22 +1,17 @@
 ﻿import { useGoalStore } from '@renderer/stores/goal-store'
+import { GoalConfirmResolvers, type GoalConfirmResponse } from './goal-confirm-resolvers'
 
 // Goal confirmation reverse request (like plan review).
 // The agent calls create_goal, which sends a goal/confirm-request reverse request
 // to the renderer. The renderer shows the confirmation card and waits
 // for the user to confirm or discard. The response goes back to the agent.
 
-export interface GoalConfirmResponse {
-  confirmed: boolean
-}
+export type { GoalConfirmResponse } from './goal-confirm-resolvers'
 
-const goalConfirmResolvers = new Map<string, (payload: GoalConfirmResponse) => void>()
+const goalConfirmResolvers = new GoalConfirmResolvers()
 
 export function resolveGoalConfirm(goalId: string, confirmed: boolean, sessionId?: string): void {
-  const resolve = goalConfirmResolvers.get(goalId)
-  if (resolve) {
-    resolve({ confirmed })
-    goalConfirmResolvers.delete(goalId)
-  }
+  goalConfirmResolvers.resolve(goalId, confirmed)
   // Clear progress so the GoalConfirmCard hides after confirmation
   if (confirmed && sessionId) {
     useGoalStore.getState().clearGoalProgress(sessionId, goalId)
@@ -24,15 +19,11 @@ export function resolveGoalConfirm(goalId: string, confirmed: boolean, sessionId
 }
 
 export function cancelGoalConfirm(goalId: string, sessionId?: string): boolean {
-  const resolve = goalConfirmResolvers.get(goalId)
-  if (resolve) {
-    resolve({ confirmed: false })
-    goalConfirmResolvers.delete(goalId)
-  }
+  const resolved = goalConfirmResolvers.resolve(goalId, false)
   if (sessionId) {
     useGoalStore.getState().clearGoalProgress(sessionId, goalId)
   }
-  return Boolean(resolve)
+  return resolved
 }
 
 export async function handleNativeGoalConfirmRequest(params: unknown): Promise<GoalConfirmResponse> {
@@ -63,10 +54,6 @@ export async function handleNativeGoalConfirmRequest(params: unknown): Promise<G
   // Wait for user to confirm or discard (the GoalConfirmCard in the chat window
   // will call resolveGoalConfirm or cancelGoalConfirm when buttons are clicked)
   return await new Promise<GoalConfirmResponse>((resolve) => {
-    const previous = goalConfirmResolvers.get(goalId)
-    if (previous) {
-      previous({ confirmed: false })
-    }
-    goalConfirmResolvers.set(goalId, resolve)
+    goalConfirmResolvers.register(goalId, resolve)
   })
 }
