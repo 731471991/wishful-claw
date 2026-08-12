@@ -267,9 +267,11 @@ export function GoalSessionBar({
                     {goal.objective}
                   </span>
                 )}
+                {liveTimeUsedSeconds > 0 ? (
                 <span className="shrink-0 text-[11px] text-muted-foreground">
                   {formatGoalElapsedSeconds(liveTimeUsedSeconds)}
                 </span>
+              ) : null}
               </div>
               {animationsEnabled ? (
                 <CollapsibleHeightPanel

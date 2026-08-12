@@ -376,6 +376,7 @@
     "blockedTitle": "已阻塞的目标",
     "usageLimitedTitle": "受配额限制的目标",
     "completedTitle": "已完成的目标",
+    "idleTitle": "空闲",
     "limitedTitle": "预算受限的目标",
     "pendingConfirmTitle": "执行前确认此目标",
     "discard": "放弃",

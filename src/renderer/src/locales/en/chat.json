@@ -376,6 +376,7 @@
     "blockedTitle": "Blocked goal",
     "usageLimitedTitle": "Usage-limited goal",
     "completedTitle": "Completed goal",
+    "idleTitle": "Goal ready",
     "limitedTitle": "Budget-limited goal",
     "notSet": "not set",
     "noSessionGoal": "No session goal.",

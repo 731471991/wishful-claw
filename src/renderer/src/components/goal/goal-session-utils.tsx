@@ -120,7 +120,9 @@ export function GoalUsageLine({
       : t('goal.tokensOnly', { tokens: formatGoalTokens(goal.tokensUsed) })
   return (
     <>
-      <span>{formatGoalElapsedSeconds(displayTimeUsedSeconds)}</span>
+      {displayTimeUsedSeconds > 0 ? (
+        <span>{formatGoalElapsedSeconds(displayTimeUsedSeconds)}</span>
+      ) : null}
       <span>{tokenText}</span>
     </>
   )

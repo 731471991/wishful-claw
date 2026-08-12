@@ -453,6 +453,7 @@ export const useChatStore = create<ChatStore>()(
               eventType: gpEventType,
               message: (gp.message ?? input.message) as string ?? '',
               status: (gp.status ?? input.status) as string ?? '',
+              runState: (input.runState) as string | undefined,
               currentPlanIndex: (gp.currentPlanIndex ?? input.currentPlanIndex) as number ?? 0,
               planCount: (gp.planCount ?? input.planCount) as number ?? 0,
               completedPlans: (gp.completedPlans ?? input.completedPlans) as number ?? 0,
