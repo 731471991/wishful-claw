@@ -21,6 +21,8 @@ export type SessionGoalEventType =
   | 'completion_deferred'
   | 'blocked'
   | 'completed'
+  | 'failed'
+  | 'aborted'
   | 'stall_paused'
   | 'auto_continue_blocked'
   | 'cleared'

@@ -66,12 +66,14 @@ public sealed class GoalModule : IWorkerModule
             WishfulClawJsonContext.Default.GoalActionResult));
     }
 
-    private static async Task<WorkerResponse> AbortGoal(JsonElement parameters)
+    private static async Task<WorkerResponse> AbortGoal(
+        JsonElement parameters,
+        IWorkerRequestContext context)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         var result = string.IsNullOrEmpty(goalId)
             ? MissingGoalId("abort")
-            : await GoalOrchestrator.AbortAsync(goalId);
+            : await GoalOrchestrator.AbortAsync(goalId, context);
         return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 

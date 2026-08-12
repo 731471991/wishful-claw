@@ -20,7 +20,7 @@ public static partial class GoalOrchestrator
     /// <summary>
     /// Main orchestration loop. Runs until goal is completed or aborted.
     /// </summary>
-    private static async Task RunAsync(
+    private static async Task<GoalRunOutcome> RunAsync(
         GoalContext goal,
         JsonElement parameters,
         AgentRuntimeRunState parentState,
@@ -38,12 +38,10 @@ public static partial class GoalOrchestrator
 
             if (!decomposition.Success || decomposition.Plans.Count == 0)
             {
-                if (TrySetActiveRunStatus(goal, GoalStatusValues.Failed))
-                {
-                    await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                        $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
-                }
-                return;
+                return new GoalRunOutcome(
+                    GoalStatusValues.Failed,
+                    GoalEventType.GoalFailed,
+                    $"Goal failed: {decomposition.Error ?? "No plans generated"}");
             }
 
             goal.Plans = decomposition.Plans;
@@ -83,24 +81,19 @@ public static partial class GoalOrchestrator
 
         // 3. Goal completion check
         var allCompleted = goal.Plans.All(p => p.Status == GoalPlanStatusValues.Completed);
-        var finalStatus = allCompleted ? GoalStatusValues.Complete : GoalStatusValues.Failed;
-        if (TrySetActiveRunStatus(goal, finalStatus))
+        if (allCompleted)
         {
-            if (allCompleted)
-            {
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                    "All plans completed successfully", context);
-            }
-            else
-            {
-                var failedCount = goal.Plans.Count(p => p.Status != GoalPlanStatusValues.Completed);
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                    $"Goal completed with {failedCount} failed plan(s)", context);
-            }
+            return new GoalRunOutcome(
+                GoalStatusValues.Complete,
+                GoalEventType.GoalCompleted,
+                "All plans completed successfully");
         }
 
-        WriteGoalState(goal);
-        SyncGoalToDb(goal, parameters);
+        var failedCount = goal.Plans.Count(p => p.Status != GoalPlanStatusValues.Completed);
+        return new GoalRunOutcome(
+            GoalStatusValues.Failed,
+            GoalEventType.GoalFailed,
+            $"Goal failed with {failedCount} incomplete plan(s)");
     }
 
     /// <summary>
@@ -403,7 +396,10 @@ public static partial class GoalOrchestrator
     /// Sync the goal's current state to the SQLite DB.
     /// Called after each state change (status, plan progress, etc.).
     /// </summary>
-    private static void SyncGoalToDb(GoalContext goal, JsonElement parameters)
+    private static void SyncGoalToDb(
+        GoalContext goal,
+        JsonElement parameters,
+        string? statusEventMessage = null)
     {
         try
         {
@@ -413,6 +409,8 @@ public static partial class GoalOrchestrator
                 w.WriteStartObject();
                 w.WriteString("sessionId", goal.SessionId);
                 w.WriteString("goalId", goal.GoalId);
+                if (!string.IsNullOrEmpty(statusEventMessage))
+                    w.WriteString("statusEventMessage", statusEventMessage);
                 w.WriteStartObject("patch");
                 w.WriteString("status", goal.Status);
                 w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);

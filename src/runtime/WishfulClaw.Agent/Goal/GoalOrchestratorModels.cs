@@ -88,6 +88,7 @@ public enum GoalEventType
     GoalResumed,
     GoalAborted,
     GoalCompleted,
+    GoalFailed,
     GoalEvaluationPassed,
     GoalEvaluationFailed
 }

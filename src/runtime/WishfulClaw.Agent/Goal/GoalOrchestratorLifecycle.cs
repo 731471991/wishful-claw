@@ -186,11 +186,27 @@ public static partial class GoalOrchestrator
     /// <summary>
     /// Request cancellation and wait for the owned orchestration loop to exit.
     /// </summary>
-    public static async Task<GoalActionResult> AbortAsync(string goalId)
+    public static async Task<GoalActionResult> AbortAsync(
+        string goalId,
+        IWorkerRequestContext context)
     {
+        var goal = GetContext(goalId);
         var result = RequestAbort(goalId, out var runTask);
-        if (!result.Success || runTask == null)
+        if (!result.Success)
             return result;
+
+        if (runTask == null)
+        {
+            if (goal != null)
+            {
+                await EmitGoalEventAsync(
+                    goal,
+                    GoalEventType.GoalAborted,
+                    "Goal aborted",
+                    context);
+            }
+            return result;
+        }
 
         try
         {
@@ -230,10 +246,7 @@ public static partial class GoalOrchestrator
 
             if (runTask == null)
             {
-                goal.RunState = GoalRunStateValues.Idle;
-                WriteGoalState(goal);
-                SyncGoalToDb(goal, BuildResumeParameters(goal));
-                ActiveGoals.TryRemove(goal.GoalId, out _);
+                FinalizeIdleAbort(goal);
                 return GoalAction(goal, true, "aborted");
             }
 
@@ -344,72 +357,33 @@ public static partial class GoalOrchestrator
             static state => ((AgentRuntimeRunState)state!).Cancel("goal"),
             runtimeState);
 
+        GoalRunOutcome outcome;
         try
         {
-            await RunAsync(goal, parameters, runtimeState, context);
-            if (goal.Status == GoalStatusValues.Aborted)
-            {
-                await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
-            }
+            outcome = await RunAsync(goal, parameters, runtimeState, context);
         }
         catch (OperationCanceledException)
         {
-            TrySetOwnedRunStatus(goal, generation, GoalStatusValues.Aborted);
-            await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
+            outcome = new GoalRunOutcome(
+                GoalStatusValues.Aborted,
+                GoalEventType.GoalAborted,
+                "Goal aborted");
         }
         catch (Exception ex)
         {
-            if (TrySetOwnedRunStatus(goal, generation, GoalStatusValues.Failed))
-            {
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted, $"Goal failed: {ex.Message}", context);
-            }
+            outcome = new GoalRunOutcome(
+                GoalStatusValues.Failed,
+                GoalEventType.GoalFailed,
+                $"Goal failed: {ex.Message}");
         }
-        finally
-        {
-            lock (goal.LifecycleSync)
-            {
-                if (goal.RunGeneration == generation)
-                {
-                    goal.RunTask = null;
-                    goal.RuntimeState = null;
-                    goal.RunState = GoalRunStateValues.Idle;
-                    runtimeState.Dispose();
-                    if (goal.Status == GoalStatusValues.Aborted)
-                    {
-                        WriteGoalState(goal);
-                        SyncGoalToDb(goal, parameters);
-                    }
-                    if (IsCurrentGoalContext(goal))
-                    {
-                        ActiveGoals.TryRemove(goal.GoalId, out _);
-                    }
-                }
-            }
-        }
-    }
 
-    private static bool TrySetOwnedRunStatus(GoalContext goal, long generation, string status)
-    {
-        lock (goal.LifecycleSync)
-        {
-            if (goal.RunGeneration != generation || GoalStatusValues.IsTerminal(goal.Status))
-                return false;
-
-            goal.Status = status;
-            return true;
-        }
-    }
-
-    private static bool TrySetActiveRunStatus(GoalContext goal, string status)
-    {
-        lock (goal.LifecycleSync)
-        {
-            if (GoalStatusValues.IsTerminal(goal.Status))
-                return false;
-
-            goal.Status = status;
-            return true;
-        }
+        await FinalizeOwnedRunAsync(
+            goal,
+            generation,
+            outcome,
+            parameters,
+            runtimeState,
+            context);
     }
 
     private static bool IsCurrentGoalContext(GoalContext goal)

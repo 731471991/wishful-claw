@@ -82,20 +82,6 @@ public static class DbGoalTools
                 var previousStatus = current.Status;
                 ApplyGoalPatch(current, parameters);
                 var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                if (!string.Equals(previousStatus, current.Status, StringComparison.Ordinal))
-                {
-                    InsertEvent(
-                        db,
-                        connection,
-                        transaction,
-                        sessionId,
-                        goalId,
-                        "status_changed",
-                        $"Status changed: {previousStatus} \u2192 {current.Status}",
-                        null,
-                        now);
-                }
-
                 current.UpdatedAt = now;
                 var changed = db.Execute(
                     connection,
@@ -116,6 +102,24 @@ public static class DbGoalTools
                     new SqliteParameter("@sid", sessionId));
                 if (changed != 1)
                     throw new InvalidOperationException("Goal changed during update");
+
+                if (!string.Equals(previousStatus, current.Status, StringComparison.Ordinal))
+                {
+                    var (eventType, message) = GoalStatusEvent(
+                        previousStatus,
+                        current.Status,
+                        GetString(parameters, "statusEventMessage"));
+                    InsertEvent(
+                        db,
+                        connection,
+                        transaction,
+                        sessionId,
+                        goalId,
+                        eventType,
+                        message,
+                        null,
+                        now);
+                }
                 return current;
             });
 
@@ -380,6 +384,18 @@ public static class DbGoalTools
             new SqliteParameter("@mj", (object?)metadataJson ?? DBNull.Value),
             new SqliteParameter("@ca", createdAt)
         ];
+
+    private static (string EventType, string Message) GoalStatusEvent(
+        string previousStatus,
+        string currentStatus,
+        string? eventMessage)
+        => currentStatus switch
+        {
+            GoalStatusValues.Complete => ("completed", eventMessage ?? "Goal completed"),
+            GoalStatusValues.Failed => ("failed", eventMessage ?? "Goal failed"),
+            GoalStatusValues.Aborted => ("aborted", eventMessage ?? "Goal aborted"),
+            _ => ("status_changed", eventMessage ?? $"Status changed: {previousStatus} -> {currentStatus}")
+        };
 
     private static void ApplyGoalPatch(GoalEntity entity, JsonElement parameters)
     {
