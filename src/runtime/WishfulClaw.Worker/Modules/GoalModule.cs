@@ -66,12 +66,12 @@ public sealed class GoalModule : IWorkerModule
             WishfulClawJsonContext.Default.GoalActionResult));
     }
 
-    private static WorkerResponse AbortGoal(JsonElement parameters)
+    private static async Task<WorkerResponse> AbortGoal(JsonElement parameters)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         var result = string.IsNullOrEmpty(goalId)
             ? MissingGoalId("abort")
-            : GoalOrchestrator.Abort(goalId);
+            : await GoalOrchestrator.AbortAsync(goalId);
         return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 
@@ -87,11 +87,10 @@ public sealed class GoalModule : IWorkerModule
         if (pending == null)
             return WorkerResponse.Json(new SimpleSuccessResult(false, Error: "No pending goal found with this goalId"), WishfulClawJsonContext.Default.SimpleSuccessResult);
 
-        var parentState = new AgentRuntimeRunState($"goal-{goalId}", sessionId);
         var workingFolder = JsonHelpers.GetString(pending.Parameters, "workingFolder");
 
         var ok = await GoalOrchestrator.ConfirmGoalAsync(
-            goalId, sessionId, workingFolder, pending.Parameters, parentState, context);
+            goalId, sessionId, workingFolder, pending.Parameters, context);
 
         return WorkerResponse.Json(new SimpleSuccessResult(ok), WishfulClawJsonContext.Default.SimpleSuccessResult);
     }

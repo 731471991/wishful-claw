@@ -22,7 +22,6 @@ public static partial class GoalOrchestrator
         string? workingFolder,
         string goalId,
         JsonElement parameters,
-        AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
         var goal = new GoalContext
@@ -40,7 +39,7 @@ public static partial class GoalOrchestrator
         {
             if (ActiveGoals.TryGetValue(goalId, out var existingGoal))
             {
-                StartOrResumeRun(existingGoal, parameters, parentState, context);
+                StartOrResumeRun(existingGoal, parameters, context);
             }
             return Task.FromResult(goalId);
         }
@@ -48,7 +47,7 @@ public static partial class GoalOrchestrator
         _ = EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
             $"Goal created: {goalText}. Decomposing into plans...", context);
 
-        StartOrResumeRun(goal, parameters, parentState, context);
+        StartOrResumeRun(goal, parameters, context);
         return Task.FromResult(goalId);
     }
 
@@ -149,8 +148,7 @@ public static partial class GoalOrchestrator
         }
 
         var parameters = BuildResumeParameters(goal);
-        var parentState = new AgentRuntimeRunState($"goal-{goalId}", goal.SessionId);
-        return StartOrResumeRun(goal, parameters, parentState, context);
+        return StartOrResumeRun(goal, parameters, context);
     }
 
     /// <summary>
@@ -180,10 +178,42 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
-    /// Abort an active Goal and reject future Resume attempts.
+    /// Request cancellation for an active Goal without waiting for loop cleanup.
     /// </summary>
     public static GoalActionResult Abort(string goalId)
     {
+        return RequestAbort(goalId, out _);
+    }
+
+    /// <summary>
+    /// Request cancellation and wait for the owned orchestration loop to exit.
+    /// </summary>
+    public static async Task<GoalActionResult> AbortAsync(string goalId)
+    {
+        var result = RequestAbort(goalId, out var runTask);
+        if (!result.Success || runTask == null)
+            return result;
+
+        try
+        {
+            await runTask;
+        }
+        catch
+        {
+            // The owned loop converts cancellation/failure into Goal status before cleanup.
+        }
+
+        return result with
+        {
+            Action = "aborted",
+            Status = GoalStatusValues.Aborted,
+            RunState = GoalRunStateValues.Idle
+        };
+    }
+
+    private static GoalActionResult RequestAbort(string goalId, out Task? runTask)
+    {
+        runTask = null;
         if (!ActiveGoals.TryGetValue(goalId, out var goal))
             return GoalActionNotFound("abort", goalId);
 
@@ -195,10 +225,21 @@ public static partial class GoalOrchestrator
             if (GoalStatusValues.IsTerminal(goal.Status))
                 return GoalActionTerminal("abort", goal);
 
+            runTask = goal.RunTask;
             goal.Status = GoalStatusValues.Aborted;
-            goal.RunState = GoalRunStateValues.Idle;
             goal.CancellationTokenSource.Cancel();
-            return GoalAction(goal, true, "aborted");
+            goal.RuntimeState?.Cancel("goal aborted");
+
+            if (runTask == null)
+            {
+                goal.RunState = GoalRunStateValues.Idle;
+                WriteGoalState(goal);
+                SyncGoalToDb(goal, BuildResumeParameters(goal));
+                ActiveGoals.TryRemove(goal.GoalId, out _);
+                return GoalAction(goal, true, "aborted");
+            }
+
+            return GoalAction(goal, true, "aborting");
         }
     }
 
@@ -253,7 +294,6 @@ public static partial class GoalOrchestrator
     private static GoalActionResult StartOrResumeRun(
         GoalContext goal,
         JsonElement parameters,
-        AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
         lock (goal.LifecycleSync)
@@ -279,12 +319,17 @@ public static partial class GoalOrchestrator
 
             goal.RunState = GoalRunStateValues.Running;
             var generation = ++goal.RunGeneration;
+            var runtimeState = new AgentRuntimeRunState(
+                $"goal-{goal.GoalId}-{generation}",
+                goal.SessionId);
+            runtimeState.ReplaceParameters(parameters);
+            goal.RuntimeState = runtimeState;
             var backgroundContext = context.ForBackgroundOperation();
             goal.RunTask = Task.Run(() => RunOwnedAsync(
                 goal,
                 generation,
                 parameters,
-                parentState,
+                runtimeState,
                 backgroundContext));
             return GoalAction(goal, true, "started");
         }
@@ -294,19 +339,25 @@ public static partial class GoalOrchestrator
         GoalContext goal,
         long generation,
         JsonElement parameters,
-        AgentRuntimeRunState parentState,
+        AgentRuntimeRunState runtimeState,
         IWorkerRequestContext context)
     {
+        using var goalCancellationRegistration = goal.CancellationTokenSource.Token.Register(
+            static state => ((AgentRuntimeRunState)state!).Cancel("goal"),
+            runtimeState);
+
         try
         {
-            await RunAsync(goal, parameters, parentState, context);
-        }
-        catch (OperationCanceledException)
-        {
-            if (TrySetOwnedRunStatus(goal, generation, GoalStatusValues.Aborted))
+            await RunAsync(goal, parameters, runtimeState, context);
+            if (goal.Status == GoalStatusValues.Aborted)
             {
                 await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            TrySetOwnedRunStatus(goal, generation, GoalStatusValues.Aborted);
+            await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
         }
         catch (Exception ex)
         {
@@ -322,7 +373,14 @@ public static partial class GoalOrchestrator
                 if (goal.RunGeneration == generation)
                 {
                     goal.RunTask = null;
+                    goal.RuntimeState = null;
                     goal.RunState = GoalRunStateValues.Idle;
+                    runtimeState.Dispose();
+                    if (goal.Status == GoalStatusValues.Aborted)
+                    {
+                        WriteGoalState(goal);
+                        SyncGoalToDb(goal, parameters);
+                    }
                     if (IsCurrentGoalContext(goal))
                     {
                         ActiveGoals.TryRemove(goal.GoalId, out _);
@@ -336,7 +394,19 @@ public static partial class GoalOrchestrator
     {
         lock (goal.LifecycleSync)
         {
-            if (goal.RunGeneration != generation)
+            if (goal.RunGeneration != generation || GoalStatusValues.IsTerminal(goal.Status))
+                return false;
+
+            goal.Status = status;
+            return true;
+        }
+    }
+
+    private static bool TrySetActiveRunStatus(GoalContext goal, string status)
+    {
+        lock (goal.LifecycleSync)
+        {
+            if (GoalStatusValues.IsTerminal(goal.Status))
                 return false;
 
             goal.Status = status;

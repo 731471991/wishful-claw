@@ -66,6 +66,7 @@ public sealed class GoalContext
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     internal object LifecycleSync { get; } = new();
     internal Task? RunTask { get; set; }
+    internal AgentRuntimeRunState? RuntimeState { get; set; }
     internal long RunGeneration { get; set; }
 }
 

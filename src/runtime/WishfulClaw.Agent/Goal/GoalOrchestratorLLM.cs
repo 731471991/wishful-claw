@@ -21,6 +21,7 @@ public static partial class GoalOrchestrator
         IWorkerRequestContext context,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var prompt = GoalPromptTemplates.BuildDecompositionUserPrompt(goalText, null);
 
         var input = CreateTaskInput(prompt, "Goal Decomposition");
@@ -28,6 +29,7 @@ public static partial class GoalOrchestrator
 
         var result = await SubAgentExecutor.ExecuteAsync(
             input, parameters, parentState, context, toolCallId);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var output = result.Content?.Trim() ?? string.Empty;
 
@@ -108,6 +110,7 @@ public static partial class GoalOrchestrator
         {
             var result = await SubAgentExecutor.ExecuteAsync(
                 input, parameters, parentState, context, toolCallId);
+            ct.ThrowIfCancellationRequested();
 
             var output = result.Content?.Trim() ?? string.Empty;
 
@@ -133,6 +136,10 @@ public static partial class GoalOrchestrator
                 NextAction = root.TryGetProperty("nextAction", out var na) ? na.GetString() ?? "proceed" : "proceed",
                 AdjustedDescription = root.TryGetProperty("adjustedDescription", out var ad) ? ad.GetString() : null
             };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

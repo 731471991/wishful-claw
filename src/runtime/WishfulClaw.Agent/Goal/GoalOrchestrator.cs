@@ -176,7 +176,6 @@ public static partial class GoalOrchestrator
         string sessionId,
         string? workingFolder,
         JsonElement parameters,
-        AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
         if (!PendingGoals.TryRemove(goalId, out var pending))
@@ -193,7 +192,6 @@ public static partial class GoalOrchestrator
             workingFolder ?? pending.WorkingFolder,
             goalId,
             actualParameters,
-            parentState,
             context);
 
         return true;

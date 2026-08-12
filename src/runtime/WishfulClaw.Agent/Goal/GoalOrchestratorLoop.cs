@@ -26,26 +26,23 @@ public static partial class GoalOrchestrator
         AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
-        var ct = goal.CancellationTokenSource.Token;
-
-        // If the goal is paused (e.g. recovered from DB as paused), wait for resume
-        // before doing any work (decomposition, execution).
-        if (goal.RunState == GoalRunStateValues.Paused)
-        {
-            await WaitForResumeIfPausedAsync(goal, context, ct);
-        }
+        var ct = parentState.CancellationToken;
+        await ReachSafePointAsync(goal, context, ct);
 
         // 1. Decompose goal into plans (skip if already has plans from DB recovery)
         if (goal.Plans.Count == 0)
         {
             var decomposition = await DecomposeGoalAsync(
                 goal.GoalText, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             if (!decomposition.Success || decomposition.Plans.Count == 0)
             {
-                goal.Status = GoalStatusValues.Failed;
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                    $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
+                if (TrySetActiveRunStatus(goal, GoalStatusValues.Failed))
+                {
+                    await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
+                        $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
+                }
                 return;
             }
 
@@ -75,45 +72,27 @@ public static partial class GoalOrchestrator
 
         for (int i = startIndex; i < goal.Plans.Count; i++)
         {
-            if (ct.IsCancellationRequested)
-            {
-                goal.Status = GoalStatusValues.Aborted;
-                await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted by user", context);
-                break;
-            }
-
-            // Check for pause
-            if (goal.RunState == GoalRunStateValues.Paused)
-            {
-                await WaitForResumeIfPausedAsync(goal, context, ct);
-                if (ct.IsCancellationRequested)
-                {
-                    goal.Status = GoalStatusValues.Aborted;
-                    await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
-                    break;
-                }
-            }
-
+            await ReachSafePointAsync(goal, context, ct);
             goal.CurrentPlanIndex = i;
             var plan = goal.Plans[i];
 
             // Execute plan with retry + evaluation loop
             await ExecutePlanWithRetryAsync(goal, plan, i, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
         }
 
         // 3. Goal completion check
-        if (goal.Status != GoalStatusValues.Aborted && goal.RunState != GoalRunStateValues.Paused)
+        var allCompleted = goal.Plans.All(p => p.Status == GoalPlanStatusValues.Completed);
+        var finalStatus = allCompleted ? GoalStatusValues.Complete : GoalStatusValues.Failed;
+        if (TrySetActiveRunStatus(goal, finalStatus))
         {
-            var allCompleted = goal.Plans.All(p => p.Status == GoalPlanStatusValues.Completed);
             if (allCompleted)
             {
-                goal.Status = GoalStatusValues.Complete;
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
                     "All plans completed successfully", context);
             }
             else
             {
-                goal.Status = GoalStatusValues.Failed;
                 var failedCount = goal.Plans.Count(p => p.Status != GoalPlanStatusValues.Completed);
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
                     $"Goal completed with {failedCount} failed plan(s)", context);
@@ -140,18 +119,19 @@ public static partial class GoalOrchestrator
 
         while (plan.RetryCount <= maxRetries)
         {
-            if (ct.IsCancellationRequested)
-                return;
+            await ReachSafePointAsync(goal, context, ct);
 
             // Execute the plan
             var result = await ExecutePlanAsync(
                 goal, plan, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             // Handle 429: backoff and retry
             if (result.Is429)
             {
                 var (backoffOutcome, backoffResult) = await Handle429BackoffAsync(
                     goal, plan, planIndex, result, parameters, parentState, context, ct);
+                await ReachSafePointAsync(goal, context, ct);
 
                 if (backoffOutcome == BackoffOutcome.Timeout)
                 {
@@ -175,6 +155,7 @@ public static partial class GoalOrchestrator
             // Self-check evaluation
             var evaluation = await EvaluateResultAsync(
                 goal, plan, result, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             if (evaluation.Satisfied)
             {
@@ -203,6 +184,7 @@ public static partial class GoalOrchestrator
             }
 
             // Adjust plan based on evaluation
+            await ReachSafePointAsync(goal, context, ct);
             plan.RetryCount++;
             if (evaluation.NextAction == "adjust" && !string.IsNullOrEmpty(evaluation.AdjustedDescription))
             {
@@ -244,8 +226,7 @@ public static partial class GoalOrchestrator
 
         while (true)
         {
-            if (ct.IsCancellationRequested)
-                return (BackoffOutcome.Timeout, null);
+            await ReachSafePointAsync(goal, context, ct);
 
             var (delaySeconds, phase) = GoalBackoffStrategy.CalculateBackoff(
                 attempt, result.RetryAfterHint);
@@ -261,23 +242,16 @@ public static partial class GoalOrchestrator
             await EmitGoalEventAsync(goal, GoalEventType.BackoffStarted,
                 GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds), context);
 
-            // Wait with cancellation support
-            try
-            {
-                await Task.Delay(delaySeconds * 1000, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                return (BackoffOutcome.Timeout, null);
-            }
-
+            await Task.Delay(delaySeconds * 1000, ct);
             totalWaitedSeconds += delaySeconds;
+            await ReachSafePointAsync(goal, context, ct);
 
             // Try a quick test request to see if 429 is resolved
             // Re-execute the plan — if it succeeds, backoff is resolved
             // If it fails with 429 again, continue the backoff loop
             var retryResult = await ExecutePlanAsync(
                 goal, plan, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             if (!retryResult.Is429)
             {
@@ -309,7 +283,8 @@ public static partial class GoalOrchestrator
             ? result.Summary
             : result.Error ?? "No output";
 
-        return await EvaluateViaLlmAsync(
+        ct.ThrowIfCancellationRequested();
+        var evaluation = await EvaluateViaLlmAsync(
             goal.GoalText,
             plan.Title,
             plan.Description,
@@ -318,6 +293,8 @@ public static partial class GoalOrchestrator
             parentState,
             context,
             ct);
+        ct.ThrowIfCancellationRequested();
+        return evaluation;
     }
 
     // ─── Plan Execution ───
@@ -333,6 +310,7 @@ public static partial class GoalOrchestrator
         IWorkerRequestContext context,
         CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         var stopwatch = Stopwatch.StartNew();
         await EmitGoalEventAsync(goal, GoalEventType.PlanStarted,
             $"Plan started: {plan.Title}", context);
@@ -346,6 +324,7 @@ public static partial class GoalOrchestrator
         {
             var result = await SubAgentExecutor.ExecuteAsync(
                 input, parameters, parentState, context, toolCallId);
+            ct.ThrowIfCancellationRequested();
 
             stopwatch.Stop();
             var output = result.Content?.Trim() ?? string.Empty;
@@ -374,18 +353,10 @@ public static partial class GoalOrchestrator
                 ElapsedMs = stopwatch.ElapsedMilliseconds
             };
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             stopwatch.Stop();
-            return new PlanExecutionResult
-            {
-                PlanId = plan.PlanId,
-                Title = plan.Title,
-                Status = "failed",
-                Error = "Cancelled",
-                RetryCount = plan.RetryCount,
-                ElapsedMs = stopwatch.ElapsedMilliseconds
-            };
+            throw;
         }
         catch (Exception ex)
         {
@@ -467,21 +438,24 @@ public static partial class GoalOrchestrator
     }
 
     /// <summary>
-    /// Wait for resume if the goal is paused. Shared between the start-of-loop
-    /// check (for recovered paused goals) and the per-plan pause check.
+    /// Stop at a lifecycle safe point. Abort is immediate; Pause waits without
+    /// cancelling the current sub-agent and resumes from the same control point.
     /// </summary>
-    private static async Task WaitForResumeIfPausedAsync(
+    private static async Task ReachSafePointAsync(
         GoalContext goal, IWorkerRequestContext context, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
+        if (goal.RunState != GoalRunStateValues.Paused)
+            return;
+
         await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
-        while (goal.RunState == GoalRunStateValues.Paused && !ct.IsCancellationRequested)
+        while (goal.RunState == GoalRunStateValues.Paused)
         {
-            await Task.Delay(1000, ct);
+            await Task.Delay(250, ct);
         }
-        if (!ct.IsCancellationRequested)
-        {
-            await EmitGoalEventAsync(goal, GoalEventType.GoalResumed, "Goal resumed", context);
-        }
+
+        ct.ThrowIfCancellationRequested();
+        await EmitGoalEventAsync(goal, GoalEventType.GoalResumed, "Goal resumed", context);
     }
 }
 

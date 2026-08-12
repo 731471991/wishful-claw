@@ -153,7 +153,7 @@
 - Worker IPC 返回真实 action/result，Goal 不存在或终态时不返回伪成功。
 - 新增 DTO 均完成 AOT 注册，`WorkerResponse.Json` 显式传 `JsonTypeInfo`。
 
-### [ ] 步骤 3：连接取消链路，明确 Pause/Abort 安全点
+### [✓] 步骤 3：连接取消链路，明确 Pause/Abort 安全点
 
 改动：
 
