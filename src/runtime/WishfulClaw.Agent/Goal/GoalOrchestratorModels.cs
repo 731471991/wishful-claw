@@ -53,12 +53,20 @@ public sealed class GoalContext
     public string? WorkingFolder { get; set; }
     /// <summary>目标状态：active（进行中）| complete | failed | aborted（终态）。</summary>
     public string Status { get; set; } = GoalStatusValues.Active;
+    private string _runState = GoalRunStateValues.Idle;
     /// <summary>执行状态（仅内存）：idle（未运行）| running（编排中）| paused（暂停）。</summary>
-    public string RunState { get; set; } = GoalRunStateValues.Idle;
+    public string RunState
+    {
+        get => Volatile.Read(ref _runState);
+        set => Volatile.Write(ref _runState, value);
+    }
     public List<GoalPlanItem> Plans { get; set; } = new();
     public int CurrentPlanIndex { get; set; } = -1;
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
+    internal object LifecycleSync { get; } = new();
+    internal Task? RunTask { get; set; }
+    internal long RunGeneration { get; set; }
 }
 
 /// <summary>

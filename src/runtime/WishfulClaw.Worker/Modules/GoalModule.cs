@@ -48,45 +48,31 @@ public sealed class GoalModule : IWorkerModule
     private static WorkerResponse PauseGoal(JsonElement parameters)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
-        if (!string.IsNullOrEmpty(goalId))
-            GoalOrchestrator.Pause(goalId);
-        return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
+        var result = string.IsNullOrEmpty(goalId)
+            ? MissingGoalId("pause")
+            : GoalOrchestrator.Pause(goalId);
+        return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 
-    private static async Task<WorkerResponse> ResumeGoal(JsonElement parameters, IWorkerRequestContext context)
+    private static Task<WorkerResponse> ResumeGoal(JsonElement parameters, IWorkerRequestContext context)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
-
-        if (string.IsNullOrEmpty(goalId))
-            return WorkerResponse.Json(new GoalSimpleResult(false), WishfulClawJsonContext.Default.GoalSimpleResult);
-
-        // Check if goal is in ActiveGoals
-        if (GoalOrchestrator.GetContext(goalId) != null)
-        {
-            // In memory: start/resume the loop
-            await GoalOrchestrator.StartRunLoopAsync(goalId, context);
-        }
-        else if (!string.IsNullOrEmpty(sessionId))
-        {
-            // Not in memory (e.g. after restart): try DB recovery
-            var restored = await GoalOrchestrator.ResumeFromDb(goalId, sessionId, context);
-            if (restored)
-            {
-                // Now in ActiveGoals, start the loop
-                await GoalOrchestrator.StartRunLoopAsync(goalId, context);
-            }
-        }
-
-        return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
+        var result = string.IsNullOrEmpty(goalId)
+            ? MissingGoalId("resume")
+            : GoalOrchestrator.Resume(goalId, sessionId, context);
+        return Task.FromResult(WorkerResponse.Json(
+            result,
+            WishfulClawJsonContext.Default.GoalActionResult));
     }
 
     private static WorkerResponse AbortGoal(JsonElement parameters)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
-        if (!string.IsNullOrEmpty(goalId))
-            GoalOrchestrator.Abort(goalId);
-        return WorkerResponse.Json(new GoalSimpleResult(true), WishfulClawJsonContext.Default.GoalSimpleResult);
+        var result = string.IsNullOrEmpty(goalId)
+            ? MissingGoalId("abort")
+            : GoalOrchestrator.Abort(goalId);
+        return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 
     private static async Task<WorkerResponse> ConfirmGoal(JsonElement parameters, IWorkerRequestContext context)
@@ -118,11 +104,15 @@ public sealed class GoalModule : IWorkerModule
 
         var ctx = GoalOrchestrator.GetContext(goalId);
         return WorkerResponse.Json(new GoalStatusResponse(
-            ctx?.Status == "active",
+            ctx?.Status == GoalStatusValues.Active,
             ctx?.Status ?? "unknown",
+            ctx?.RunState ?? "unknown",
             goalId,
             ctx?.CurrentPlanIndex ?? -1,
             ctx?.Plans.Count ?? 0,
-            ctx?.Plans.Count(p => p.Status == "completed") ?? 0), WishfulClawJsonContext.Default.GoalStatusResponse);
+            ctx?.Plans.Count(p => p.Status == GoalPlanStatusValues.Completed) ?? 0), WishfulClawJsonContext.Default.GoalStatusResponse);
     }
+
+    private static GoalActionResult MissingGoalId(string action)
+        => new(false, "not_found", "unknown", "unknown", Error: $"goalId is required for {action}.");
 }

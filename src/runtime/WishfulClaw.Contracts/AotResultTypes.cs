@@ -39,10 +39,18 @@ public sealed record ProviderTestModelsResult(
 
 // ── Goal module results ──
 public sealed record GoalSimpleResult(bool Success);
+public sealed record GoalActionResult(
+    bool Success,
+    string Action,
+    string Status,
+    string RunState,
+    string? GoalId = null,
+    string? Error = null);
 public sealed record GoalClearResult(bool Success, bool Cleared);
 public sealed record GoalStatusResponse(
     bool Active,
     string Status = "unknown",
+    string RunState = "unknown",
     string? GoalId = null,
     int CurrentPlanIndex = -1,
     int PlanCount = 0,
