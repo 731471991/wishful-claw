@@ -407,23 +407,21 @@ public static partial class GoalOrchestrator
     {
         try
         {
-            var rootParams = parameters.ValueKind == JsonValueKind.Object
-                ? parameters
-                : new JsonElement();
-
-            // Build the update parameters: sessionId + patch fields
+            // Build the update parameters: exact persisted identity + patch fields.
             var updateParams = WorkerJsonHelper.BuildJsonElement(w =>
             {
                 w.WriteStartObject();
                 w.WriteString("sessionId", goal.SessionId);
+                w.WriteString("goalId", goal.GoalId);
                 w.WriteStartObject("patch");
                 w.WriteString("status", goal.Status);
                 w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);
                 w.WriteNumber("planCount", goal.Plans.Count);
-                w.WriteNumber("completedPlanCount", goal.Plans.Count(p => p.Status == "completed"));
+                w.WriteNumber("completedPlanCount", goal.Plans.Count(p => p.Status == GoalPlanStatusValues.Completed));
                 if (goal.Plans.Count > 0)
                 {
-                    w.WriteString("plansJson", JsonSerializer.Serialize(goal.Plans, AgentRuntimeJsonContext.Default.ListGoalPlanItem));
+                    w.WritePropertyName("plansJson");
+                    JsonSerializer.Serialize(w, goal.Plans, AgentRuntimeJsonContext.Default.ListGoalPlanItem);
                 }
                 w.WriteEndObject();
                 w.WriteEndObject();

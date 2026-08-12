@@ -244,6 +244,9 @@ public static class DbClient
             EnsureColumn("goals", "working_folder", "TEXT");
             EnsureColumn("goals", "token_budget", "INTEGER");
             EnsureColumn("goals", "time_used_seconds", "INTEGER");
+            NormalizeGoalStatuses();
+            NormalizeGoalPlansJson();
+            EnsureSingleGoalPerSession();
             WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;
@@ -302,6 +305,74 @@ public static class DbClient
             throw new InvalidOperationException("DB has not been initialized. Call EnsureInitialized(parameters) from an IPC handler first.");
         }
     }
+
+    private static void NormalizeGoalStatuses()
+    {
+        _db!.Execute(
+            "UPDATE goals SET status = CASE status " +
+            "WHEN 'paused' THEN 'active' " +
+            "WHEN 'completed' THEN 'complete' " +
+            "WHEN 'completed_with_failures' THEN 'failed' " +
+            "ELSE status END " +
+            "WHERE status IN ('paused', 'completed', 'completed_with_failures')");
+    }
+
+    private static void NormalizeGoalPlansJson()
+    {
+        var rows = _db!.Query(
+            "SELECT goal_id, plans_json FROM goals WHERE plans_json IS NOT NULL",
+            reader => new GoalPlansJsonMigrationRow(
+                reader.GetString("goal_id"),
+                reader.GetString("plans_json")));
+
+        foreach (var row in rows)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(row.PlansJson);
+                if (document.RootElement.ValueKind != JsonValueKind.String)
+                    continue;
+
+                var innerJson = document.RootElement.GetString();
+                if (string.IsNullOrWhiteSpace(innerJson))
+                    continue;
+
+                using var innerDocument = JsonDocument.Parse(innerJson);
+                if (innerDocument.RootElement.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                _db.Execute(
+                    "UPDATE goals SET plans_json = @plans WHERE goal_id = @goalId",
+                    new SqliteParameter("@plans", innerDocument.RootElement.GetRawText()),
+                    new SqliteParameter("@goalId", row.GoalId));
+            }
+            catch (JsonException)
+            {
+                // Preserve malformed legacy values for diagnostics instead of deleting data.
+            }
+        }
+    }
+
+    private static void EnsureSingleGoalPerSession()
+    {
+        _db!.ExecuteInTransaction((connection, transaction) =>
+        {
+            _db.Execute(
+                connection,
+                transaction,
+                "DELETE FROM goals WHERE rowid NOT IN (" +
+                "SELECT rowid FROM goals AS candidate WHERE candidate.rowid = (" +
+                "SELECT selected.rowid FROM goals AS selected " +
+                "WHERE selected.session_id = candidate.session_id " +
+                "ORDER BY selected.updated_at DESC, selected.created_at DESC, selected.rowid DESC LIMIT 1))");
+            _db.Execute(
+                connection,
+                transaction,
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_goals_session_id ON goals(session_id)");
+        });
+    }
+
+    private sealed record GoalPlansJsonMigrationRow(string GoalId, string PlansJson);
 
     /// <summary>
     /// Add a column to an existing table if it doesn't exist.

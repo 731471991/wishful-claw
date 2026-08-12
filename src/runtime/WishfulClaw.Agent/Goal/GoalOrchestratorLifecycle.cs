@@ -126,8 +126,8 @@ public static partial class GoalOrchestrator
             if (string.IsNullOrEmpty(sessionId))
                 return GoalActionNotFound("resume", goalId);
 
-            var row = DbGoalTools.GetBySessionId(sessionId);
-            if (row == null || !string.Equals(row.GoalId, goalId, StringComparison.Ordinal))
+            var row = DbGoalTools.GetByGoalId(goalId, sessionId);
+            if (row == null)
                 return GoalActionNotFound("resume", goalId);
 
             if (GoalStatusValues.IsTerminal(row.Status))
@@ -160,10 +160,8 @@ public static partial class GoalOrchestrator
         if (ActiveGoals.ContainsKey(goalId))
             return Task.FromResult(true);
 
-        var row = DbGoalTools.GetBySessionId(sessionId);
-        if (row == null
-            || !string.Equals(row.GoalId, goalId, StringComparison.Ordinal)
-            || GoalStatusValues.IsTerminal(row.Status))
+        var row = DbGoalTools.GetByGoalId(goalId, sessionId);
+        if (row == null || GoalStatusValues.IsTerminal(row.Status))
         {
             return Task.FromResult(false);
         }

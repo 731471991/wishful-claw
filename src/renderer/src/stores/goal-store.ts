@@ -144,10 +144,13 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
 
   updateGoal: async (sessionId, patch) => {
     try {
+      const goalId = get().goalsBySession[sessionId]?.goalId
+      if (!goalId) return { success: false, error: 'Goal not found' }
       const result = await invokeMessagePackBinary<GoalMutationResult>(
         DB_GOALS_UPDATE_MSGPACK_CHANNEL,
         {
           sessionId,
+          goalId,
           patch
         }
       )
@@ -209,9 +212,11 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
 
   accountGoalUsage: async (input) => {
     try {
+      const goalId = input.expectedGoalId ?? get().goalsBySession[input.sessionId]?.goalId
+      if (!goalId) return { success: false, error: 'Goal not found' }
       const result = await invokeMessagePackBinary<GoalMutationResult>(
         DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
-        input
+        { ...input, goalId }
       )
       if (result.error) return { success: false, error: result.error }
       const goal = asGoal(result)
