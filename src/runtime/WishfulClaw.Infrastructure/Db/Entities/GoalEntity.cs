@@ -1,3 +1,5 @@
+﻿
+using WishfulClaw.Contracts;
 
 namespace WishfulClaw.Infrastructure.Db;
 
@@ -12,9 +14,9 @@ public class GoalEntity
     public string Objective { get; set; } = string.Empty;
 
     /// <summary>
-    /// active | paused | blocked | usage_limited | budget_limited | complete
+    /// active | complete | failed | aborted
     /// </summary>
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = GoalStatusValues.Active;
 
     public long? TokenBudget { get; set; }
 
@@ -72,7 +74,7 @@ public sealed class GoalRow
     public string GoalId { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public string Objective { get; set; } = string.Empty;
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = GoalStatusValues.Active;
     public long? TokenBudget { get; set; }
     public long TokensUsed { get; set; }
     public long TimeUsedSeconds { get; set; }

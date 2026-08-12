@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
 import { formatGoalElapsedSeconds, formatGoalTokens, validateGoalObjective } from '../../lib/agent/goal-context'
@@ -195,7 +195,6 @@ export function useGoalActions(
       try {
         await invokeMessagePackBinary(GOAL_ABORT_MSGPACK_CHANNEL, { sessionId, goalId: goal.goalId })
       } catch { /* ignore */ }
-      await useGoalStore.getState().updateGoal(sessionId, { status: 'paused' })
     },
     [sessionId, goal]
   )

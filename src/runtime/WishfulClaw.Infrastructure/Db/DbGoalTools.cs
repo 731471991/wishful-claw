@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -61,7 +61,7 @@ public static class DbGoalTools
                 new SqliteParameter("@gid", goalId),
                 new SqliteParameter("@sid", sessionId),
                 new SqliteParameter("@obj", objective),
-                new SqliteParameter("@status", GetString(parameters, "status") ?? "active"),
+                new SqliteParameter("@status", GetString(parameters, "status") ?? GoalStatusValues.Active),
                 new SqliteParameter("@tb", (object?)GetLongOrNull(parameters, "tokenBudget") ?? DBNull.Value),
                 new SqliteParameter("@pj", (object?)GetString(parameters, "plansJson") ?? DBNull.Value),
                 new SqliteParameter("@pc", GetInt(parameters, "planCount", 0)),
@@ -74,7 +74,7 @@ public static class DbGoalTools
             InsertEvent(db, sessionId, goalId, "created", "Goal created", null, now);
 
             var entity = new GoalEntity { GoalId = goalId, SessionId = sessionId, Objective = objective,
-                Status = GetString(parameters, "status") ?? "active", TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
+                Status = GetString(parameters, "status") ?? GoalStatusValues.Active, TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
                 PlansJson = GetString(parameters, "plansJson"), PlanCount = GetInt(parameters, "planCount", 0),
                 CompletedPlanCount = GetInt(parameters, "completedPlanCount", 0),
                 CurrentPlanIndex = GetInt(parameters, "currentPlanIndex", -1),
@@ -104,7 +104,7 @@ public static class DbGoalTools
                 new SqliteParameter("@gid", goalId),
                 new SqliteParameter("@sid", sessionId),
                 new SqliteParameter("@obj", objective),
-                new SqliteParameter("@status", GetString(parameters, "status") ?? "active"),
+                new SqliteParameter("@status", GetString(parameters, "status") ?? GoalStatusValues.Active),
                 new SqliteParameter("@tb", (object?)GetLongOrNull(parameters, "tokenBudget") ?? DBNull.Value),
                 new SqliteParameter("@wf", (object?)GetString(parameters, "workingFolder") ?? DBNull.Value),
                 new SqliteParameter("@ca", now),
@@ -113,7 +113,7 @@ public static class DbGoalTools
             InsertEvent(db, sessionId, goalId, "replaced", "Goal replaced", null, now);
 
             var entity = new GoalEntity { GoalId = goalId, SessionId = sessionId, Objective = objective,
-                Status = GetString(parameters, "status") ?? "active", TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
+                Status = GetString(parameters, "status") ?? GoalStatusValues.Active, TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
                 WorkingFolder = GetString(parameters, "workingFolder"), CreatedAt = now, UpdatedAt = now };
             return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
         }

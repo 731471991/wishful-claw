@@ -49,8 +49,8 @@ public static partial class GoalOrchestrator
             SessionId = sessionId,
             GoalText = goalText,
             WorkingFolder = workingFolder,
-            Status = "active",
-            RunState = "running",
+            Status = GoalStatusValues.Active,
+            RunState = GoalRunStateValues.Running,
             StartedAt = DateTime.UtcNow
         };
 
@@ -70,12 +70,12 @@ public static partial class GoalOrchestrator
             }
             catch (OperationCanceledException)
             {
-                goal.Status = "aborted";
+                goal.Status = GoalStatusValues.Aborted;
                 await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
             }
             catch (Exception ex)
             {
-                goal.Status = "failed";
+                goal.Status = GoalStatusValues.Failed;
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted, $"Goal failed: {ex.Message}", context);
             }
             finally
@@ -93,9 +93,9 @@ public static partial class GoalOrchestrator
     /// </summary>
     public static void Pause(string goalId)
     {
-        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.RunState == "running")
+        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.RunState == GoalRunStateValues.Running)
         {
-            goal.RunState = "paused";
+            goal.RunState = GoalRunStateValues.Paused;
         }
     }
 
@@ -106,9 +106,9 @@ public static partial class GoalOrchestrator
     /// </summary>
     public static void Resume(string goalId)
     {
-        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.RunState == "paused")
+        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.RunState == GoalRunStateValues.Paused)
         {
-            goal.RunState = "running";
+            goal.RunState = GoalRunStateValues.Running;
         }
     }
 
@@ -158,7 +158,7 @@ public static partial class GoalOrchestrator
             SessionId = sessionId,
             GoalText = row.Objective,
             WorkingFolder = row.WorkingFolder,
-            Status = row.Status, // "active" or "paused"
+            Status = row.Status,
             Plans = plans,
             CurrentPlanIndex = plans.Count > 0 ? currentPlanIndex : -1,
             StartedAt = DateTime.UtcNow
@@ -181,10 +181,10 @@ public static partial class GoalOrchestrator
         if (!ActiveGoals.TryGetValue(goalId, out var goal))
             return;
 
-        if (goal.RunState == "running")
+        if (goal.RunState == GoalRunStateValues.Running)
             return; // already running
 
-        goal.RunState = "running";
+        goal.RunState = GoalRunStateValues.Running;
 
         // Build minimal parameters from workingFolder for DB sync
         var minParams = string.IsNullOrEmpty(goal.WorkingFolder)
@@ -205,11 +205,11 @@ public static partial class GoalOrchestrator
             }
             catch (OperationCanceledException)
             {
-                goal.Status = "aborted";
+                goal.Status = GoalStatusValues.Aborted;
             }
             catch (Exception ex)
             {
-                goal.Status = "failed";
+                goal.Status = GoalStatusValues.Failed;
                 WorkerLog.Warn($"StartRunLoopAsync RunAsync failed: {ex.Message}");
             }
             finally
@@ -227,7 +227,7 @@ public static partial class GoalOrchestrator
         if (ActiveGoals.TryGetValue(goalId, out var goal))
         {
             goal.CancellationTokenSource.Cancel();
-            goal.Status = "aborted";
+            goal.Status = GoalStatusValues.Aborted;
         }
     }
 
@@ -236,7 +236,7 @@ public static partial class GoalOrchestrator
     /// </summary>
     public static bool IsActive(string goalId)
     {
-        return ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "active";
+        return ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == GoalStatusValues.Active;
     }
 
     /// <summary>

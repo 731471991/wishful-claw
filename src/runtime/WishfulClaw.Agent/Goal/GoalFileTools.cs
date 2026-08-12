@@ -120,7 +120,7 @@ public class GoalState
 {
     public string GoalId { get; set; } = string.Empty;
     public string GoalText { get; set; } = string.Empty;
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = GoalStatusValues.Active;
     public int CurrentPlanIndex { get; set; } = -1;
     public List<GoalPlanItem> Plans { get; set; } = new();
     public long CreatedAt { get; set; }

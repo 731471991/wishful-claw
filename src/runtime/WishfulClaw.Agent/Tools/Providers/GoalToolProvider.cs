@@ -1,4 +1,5 @@
-using WishfulClaw.Agent.Tools;
+﻿using WishfulClaw.Agent.Tools;
+using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
@@ -35,7 +36,9 @@ public sealed class GoalToolProvider : IToolProvider
                 new()
                 {
                     ["objective"] = ToolSchemaBuilder.String("Updated goal description."),
-                    ["status"] = ToolSchemaBuilder.String("New status.", ["active", "completed", "failed"])
+                    ["status"] = ToolSchemaBuilder.String(
+                        "New status.",
+                        [GoalStatusValues.Active, GoalStatusValues.Complete, GoalStatusValues.Failed])
                 }),
             availableModes: ["goal"]));
 

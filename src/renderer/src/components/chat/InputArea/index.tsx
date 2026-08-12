@@ -277,10 +277,6 @@ export function InputArea({
   const handleCollabModeChange = React.useCallback((nextMode: CollabMode): void => {
     if (disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0) return
     if (nextMode === 'normal') {
-      if (draftSessionId && hasActiveGoal) {
-        void useGoalStore.getState().loadGoalForSession(draftSessionId, true)
-          .then(() => useGoalStore.getState().updateGoal(draftSessionId, { status: 'paused' }))
-      }
       if (draftSessionId) useUIStore.getState().setCollabMode(draftSessionId, 'normal')
       setPendingCollabMode(null)
     } else {

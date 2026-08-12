@@ -163,8 +163,8 @@ public static class AgentRuntimeGoalExecutor
                     pendingParams,
                     new AgentRuntimeRunState($"goal-{goalId}", sessionId), context);
                 // Update in-memory state
-                Goals[sessionId] = new GoalRecord(goal.Objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2);
-                return EncodeGoal(new GoalRecord(goal.Objective, "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2));
+                Goals[sessionId] = new GoalRecord(goal.Objective, GoalStatusValues.Active, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2);
+                return EncodeGoal(new GoalRecord(goal.Objective, GoalStatusValues.Active, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId2));
             }
             else
             {
@@ -194,8 +194,8 @@ public static class AgentRuntimeGoalExecutor
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         Goals[sessionId] = updated;
 
-        // If status is "completed" or "blocked", abort the orchestrator
-        if (status is "completed" or "blocked" or "failed")
+        // Terminal goal updates stop the active orchestrator.
+        if (status is GoalStatusValues.Complete or GoalStatusValues.Failed or GoalStatusValues.Aborted)
         {
             var activeGoalId = GoalOrchestrator.GetActiveGoalId(sessionId);
             if (activeGoalId != null)
@@ -276,7 +276,7 @@ public static class AgentRuntimeGoalExecutor
         var goalId = GoalOrchestrator.GetActiveGoalId(sessionId);
         if (goalId == null) return EncodeError("No active goal to pause.");
         GoalOrchestrator.Pause(goalId);
-        return EncodeGoal(new GoalRecord("", "paused", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
+        return EncodeGoal(new GoalRecord("", GoalStatusValues.Active, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
     }
 
     private static string ResumeGoal(string sessionId)
@@ -293,7 +293,7 @@ public static class AgentRuntimeGoalExecutor
             return EncodeGoal(new GoalRecord("", row.Status, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), row.GoalId));
         }
         GoalOrchestrator.Resume(goalId);
-        return EncodeGoal(new GoalRecord("", "active", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
+        return EncodeGoal(new GoalRecord("", GoalStatusValues.Active, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), goalId));
     }
 
     private static string AbortGoal(string sessionId)

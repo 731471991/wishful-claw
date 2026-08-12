@@ -1,4 +1,5 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using WishfulClaw.Contracts;
 
 namespace WishfulClaw.Agent;
 
@@ -13,7 +14,7 @@ public sealed class PlanExecutionResult
 {
     public string PlanId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string Status { get; set; } = "pending"; // pending | executing | completed | failed
+    public string Status { get; set; } = GoalPlanStatusValues.Pending; // pending | executing | completed | failed
     public string? Summary { get; set; }
     public string? Error { get; set; }
     public bool Is429 { get; set; }
@@ -50,10 +51,10 @@ public sealed class GoalContext
     public string SessionId { get; set; } = string.Empty;
     public string GoalText { get; set; } = string.Empty;
     public string? WorkingFolder { get; set; }
-    /// <summary>目标状态：active（进行中）| completed | failed | aborted（终态）。不写 DB。</summary>
-    public string Status { get; set; } = "active";
+    /// <summary>目标状态：active（进行中）| complete | failed | aborted（终态）。</summary>
+    public string Status { get; set; } = GoalStatusValues.Active;
     /// <summary>执行状态（仅内存）：idle（未运行）| running（编排中）| paused（暂停）。</summary>
-    public string RunState { get; set; } = "idle";
+    public string RunState { get; set; } = GoalRunStateValues.Idle;
     public List<GoalPlanItem> Plans { get; set; } = new();
     public int CurrentPlanIndex { get; set; } = -1;
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();

@@ -1,4 +1,4 @@
-
+﻿
 export type SessionGoalStatus =
   | 'pending'
   | 'active'
@@ -9,7 +9,6 @@ export type SessionGoalStatus =
   | 'complete'
   | 'aborted'
   | 'failed'
-  | 'completed_with_failures'
 export type SessionGoalEventType =
   | 'created'
   | 'replaced'

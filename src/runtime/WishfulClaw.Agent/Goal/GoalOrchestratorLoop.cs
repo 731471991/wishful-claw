@@ -30,7 +30,7 @@ public static partial class GoalOrchestrator
 
         // If the goal is paused (e.g. recovered from DB as paused), wait for resume
         // before doing any work (decomposition, execution).
-        if (goal.RunState == "paused")
+        if (goal.RunState == GoalRunStateValues.Paused)
         {
             await WaitForResumeIfPausedAsync(goal, context, ct);
         }
@@ -43,7 +43,7 @@ public static partial class GoalOrchestrator
 
             if (!decomposition.Success || decomposition.Plans.Count == 0)
             {
-                goal.Status = "failed";
+                goal.Status = GoalStatusValues.Failed;
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
                     $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
                 return;
@@ -77,18 +77,18 @@ public static partial class GoalOrchestrator
         {
             if (ct.IsCancellationRequested)
             {
-                goal.Status = "aborted";
+                goal.Status = GoalStatusValues.Aborted;
                 await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted by user", context);
                 break;
             }
 
             // Check for pause
-            if (goal.RunState == "paused")
+            if (goal.RunState == GoalRunStateValues.Paused)
             {
                 await WaitForResumeIfPausedAsync(goal, context, ct);
                 if (ct.IsCancellationRequested)
                 {
-                    goal.Status = "aborted";
+                    goal.Status = GoalStatusValues.Aborted;
                     await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
                     break;
                 }
@@ -102,19 +102,19 @@ public static partial class GoalOrchestrator
         }
 
         // 3. Goal completion check
-        if (goal.Status != "aborted" && goal.RunState != "paused")
+        if (goal.Status != GoalStatusValues.Aborted && goal.RunState != GoalRunStateValues.Paused)
         {
-            var allCompleted = goal.Plans.All(p => p.Status == "completed");
+            var allCompleted = goal.Plans.All(p => p.Status == GoalPlanStatusValues.Completed);
             if (allCompleted)
             {
-                goal.Status = "completed";
+                goal.Status = GoalStatusValues.Complete;
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
                     "All plans completed successfully", context);
             }
             else
             {
-                goal.Status = "completed_with_failures";
-                var failedCount = goal.Plans.Count(p => p.Status != "completed");
+                goal.Status = GoalStatusValues.Failed;
+                var failedCount = goal.Plans.Count(p => p.Status != GoalPlanStatusValues.Completed);
                 await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
                     $"Goal completed with {failedCount} failed plan(s)", context);
             }
@@ -474,7 +474,7 @@ public static partial class GoalOrchestrator
         GoalContext goal, IWorkerRequestContext context, CancellationToken ct)
     {
         await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
-        while (goal.RunState == "paused" && !ct.IsCancellationRequested)
+        while (goal.RunState == GoalRunStateValues.Paused && !ct.IsCancellationRequested)
         {
             await Task.Delay(1000, ct);
         }
