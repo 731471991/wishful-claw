@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -54,11 +54,14 @@ public static partial class GoalOrchestrator
         runtimeState.Dispose();
     }
 
-    private static void FinalizeIdleAbort(GoalContext goal)
+    private static void FinalizeIdleTerminal(
+        GoalContext goal,
+        string status,
+        string message)
     {
-        goal.Status = GoalStatusValues.Aborted;
+        goal.Status = status;
         goal.RunState = GoalRunStateValues.Idle;
-        PersistTerminalState(goal, BuildResumeParameters(goal), "Goal aborted");
+        PersistTerminalState(goal, BuildResumeParameters(goal), message);
         if (IsCurrentGoalContext(goal))
             ActiveGoals.TryRemove(goal.GoalId, out _);
     }

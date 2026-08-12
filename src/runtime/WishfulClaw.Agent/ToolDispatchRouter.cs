@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
@@ -183,7 +183,7 @@ public static class ToolDispatchRouter
                 isToolError = true;
             }
         }
-        // Goal: in-memory goal tracking
+        // Goal: SQLite persistence plus Orchestrator runtime state
         else if (AgentRuntimeGoalExecutor.IsGoalTool(toolCall.Name))
         {
             try

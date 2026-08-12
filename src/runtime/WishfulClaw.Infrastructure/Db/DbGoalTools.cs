@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -45,7 +45,8 @@ public static class DbGoalTools
     {
         try
         {
-            return ReplaceCurrentGoal(parameters, "created", "Goal created");
+            var row = CreateCurrentGoal(parameters);
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Create failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -54,81 +55,91 @@ public static class DbGoalTools
     {
         try
         {
-            return ReplaceCurrentGoal(parameters, "replaced", "Goal replaced");
+            var row = ReplaceCurrentGoal(parameters, "replaced", "Goal replaced");
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Set failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
+
+    public static GoalRow CreateCurrentGoal(JsonElement parameters)
+        => ReplaceCurrentGoal(parameters, "created", "Goal created");
 
     public static WorkerResponse Update(JsonElement parameters)
     {
         try
         {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
-            var goalId = GetString(parameters, "goalId") ?? throw new InvalidOperationException("goalId is required");
-            var entity = db.ExecuteInTransaction((connection, transaction) =>
-            {
-                var current = db.QueryFirstOrDefault(
-                    connection,
-                    transaction,
-                    "SELECT * FROM goals WHERE goal_id = @gid AND session_id = @sid LIMIT 1",
-                    EntityMappers.MapGoal,
-                    new SqliteParameter("@gid", goalId),
-                    new SqliteParameter("@sid", sessionId));
-                if (current == null)
-                    return null;
-
-                var previousStatus = current.Status;
-                ApplyGoalPatch(current, parameters);
-                var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                current.UpdatedAt = now;
-                var changed = db.Execute(
-                    connection,
-                    transaction,
-                    "UPDATE goals SET objective = @obj, status = @status, token_budget = @tb, plans_json = @pj, " +
-                    "plan_count = @pc, completed_plan_count = @cpc, current_plan_index = @cpi, " +
-                    "working_folder = @wf, updated_at = @ua WHERE goal_id = @gid AND session_id = @sid",
-                    new SqliteParameter("@obj", current.Objective),
-                    new SqliteParameter("@status", current.Status),
-                    new SqliteParameter("@tb", (object?)current.TokenBudget ?? DBNull.Value),
-                    new SqliteParameter("@pj", (object?)current.PlansJson ?? DBNull.Value),
-                    new SqliteParameter("@pc", current.PlanCount),
-                    new SqliteParameter("@cpc", current.CompletedPlanCount),
-                    new SqliteParameter("@cpi", current.CurrentPlanIndex),
-                    new SqliteParameter("@wf", (object?)current.WorkingFolder ?? DBNull.Value),
-                    new SqliteParameter("@ua", current.UpdatedAt),
-                    new SqliteParameter("@gid", goalId),
-                    new SqliteParameter("@sid", sessionId));
-                if (changed != 1)
-                    throw new InvalidOperationException("Goal changed during update");
-
-                if (!string.Equals(previousStatus, current.Status, StringComparison.Ordinal))
-                {
-                    var (eventType, message) = GoalStatusEvent(
-                        previousStatus,
-                        current.Status,
-                        GetString(parameters, "statusEventMessage"));
-                    InsertEvent(
-                        db,
-                        connection,
-                        transaction,
-                        sessionId,
-                        goalId,
-                        eventType,
-                        message,
-                        null,
-                        now);
-                }
-                return current;
-            });
-
-            if (entity == null)
+            var row = UpdateByGoalId(parameters);
+            if (row == null)
                 return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"), InfrastructureJsonContext.Default.GoalMutationResult);
 
-            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Update failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
+    }
+
+    public static GoalRow? UpdateByGoalId(JsonElement parameters)
+    {
+        DbClient.EnsureInitialized(parameters);
+        var db = DbClient.GetClient(parameters);
+        var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
+        var goalId = GetString(parameters, "goalId") ?? throw new InvalidOperationException("goalId is required");
+        var entity = db.ExecuteInTransaction((connection, transaction) =>
+        {
+            var current = db.QueryFirstOrDefault(
+                connection,
+                transaction,
+                "SELECT * FROM goals WHERE goal_id = @gid AND session_id = @sid LIMIT 1",
+                EntityMappers.MapGoal,
+                new SqliteParameter("@gid", goalId),
+                new SqliteParameter("@sid", sessionId));
+            if (current == null)
+                return null;
+
+            var previousStatus = current.Status;
+            ApplyGoalPatch(current, parameters);
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            current.UpdatedAt = now;
+            var changed = db.Execute(
+                connection,
+                transaction,
+                "UPDATE goals SET objective = @obj, status = @status, token_budget = @tb, plans_json = @pj, " +
+                "plan_count = @pc, completed_plan_count = @cpc, current_plan_index = @cpi, " +
+                "working_folder = @wf, updated_at = @ua WHERE goal_id = @gid AND session_id = @sid",
+                new SqliteParameter("@obj", current.Objective),
+                new SqliteParameter("@status", current.Status),
+                new SqliteParameter("@tb", (object?)current.TokenBudget ?? DBNull.Value),
+                new SqliteParameter("@pj", (object?)current.PlansJson ?? DBNull.Value),
+                new SqliteParameter("@pc", current.PlanCount),
+                new SqliteParameter("@cpc", current.CompletedPlanCount),
+                new SqliteParameter("@cpi", current.CurrentPlanIndex),
+                new SqliteParameter("@wf", (object?)current.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ua", current.UpdatedAt),
+                new SqliteParameter("@gid", goalId),
+                new SqliteParameter("@sid", sessionId));
+            if (changed != 1)
+                throw new InvalidOperationException("Goal changed during update");
+
+            if (!string.Equals(previousStatus, current.Status, StringComparison.Ordinal))
+            {
+                var (eventType, message) = GoalStatusEvent(
+                    previousStatus,
+                    current.Status,
+                    GetString(parameters, "statusEventMessage"));
+                InsertEvent(
+                    db,
+                    connection,
+                    transaction,
+                    sessionId,
+                    goalId,
+                    eventType,
+                    message,
+                    null,
+                    now);
+            }
+            return current;
+        });
+
+        return entity == null ? null : GoalRow.FromEntity(entity);
     }
 
     public static WorkerResponse Clear(JsonElement parameters)
@@ -280,7 +291,7 @@ public static class DbGoalTools
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.AddEvent failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
 
-    private static WorkerResponse ReplaceCurrentGoal(
+    private static GoalRow ReplaceCurrentGoal(
         JsonElement parameters,
         string eventType,
         string eventMessage)
@@ -338,7 +349,7 @@ public static class DbGoalTools
             InsertEvent(db, connection, transaction, sessionId, goalId, eventType, eventMessage, null, now);
         });
 
-        return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
+        return GoalRow.FromEntity(entity);
     }
 
     private static void InsertEvent(DbService db, string sessionId, string goalId, string eventType, string? message, string? metadataJson, long createdAt)

@@ -55,8 +55,8 @@ public class GoalEventEntity
 
     /// <summary>
     /// created | replaced | objective_updated | budget_updated | status_changed | usage_accounted |
-    /// usage_limited | budget_limited | completion_deferred | blocked | completed | stall_paused |
-    /// auto_continue_blocked | cleared
+    /// usage_limited | budget_limited | completion_deferred | blocked | completed | failed | aborted |
+    /// stall_paused | auto_continue_blocked | cleared
     /// </summary>
     public string EventType { get; set; } = "created";
 

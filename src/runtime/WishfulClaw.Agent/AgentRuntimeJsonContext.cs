@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using WishfulClaw.Contracts;
 using WishfulClaw.Agent.Modules.Git;
 using WishfulClaw.Agent.Modules.Extensions;
@@ -14,6 +14,10 @@ namespace WishfulClaw.Agent;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(GoalPlanItem))]
 [JsonSerializable(typeof(List<GoalPlanItem>))]
+[JsonSerializable(typeof(GoalToolGoal))]
+[JsonSerializable(typeof(GoalToolProgress))]
+[JsonSerializable(typeof(GoalToolResult))]
+[JsonSerializable(typeof(GoalActionResult))]
 [JsonSerializable(typeof(AgentRuntimeReverseRequestEnvelope))]
 [JsonSerializable(typeof(AgentRuntimeReverseCancelEnvelope))]
 [JsonSerializable(typeof(AgentRuntimeReverseResponseResult))]

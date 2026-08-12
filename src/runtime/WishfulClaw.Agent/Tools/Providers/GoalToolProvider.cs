@@ -6,7 +6,7 @@ namespace WishfulClaw.Agent.Tools.Providers;
 
 /// <summary>
 /// Registers goal management tool definitions.
-/// Execution: ToolDispatchRouter → AgentRuntimeGoalExecutor (in-memory, no I/O).
+/// Execution: ToolDispatchRouter → AgentRuntimeGoalExecutor using SQLite plus Orchestrator runtime state.
 /// Available in goal mode only.
 /// </summary>
 public sealed class GoalToolProvider : IToolProvider

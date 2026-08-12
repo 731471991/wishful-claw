@@ -225,6 +225,79 @@ public static partial class GoalOrchestrator
         };
     }
 
+    public static async Task<GoalActionResult> AbortFromToolAsync(
+        string goalId,
+        IWorkerRequestContext context)
+    {
+        var goal = GetContext(goalId);
+        var result = RequestAbort(goalId, out var runTask);
+        if (result.Success && runTask == null && goal != null)
+        {
+            await EmitGoalEventAsync(
+                goal,
+                GoalEventType.GoalAborted,
+                "Goal aborted",
+                context);
+        }
+        return result;
+    }
+
+    public static async Task<GoalActionResult> SetTerminalStatusFromToolAsync(
+        string goalId,
+        string status,
+        IWorkerRequestContext context)
+    {
+        if (status == GoalStatusValues.Aborted)
+            return await AbortFromToolAsync(goalId, context);
+
+        if (status is not GoalStatusValues.Complete and not GoalStatusValues.Failed)
+        {
+            return new GoalActionResult(
+                false,
+                "invalid_status",
+                status,
+                GoalRunStateValues.Idle,
+                goalId,
+                "Only complete, failed, or aborted are terminal statuses.");
+        }
+
+        if (!ActiveGoals.TryGetValue(goalId, out var goal))
+            return GoalActionNotFound("update", goalId);
+
+        Task? runTask;
+        var message = status == GoalStatusValues.Complete
+            ? "Goal completed by update_goal"
+            : "Goal failed by update_goal";
+        lock (goal.LifecycleSync)
+        {
+            if (!IsCurrentGoalContext(goal))
+                return GoalActionNotFound("update", goalId);
+
+            if (GoalStatusValues.IsTerminal(goal.Status))
+                return GoalActionTerminal("update", goal);
+
+            runTask = goal.RunTask;
+            goal.Status = status;
+            if (runTask != null)
+            {
+                goal.CancellationTokenSource.Cancel();
+                goal.RuntimeState?.Cancel("goal terminal status updated");
+                return GoalAction(goal, true, "finalizing");
+            }
+
+            FinalizeIdleTerminal(goal, status, message);
+        }
+
+        await EmitGoalEventAsync(
+            goal,
+            status == GoalStatusValues.Complete
+                ? GoalEventType.GoalCompleted
+                : GoalEventType.GoalFailed,
+            message,
+            context);
+        return GoalAction(goal, true, status);
+    }
+
     private static GoalActionResult RequestAbort(string goalId, out Task? runTask)
     {
         runTask = null;
@@ -246,7 +319,7 @@ public static partial class GoalOrchestrator
 
             if (runTask == null)
             {
-                FinalizeIdleAbort(goal);
+                FinalizeIdleTerminal(goal, GoalStatusValues.Aborted, "Goal aborted");
                 return GoalAction(goal, true, "aborted");
             }
 
