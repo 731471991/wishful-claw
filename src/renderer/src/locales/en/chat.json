@@ -1,4 +1,4 @@
-{
+﻿{
   "home": {
     "title": "How can I help you today?",
     "subtitle": "Start a conversation or pick a quick prompt below.",
@@ -383,14 +383,14 @@
     "noUsage": "0s",
     "pendingTitle": "Goal pending confirmation",
     "pendingConfirmTitle": "Confirm this goal before execution",
-    "discard": "Discard",
+    "discard": "Cancel goal",
     "confirmRun": "Confirm & start",
     "set": "Set",
     "manage": "Manage",
     "pause": "Pause",
     "resume": "Resume",
     "start": "Start",
-    "clear": "Clear",
+    "cancel": "Cancel goal",
     "save": "Save",
     "show": "Show",
     "hide": "Hide",
@@ -412,15 +412,18 @@
     "autoContinueOn": "auto-continue on",
     "tokensOnly": "{{tokens}} tokens",
     "tokensWithBudget": "{{used}} / {{budget}} tokens",
-    "clearConfirmTitle": "Clear this goal?",
-    "clearConfirmDesc": "This removes the long-running session goal and its automatic continuation state.",
+    "cancelConfirmTitle": "Cancel this goal?",
+    "cancelConfirmDesc": "The goal will stop and be archived as cancelled. Its objective and event history remain available.",
     "status": {
+      "pending": "pending",
       "active": "active",
       "paused": "paused",
       "blocked": "blocked",
       "usage_limited": "limited by usage",
       "budget_limited": "limited by budget",
-      "complete": "complete"
+      "complete": "complete",
+      "aborted": "cancelled",
+      "failed": "failed"
     },
     "errors": {
       "invalidBudget": "Token budget must be a positive integer.",
@@ -429,7 +432,7 @@
     "toasts": {
       "updateFailed": "Goal update failed",
       "createFailed": "Goal creation failed",
-      "clearFailed": "Goal clear failed",
+      "cancelFailed": "Goal cancellation failed",
       "objectiveInvalid": "Goal objective invalid",
       "budgetInvalid": "Goal budget invalid",
       "budgetStillExhausted": "Goal budget is still exhausted",
@@ -437,7 +440,7 @@
     },
     "events": {
       "created": "Goal created",
-      "replaced": "Goal replaced",
+      "confirmed": "Goal confirmed",
       "objective_updated": "Objective updated",
       "budget_updated": "Budget updated",
       "status_changed": "Status changed",
@@ -447,9 +450,11 @@
       "completion_deferred": "Completion deferred",
       "blocked": "Goal blocked",
       "completed": "Goal completed",
+      "failed": "Goal failed",
+      "aborted": "Goal cancelled",
       "stall_paused": "Paused by stall guard",
       "auto_continue_blocked": "Auto-continue waiting",
-      "cleared": "Goal cleared",
+      "cleared": "Goal cleared by a legacy version",
       "usageDetail": "+{{tokens}} tokens, +{{time}}",
       "statusDetail": "{{from}} -> {{to}}"
     },
@@ -464,7 +469,23 @@
     },
     "createdAt": "Created",
     "updatedAt": "Updated",
-    "recentActivity": "Recent activity"
+    "recentActivity": "Recent activity",
+    "history": {
+      "title": "Goal history",
+      "subtitle": "All goals in the current project",
+      "empty": "No goal history in this project yet.",
+      "deletedSession": "Deleted session",
+      "plans": "Plans",
+      "awaitingConfirmation": "Awaiting confirmation in chat",
+      "planProgress": "Plans {{completed}} / {{total}}",
+      "filters": {
+        "all": "All",
+        "current": "Active",
+        "complete": "Completed",
+        "failed": "Failed",
+        "aborted": "Cancelled"
+      }
+    }
   },
   "permission": {
     "title": "Permission Required",

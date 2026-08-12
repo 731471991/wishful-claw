@@ -1,5 +1,6 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import { ipcClient } from '../lib/ipc/ipc-client'
+import { useGoalHistoryStore } from './goal-history-store'
 import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
 import {
   DB_GOALS_LIST_MSGPACK_CHANNEL,
@@ -8,13 +9,41 @@ import {
   DB_GOALS_CREATE_MSGPACK_CHANNEL,
   DB_GOALS_SET_MSGPACK_CHANNEL,
   DB_GOALS_UPDATE_MSGPACK_CHANNEL,
-  DB_GOALS_CLEAR_MSGPACK_CHANNEL,
   DB_GOALS_ACCOUNT_MSGPACK_CHANNEL,
   DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL,
+  GOAL_ABORT_MSGPACK_CHANNEL,
   GOAL_CONFIRM_MSGPACK_CHANNEL,
 } from '../../../shared/messagepack/binary-ipc'
-import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalEventMutationResult, GoalMutationResult, GoalStore, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
+import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalActionResult, GoalEventMutationResult, GoalMutationResult, GoalStore, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
 export { EMPTY_SESSION_GOAL_EVENTS }
+
+function removeRuntimeGoal(
+  state: GoalStore,
+  sessionId: string,
+  goalId: string
+): Partial<GoalStore> {
+  const existingGoal = state.goalsBySession[sessionId]
+  const existingProgress = state.goalProgressBySession[sessionId]
+  const existingRun = state.activeGoalRunsBySession[sessionId]
+  const goalsBySession = { ...state.goalsBySession }
+  const goalProgressBySession = { ...state.goalProgressBySession }
+  const goalRunStatesBySession = { ...state.goalRunStatesBySession }
+  const activeGoalRunsBySession = { ...state.activeGoalRunsBySession }
+
+  if (existingGoal?.goalId === goalId) delete goalsBySession[sessionId]
+  if (existingProgress?.goalId === goalId) {
+    delete goalProgressBySession[sessionId]
+    delete goalRunStatesBySession[sessionId]
+  }
+  if (existingRun?.goalId === goalId) delete activeGoalRunsBySession[sessionId]
+
+  return {
+    goalsBySession,
+    goalProgressBySession,
+    goalRunStatesBySession,
+    activeGoalRunsBySession
+  }
+}
 
 export const useGoalStore = create<GoalStore>((set, get) => ({
   goalsBySession: {},
@@ -30,10 +59,13 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
         DB_GOALS_LIST_MSGPACK_CHANNEL,
         {}
       )
-      const goalsBySession: Record<string, any> = {}
+      const goalsBySession: Record<string, ReturnType<typeof rowToGoal>> = {}
       for (const row of rows) {
+        if (row.status !== 'pending' && row.status !== 'active') continue
         const goal = rowToGoal(row)
-        goalsBySession[goal.sessionId] = goal
+        if (!goalsBySession[goal.sessionId]) {
+          goalsBySession[goal.sessionId] = goal
+        }
       }
       set({ goalsBySession, _loaded: true })
     } catch (error) {
@@ -174,6 +206,14 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
       if (result.success) {
         // Optimistically flip the goal to active so the banner transitions immediately.
         // The orchestrator's goal_progress events will keep it in sync afterwards.
+        const existing = get().goalsBySession[sessionId]
+        useGoalHistoryStore.getState().applyGoalStatus(
+          existing?.projectId,
+          sessionId,
+          goalId,
+          'active',
+          Date.now()
+        )
         set((state) => {
           const existing = state.goalsBySession[sessionId]
           if (!existing) return {}
@@ -191,22 +231,29 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     }
   },
 
-  clearGoal: async (sessionId) => {
+  cancelGoal: async (sessionId, requestedGoalId) => {
     try {
-      const result = await invokeMessagePackBinary<GoalMutationResult>(
-        DB_GOALS_CLEAR_MSGPACK_CHANNEL,
-        sessionId
+      const currentGoal = get().goalsBySession[sessionId]
+      const goalId = requestedGoalId ?? currentGoal?.goalId
+      if (!goalId) return { success: false, error: 'Goal not found' }
+      const result = await invokeMessagePackBinary<GoalActionResult>(
+        GOAL_ABORT_MSGPACK_CHANNEL,
+        { sessionId, goalId }
       )
-      if (result.error) return { success: false, cleared: false, error: result.error }
-      set((state) => {
-        const next = { ...state.goalsBySession }
-        delete next[sessionId]
-        return { goalsBySession: next }
-      })
-      void get().loadGoalEventsForSession(sessionId, { force: true })
-      return { success: true, cleared: result.cleared === true }
+      if (!result.success || result.error) {
+        return { success: false, error: result.error ?? 'Goal was not cancelled' }
+      }
+      set((state) => removeRuntimeGoal(state, sessionId, goalId))
+      useGoalHistoryStore.getState().applyGoalStatus(
+        currentGoal?.projectId,
+        sessionId,
+        goalId,
+        'aborted',
+        Date.now()
+      )
+      return { success: true }
     } catch (error) {
-      return { success: false, cleared: false, error: mutationError(error) }
+      return { success: false, error: mutationError(error) }
     }
   },
 
@@ -274,52 +321,94 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   },
 
   applySyncedGoal: (goal) => {
+    useGoalHistoryStore.getState().applyGoalSnapshot(goal)
+    if (goal.status === 'complete' || goal.status === 'failed' || goal.status === 'aborted') {
+      set((state) => removeRuntimeGoal(state, goal.sessionId, goal.goalId))
+      return
+    }
     upsertGoal(set, goal)
     void get().loadGoalEventsForSession(goal.sessionId, { goalId: goal.goalId, force: true })
   },
 
-  applySyncedGoalClear: (sessionId) => {
-    set((state) => {
-      const next = { ...state.goalsBySession }
-      const nextActiveRuns = { ...state.activeGoalRunsBySession }
-      delete next[sessionId]
-      delete nextActiveRuns[sessionId]
-      return { goalsBySession: next, activeGoalRunsBySession: nextActiveRuns }
-    })
-    void get().loadGoalEventsForSession(sessionId, { force: true })
-  },
-
   applySyncedGoalEvent: (event) => {
+    const currentGoal = get().goalsBySession[event.sessionId]
+    if (!currentGoal || event.goalId !== currentGoal.goalId) return
     upsertGoalEvent(set, event)
   },
 
   applyGoalProgress: (progress) => {
     set((state) => {
-      const nextRunStates = { ...state.goalRunStatesBySession }
-      const nextActiveRuns = { ...state.activeGoalRunsBySession }
-      if (progress.runState) {
-        nextRunStates[progress.sessionId] = progress.runState
-        // 当 runState 为 running 时，设置 activeRun 开始计时
-        if (progress.runState === 'running') {
-          if (!nextActiveRuns[progress.sessionId] || nextActiveRuns[progress.sessionId].goalId !== progress.goalId) {
-            nextActiveRuns[progress.sessionId] = { goalId: progress.goalId, startedAt: Date.now() }
-          }
-        } else {
-          delete nextActiveRuns[progress.sessionId]
+      const terminal = progress.status === 'complete'
+        || progress.status === 'failed'
+        || progress.status === 'aborted'
+      const goalsBySession = { ...state.goalsBySession }
+      const goalProgressBySession = { ...state.goalProgressBySession }
+      const goalRunStatesBySession = { ...state.goalRunStatesBySession }
+      const activeGoalRunsBySession = { ...state.activeGoalRunsBySession }
+      const existingGoal = goalsBySession[progress.sessionId]
+
+      if (!existingGoal && progress.status === 'pending') {
+        useGoalHistoryStore.getState().refreshLoadedProjects()
+      }
+      if (progress.status) {
+        useGoalHistoryStore.getState().applyGoalStatus(
+          existingGoal?.projectId,
+          progress.sessionId,
+          progress.goalId,
+          progress.status as typeof existingGoal.status,
+          progress.timestamp
+        )
+      }
+
+      if (existingGoal && existingGoal.goalId === progress.goalId && progress.status) {
+        goalsBySession[progress.sessionId] = {
+          ...existingGoal,
+          status: progress.status as typeof existingGoal.status,
+          updatedAt: progress.timestamp
         }
       }
+
+      if (terminal) {
+        if (existingGoal?.goalId === progress.goalId) {
+          delete goalsBySession[progress.sessionId]
+        }
+        if (goalProgressBySession[progress.sessionId]?.goalId === progress.goalId) {
+          delete goalProgressBySession[progress.sessionId]
+          delete goalRunStatesBySession[progress.sessionId]
+        }
+        if (activeGoalRunsBySession[progress.sessionId]?.goalId === progress.goalId) {
+          delete activeGoalRunsBySession[progress.sessionId]
+        }
+      } else {
+        goalProgressBySession[progress.sessionId] = progress
+        if (progress.runState) {
+          goalRunStatesBySession[progress.sessionId] = progress.runState
+          if (progress.runState === 'running') {
+            const activeRun = activeGoalRunsBySession[progress.sessionId]
+            if (!activeRun || activeRun.goalId !== progress.goalId) {
+              activeGoalRunsBySession[progress.sessionId] = {
+                goalId: progress.goalId,
+                startedAt: Date.now()
+              }
+            }
+          } else {
+            delete activeGoalRunsBySession[progress.sessionId]
+          }
+        }
+      }
+
       return {
-        goalProgressBySession: {
-          ...state.goalProgressBySession,
-          [progress.sessionId]: progress
-        },
-        goalRunStatesBySession: nextRunStates,
-        activeGoalRunsBySession: nextActiveRuns
+        goalsBySession,
+        goalProgressBySession,
+        goalRunStatesBySession,
+        activeGoalRunsBySession
       }
     })
   },
-  clearGoalProgress: (sessionId: string) => {
+  clearGoalProgress: (sessionId: string, goalId?: string | null) => {
     set((state) => {
+      const existing = state.goalProgressBySession[sessionId]
+      if (!existing || (goalId && existing.goalId !== goalId)) return {}
       const next = { ...state.goalProgressBySession }
       delete next[sessionId]
       return { goalProgressBySession: next }
@@ -333,16 +422,6 @@ export function installGoalSyncListener(): () => void {
       payload && typeof payload === 'object' ? (payload as { goal?: SessionGoalRow }).goal : null
     if (!row) return
     useGoalStore.getState().applySyncedGoal(rowToGoal(row))
-  })
-
-  const offCleared = ipcClient.on('goal:cleared', (payload: unknown) => {
-    const sessionId =
-      payload && typeof payload === 'object'
-        ? (payload as { sessionId?: unknown }).sessionId
-        : undefined
-    if (typeof sessionId === 'string') {
-      useGoalStore.getState().applySyncedGoalClear(sessionId)
-    }
   })
 
   const offEventAdded = ipcClient.on('goal:event-added', (payload: unknown) => {
@@ -383,10 +462,9 @@ export function installGoalSyncListener(): () => void {
 
   return () => {
     offUpdated()
-    offCleared()
     offEventAdded()
     offRunState()
   }
 }
 
-export type { SessionGoal, SessionGoalEvent, SessionGoalEventType } from "./goal-store-helpers"
+export type { GoalRunState, SessionGoal, SessionGoalEvent, SessionGoalEventType, SessionGoalStatus } from "./goal-store-helpers"

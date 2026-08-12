@@ -1,4 +1,4 @@
-import { useGoalStore } from '@renderer/stores/goal-store'
+﻿import { useGoalStore } from '@renderer/stores/goal-store'
 
 // Goal confirmation reverse request (like plan review).
 // The agent calls create_goal, which sends a goal/confirm-request reverse request
@@ -19,19 +19,20 @@ export function resolveGoalConfirm(goalId: string, confirmed: boolean, sessionId
   }
   // Clear progress so the GoalConfirmCard hides after confirmation
   if (confirmed && sessionId) {
-    useGoalStore.getState().clearGoalProgress(sessionId)
+    useGoalStore.getState().clearGoalProgress(sessionId, goalId)
   }
 }
 
-export function cancelGoalConfirm(goalId: string, sessionId?: string): void {
+export function cancelGoalConfirm(goalId: string, sessionId?: string): boolean {
   const resolve = goalConfirmResolvers.get(goalId)
   if (resolve) {
     resolve({ confirmed: false })
     goalConfirmResolvers.delete(goalId)
   }
   if (sessionId) {
-    useGoalStore.getState().clearGoalProgress(sessionId)
+    useGoalStore.getState().clearGoalProgress(sessionId, goalId)
   }
+  return Boolean(resolve)
 }
 
 export async function handleNativeGoalConfirmRequest(params: unknown): Promise<GoalConfirmResponse> {

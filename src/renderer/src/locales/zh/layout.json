@@ -1,4 +1,4 @@
-{
+﻿{
   "splash": {
     "enterMain": "进入主页",
     "enterSettings": "AI 服务商设置",
@@ -291,6 +291,7 @@
     }
   },
   "rightPanel": {
+    "goals": "Goals",
     "browser": "浏览器",
     "browserLoadFailed": "页面加载失败",
     "browserRetry": "重试",

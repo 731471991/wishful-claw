@@ -62,6 +62,8 @@ public sealed class GoalContext
     }
     public List<GoalPlanItem> Plans { get; set; } = new();
     public int CurrentPlanIndex { get; set; } = -1;
+    /// <summary>创建时的完整参数（含 provider 配置），用于 Resume 时重建子 Agent。</summary>
+    public JsonElement? OriginalParameters { get; set; }
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
     internal object LifecycleSync { get; } = new();

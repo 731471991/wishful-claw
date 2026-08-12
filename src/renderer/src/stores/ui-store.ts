@@ -474,21 +474,36 @@ export const useUIStore = create<UIStore>((set, get) => ({
   openSubAgentsPanel: (toolUseId: any, sessionId: any) =>
     get().ensureSubAgentTab(toolUseId ?? null, null, null, sessionId),
 
-  openGoalPanel: (sessionId: string) =>
+  openGoalPanel: (
+    sessionId?: string | null,
+    projectId?: string | null,
+    goalId?: string | null
+  ) =>
     set((state: any) => {
-      const tabId = `goal:${sessionId}`
+      const session = sessionId
+        ? useChatStore.getState().sessions.find((item) => item.id === sessionId)
+        : null
+      const resolvedProjectId = projectId ?? session?.projectId ?? useChatStore.getState().activeProjectId ?? null
+      const tabId = `goal:${resolvedProjectId ?? 'global'}`
       const existing = state.rightPanelTabs.find(
-        (tab: any) => tab.kind === 'goal' && (tab.sessionId ?? null) === sessionId
+        (tab: any) => tab.kind === 'goal' && (tab.projectId ?? null) === resolvedProjectId
       )
       if (existing) {
-        return { rightPanelActiveTabId: existing.id, rightPanelOpen: true }
+        const rightPanelTabs = state.rightPanelTabs.map((tab: RightPanelTabInstance) =>
+          tab === existing
+            ? { ...tab, sessionId: sessionId ?? tab.sessionId ?? null, goalId: goalId ?? tab.goalId ?? null }
+            : tab
+        )
+        return { rightPanelTabs, rightPanelActiveTabId: existing.id, rightPanelOpen: true }
       }
       const tab: RightPanelTabInstance = {
         id: tabId,
         kind: 'goal',
-        title: 'Goal',
+        title: 'Goals',
         closable: true,
-        sessionId,
+        sessionId: sessionId ?? null,
+        projectId: resolvedProjectId,
+        goalId: goalId ?? null,
         createdAt: Date.now()
       }
       const rightPanelTabs = ensureRightPanelTabs([...state.rightPanelTabs, tab])

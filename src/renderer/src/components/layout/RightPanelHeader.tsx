@@ -1,4 +1,4 @@
-import {
+﻿import {
   Activity,
   Bot,
   Brain,
@@ -9,6 +9,7 @@ import {
   PanelRightClose,
   Plus,
   SquareTerminal,
+  Target,
   X
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -31,6 +32,7 @@ interface RightPanelHeaderProps {
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
   onAddBrowser: () => void
+  onAddGoals: () => void
   onOpenFile: () => void
   onClosePanel: () => void
   t: (key: string, options?: Record<string, unknown>) => string
@@ -44,6 +46,7 @@ function TabIcon({ tab }: { tab: RightPanelTabInstance }): React.JSX.Element {
   if (tab.kind === 'browser') return <Globe className="size-3.5" />
   if (tab.kind === 'subagent') return <Bot className="size-3.5" />
   if (tab.kind === 'terminal') return <SquareTerminal className="size-3.5" />
+  if (tab.kind === 'goal') return <Target className="size-3.5" />
   return <FileCode className="size-3.5" />
 }
 
@@ -143,6 +146,7 @@ export function RightPanelHeader({
   onSelectTab,
   onCloseTab,
   onAddBrowser,
+  onAddGoals,
   onOpenFile,
   onClosePanel,
   t
@@ -191,6 +195,10 @@ export function RightPanelHeader({
           <DropdownMenuItem onSelect={onOpenFile}>
             <FolderOpen className="size-4" />
             {t('rightPanel.openFile', { defaultValue: 'Open file' })}
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onAddGoals}>
+            <Target className="size-4" />
+            {t('rightPanel.goals', { defaultValue: 'Goals' })}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={!browserEnabled} onSelect={onAddBrowser}>
             <Globe className="size-4" />

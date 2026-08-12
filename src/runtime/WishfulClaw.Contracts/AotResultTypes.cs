@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace WishfulClaw.Contracts;
 
@@ -46,7 +46,6 @@ public sealed record GoalActionResult(
     string RunState,
     string? GoalId = null,
     string? Error = null);
-public sealed record GoalClearResult(bool Success, bool Cleared);
 public sealed record GoalStatusResponse(
     bool Active,
     string Status = "unknown",

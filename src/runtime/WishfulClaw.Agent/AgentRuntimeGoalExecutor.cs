@@ -9,7 +9,7 @@ namespace WishfulClaw.Agent;
 /// Goal tool executor — get/create/update goals.
 /// CreateGoal triggers GoalOrchestrator.StartAsync to start the orchestration loop.
 /// </summary>
-public static class AgentRuntimeGoalExecutor
+public static partial class AgentRuntimeGoalExecutor
 {
     public static bool IsGoalTool(string toolName) =>
         toolName is "get_goal" or "create_goal" or "update_goal" or "pause_goal" or "resume_goal" or "abort_goal";
@@ -31,6 +31,7 @@ public static class AgentRuntimeGoalExecutor
                 call.Input,
                 sessionId,
                 state.Parameters,
+                state.CancellationToken,
                 context),
             "update_goal" => await UpdateGoalAsync(
                 call.Input,
@@ -72,6 +73,7 @@ public static class AgentRuntimeGoalExecutor
         JsonElement input,
         string sessionId,
         JsonElement parameters,
+        CancellationToken cancellationToken,
         IWorkerRequestContext context)
     {
         var objective = JsonHelpers.GetString(input, "objective")?.Trim() ?? string.Empty;
@@ -100,7 +102,23 @@ public static class AgentRuntimeGoalExecutor
             return EncodePersistedGoal(persisted);
 
         var workingFolder = JsonHelpers.GetString(parameters, "workingFolder");
-        var goalId = GoalOrchestrator.CreatePendingGoal(
+        var goalId = $"goal-{Guid.NewGuid():N}".Substring(0, 21);
+        try
+        {
+            DbGoalTools.CreateCurrentGoal(BuildCreateParameters(
+                sessionId,
+                goalId,
+                objective,
+                workingFolder,
+                GoalStatusValues.Pending));
+        }
+        catch (Exception ex)
+        {
+            return EncodeError($"Goal could not be created: {ex.Message}");
+        }
+
+        GoalOrchestrator.CreatePendingGoal(
+            goalId,
             objective,
             sessionId,
             workingFolder,
@@ -110,7 +128,7 @@ public static class AgentRuntimeGoalExecutor
             sessionId,
             objective,
             context,
-            parameters);
+            cancellationToken);
     }
 
     private static async Task<string> AwaitGoalConfirmationAsync(
@@ -118,7 +136,7 @@ public static class AgentRuntimeGoalExecutor
         string sessionId,
         string goalText,
         IWorkerRequestContext context,
-        JsonElement parameters)
+        CancellationToken cancellationToken)
     {
         // Notify the frontend of the pending goal via reverse request (blocking)
         // The agent waits until the user confirms or discards the goal.
@@ -135,7 +153,7 @@ public static class AgentRuntimeGoalExecutor
         try
         {
             var response = await AgentRuntimeReverseRequests.RequestAsync(
-                context, "goal/confirm-request", confirmParams, CancellationToken.None);
+                context, "goal/confirm-request", confirmParams, cancellationToken);
 
             var confirmed = response.TryGetProperty("confirmed", out var c) && c.GetBoolean();
             if (confirmed)
@@ -144,12 +162,15 @@ public static class AgentRuntimeGoalExecutor
                 if (pending == null)
                     return EncodeError("Pending goal no longer exists.");
 
-                var dbParams = BuildCreateParameters(
-                    sessionId,
+                var row = DbGoalTools.SetStatusByGoalId(
                     goalId,
-                    pending.GoalText,
-                    pending.WorkingFolder);
-                var row = DbGoalTools.CreateCurrentGoal(dbParams);
+                    sessionId,
+                    GoalStatusValues.Pending,
+                    GoalStatusValues.Active,
+                    "Goal confirmed and started");
+                if (row == null)
+                    return EncodeError("Pending goal changed before confirmation.");
+
                 var started = await GoalOrchestrator.ConfirmGoalAsync(
                     goalId,
                     sessionId,
@@ -157,18 +178,39 @@ public static class AgentRuntimeGoalExecutor
                     pending.Parameters,
                     context);
                 if (!started)
+                {
+                    DbGoalTools.SetStatusByGoalId(
+                        goalId,
+                        sessionId,
+                        GoalStatusValues.Active,
+                        GoalStatusValues.Failed,
+                        "Goal confirmation could not start the orchestrator");
                     return EncodeError("Goal confirmation could not start the orchestrator.");
+                }
 
                 return EncodePersistedGoal(row);
             }
 
-            GoalOrchestrator.RemovePendingGoal(goalId);
-            return EncodeError("Goal was discarded by user.");
+            AbortPendingGoal(goalId, sessionId, "Goal was cancelled before confirmation");
+            return EncodeError("Goal was cancelled by user.");
         }
         catch (OperationCanceledException)
         {
-            // Request cancelled (e.g. agent loop stopped)
+            FinalizeConfirmationFailure(
+                goalId,
+                sessionId,
+                GoalStatusValues.Aborted,
+                "Goal confirmation was cancelled");
             return EncodeError("Goal confirmation was cancelled.");
+        }
+        catch (Exception ex)
+        {
+            FinalizeConfirmationFailure(
+                goalId,
+                sessionId,
+                GoalStatusValues.Failed,
+                $"Goal confirmation failed: {ex.Message}");
+            return EncodeError($"Goal confirmation failed: {ex.Message}");
         }
     }
 
@@ -371,7 +413,7 @@ public static class AgentRuntimeGoalExecutor
             await GoalOrchestrator.ResumeFromDb(row.GoalId, sessionId);
         }
 
-        var action = await GoalOrchestrator.AbortFromToolAsync(row.GoalId, context);
+        var action = await GoalOrchestrator.AbortAsync(row.GoalId, context);
         return action.Success
             ? EncodeActionResult(row, action)
             : EncodeActionFailure(row, action);
@@ -400,54 +442,42 @@ public static class AgentRuntimeGoalExecutor
             action.Error ?? $"Goal action failed: {action.Action}"));
     }
 
-    private static JsonElement BuildCreateParameters(
-        string sessionId,
+    private static void AbortPendingGoal(
         string goalId,
-        string objective,
-        string? workingFolder)
-        => WorkerJsonHelper.BuildJsonElement(w =>
-        {
-            w.WriteStartObject();
-            w.WriteString("sessionId", sessionId);
-            w.WriteString("goalId", goalId);
-            w.WriteString("objective", objective);
-            w.WriteString("status", GoalStatusValues.Active);
-            if (!string.IsNullOrEmpty(workingFolder))
-                w.WriteString("workingFolder", workingFolder);
-            w.WriteEndObject();
-        });
-
-    private static JsonElement BuildUpdateParameters(
-        JsonElement parameters,
         string sessionId,
+        string message)
+    {
+        DbGoalTools.SetStatusByGoalId(
+            goalId,
+            sessionId,
+            GoalStatusValues.Pending,
+            GoalStatusValues.Aborted,
+            message);
+        GoalOrchestrator.RemovePendingGoal(goalId);
+    }
+
+    private static void FinalizeConfirmationFailure(
         string goalId,
-        string? objective,
-        string? status)
-        => WorkerJsonHelper.BuildJsonElement(w =>
+        string sessionId,
+        string activeTerminalStatus,
+        string message)
+    {
+        var pending = DbGoalTools.SetStatusByGoalId(
+            goalId,
+            sessionId,
+            GoalStatusValues.Pending,
+            GoalStatusValues.Aborted,
+            message);
+        if (pending == null)
         {
-            w.WriteStartObject();
-            w.WriteString("sessionId", sessionId);
-            w.WriteString("goalId", goalId);
-            if (parameters.ValueKind == JsonValueKind.Object
-                && parameters.TryGetProperty("dbPath", out var dbPath)
-                && dbPath.ValueKind == JsonValueKind.String)
-            {
-                w.WriteString("dbPath", dbPath.GetString());
-            }
-            w.WriteStartObject("patch");
-            if (!string.IsNullOrEmpty(objective))
-                w.WriteString("objective", objective);
-            if (!string.IsNullOrEmpty(status))
-                w.WriteString("status", status);
-            w.WriteEndObject();
-            w.WriteEndObject();
-        });
+            DbGoalTools.SetStatusByGoalId(
+                goalId,
+                sessionId,
+                GoalStatusValues.Active,
+                activeTerminalStatus,
+                message);
+        }
+        GoalOrchestrator.RemovePendingGoal(goalId);
+    }
 
-    private static string EncodeResult(GoalToolResult result)
-        => JsonSerializer.Serialize(
-            result,
-            AgentRuntimeJsonContext.Default.GoalToolResult);
-
-    private static string EncodeError(string message)
-        => EncodeResult(new GoalToolResult(Error: message));
 }

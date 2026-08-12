@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using WishfulClaw.Infrastructure.Db;
 using WishfulClaw.Contracts;
 
@@ -8,7 +8,6 @@ namespace WishfulClaw.Infrastructure;
     GenerationMode = JsonSourceGenerationMode.Metadata,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(GoalClearResult))]
 [JsonSerializable(typeof(DbInitializeResult))]
 [JsonSerializable(typeof(GoalFindResult))]
 [JsonSerializable(typeof(GoalMutationResult))]

@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 
 namespace WishfulClaw.Infrastructure.Db;
 
@@ -92,6 +92,7 @@ public static class EntityMappers
     {
         GoalId = r.GetString("goal_id"),
         SessionId = r.GetString("session_id"),
+        ProjectId = r.GetNullableString("project_id"),
         Objective = r.GetString("objective"),
         Status = r.GetString("status"),
         TokenBudget = r.GetNullableInt64("token_budget"),

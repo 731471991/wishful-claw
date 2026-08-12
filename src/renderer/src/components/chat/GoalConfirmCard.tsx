@@ -1,8 +1,8 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { Button } from '@renderer/components/ui/button'
-import { Target, Loader2, Play, Trash2 } from 'lucide-react'
+import { Target, Loader2, Play, X } from 'lucide-react'
 import { useGoalStore } from '@renderer/stores/goal-store'
 import { resolveGoalConfirm, cancelGoalConfirm } from '@renderer/lib/tools/goal-native-ui'
 
@@ -15,7 +15,7 @@ export function GoalConfirmCard({ sessionId, className }: GoalConfirmCardProps):
   const { t } = useTranslation('chat')
   const progress = useGoalStore((s) => (sessionId ? s.goalProgressBySession[sessionId] : undefined))
   const [confirming, setConfirming] = React.useState(false)
-  const [clearing, setClearing] = React.useState(false)
+  const [cancelling, setCancelling] = React.useState(false)
 
   if (!sessionId || !progress || progress.status !== 'pending') return null
 
@@ -28,7 +28,7 @@ export function GoalConfirmCard({ sessionId, className }: GoalConfirmCardProps):
   }
 
   const handleDiscard = async (): Promise<void> => {
-    setClearing(true)
+    setCancelling(true)
     cancelGoalConfirm(goalId, sessionId)
   }
 
@@ -49,15 +49,15 @@ export function GoalConfirmCard({ sessionId, className }: GoalConfirmCardProps):
             variant="outline"
             size="sm"
             className="h-8 gap-1.5 text-destructive"
-            disabled={clearing}
+            disabled={cancelling}
             onClick={handleDiscard}
           >
-            {clearing ? (
+            {cancelling ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <Trash2 className="size-3.5" />
+              <X className="size-3.5" />
             )}
-            {t('goal.discard', { defaultValue: 'Discard' })}
+            {t('goal.discard', { defaultValue: 'Cancel goal' })}
           </Button>
           <Button
             size="sm"

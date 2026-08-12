@@ -2,6 +2,7 @@
 
 public static class GoalStatusValues
 {
+    public const string Pending = "pending";
     public const string Active = "active";
     public const string Complete = "complete";
     public const string Failed = "failed";

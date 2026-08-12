@@ -9,6 +9,7 @@ export type SessionGoalStatus =
   | 'complete'
   | 'aborted'
   | 'failed'
+export type GoalRunState = 'idle' | 'running' | 'paused'
 export type SessionGoalEventType =
   | 'created'
   | 'replaced'
@@ -30,11 +31,17 @@ export type SessionGoalEventType =
 export interface SessionGoal {
   sessionId: string
   goalId: string
+  projectId?: string | null
   objective: string
   status: SessionGoalStatus
   tokenBudget?: number | null
   tokensUsed: number
   timeUsedSeconds: number
+  plansJson?: string | null
+  planCount: number
+  completedPlanCount: number
+  currentPlanIndex: number
+  workingFolder?: string | null
   createdAt: number
   updatedAt: number
 }
@@ -61,11 +68,17 @@ export const EMPTY_SESSION_GOAL_EVENTS: SessionGoalEvent[] = []
 export interface SessionGoalRow {
   sessionId: string
   goalId: string
+  projectId: string | null
   objective: string
   status: SessionGoalStatus
   tokenBudget: number | null
   tokensUsed: number
   timeUsedSeconds: number
+  plansJson: string | null
+  planCount: number
+  completedPlanCount: number
+  currentPlanIndex: number
+  workingFolder: string | null
   createdAt: number
   updatedAt: number
 }
@@ -84,7 +97,15 @@ export interface GoalMutationResult {
   success?: boolean
   error?: string
   goal?: SessionGoalRow | null
-  cleared?: boolean
+}
+
+export interface GoalActionResult {
+  success: boolean
+  action: string
+  status: string
+  runState: string
+  goalId?: string | null
+  error?: string | null
 }
 
 export interface GoalEventMutationResult {
@@ -107,7 +128,7 @@ export interface GoalProgressState {
   eventType: string
   message: string
   status: string
-  runState?: string
+  runState?: GoalRunState
   currentPlanIndex: number
   planCount: number
   completedPlans: number
@@ -119,7 +140,7 @@ export interface GoalStore {
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>
   goalProgressBySession: Record<string, GoalProgressState>
-  goalRunStatesBySession: Record<string, string>
+  goalRunStatesBySession: Record<string, GoalRunState>
   _loaded: boolean
 
   loadGoalsFromDb: () => Promise<void>
@@ -146,7 +167,10 @@ export interface GoalStore {
     patch: Partial<Pick<SessionGoal, 'objective' | 'status' | 'tokenBudget'>>
   ) => Promise<{ success: boolean; goal?: SessionGoal; error?: string }>
   confirmGoal: (sessionId: string, goalId: string) => Promise<{ success: boolean; error?: string }>
-  clearGoal: (sessionId: string) => Promise<{ success: boolean; cleared: boolean; error?: string }>
+  cancelGoal: (
+    sessionId: string,
+    goalId?: string | null
+  ) => Promise<{ success: boolean; error?: string }>
   accountGoalUsage: (
     input: AccountGoalUsageInput
   ) => Promise<{ success: boolean; goal?: SessionGoal; error?: string }>
@@ -160,21 +184,26 @@ export interface GoalStore {
   startGoalRun: (sessionId: string, goalId: string, startedAt?: number) => void
   finishGoalRun: (sessionId: string, goalId?: string | null) => void
   applySyncedGoal: (goal: SessionGoal) => void
-  applySyncedGoalClear: (sessionId: string) => void
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
   applyGoalProgress: (progress: GoalProgressState) => void
-  clearGoalProgress: (sessionId: string) => void
+  clearGoalProgress: (sessionId: string, goalId?: string | null) => void
 }
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {
   return {
     sessionId: row.sessionId,
     goalId: row.goalId,
+    projectId: row.projectId,
     objective: row.objective,
     status: row.status,
     tokenBudget: row.tokenBudget,
     tokensUsed: row.tokensUsed,
     timeUsedSeconds: row.timeUsedSeconds,
+    plansJson: row.plansJson,
+    planCount: row.planCount,
+    completedPlanCount: row.completedPlanCount,
+    currentPlanIndex: row.currentPlanIndex,
+    workingFolder: row.workingFolder,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   }

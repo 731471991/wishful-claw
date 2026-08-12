@@ -3,7 +3,7 @@
 import { immer } from 'zustand/middleware/immer'
 
 import type { AgentStreamEnvelope } from '@shared/agent-stream-protocol'
-import { installGoalSyncListener, useGoalStore } from '@renderer/stores/goal-store'
+import { installGoalSyncListener, useGoalStore, type GoalRunState } from '@renderer/stores/goal-store'
 
 import { getAgentStreamReceiver } from '@renderer/lib/ipc/agent-stream-receiver'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
@@ -444,7 +444,6 @@ export const useChatStore = create<ChatStore>()(
           const input = (gp.input ?? {}) as Record<string, unknown>
           const gpSessionId = (gp.sessionId ?? input.sessionId ?? targetSessionId) as string | undefined
           const gpEventType = (gp.eventType ?? input.eventType) as string | undefined
-          console.warn('[handleEnvelope] goal_progress event', JSON.stringify({ gpSessionId, eventType: gpEventType, status: gp.status ?? input.status }))
           if (gpSessionId && gpEventType) {
             useGoalStore.getState().applyGoalProgress({
               sessionId: gpSessionId,
@@ -453,7 +452,7 @@ export const useChatStore = create<ChatStore>()(
               eventType: gpEventType,
               message: (gp.message ?? input.message) as string ?? '',
               status: (gp.status ?? input.status) as string ?? '',
-              runState: (input.runState) as string | undefined,
+              runState: (input.runState) as GoalRunState | undefined,
               currentPlanIndex: (gp.currentPlanIndex ?? input.currentPlanIndex) as number ?? 0,
               planCount: (gp.planCount ?? input.planCount) as number ?? 0,
               completedPlans: (gp.completedPlans ?? input.completedPlans) as number ?? 0,

@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -76,7 +76,6 @@ public sealed class DbModule : IWorkerModule
         context.Register("db/goals-create", DbGoalTools.Create);
         context.Register("db/goals-set", DbGoalTools.Set);
         context.Register("db/goals-update", DbGoalTools.Update);
-        context.Register("db/goals-clear", DbGoalTools.Clear);
         context.Register("db/goals-account", DbGoalTools.AccountUsage);
         context.Register("db/goals-list-active", DbGoalTools.ListActive);
 

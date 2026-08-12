@@ -107,12 +107,12 @@ public static partial class GoalOrchestrator
     /// The goal will be stored in memory until the user confirms via ConfirmGoalAsync.
     /// </summary>
     public static string CreatePendingGoal(
+        string goalId,
         string goalText,
         string sessionId,
         string? workingFolder,
         JsonElement parameters)
     {
-        var goalId = $"goal-{Guid.NewGuid():N}".Substring(0, 21);
         PendingGoals[goalId] = new PendingGoal
         {
             GoalId = goalId,

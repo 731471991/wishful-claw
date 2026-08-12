@@ -35,6 +35,9 @@ public static partial class GoalOrchestrator
             StartedAt = DateTime.UtcNow
         };
 
+        if (parameters.ValueKind == JsonValueKind.Object)
+            goal.OriginalParameters = parameters.Clone();
+
         if (!ActiveGoals.TryAdd(goalId, goal))
         {
             if (ActiveGoals.TryGetValue(goalId, out var existingGoal))
@@ -121,6 +124,20 @@ public static partial class GoalOrchestrator
         string? sessionId,
         IWorkerRequestContext context)
     {
+        return Resume(goalId, sessionId, null, context);
+    }
+
+    /// <summary>
+    /// Resume with an optional provider override supplied by the frontend.
+    /// providerOverride is used when the goal has no saved parameters and no
+    /// active session run to inherit from (e.g. DB-restored goal after restart).
+    /// </summary>
+    public static GoalActionResult Resume(
+        string goalId,
+        string? sessionId,
+        JsonElement? providerOverride,
+        IWorkerRequestContext context)
+    {
         if (!ActiveGoals.TryGetValue(goalId, out var goal))
         {
             if (string.IsNullOrEmpty(sessionId))
@@ -147,7 +164,7 @@ public static partial class GoalOrchestrator
                 return GoalActionNotFound("resume", goalId);
         }
 
-        var parameters = BuildResumeParameters(goal);
+        var parameters = BuildResumeParameters(goal, providerOverride);
         return StartOrResumeRun(goal, parameters, context);
     }
 
@@ -363,8 +380,40 @@ public static partial class GoalOrchestrator
         };
     }
 
-    private static JsonElement BuildResumeParameters(GoalContext goal)
+    private static JsonElement BuildResumeParameters(
+        GoalContext goal,
+        JsonElement? providerOverride = null)
     {
+        // 1. 前端传入的 provider 覆盖（最高优先级） — 合并到 workingFolder 参数
+        if (providerOverride.HasValue
+            && providerOverride.Value.ValueKind == JsonValueKind.Object)
+        {
+            return WorkerJsonHelper.BuildJsonElement(w =>
+            {
+                w.WriteStartObject();
+                if (!string.IsNullOrEmpty(goal.WorkingFolder))
+                    w.WriteString("workingFolder", goal.WorkingFolder);
+                w.WritePropertyName("provider");
+                providerOverride.Value.WriteTo(w);
+                w.WriteEndObject();
+            });
+        }
+
+        // 2. 优先使用创建时保存的原始参数（含 provider 配置）
+        if (goal.OriginalParameters.HasValue
+            && goal.OriginalParameters.Value.ValueKind == JsonValueKind.Object)
+        {
+            return goal.OriginalParameters.Value.Clone();
+        }
+
+        // 3. 回退到当前活跃 Agent 运行中该会话的 provider 配置
+        if (AgentRuntimeTools.TryGetSessionParameters(goal.SessionId, out var sessionParams)
+            && sessionParams.ValueKind == JsonValueKind.Object)
+        {
+            return sessionParams.Clone();
+        }
+
+        // 4. 最后兜底：只传 workingFolder（子 Agent 可能因缺少 provider 而失败）
         return string.IsNullOrEmpty(goal.WorkingFolder)
             ? new JsonElement()
             : WorkerJsonHelper.BuildJsonElement(w =>
@@ -417,46 +466,6 @@ public static partial class GoalOrchestrator
                 backgroundContext));
             return GoalAction(goal, true, "started");
         }
-    }
-
-    private static async Task RunOwnedAsync(
-        GoalContext goal,
-        long generation,
-        JsonElement parameters,
-        AgentRuntimeRunState runtimeState,
-        IWorkerRequestContext context)
-    {
-        using var goalCancellationRegistration = goal.CancellationTokenSource.Token.Register(
-            static state => ((AgentRuntimeRunState)state!).Cancel("goal"),
-            runtimeState);
-
-        GoalRunOutcome outcome;
-        try
-        {
-            outcome = await RunAsync(goal, parameters, runtimeState, context);
-        }
-        catch (OperationCanceledException)
-        {
-            outcome = new GoalRunOutcome(
-                GoalStatusValues.Aborted,
-                GoalEventType.GoalAborted,
-                "Goal aborted");
-        }
-        catch (Exception ex)
-        {
-            outcome = new GoalRunOutcome(
-                GoalStatusValues.Failed,
-                GoalEventType.GoalFailed,
-                $"Goal failed: {ex.Message}");
-        }
-
-        await FinalizeOwnedRunAsync(
-            goal,
-            generation,
-            outcome,
-            parameters,
-            runtimeState,
-            context);
     }
 
     private static bool IsCurrentGoalContext(GoalContext goal)

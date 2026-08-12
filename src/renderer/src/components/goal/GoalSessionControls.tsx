@@ -1,6 +1,6 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronRight, CheckCircle2, Pause, Pencil, Play, Plus, Save, Target, Trash2, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pause, Pencil, Play, Save, Target, XCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import {
   Dialog,
@@ -16,7 +16,7 @@ import { cn } from '@renderer/lib/utils'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { formatGoalElapsedSeconds, formatGoalTokens } from '@renderer/lib/agent/goal-context'
-import { useGoalStore, type SessionGoal, type SessionGoalEvent, type SessionGoalEventType } from '@renderer/stores/goal-store'
+import { useGoalStore, type GoalRunState, type SessionGoal, type SessionGoalEvent, type SessionGoalEventType } from '@renderer/stores/goal-store'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',
@@ -31,17 +31,19 @@ import {
   useGoalSession,
   useLiveGoalElapsedSeconds,
   GoalStatusBadge,
-  GoalUsageLine
+  getGoalRuntimeControls
 } from './goal-session-utils'
 import { GoalEventTimeline, LatestGoalNotice, useGoalActions } from './goal-session-views'
 
 function GoalManagerDialog({
   goal,
   events,
+  runState,
   actions
 }: {
   goal?: SessionGoal
   events: SessionGoalEvent[]
+  runState: GoalRunState
   actions: ReturnType<typeof useGoalActions>
 }): React.JSX.Element {
   const { t } = useTranslation('chat')
@@ -50,6 +52,7 @@ function GoalManagerDialog({
     goal?.tokenBudget !== undefined && goal.tokenBudget !== null
       ? Math.min(100, (goal.tokensUsed / goal.tokenBudget) * 100)
       : null
+  const controls = getGoalRuntimeControls(goal, runState)
 
   return (
     <Dialog open={actions.open} onOpenChange={actions.setOpen}>
@@ -146,7 +149,7 @@ function GoalManagerDialog({
         </div>
         <DialogFooter className="items-center justify-between gap-2 sm:justify-between">
           <div className="flex items-center gap-1">
-            {goal?.status === 'active' ? (
+            {goal && controls.canPause ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -156,7 +159,8 @@ function GoalManagerDialog({
                 <Pause className="size-3.5" />
                 {t('goal.pause')}
               </Button>
-            ) : goal ? (
+            ) : null}
+            {goal && controls.canResume ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -164,7 +168,7 @@ function GoalManagerDialog({
                 onClick={() => void actions.setGoalStatus('active')}
               >
                 <Play className="size-3.5" />
-                {goal.status === 'complete' ? t('goal.start') : t('goal.resume')}
+                {controls.runState === 'idle' ? t('goal.start') : t('goal.resume')}
               </Button>
             ) : null}
             {goal && (
@@ -172,11 +176,11 @@ function GoalManagerDialog({
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5 text-destructive"
-                disabled={actions.clearing}
-                onClick={() => void actions.clearGoal()}
+                disabled={actions.cancelling}
+                onClick={() => void actions.cancelGoal()}
               >
-                <Trash2 className="size-3.5" />
-                {t('goal.clear')}
+                <XCircle className="size-3.5" />
+                {t('goal.cancel')}
               </Button>
             )}
           </div>
@@ -223,37 +227,28 @@ export function GoalSessionBar({
     return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
   })
   const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt, runState)
+  const controls = getGoalRuntimeControls(goal, runState)
 
   React.useEffect(() => {
     setExpanded(true)
   }, [sessionId])
 
-  if (!sessionId || !goal) return null
+  if (!sessionId || goal?.status !== 'active') return null
 
   const statusTitle =
     runState === 'running'
       ? t('goal.runningTitle', { defaultValue: 'Pursuing goal' })
       : runState === 'paused'
         ? t('goal.pausedTitle', { defaultValue: 'Paused goal' })
-        : goal.status === 'blocked'
-          ? t('goal.blockedTitle', { defaultValue: 'Blocked goal' })
-          : goal.status === 'usage_limited'
-            ? t('goal.usageLimitedTitle', { defaultValue: 'Usage-limited goal' })
-            : goal.status === 'complete'
-              ? t('goal.completedTitle', { defaultValue: 'Completed goal' })
-              : goal.status === 'aborted' || goal.status === 'failed'
-                ? t('goal.failedTitle', { defaultValue: 'Goal not running' })
-                : t('goal.idleTitle', { defaultValue: 'Goal ready' })
+        : t('goal.idleTitle', { defaultValue: 'Goal ready' })
   const hasBlockerNotice = events.some((event) => BLOCKER_EVENT_TYPES.has(event.eventType))
-
-  if (goal.status === 'pending') return null
 
   return (
     <>
       <div className={cn('mx-auto w-full max-w-[820px]', className)}>
         <div
           className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 shadow-sm backdrop-blur cursor-pointer hover:bg-muted/60 transition-colors"
-          onClick={() => useUIStore.getState().openGoalPanel(sessionId)}
+          onClick={() => useUIStore.getState().openGoalPanel(sessionId, goal.projectId, goal.goalId)}
         >
           <div className="flex items-start gap-2">
             <Target className="mt-0.5 size-3.5 shrink-0 text-primary/80" />
@@ -302,7 +297,7 @@ export function GoalSessionBar({
               >
                 <Pencil className="size-3.5" />
               </Button>
-              {runState === 'running' ? (
+              {controls.canPause ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -313,7 +308,7 @@ export function GoalSessionBar({
                 >
                   <Pause className="size-3.5" />
                 </Button>
-              ) : goal.status !== 'complete' && goal.status !== 'aborted' && goal.status !== 'failed' ? (
+              ) : controls.canResume ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -329,11 +324,11 @@ export function GoalSessionBar({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md text-destructive/80"
-                title={t('goal.clear')}
-                aria-label={t('goal.clear')}
-                onClick={() => void actions.clearGoal()}
+                title={t('goal.cancel')}
+                aria-label={t('goal.cancel')}
+                onClick={() => void actions.cancelGoal()}
               >
-                <Trash2 className="size-3.5" />
+                <XCircle className="size-3.5" />
               </Button>
               <Button
                 variant="ghost"
@@ -359,137 +354,7 @@ export function GoalSessionBar({
           ) : null}
         </div>
       </div>
-      <GoalManagerDialog goal={goal} events={events} actions={actions} />
-    </>
-  )
-}
-
-export function GoalPanelCard({
-  sessionId,
-  className
-}: {
-  sessionId?: string | null
-  className?: string
-}): React.JSX.Element | null {
-  const { t } = useTranslation('chat')
-  const { goal, events, runState } = useGoalSession(sessionId)
-  const actions = useGoalActions(sessionId, goal)
-  const activeRunStartedAt = useGoalStore((s) => {
-    if (!sessionId || !goal) return null
-    const activeRun = s.activeGoalRunsBySession[sessionId]
-    return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
-  })
-  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt, runState)
-
-  if (!sessionId) return null
-
-  return (
-    <>
-      <div className={cn('space-y-2', className)}>
-        <div className="flex items-center justify-between gap-2">
-          <h4 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <Target className="size-3.5" />
-            {t('goal.title')}
-          </h4>
-          <GoalStatusBadge status={goal?.status} />
-        </div>
-        {goal ? (
-          <>
-            <p className="break-words text-xs leading-relaxed text-foreground/85">
-              {goal.objective}
-            </p>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-              <span>{t('goal.createdAt', { defaultValue: 'Created' })}: {new Date(goal.createdAt).toLocaleString()}</span>
-              <span>{t('goal.updatedAt', { defaultValue: 'Updated' })}: {new Date(goal.updatedAt).toLocaleString()}</span>
-            </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-              <GoalUsageLine goal={goal} timeUsedSeconds={liveTimeUsedSeconds} />
-            </div>
-            {goal.tokenBudget !== undefined && goal.tokenBudget !== null && goal.tokenBudget > 0 ? (
-              <div className="space-y-0.5">
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>{t('goal.budgetProgress')}</span>
-                  <span>{Math.min(100, (goal.tokensUsed / goal.tokenBudget) * 100).toFixed(0)}%</span>
-                </div>
-                <div className="h-1 rounded-full bg-muted">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all',
-                      goal.tokensUsed / goal.tokenBudget >= 1 ? 'bg-red-500' : 'bg-emerald-500'
-                    )}
-                    style={{ width: `${Math.min(100, (goal.tokensUsed / goal.tokenBudget) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ) : null}
-            <LatestGoalNotice events={events} />
-            {events.length > 0 ? (
-              <div className="space-y-1.5 rounded-md border border-border/50 p-2">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t('goal.recentActivity', { defaultValue: 'Recent activity' })}</div>
-                <GoalEventTimeline events={events.slice(0, 3)} />
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">{t('goal.noSessionGoal')}</p>
-        )}
-        <div className="flex items-center gap-1">
-          {goal?.status === 'active' ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              title={t('goal.pause')}
-              onClick={() => void actions.setGoalStatus('paused')}
-            >
-              <Pause className="size-3.5" />
-            </Button>
-          ) : goal && goal.status !== 'complete' ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              title={t('goal.resume')}
-              onClick={() => void actions.setGoalStatus('active')}
-            >
-              <Play className="size-3.5" />
-            </Button>
-          ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs"
-            title={goal ? t('goal.manage') : t('goal.set')}
-            onClick={actions.openManager}
-          >
-            {goal ? <Pencil className="size-3.5" /> : <Plus className="size-3.5" />}
-            {goal ? t('goal.manage') : t('goal.set')}
-          </Button>
-          {goal && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-destructive/80"
-              title={t('goal.clear')}
-              onClick={() => void actions.clearGoal()}
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          )}
-          {goal?.status === 'complete' ? (
-            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-sky-500">
-              <CheckCircle2 className="size-3" />
-              {t('goal.completeAudit')}
-            </span>
-          ) : goal?.status === 'active' ? (
-            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-emerald-500">
-              <Zap className="size-3" />
-              {t('goal.autoContinueOn')}
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <GoalManagerDialog goal={goal} events={events} actions={actions} />
+      <GoalManagerDialog goal={goal} events={events} runState={runState} actions={actions} />
     </>
   )
 }

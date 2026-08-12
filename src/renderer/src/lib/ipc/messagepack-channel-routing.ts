@@ -1,4 +1,4 @@
-import { HOOK_IPC_CHANNELS } from '../../../../shared/hooks/types'
+﻿import { HOOK_IPC_CHANNELS } from '../../../../shared/hooks/types'
 
 const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'app:homedir',
@@ -413,7 +413,6 @@ const MESSAGEPACK_EVENT_CHANNELS = new Set<string>([
   'chat:session-updated',
   'chat:session-deleted',
   'goal:updated',
-  'goal:cleared',
   'goal:event-added',
   'goal:run-state',
   'goal:continue-requested',

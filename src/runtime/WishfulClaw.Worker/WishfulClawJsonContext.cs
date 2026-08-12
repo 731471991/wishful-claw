@@ -22,7 +22,6 @@ namespace WishfulClaw.Worker;
 [JsonSerializable(typeof(ProviderTestResult))]
 [JsonSerializable(typeof(GoalSimpleResult))]
 [JsonSerializable(typeof(GoalActionResult))]
-[JsonSerializable(typeof(GoalClearResult))]
 [JsonSerializable(typeof(GoalStatusResponse))]
 [JsonSerializable(typeof(DbInitializeResult))]
 [JsonSerializable(typeof(ProjectFindResult))]

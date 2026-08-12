@@ -9,7 +9,7 @@ namespace WishfulClaw.Infrastructure.Db;
 /// Replaces SqlSugarScope with DbService (Microsoft.Data.Sqlite, zero reflection, AOT-safe).
 /// dbPath = ~/.wishful-claw/index.db
 /// </summary>
-public static class DbClient
+public static partial class DbClient
 {
     private static DbService? _db;
     private static string? _dbPath;
@@ -141,6 +141,7 @@ public static class DbClient
                 @"CREATE TABLE IF NOT EXISTS goals (
                     goal_id TEXT PRIMARY KEY NOT NULL,
                     session_id TEXT NOT NULL,
+                    project_id TEXT,
                     objective TEXT NOT NULL DEFAULT '',
                     status TEXT NOT NULL DEFAULT 'active',
                     token_budget INTEGER,
@@ -244,9 +245,10 @@ public static class DbClient
             EnsureColumn("goals", "working_folder", "TEXT");
             EnsureColumn("goals", "token_budget", "INTEGER");
             EnsureColumn("goals", "time_used_seconds", "INTEGER");
+            EnsureColumn("goals", "project_id", "TEXT");
             NormalizeGoalStatuses();
             NormalizeGoalPlansJson();
-            EnsureSingleGoalPerSession();
+            EnsureGoalHistorySchema();
             WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;
@@ -351,25 +353,6 @@ public static class DbClient
                 // Preserve malformed legacy values for diagnostics instead of deleting data.
             }
         }
-    }
-
-    private static void EnsureSingleGoalPerSession()
-    {
-        _db!.ExecuteInTransaction((connection, transaction) =>
-        {
-            _db.Execute(
-                connection,
-                transaction,
-                "DELETE FROM goals WHERE rowid NOT IN (" +
-                "SELECT rowid FROM goals AS candidate WHERE candidate.rowid = (" +
-                "SELECT selected.rowid FROM goals AS selected " +
-                "WHERE selected.session_id = candidate.session_id " +
-                "ORDER BY selected.updated_at DESC, selected.created_at DESC, selected.rowid DESC LIMIT 1))");
-            _db.Execute(
-                connection,
-                transaction,
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_goals_session_id ON goals(session_id)");
-        });
     }
 
     private sealed record GoalPlansJsonMigrationRow(string GoalId, string PlansJson);

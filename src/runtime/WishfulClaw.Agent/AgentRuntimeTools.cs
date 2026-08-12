@@ -116,6 +116,24 @@ public static class AgentRuntimeTools
         return WorkerResponse.Json(new AgentRuntimeStopResult(true, runId), AgentRuntimeJsonContext.Default.AgentRuntimeStopResult);
     }
 
+    /// <summary>
+    /// Find the first active run for a session and return its parameters (including provider config).
+    /// Used by GoalOrchestrator.Resume when the goal has no saved OriginalParameters.
+    /// </summary>
+    public static bool TryGetSessionParameters(string sessionId, out JsonElement parameters)
+    {
+        foreach (var kvp in ActiveRuns)
+        {
+            if (string.Equals(kvp.Value.SessionId, sessionId, StringComparison.Ordinal))
+            {
+                parameters = kvp.Value.Parameters;
+                return true;
+            }
+        }
+        parameters = default;
+        return false;
+    }
+
     public static WorkerResponse AppendMessages(JsonElement parameters)
     {
         var runId = JsonHelpers.GetString(parameters, "runId")?.Trim();

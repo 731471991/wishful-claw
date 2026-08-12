@@ -27,10 +27,16 @@ public sealed class GoalModule : IWorkerModule
     {
         try
         {
+            var interruptedPendingCount = DbGoalTools.AbortInterruptedPendingGoals();
+            if (interruptedPendingCount > 0)
+            {
+                WorkerLog.Info($"[GoalModule] Archived {interruptedPendingCount} interrupted pending goals.");
+            }
+
             var activeGoals = DbGoalTools.ListActiveGoals();
             if (activeGoals.Count == 0) return;
 
-            WorkerLog.Info($"[GoalModule] Restoring {activeGoals.Count} active/paused goals from DB...");
+            WorkerLog.Info($"[GoalModule] Restoring {activeGoals.Count} active goals from DB...");
             foreach (var row in activeGoals)
             {
                 if (string.IsNullOrEmpty(row.SessionId) || string.IsNullOrEmpty(row.GoalId))
@@ -58,9 +64,12 @@ public sealed class GoalModule : IWorkerModule
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
+        JsonElement? provider = parameters.TryGetProperty("provider", out var p) && p.ValueKind == JsonValueKind.Object
+            ? p
+            : null;
         var result = string.IsNullOrEmpty(goalId)
             ? MissingGoalId("resume")
-            : GoalOrchestrator.Resume(goalId, sessionId, context);
+            : GoalOrchestrator.Resume(goalId, sessionId, provider, context);
         return Task.FromResult(WorkerResponse.Json(
             result,
             WishfulClawJsonContext.Default.GoalActionResult));
@@ -71,9 +80,49 @@ public sealed class GoalModule : IWorkerModule
         IWorkerRequestContext context)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
-        var result = string.IsNullOrEmpty(goalId)
-            ? MissingGoalId("abort")
-            : await GoalOrchestrator.AbortAsync(goalId, context);
+        var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
+        if (string.IsNullOrEmpty(goalId))
+        {
+            return WorkerResponse.Json(
+                MissingGoalId("abort"),
+                WishfulClawJsonContext.Default.GoalActionResult);
+        }
+
+        var pending = GoalOrchestrator.GetPendingGoal(goalId);
+        if (pending != null)
+        {
+            var resolvedSessionId = sessionId ?? pending.SessionId;
+            var row = DbGoalTools.SetStatusByGoalId(
+                goalId,
+                resolvedSessionId,
+                GoalStatusValues.Pending,
+                GoalStatusValues.Aborted,
+                "Goal was cancelled before confirmation");
+            if (row == null)
+            {
+                return WorkerResponse.Json(
+                    new GoalActionResult(
+                        false,
+                        "state_changed",
+                        GoalStatusValues.Pending,
+                        GoalRunStateValues.Idle,
+                        goalId,
+                        "Pending goal changed before cancellation."),
+                    WishfulClawJsonContext.Default.GoalActionResult);
+            }
+
+            GoalOrchestrator.RemovePendingGoal(goalId);
+            return WorkerResponse.Json(
+                new GoalActionResult(
+                    true,
+                    "aborted",
+                    GoalStatusValues.Aborted,
+                    GoalRunStateValues.Idle,
+                    goalId),
+                WishfulClawJsonContext.Default.GoalActionResult);
+        }
+
+        var result = await GoalOrchestrator.AbortAsync(goalId, context);
         return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 
@@ -89,10 +138,28 @@ public sealed class GoalModule : IWorkerModule
         if (pending == null)
             return WorkerResponse.Json(new SimpleSuccessResult(false, Error: "No pending goal found with this goalId"), WishfulClawJsonContext.Default.SimpleSuccessResult);
 
+        var row = DbGoalTools.SetStatusByGoalId(
+            goalId,
+            sessionId,
+            GoalStatusValues.Pending,
+            GoalStatusValues.Active,
+            "Goal confirmed and started");
+        if (row == null)
+            return WorkerResponse.Json(new SimpleSuccessResult(false, Error: "Pending goal changed before confirmation"), WishfulClawJsonContext.Default.SimpleSuccessResult);
+
         var workingFolder = JsonHelpers.GetString(pending.Parameters, "workingFolder");
 
         var ok = await GoalOrchestrator.ConfirmGoalAsync(
             goalId, sessionId, workingFolder, pending.Parameters, context);
+        if (!ok)
+        {
+            DbGoalTools.SetStatusByGoalId(
+                goalId,
+                sessionId,
+                GoalStatusValues.Active,
+                GoalStatusValues.Failed,
+                "Goal confirmation could not start the orchestrator");
+        }
 
         return WorkerResponse.Json(new SimpleSuccessResult(ok), WishfulClawJsonContext.Default.SimpleSuccessResult);
     }

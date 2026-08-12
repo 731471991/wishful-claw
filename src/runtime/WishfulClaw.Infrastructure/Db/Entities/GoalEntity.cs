@@ -11,10 +11,12 @@ public class GoalEntity
 
     public string SessionId { get; set; } = string.Empty;
 
+    public string? ProjectId { get; set; }
+
     public string Objective { get; set; } = string.Empty;
 
     /// <summary>
-    /// active | complete | failed | aborted
+    /// pending | active | complete | failed | aborted
     /// </summary>
     public string Status { get; set; } = GoalStatusValues.Active;
 
@@ -54,9 +56,9 @@ public class GoalEventEntity
     public string? GoalId { get; set; }
 
     /// <summary>
-    /// created | replaced | objective_updated | budget_updated | status_changed | usage_accounted |
+    /// created | confirmed | objective_updated | budget_updated | status_changed | usage_accounted |
     /// usage_limited | budget_limited | completion_deferred | blocked | completed | failed | aborted |
-    /// stall_paused | auto_continue_blocked | cleared
+    /// stall_paused | auto_continue_blocked
     /// </summary>
     public string EventType { get; set; } = "created";
 
@@ -73,6 +75,7 @@ public sealed class GoalRow
 {
     public string GoalId { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
+    public string? ProjectId { get; set; }
     public string Objective { get; set; } = string.Empty;
     public string Status { get; set; } = GoalStatusValues.Active;
     public long? TokenBudget { get; set; }
@@ -90,6 +93,7 @@ public sealed class GoalRow
     {
     GoalId = e.GoalId,
     SessionId = e.SessionId,
+    ProjectId = e.ProjectId,
     Objective = e.Objective,
     Status = e.Status,
     TokenBudget = e.TokenBudget,

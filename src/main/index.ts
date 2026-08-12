@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+﻿import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -389,10 +389,6 @@ registerWebSearchHandlers()
   registerMessagePackHandler<Record<string, unknown>, unknown>(
     'db:goals:update:msgpack',
     async (args) => getNativeWorker().request('db/goals-update', args)
-  )
-  registerMessagePackHandler<string, unknown>(
-    'db:goals:clear:msgpack',
-    async (sessionId) => getNativeWorker().request('db/goals-clear', { sessionId })
   )
   registerMessagePackHandler<Record<string, unknown>, unknown>(
     'db:goals:account:msgpack',
