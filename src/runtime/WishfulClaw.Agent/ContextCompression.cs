@@ -358,6 +358,7 @@ public static partial class ContextCompression
                 {
                     "anthropic" => await CallAnthropicSummary(requestBody, provider, cts.Token),
                     "openai-chat" => await CallOpenAISummary(requestBody, provider, cts.Token),
+                    "openai-responses" => await CallOpenAISummary(requestBody, provider, cts.Token),
                     _ => throw new InvalidOperationException($"Unsupported provider for summarization: {providerType}")
                 };
             }
