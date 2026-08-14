@@ -79,10 +79,10 @@ export function FileTreeContent(props: FileTreeContentProps): React.JSX.Element 
                   : 'gap-2 rounded-xl px-2.5 py-2',
                 isActive ? 'workspace-filetree-row--active' : 'workspace-filetree-row--interactive'
               )}
-              onClick={() => handlePreview(file.path)}
+              onClick={() => { if (file.type !== 'directory') handlePreview(file.path) }}
               title={file.path}
             >
-              {fileIcon(file.name)}
+              {file.type === 'directory' ? <Folder className="size-3.5 text-amber-400/80" /> : fileIcon(file.name)}
               <div className="min-w-0 flex-1">
                 <div
                   className={cn(
