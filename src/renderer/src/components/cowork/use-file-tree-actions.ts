@@ -4,6 +4,7 @@ import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { useTerminalStore } from '@renderer/stores/terminal-store'
 import type { TreeNode, TreeEditState, TreeActions } from './file-tree-types'
 import {
   getErrorMessage, getIpcError, validateEntryName, parentPath, joinPath,
@@ -324,12 +325,22 @@ export function useFileTreeActions(state: FileTreeState, options: UseFileTreeAct
   )
 
   const handleOpenTerminal = useCallback(
-    async (_nodePath: string, _isDir?: boolean) => {
+    async (nodePath: string, isDir?: boolean) => {
       const sessionId = sessionView.sessionId
       if (!sessionId) return
+      // Resolve cwd: if the target is a directory, use it directly;
+      // if it's a file, use its parent directory
+      const cwd = isDir ? nodePath : parentPath(nodePath, sep)
+      // Create a new terminal tab with the specific folder as cwd
+      await useTerminalStore.getState().createTab(
+        cwd,
+        sessionView.projectId,
+        undefined,
+        sessionId
+      )
       useUIStore.getState().setBottomTerminalDockOpen(sessionId, true)
     },
-    [sessionView]
+    [sep, sessionView]
   )
 
   const activePath = previewPanelState?.source === 'file' ? previewPanelState.filePath : null
