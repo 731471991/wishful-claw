@@ -84,6 +84,11 @@ export function RightPanel(): React.JSX.Element {
   const activeTab = rightPanelOpen ? selectedTab : undefined
   const browserVisible = rightPanelOpen && activeTab?.kind === 'browser'
 
+  // Files panel stays mounted to preserve tree state (expanded folders, scroll)
+  // across tab switches — same persistent-layer approach as the browser panel.
+  const hasFilesTab = tabs.some((tab: any) => tab.kind === 'files')
+  const filesVisible = rightPanelOpen && activeTab?.kind === 'files'
+
   const draggingRef = useRef(false)
   const startXRef = useRef(0)
   const startWidthRef = useRef(rightPanelWidth)
@@ -139,7 +144,7 @@ export function RightPanel(): React.JSX.Element {
     }
     if (tab.kind === 'browser') return null  // BrowserPanel is rendered as persistent layer
     if (tab.kind === 'preview') return <PreviewPanel embedded />
-    if (tab.kind === 'files') return <AgentFilesPanel sessionId={tab.sessionId ?? panelSessionId} />
+    if (tab.kind === 'files') return null  // AgentFilesPanel is rendered as persistent layer
     if (tab.kind === 'review') return <SessionChangeReviewPanel sessionId={tab.sessionId ?? panelSessionId} />
     if (tab.kind === 'goal') {
       return (
@@ -200,7 +205,7 @@ export function RightPanel(): React.JSX.Element {
 
             <div className="relative min-h-0 flex-1 overflow-hidden bg-background">
               <AnimatePresence mode="wait">
-                {activeTab?.kind !== 'browser' ? (
+                {activeTab?.kind !== 'browser' && activeTab?.kind !== 'files' ? (
                   <motion.div
                     key={activeTab?.id ?? 'empty'}
                     className="absolute inset-0 min-h-0"
@@ -238,6 +243,20 @@ export function RightPanel(): React.JSX.Element {
               sessionId={panelSessionId}
               projectId={activeProjectId}
             />
+          </div>
+        ) : null}
+
+        {/* Persistent files layer: mounted whenever a files tab exists so the
+            file tree state (expanded folders, scroll position) survives tab
+            switches. When hidden it stays in the DOM but non-interactive. */}
+        {hasFilesTab ? (
+          <div
+            className={cn(
+              'absolute inset-x-0 bottom-0 top-10',
+              filesVisible ? 'z-10 opacity-100' : 'pointer-events-none -z-10 opacity-0'
+            )}
+          >
+            <AgentFilesPanel sessionId={panelSessionId} />
           </div>
         ) : null}
       </aside>
