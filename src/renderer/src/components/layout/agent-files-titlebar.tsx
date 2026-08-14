@@ -1,4 +1,4 @@
-import type React from 'react'
+﻿import type React from 'react'
 import {
   ChevronDown, FilePlus2, FolderPlus, GitBranch, GitMerge,
   MoreHorizontal, RefreshCw, Search
@@ -63,6 +63,15 @@ export function AgentFilesTitlebar(props: AgentFilesTitlebarProps): React.JSX.El
               title={t('agentFiles.searchFiles', { defaultValue: 'Search files' })}
             >
               <Search className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="agent-files-icon-button"
+              onClick={() => sendFileTreeCommand('refresh')}
+              title={t('agentFiles.refresh', { defaultValue: 'Refresh' })}
+            >
+              <RefreshCw className="size-3.5" />
             </Button>
             <Button
               variant="ghost"
