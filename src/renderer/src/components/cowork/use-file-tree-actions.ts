@@ -4,7 +4,6 @@ import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { ensureProjectTerminalReady } from '@renderer/lib/terminal/project-terminal-context'
 import type { TreeNode, TreeEditState, TreeActions } from './file-tree-types'
 import {
   getErrorMessage, getIpcError, validateEntryName, parentPath, joinPath,
@@ -325,25 +324,12 @@ export function useFileTreeActions(state: FileTreeState, options: UseFileTreeAct
   )
 
   const handleOpenTerminal = useCallback(
-    async (nodePath: string, isDir: boolean) => {
-      const terminalPath = isDir ? nodePath : parentPath(nodePath, sep)
-      const tabId = await ensureProjectTerminalReady({
-        projectId: sessionView.projectId,
-        projectName: sessionView.projectName,
-        workingFolder: sshConnectionId ? workingFolder : terminalPath,
-        sshConnectionId
-      })
-
-      if (!tabId) {
-        toast.error(t('fileTree.openTerminalFailed', { defaultValue: 'Failed to open terminal' }))
-        return
-      }
-
-      if (sessionView.sessionId) {
-        useUIStore.getState().setBottomTerminalDockOpen(sessionView.sessionId, true)
-      }
+    async (_nodePath: string, _isDir?: boolean) => {
+      const sessionId = sessionView.sessionId
+      if (!sessionId) return
+      useUIStore.getState().setBottomTerminalDockOpen(sessionId, true)
     },
-    [sep, sessionView, sshConnectionId, workingFolder, t]
+    [sessionView]
   )
 
   const activePath = previewPanelState?.source === 'file' ? previewPanelState.filePath : null

@@ -93,7 +93,6 @@ export function FileTreePanel({
             t={t}
             handleNewFile={actions.handleNewFile}
             handleNewFolder={actions.handleNewFolder}
-            handleAddToChat={handleAddToChat}
             handleCopyPath={handleCopyPath}
             handleOpenTerminal={actions.handleOpenTerminal}
             handleOpenDefault={actions.handleOpenDefault}

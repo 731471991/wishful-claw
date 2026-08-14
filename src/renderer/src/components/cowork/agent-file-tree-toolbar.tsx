@@ -1,7 +1,7 @@
 import type React from 'react'
 import {
   Search, X, RefreshCw, MoreHorizontal,
-  FilePlus2, FolderPlus, MessageSquarePlus, Copy,
+  FilePlus2, FolderPlus, Copy,
   SquareTerminal, ExternalLink, Code2, FolderOpen
 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
@@ -22,7 +22,6 @@ interface AgentFileTreeToolbarProps {
   t: TFunction
   handleNewFile: (parent: string) => void
   handleNewFolder: (parent: string) => void
-  handleAddToChat: (path: string) => void
   handleCopyPath: (path: string) => void
   handleOpenTerminal: (path: string, closeOnExit?: boolean) => void
   handleOpenDefault: (path: string) => void
@@ -39,7 +38,7 @@ export function AgentFileTreeToolbar({
   searchQuery, setSearchQuery, loading, refreshTree,
   workingFolder, sshConnectionId, t,
   handleNewFile, handleNewFolder,
-  handleAddToChat, handleCopyPath,
+  handleCopyPath,
   handleOpenTerminal, handleOpenDefault, handleOpenWithCode, handleReveal
 }: AgentFileTreeToolbarProps): React.JSX.Element {
   return (
@@ -102,10 +101,6 @@ export function AgentFileTreeToolbar({
             {t('action.refresh', { ns: 'common' })}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => handleAddToChat(workingFolder)}>
-            <MessageSquarePlus className="size-4" />
-            {t('fileTree.addToChat')}
-          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => handleCopyPath(workingFolder)}>
             <Copy className="size-4" />
             {t('action.copyPath', { ns: 'common' })}
