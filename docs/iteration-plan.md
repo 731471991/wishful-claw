@@ -742,6 +742,133 @@ GoalOrchestrator 编排循环：
 
 ---
 
+
+### v2-iter-13：OpenAI Responses API + 请求超时配置 + 文件树/输入框/设置页收口 ✅ 已完成
+
+**目标**：接入 OpenAI Responses API（新一代 SSE 协议）；全局请求超时配置化；文件树、输入框、设置页多项缺陷修复与体验收口。
+
+**实际交付**：
+- OpenAI Responses Provider（5 文件：State/InputWriter/EventParser/Provider + AgentLoop 路由）
+- AgentRuntimeRequestTimeout 全局超时配置（5s~120s），三个 Provider 均已接入
+- AgentFileTreeToolbar（搜索输入框+刷新+更多下拉）
+- 搜索结果 type 字段区分文件/文件夹图标
+- 右键打开终端改为 createTab 带选中路径
+- 文件树持久化（AnimatePresence 外挂载，切 tab 不丢展开状态）
+- ComposerStatusIndicator 独立组件 + 移除重复重试 banner
+- 移除 websearch 设置入口 + AboutPanel 动态版本号
+- electron-builder.yml win.icon 路径修复
+- 死代码清理 5 文件 1243 行
+
+**分支**：`dev/v2-iter-13`　**产品版本**：`0.2.13`　**Tag**：`v0.2.13`
+
+---
+
+### v2-iter-14：历史消息反向分页
+
+**目标**：长会话从最新消息尾页加载，滚动到顶部触发动态加载更早历史。解决当前长会话一次性全量加载导致启动慢、内存占用高的问题。
+
+**背景**：最新消息尾页加载已实现，但 `loadOlderSessionMessages` 仍是 stub；虚拟列表顶部触发基础设施已存在。不是从零开发，但涉及分页合并、滚动锚点、消息驻留和回归测试。
+
+| 步骤 | 内容 | 文件 |
+|------|------|------|
+| 1 | 后端分页查询 — `DbMessageTools` 增加 `GetMessagesByPage(sessionId, beforeTimestamp, limit)` 分页查询，按 created_at DESC 游标分页 | `Infrastructure/Db/DbMessageTools.cs` |
+| 2 | 前端 `loadOlderSessionMessages` 实现 — 调用分页 API，将旧消息 prepend 到消息列表头部 | `renderer/src/stores/chat-store.ts` |
+| 3 | 虚拟列表顶部触发 — 滚动到顶部时触发 `loadOlderSessionMessages`，加载过程中显示 loading 指示器 | `renderer/src/components/chat/MessageList.tsx` |
+| 4 | 滚动锚点保持 — 加载旧消息后保持当前滚动位置不跳动（参考浏览器 scroll anchoring） | 同上 |
+| 5 | 分页合并 — 新加载的消息与已有消息去重合并，确保顺序正确 | `chat-store.ts` |
+| 6 | 回归测试 — 短会话（<20条）不触发分页，长会话（>100条）分页加载正确 | 手动验证 |
+
+**验证标准**：打开 100+ 条消息的长会话 → 首次只加载最近 50 条 → 滚动到顶部 → 自动加载更早 50 条 → 滚动位置不跳动 → 重复直到全部加载完 → 消息顺序正确无重复。
+
+**分支**：`dev/v2-iter-14`　**产品版本**：`0.2.14`　**Tag**：`v0.2.14`
+
+---
+
+### v2-iter-15：模型管理页面
+
+**目标**：完整的模型管理页面，支持查看、添加、编辑、删除 Provider 下的模型列表，以及模型参数配置（温度、max tokens 等）。
+
+**背景**：已有 `modelManagement` 类型和部分入口骨架，但缺完整页面。
+
+| 步骤 | 内容 | 文件 |
+|------|------|------|
+| 1 | 后端模型 CRUD — `DbModelTools` 或扩展 `ProviderStore` 实现模型的增删改查 | `Infrastructure/Storage/ProviderStore.cs` |
+| 2 | 前端模型管理页面 — 完整页面：模型列表表格 + 添加/编辑弹窗 + 删除确认 | `renderer/src/components/settings/ModelManagementPanel.tsx` |
+| 3 | 模型参数配置 — 每个模型可配置 temperature / maxTokens / topP 等参数 | 同上 |
+| 4 | Provider 关联 — 模型与 Provider 关联，切换 Provider 时模型列表跟随切换 | `renderer/src/stores/settings-store.ts` |
+| 5 | 设置页接入 — SettingsPage 中 `modelManagement` tab 接入新页面 | `renderer/src/components/settings/SettingsPage.tsx` |
+| 6 | 默认模型设置 — 可设置每个 Provider 的默认模型 | 同上 |
+
+**验证标准**：设置页 → 模型管理 → 看到 Provider 下所有模型 → 添加新模型 → 编辑模型参数 → 设置默认模型 → 删除模型 → 对话页模型选择器中反映变化。
+
+**分支**：`dev/v2-iter-15`　**产品版本**：`0.2.15`　**Tag**：`v0.2.15`
+
+---
+
+### v2-iter-16：Goal 编排记录可视化
+
+**目标**：Goal 自动编排过程记库，右侧面板可查看每轮计划及执行详情。当前 Goal 运行只能看最终结果，编排过程是黑箱。
+
+**背景**：涉及数据库新建表 + 运行时记录 + 前端面板，范围较大。
+
+| 步骤 | 内容 | 文件 |
+|------|------|------|
+| 1 | DB 建表 — `goal_orchestrations`（编排记录：goalId/sessionId/createdAt/status）+ `goal_plan_tasks`（计划任务：orchestrationId/planIndex/title/status/result/startedAt/completedAt） | `Infrastructure/Db/DbClient.cs` |
+| 2 | 后端记录 — GoalOrchestrator 每轮分解/执行/验证时写入 `goal_orchestrations` 和 `goal_plan_tasks` | `Agent/GoalOrchestrator*.cs` |
+| 3 | IPC 端点 — `goal:list-orchestrations` / `goal:get-orchestration-detail` 分页查询编排记录 | `Agent/Modules/GoalModule.cs` |
+| 4 | 前端面板 — RightPanel 新增 Goal 编排记录 tab，展示编排列表 + 点击查看计划步骤详情 | `renderer/src/components/goal/GoalOrchestrationPanel.tsx` |
+| 5 | 实时更新 — Goal 运行时面板实时更新当前编排状态 | 同上 |
+| 6 | 历史查看 — 已完成的 Goal 也能查看编排记录 | 同上 |
+
+**验证标准**：创建并运行 Goal → 右侧面板 Goal 编排 tab 实时显示编排进度 → 每轮计划标题、状态、执行结果可见 → Goal 完成后可回看完整编排历史。
+
+**分支**：`dev/v2-iter-16`　**产品版本**：`0.2.16`　**Tag**：`v0.2.16`
+
+---
+
+### v2-iter-17：工具调用权限
+
+**目标**：「默认」模式下工具调用需弹窗确认的范围梳理与实现。写/删/执行类操作需用户确认，读/搜索类不需要。
+
+**背景**：涉及安全策略设计，当前所有工具调用无确认直接执行。
+
+| 步骤 | 内容 | 文件 |
+|------|------|------|
+| 1 | 权限分类 — 将所有工具按风险分级：safe（read/search/grep/glob）、cautious（write/edit/bash）、dangerous（delete/rm/shell sudo） | `Agent/Tools/*Executor.cs` |
+| 2 | 权限配置 — 设置页新增工具权限配置面板，用户可调整每个工具的确认级别 | `renderer/src/components/settings/ToolPermissionPanel.tsx` |
+| 3 | 确认机制 — Agent 调用 cautious/dangerous 工具时通过 reverse request 暂停 Loop，弹出确认卡片 | `Agent/ToolCallProcessor.cs` |
+| 4 | 前端确认卡片 — 类似 PlanReviewCard，展示工具名、参数摘要、风险提示，Allow/Deny 按钮 | `renderer/src/components/chat/ToolPermissionCard.tsx` |
+| 5 | 白名单记忆 — 用户 Allow 后可选择「不再询问此工具」，写入项目配置 | `renderer/src/stores/settings-store.ts` |
+| 6 | SSH 项目特殊处理 — SSH 远程执行默认 cautious，不可降为 safe | `Agent/AgentRuntimeSshToolExecutor.cs` |
+
+**验证标准**：Agent 调用 FsRead → 直接执行不确认；Agent 调用 FsWrite → 弹出确认卡片 → 用户 Allow → 执行；用户选择「不再询问」→ 下次 FsWrite 直接执行；Agent 调用 ShellExecute → 必须确认。
+
+**分支**：`dev/v2-iter-17`　**产品版本**：`0.2.17`　**Tag**：`v0.2.17`
+
+---
+
+### v2-iter-18：Cron 自动化验证
+
+**目标**：验证 Cron Agent 的定时任务执行能力，确保定时触发、任务执行、结果通知全链路通过。验证通过后可接替老叶（KodaClaw 云实例）的定时任务。
+
+**背景**：Cron Agent 已实现但未测试。属于独立端到端验收。
+
+| 步骤 | 内容 | 文件 |
+|------|------|------|
+| 1 | Cron 表达式验证 — 测试各种 cron 表达式解析是否正确（每分钟/每小时/每天/每周/自定义） | `Agent/Modules/CronModule.cs` |
+| 2 | 定时触发验证 — 创建定时任务 → 等待触发时间 → 确认 Agent 自动启动执行 | 同上 |
+| 3 | 任务执行验证 — 定时触发的 Agent 能正常调用工具、完成指定任务 | 全链路 |
+| 4 | 结果通知验证 — 任务完成后通知用户（IM/日志/UI） | `renderer/src/components/` |
+| 5 | 持久化验证 — 关闭重开应用后定时任务仍然有效 | `Infrastructure/Db/` |
+| 6 | 异常恢复验证 — 定时任务执行失败时不影响下一次触发 | `Agent/Modules/CronModule.cs` |
+| 7 | 老叶任务迁移评估 — 对比 KodaClaw 云实例现有定时任务，评估迁移到 WishfulClaw 的可行性 | 评估文档 |
+
+**验证标准**：创建一个每分钟触发的定时任务 → Agent 每分钟自动执行 → 执行结果在 UI 中可见 → 关闭重开后任务仍然有效 → 执行失败后下一次正常触发。
+
+**分支**：`dev/v2-iter-18`　**产品版本**：`0.2.18`　**Tag**：`v0.2.18`
+
+---
+
 ## 迭代依赖关系
 
 ```
@@ -770,10 +897,19 @@ v2-iter-8（计划模式 — 人机协同执行引擎）  ← 当前最高优先
   ↓
 v2-iter-9（Goal 模式 — 自主跑完迭代）✅  ← 依赖计划模式就绪（复用 + 去掉人工确认 + 多计划编排）
   ↓
-v2-iter-10（全局会话 + 项目编排工具）  ← 依赖计划模式的任务文件可读
-v2-iter-11（Native AOT 打包 — SqlSugar → Dapper 迁移）  ← 基础设施改造，无功能前置依赖
+v2-iter-10（全局会话 + 项目编排工具）✅  ← 依赖计划模式的任务文件可读
+v2-iter-11（Native AOT 打包）✅  ← 基础设施改造，无功能前置依赖
+v2-iter-12（Goal 生命周期一致性修复）✅  ← 依赖 Goal 模式就绪
+v2-iter-13（Responses API + 超时 + 文件树/输入框/设置页收口）✅
+
+=== 后续独立迭代（均可并行，无相互依赖）===
+v2-iter-14（历史消息反向分页）  ← 前端 + DB 分页
+v2-iter-15（模型管理页面）  ← 前端 + ProviderStore
+v2-iter-16（Goal 编排记录可视化）  ← 依赖 Goal 模式（已就绪）
+v2-iter-17（工具调用权限）  ← 安全策略 + 前端确认卡片
+v2-iter-18（Cron 自动化验证）  ← 独立端到端验收
 ```
 
-v2-iter-1 ~ v2-iter-6 已全部完成（tag v2.6.0）。
-v2-iter-7（主聊天折叠块模式）已完成，tag v2.7.0。当前最高优先级是 v2-iter-8（计划模式 — 人机协同执行引擎）。
-v2-iter-8（计划模式）是地基 — v2-iter-9（Goal 模式）复用它去掉人工确认、加多计划编排，已完成 8 个 Plan 全部 commit + push；v2-iter-10（全局编排）最后接上读任务文件。
+v2-iter-1 ~ v2-iter-13 已全部完成（tag v0.2.13）。
+v2-iter-14 ~ v2-iter-18 为后续独立迭代，互不依赖，可按优先级逐个推进。
+老大确认迭代范围后，从 main 拆分支 `dev/v2-iter-{N}` 开始。
