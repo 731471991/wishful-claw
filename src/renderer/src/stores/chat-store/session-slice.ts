@@ -486,7 +486,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         target.messages = messages
         target.messageCount = actualCount
         target.messagesLoaded = true
-        // loadedRangeStart = sort_order of the earliest loaded message.
+        // loadedRangeStart = created_at timestamp of the earliest loaded message.
         // If hasMore is false, we've loaded everything from the beginning.
         target.loadedRangeStart = hasMore ? rangeStart : 0
         target.loadedRangeEnd = rangeStart + messages.length
@@ -517,7 +517,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       const { messages, rangeStart, hasMore } = await dbListMessagesByTurns({
         sessionId,
         turns: _limit ?? 5,
-        beforeSortOrder: session.loadedRangeStart
+        beforeCreatedAt: session.loadedRangeStart
       })
 
       if (messages.length === 0) return 0
@@ -533,7 +533,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         if (!target) return
         // Prepend older messages to the beginning of the array
         target.messages = [...newMessages, ...target.messages]
-        // Update rangeStart to the earliest loaded sort_order
+        // Update rangeStart to the earliest loaded created_at
         target.loadedRangeStart = hasMore ? rangeStart : 0
         target.loadedRangeEnd = target.loadedRangeStart + target.messages.length
       })
@@ -555,10 +555,9 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
       return
     }
 
-    // Use the target's sortOrder to load a window of turns around it.
-    // We load turns ending at the target (beforeSortOrder = target + 1 to include it).
-    const targetSortOrder = options?.sortOrder
-    if (targetSortOrder === undefined) return
+    // Use the target's createdAt to load a window of turns around it.
+    const targetCreatedAt = options?.sortOrder
+    if (targetCreatedAt === undefined) return
 
     try {
       // Load 5 turns ending just after the target (so the target is included)
@@ -566,7 +565,7 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         sessionId,
         turns: _windowSize ?? 5,
         // beforeSortOrder = target + 1 so the target is included in the range
-        beforeSortOrder: targetSortOrder + 1
+        beforeCreatedAt: targetCreatedAt + 1
       })
 
       if (messages.length === 0) return

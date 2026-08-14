@@ -228,7 +228,8 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     count: virtualRowCount,
     getScrollElement: () => listRef.current,
     estimateSize: () => VIRTUAL_ROW_ESTIMATED_HEIGHT,
-    initialOffset: () => virtualRowCount * VIRTUAL_ROW_ESTIMATED_HEIGHT,
+    // initialOffset removed — initial scroll to bottom is handled by the
+    // Initial scroll to bottom useLayoutEffect with requestScrollToBottom.
     overscan: VIRTUAL_ROW_OVERSCAN,
     rangeExtractor: (range) => {
       if (pendingInitialScrollSessionIdRef.current !== activeSessionId || range.count === 0) {
@@ -404,7 +405,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     // Use deferred scroll with multiple frames to allow the virtualizer to measure
     // row heights before scrolling to bottom. With turn-based pagination (5 turns),
     // the initial content is smaller and the virtualizer needs a few frames to stabilize.
-    requestScrollToBottom({ force: true, maxFrames: 5 })
+    requestScrollToBottom({ force: true, maxFrames: 15 })
     if (initialTailReleaseFrameRef.current !== null) {
       window.cancelAnimationFrame(initialTailReleaseFrameRef.current)
     }
@@ -431,6 +432,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   // ── Auto-scroll on new rows ─────────────────────────────────────
   React.useLayoutEffect(() => {
     if (pendingAskUserQuestion) return
+    if (isLoadingOlderMessagesRef.current) return
     if (!canAutoScroll()) return
     scrollToBottomImmediate()
   }, [canAutoScroll, pendingAskUserQuestion, rows.length, scrollToBottomImmediate])
@@ -439,6 +441,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   const virtualListTotalSize = rowVirtualizer.getTotalSize()
   React.useLayoutEffect(() => {
     if (pendingAskUserQuestion) return
+    if (isLoadingOlderMessagesRef.current) return
     if (!canAutoScroll() && !isAtBottom) return
     scrollToBottomImmediate()
   }, [canAutoScroll, isAtBottom, pendingAskUserQuestion, scrollToBottomImmediate, virtualListTotalSize])
@@ -448,7 +451,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     const viewport = listRef.current
     const content = virtualContentRef.current
     if (!activeSessionId || !viewport || !content || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => { if (canAutoScroll()) scrollToBottomImmediate() })
+    const observer = new ResizeObserver(() => { if (canAutoScroll() && !isLoadingOlderMessagesRef.current) scrollToBottomImmediate() })
     observer.observe(viewport)
     observer.observe(content)
     return () => observer.disconnect()

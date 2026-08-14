@@ -48,9 +48,9 @@ public static class DbMessageTools
     }
 
     /// <summary>
-    /// Turn-based pagination: load N conversation turns before a given sort_order.
+    /// Turn-based pagination: load N conversation turns before a given created_at timestamp.
     /// A "turn" = one user message + all subsequent non-user messages until the next user message.
-    /// Returns messages + rangeStart (earliest sort_order in the batch) + hasMore.
+    /// Returns messages + rangeStart (earliest created_at in the batch) + hasMore.
     /// </summary>
     public static WorkerResponse ListByTurns(JsonElement parameters)
     {
@@ -58,60 +58,60 @@ public static class DbMessageTools
         {
             var sessionId = RequireString(parameters, "sessionId");
             var turns = Math.Clamp(JsonHelpers.GetInt(parameters, "turns", 5), 1, 50);
-            int? beforeSortOrder = parameters.TryGetProperty("beforeSortOrder", out var bso) && bso.ValueKind == JsonValueKind.Number
-                ? bso.GetInt32()
+            long? beforeCreatedAt = parameters.TryGetProperty("beforeCreatedAt", out var bca) && bca.ValueKind == JsonValueKind.Number
+                ? bca.GetInt64()
                 : null;
 
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
 
-            // Step 1: Find the sort_order of the N most recent user messages before beforeSortOrder
-            List<int> userSortOrders;
-            if (beforeSortOrder.HasValue)
+            // Step 1: Find the created_at of the N most recent user messages before beforeCreatedAt
+            List<long> userTimestamps;
+            if (beforeCreatedAt.HasValue)
             {
-                userSortOrders = db.Query(
-                    "SELECT sort_order FROM messages WHERE session_id = @sid AND role = 'user' AND sort_order < @before ORDER BY sort_order DESC LIMIT @turns",
-                    (r) => r.GetInt32(0),
+                userTimestamps = db.Query(
+                    "SELECT created_at FROM messages WHERE session_id = @sid AND role = 'user' AND created_at < @before ORDER BY created_at DESC LIMIT @turns",
+                    (r) => r.GetInt64(0),
                     new SqliteParameter("@sid", sessionId),
-                    new SqliteParameter("@before", beforeSortOrder.Value),
+                    new SqliteParameter("@before", beforeCreatedAt.Value),
                     new SqliteParameter("@turns", turns));
             }
             else
             {
-                userSortOrders = db.Query(
-                    "SELECT sort_order FROM messages WHERE session_id = @sid AND role = 'user' ORDER BY sort_order DESC LIMIT @turns",
-                    (r) => r.GetInt32(0),
+                userTimestamps = db.Query(
+                    "SELECT created_at FROM messages WHERE session_id = @sid AND role = 'user' ORDER BY created_at DESC LIMIT @turns",
+                    (r) => r.GetInt64(0),
                     new SqliteParameter("@sid", sessionId),
                     new SqliteParameter("@turns", turns));
             }
 
-            if (userSortOrders.Count == 0)
+            if (userTimestamps.Count == 0)
             {
                 return WorkerResponse.Json(
                     new MessageListByTurnsResult(true, new List<MessageRow>(), 0, false, null),
                     InfrastructureJsonContext.Default.MessageListByTurnsResult);
             }
 
-            // Step 2: rangeStart = earliest user sort_order in this batch
-            var rangeStart = userSortOrders.Min();
+            // Step 2: rangeStart = earliest user created_at in this batch
+            var rangeStart = userTimestamps.Min();
 
-            // Step 3: Load all messages from rangeStart up to (but not including) beforeSortOrder
-            var messages = beforeSortOrder.HasValue
+            // Step 3: Load all messages from rangeStart up to (but not including) beforeCreatedAt
+            var messages = beforeCreatedAt.HasValue
                 ? db.Query(
-                    "SELECT * FROM messages WHERE session_id = @sid AND sort_order >= @rangeStart AND sort_order < @before ORDER BY sort_order ASC",
+                    "SELECT * FROM messages WHERE session_id = @sid AND created_at >= @rangeStart AND created_at < @before ORDER BY created_at ASC",
                     EntityMappers.MapMessage,
                     new SqliteParameter("@sid", sessionId),
                     new SqliteParameter("@rangeStart", rangeStart),
-                    new SqliteParameter("@before", beforeSortOrder.Value))
+                    new SqliteParameter("@before", beforeCreatedAt.Value))
                 : db.Query(
-                    "SELECT * FROM messages WHERE session_id = @sid AND sort_order >= @rangeStart ORDER BY sort_order ASC",
+                    "SELECT * FROM messages WHERE session_id = @sid AND created_at >= @rangeStart ORDER BY created_at ASC",
                     EntityMappers.MapMessage,
                     new SqliteParameter("@sid", sessionId),
                     new SqliteParameter("@rangeStart", rangeStart));
 
             // Step 4: Check if there are more user messages before rangeStart
             var hasMore = db.QueryScalar<int>(
-                "SELECT COUNT(*) FROM messages WHERE session_id = @sid AND role = 'user' AND sort_order < @rangeStart",
+                "SELECT COUNT(*) FROM messages WHERE session_id = @sid AND role = 'user' AND created_at < @rangeStart",
                 new SqliteParameter("@sid", sessionId),
                 new SqliteParameter("@rangeStart", rangeStart)) > 0;
 

@@ -342,7 +342,7 @@ export async function dbListMessagesPage(args: {
 export async function dbListMessagesByTurns(args: {
   sessionId: string
   turns?: number
-  beforeSortOrder?: number
+  beforeCreatedAt?: number
 }): Promise<{ messages: ChatMessage[]; rangeStart: number; hasMore: boolean }> {
   await ensureDbInitialized()
   const result = await window.api.workerRequest<{
@@ -354,7 +354,7 @@ export async function dbListMessagesByTurns(args: {
   }>('db/messages-list-by-turns', {
     sessionId: args.sessionId,
     turns: args.turns ?? 5,
-    beforeSortOrder: args.beforeSortOrder
+    beforeCreatedAt: args.beforeCreatedAt
   })
   return {
     messages: (result.messages ?? []).map(deserializeMessage),
