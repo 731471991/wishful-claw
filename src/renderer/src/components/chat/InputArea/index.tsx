@@ -31,7 +31,6 @@ import {
   summarizeQueuedMessage, selectedFileItemToReference
 } from './utils'
 import { ComposerRuntimeStatus, ComposerStatusIndicator } from './runtime-status'
-import { RetryBanner } from './retry-banner'
 import { useComposerHeight } from './use-composer-height'
 import { useImageAttachments } from './use-image-attachments'
 import { useQueuedMessages } from './use-queued-messages'
@@ -358,7 +357,6 @@ export function InputArea({
       )}
 
       <div className={composerWidthClass}>
-        {draftSessionId && <RetryBanner sessionId={draftSessionId} />}
         <div
           ref={containerRef}
           className={cn(
