@@ -126,8 +126,8 @@ internal static partial class OpenAIResponsesProvider
         request.Content = new StringContent(body, Encoding.UTF8, "application/json");
         ApplyHeaders(request, provider);
 
-        using var response = await Http.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead, state.CancellationToken);
+        using var response = await AgentRuntimeRequestTimeout.SendAsync(
+            Http, request, provider, "OpenAI Responses", state.CancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw await ProviderHttpException.CreateAsync(

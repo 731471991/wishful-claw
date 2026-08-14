@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -20,7 +20,7 @@ internal static partial class OpenAIChatProvider
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     })
     {
-        Timeout = TimeSpan.FromMinutes(5)
+        Timeout = Timeout.InfiniteTimeSpan
     };
 
     private static readonly JsonWriterOptions WriterOptions = new()
@@ -71,8 +71,8 @@ internal static partial class OpenAIChatProvider
         var toolBuffers = new Dictionary<int, ToolCallBuffer>();
         var toolCalls = new List<AgentRuntimeNativeToolCall>();
 
-        using var response = await Http.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead, state.CancellationToken);
+        using var response = await AgentRuntimeRequestTimeout.SendAsync(
+            Http, request, provider, "OpenAI Chat", state.CancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw await ProviderHttpException.CreateAsync(
