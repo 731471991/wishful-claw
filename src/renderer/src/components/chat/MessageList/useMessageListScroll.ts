@@ -101,6 +101,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   const programmaticScrollUntilRef = React.useRef(0)
   const wasSessionOutputtingRef = React.useRef(isSessionOutputting)
   const stalledOlderLoadStartRef = React.useRef<number | null>(null)
+  const isLoadingOlderMessagesRef = React.useRef(false)
 
   // ── State ───────────────────────────────────────────────────────
   const [isAtBottom, setIsAtBottom] = React.useState(true)
@@ -215,6 +216,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   const shouldAdjustScrollPositionOnItemSizeChange = React.useCallback(
     (item: { end: number }, _delta: number, instance: { scrollOffset: number | null }): boolean => {
       if (canAutoScroll()) return false
+      if (isLoadingOlderMessagesRef.current) return false
       const scrollOffset = instance.scrollOffset ?? 0
       return item.end < scrollOffset
     },
@@ -270,6 +272,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
       const previousScrollTop = ref?.scrollTop ?? 0
       const startBefore = loadedRangeStart
       autoScrollModeRef.current = 'off'
+      isLoadingOlderMessagesRef.current = true
       setIsLoadingOlderMessages(true)
       try {
         const loaded = await useChatStore
@@ -300,6 +303,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
         requestAssistantRailSync()
         return loaded
       } finally {
+        isLoadingOlderMessagesRef.current = false
         setIsLoadingOlderMessages(false)
       }
     },
@@ -397,7 +401,10 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     if (pendingInitialScrollSessionIdRef.current !== activeSessionId) return
     if (!(messages.length > 0 || streamingMessageId)) return
     autoScrollModeRef.current = isSessionOutputting ? 'stream' : 'user'
-    scrollToBottomImmediate()
+    // Use deferred scroll with multiple frames to allow the virtualizer to measure
+    // row heights before scrolling to bottom. With turn-based pagination (5 turns),
+    // the initial content is smaller and the virtualizer needs a few frames to stabilize.
+    requestScrollToBottom({ force: true, maxFrames: 5 })
     if (initialTailReleaseFrameRef.current !== null) {
       window.cancelAnimationFrame(initialTailReleaseFrameRef.current)
     }
@@ -408,7 +415,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
       }
       initialTailReleaseFrameRef.current = null
     })
-  }, [activeSessionId, isSessionOutputting, messages.length, scrollToBottomImmediate, streamingMessageId])
+  }, [activeSessionId, isSessionOutputting, messages.length, requestScrollToBottom, streamingMessageId])
 
   // ── Streaming state transition ──────────────────────────────────
   React.useEffect(() => {
