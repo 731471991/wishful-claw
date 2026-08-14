@@ -30,7 +30,7 @@ import {
 import {
   summarizeQueuedMessage, selectedFileItemToReference
 } from './utils'
-import { ComposerRuntimeStatus } from './runtime-status'
+import { ComposerRuntimeStatus, ComposerStatusIndicator } from './runtime-status'
 import { RetryBanner } from './retry-banner'
 import { useComposerHeight } from './use-composer-height'
 import { useImageAttachments } from './use-image-attachments'
@@ -375,6 +375,17 @@ export function InputArea({
               <div className="composer-drag-grip h-1 w-11 rounded-full" />
             </div>
           ) : null}
+          {draftSessionId && (
+            <ComposerStatusIndicator
+              sessionId={draftSessionId}
+              isStreaming={isStreaming}
+              draftInputTokens={debouncedTokens}
+              isOptimizing={isOptimizing}
+              pendingImageReads={pendingImageReads}
+              contextCompressionStatus={contextCompressionStatus}
+              contextCompressionStatusLabel={contextCompressionStatusLabel}
+            />
+          )}
           <ImagePreviewStrip
             attachedImages={attachedImages}
             animationsEnabled={animationsEnabled}
@@ -506,6 +517,7 @@ export function InputArea({
             contextCompressionStatusLabel={contextCompressionStatusLabel}
             model={composerModelCfg}
             className="mt-1.5 px-3"
+            showStatus={false}
           />
         )}
       </div>
