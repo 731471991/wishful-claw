@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import { Monitor, MoonStar, SunMedium } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import {
@@ -9,7 +9,14 @@ import {
   type ThemePresetDefinition
 } from '@renderer/lib/theme-presets'
 import { cn } from '@renderer/lib/utils'
-import { useSettingsStore, type ThemeMode } from '@renderer/stores/settings-store'
+import {
+  useSettingsStore,
+  type ThemeMode,
+  clampApiRequestTimeoutSeconds,
+  DEFAULT_API_REQUEST_TIMEOUT_SECONDS,
+  MIN_API_REQUEST_TIMEOUT_SECONDS,
+  MAX_API_REQUEST_TIMEOUT_SECONDS
+} from '@renderer/stores/settings-store'
 import { LANGUAGE_OPTIONS } from '@renderer/lib/i18n-language'
 import { changeI18nLanguage } from '@renderer/locales'
 import { Input } from '@renderer/components/ui/input'
@@ -427,6 +434,69 @@ function GeneralPanel(): React.JSX.Element {
             />
           </div>
         </div>
+      </section>
+
+      {/* API Request Timeout */}
+      <section className="space-y-3">
+        <div className="max-w-lg">
+          <label className="text-sm font-medium text-foreground">
+            {t('general.apiRequestTimeout', { defaultValue: 'API Request Timeout' })}
+          </label>
+          <p className="text-xs text-muted-foreground">
+            {t('general.apiRequestTimeoutDesc', {
+              defaultValue:
+                'Maximum seconds to wait for response headers. Set 0 to wait indefinitely; an active stream is not cut off.'
+            })}
+          </p>
+        </div>
+        <div className="flex max-w-lg items-center gap-3">
+          <Input
+            type="number"
+            min={MIN_API_REQUEST_TIMEOUT_SECONDS}
+            max={MAX_API_REQUEST_TIMEOUT_SECONDS}
+            step={10}
+            value={settings.apiRequestTimeoutSeconds}
+            onChange={(event) =>
+              settings.updateSettings({
+                apiRequestTimeoutSeconds: clampApiRequestTimeoutSeconds(Number(event.target.value))
+              })
+            }
+            className="w-28 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">
+            {settings.apiRequestTimeoutSeconds === 0
+              ? t('general.apiRequestTimeoutNoLimit', { defaultValue: 'No limit' })
+              : t('general.apiRequestTimeoutSeconds', {
+                  defaultValue: '{{count}} seconds',
+                  count: settings.apiRequestTimeoutSeconds
+                })}
+          </span>
+        </div>
+        <div className="flex max-w-lg flex-wrap gap-1.5">
+          {[0, 30, DEFAULT_API_REQUEST_TIMEOUT_SECONDS, 300, 1800].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => settings.updateSettings({ apiRequestTimeoutSeconds: value })}
+              className={cn(
+                'rounded-md border px-2.5 py-1 text-[11px] transition-colors',
+                settings.apiRequestTimeoutSeconds === value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              {value === 0
+                ? t('general.apiRequestTimeoutNoLimit', { defaultValue: 'No limit' })
+                : `${value}s`}
+            </button>
+          ))}
+        </div>
+        <p className="max-w-lg text-xs text-muted-foreground/70">
+          {t('general.apiRequestTimeoutHint', {
+            defaultValue: 'Default: {{default}} seconds. Applies to all providers.',
+            default: DEFAULT_API_REQUEST_TIMEOUT_SECONDS
+          })}
+        </p>
       </section>
 
       {/* Context Compression */}
