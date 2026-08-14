@@ -73,7 +73,30 @@ loadOlderSessionMessages: async (_sessionId, _limit, _options) => {
 2. `loadRecentSessionMessages` 改为调用新端点（turns=5）
 3. `loadOlderSessionMessages` 实现为调用新端点（beforeSortOrder=loadedRangeStart, turns=5），prepend 到 messages
 
-## 潜在风险
+## 右侧定位栏（AssistantReplyRail）现状
+
+### 已有的前端基础设施
+
+- `AssistantReplyRail.tsx` — 完整的 UI 组件，显示轮次标记列表（user/assistant/streaming/summary）
+- `scroll-utils.ts` — `createJumpToAssistantMessage` 完整实现，支持跨页跳转（先查 DOM，找不到时调 `loadMessageWindowAround` 加载目标窗口，再跳转）
+- `locator-utils.ts` — `buildAssistantRailLayout` 完整实现，将消息列表转为 rail items
+- `useMessageListData.ts` — 会话切换时加载 `messageLocatorRows`
+
+### 缺失的数据源
+
+`db:messages:list-locator:msgpack` IPC handler 是 stub（`src/main/index.ts:369` 返回 null）。
+后端 Worker 没有 locator 端点。
+`loadMessageWindowAround` 只有类型声明，没有实现。
+
+### 老大的思路
+
+右侧定位栏本质就是对话轮次的索引——每条 rail item = 一轮对话的标记（user 消息或 assistant 消息）。
+分页也是按轮次的。两者共享同一个数据源：
+
+1. **后端新增 `db/messages-list-locator` 端点** — 返回会话中所有 user 消息的 `id/sort_order/created_at/content`（轻量级，不含 meta/usage）
+2. **定位栏**用这个列表渲染 rail items
+3. **分页**用这个列表计算轮次范围
+4. **跳转到未加载的消息**时，用 rail item 的 `sortOrder` 找到它在哪一轮，加载该轮次附近的消息
 
 1. **AOT 兼容**：新增结果 record 类型需注册到 `InfrastructureJsonContext`
 2. **sort_order=0 边界**：`loadedRangeStart <= 0` 既表示"已到最早"也表示"初始未加载"，需区分（用 `messagesLoaded` flag 已有）
