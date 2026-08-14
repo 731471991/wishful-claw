@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -310,7 +310,11 @@ public static partial class GoalOrchestrator
 
         GoalPlanTracker.StartPlan(goal.WorkingFolder, goal.GoalId, plan);
         var prompt = BuildPlanExecutionPrompt(plan.Title, plan.Description);
-        var input = CreateTaskInput(prompt, $"Plan: {plan.Title}");
+        var input = CreateTaskInput(
+            prompt,
+            $"Plan: {plan.Title}",
+            "custom",
+            GoalPromptTemplates.ExecutionSystemPrompt);
         var toolCallId = $"goal-plan-{plan.PlanId}-{Guid.NewGuid():N}";
 
         try

@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using WishfulClaw.Infrastructure.Db;
 using WishfulClaw.Contracts;
 
@@ -15,6 +15,9 @@ namespace WishfulClaw.Infrastructure;
 [JsonSerializable(typeof(List<GoalRow>))]
 [JsonSerializable(typeof(GoalEventRow))]
 [JsonSerializable(typeof(List<GoalEventRow>))]
+[JsonSerializable(typeof(GoalPageResult))]
+[JsonSerializable(typeof(GoalEventPageResult))]
+[JsonSerializable(typeof(GoalReopenResult))]
 [JsonSerializable(typeof(MessageCompactResult))]
 [JsonSerializable(typeof(MessageCountResult))]
 [JsonSerializable(typeof(MessageDeleteLastResult))]

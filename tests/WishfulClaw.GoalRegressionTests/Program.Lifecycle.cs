@@ -1,6 +1,8 @@
 ﻿using System.Text.Json;
 using WishfulClaw.Agent;
+using WishfulClaw.Agent.Tools.Providers;
 using WishfulClaw.Contracts;
+using WishfulClaw.Core.Tools;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.GoalRegressionTests;
@@ -120,6 +122,59 @@ internal static partial class Program
             Assert(GoalOrchestrator.GetPendingGoalId("session-lifecycle") == null,
                 "confirmation startup failure releases pending goal memory");
 
+            var listResult = ExecuteGoalTool(
+                dbPath,
+                "session-lifecycle",
+                "list_goals",
+                writer => writer.WriteNumber("limit", 2),
+                SilentRequestContext.Instance);
+            Assert(listResult.GetProperty("goals").GetArrayLength() == 2
+                   && listResult.GetProperty("hasMore").GetBoolean(),
+                "list_goals executes cursor pagination through the agent dispatcher");
+
+            var historySourceId = failingContext.GoalId!;
+            var historyResult = ExecuteGoalTool(
+                dbPath,
+                "session-lifecycle",
+                "get_goal_history",
+                writer =>
+                {
+                    writer.WriteString("goalId", historySourceId);
+                    writer.WriteNumber("limit", 1);
+                },
+                SilentRequestContext.Instance);
+            AssertEqual(historySourceId,
+                historyResult.GetProperty("goal").GetProperty("goalId").GetString(),
+                "get_goal_history stays scoped to the current session");
+            Assert(historyResult.GetProperty("events").GetArrayLength() == 1,
+                "get_goal_history returns a paged audit trail");
+
+            var reopenedResult = ExecuteGoalTool(
+                dbPath,
+                "session-lifecycle",
+                "reopen_goal",
+                writer =>
+                {
+                    writer.WriteString("goalId", historySourceId);
+                    writer.WriteString("objective", "reopened through agent tool");
+                },
+                new ReverseRequestContext(confirmed: false));
+            Assert(reopenedResult.TryGetProperty("error", out _),
+                "reopen_goal uses the same confirmation boundary as create_goal");
+            Assert(DbGoalTools.GetBySessionId("session-lifecycle") == null,
+                "reopen_goal cancellation leaves no current goal");
+            AssertEqual(GoalStatusValues.Aborted,
+                ScalarString(DbClient.GetClient(),
+                    "SELECT status FROM goals WHERE session_id = 'session-lifecycle' " +
+                    "AND objective = 'reopened through agent tool' ORDER BY created_at DESC LIMIT 1"),
+                "reopen_goal cancellation archives the new goal");
+            AssertEqual(1L, DbClient.GetClient().QueryScalar<long>(
+                "SELECT COUNT(*) FROM goal_events WHERE goal_id = @goalId AND event_type = 'reopened'",
+                new Microsoft.Data.Sqlite.SqliteParameter("@goalId", historySourceId)),
+                "reopen_goal persists source audit metadata through the agent dispatcher");
+
+            RunUseCapabilityGoalRegressionSuite(dbPath, historySourceId);
+
             foreach (var terminalStatus in new[]
                      {
                          GoalStatusValues.Complete,
@@ -149,13 +204,122 @@ internal static partial class Program
         }
     }
 
-    private static JsonElement ExecuteCreateGoal(
+    private static void RunUseCapabilityGoalRegressionSuite(
+        string dbPath,
+        string historySourceId)
+    {
+        var registry = new ToolRegistry();
+        registry.PushCategory("goal");
+        new GoalToolProvider().RegisterTools(registry);
+        registry.PopCategory();
+
+        var capabilityContext = new CapabilityRequestContext(confirmed: false);
+        var listed = ExecuteUseCapability(
+            dbPath,
+            "session-lifecycle",
+            registry,
+            capabilityContext,
+            "list");
+        var goalTools = listed.GetProperty("capabilities")
+            .EnumerateArray()
+            .Where(capability => capability.GetProperty("capability_id").GetString() == "builtin-group:goal")
+            .SelectMany(capability => capability.GetProperty("tools").EnumerateArray())
+            .Select(tool => tool.GetProperty("name").GetString())
+            .Where(name => name != null)
+            .Cast<string>()
+            .ToList();
+        AssertEqual(3, goalTools.Count,
+            "use_capability lists exactly the explicitly proxied goal tools");
+        AssertEqual(3, goalTools.Distinct(StringComparer.Ordinal).Count(),
+            "use_capability goal tools contain no duplicates");
+        Assert(goalTools.Contains("list_goals", StringComparer.Ordinal)
+               && goalTools.Contains("get_goal_history", StringComparer.Ordinal)
+               && goalTools.Contains("reopen_goal", StringComparer.Ordinal),
+            "use_capability discovers goal history and reopen tools");
+        Assert(!goalTools.Contains("create_goal", StringComparer.Ordinal),
+            "use_capability does not expose goal control tools implicitly");
+
+        var inspected = ExecuteUseCapability(
+            dbPath,
+            "session-lifecycle",
+            registry,
+            capabilityContext,
+            "inspect",
+            "builtin:get_goal_history");
+        AssertEqual("get_goal_history", inspected.GetProperty("name").GetString(),
+            "use_capability inspects a proxied goal tool schema");
+        Assert(inspected.GetProperty("input_schema").GetProperty("properties")
+                .TryGetProperty("goalId", out _),
+            "use_capability inspection preserves the goal tool input schema");
+
+        var rejected = ExecuteUseCapability(
+            dbPath,
+            "session-lifecycle",
+            registry,
+            capabilityContext,
+            "inspect",
+            "builtin:create_goal");
+        Assert(rejected.TryGetProperty("error", out _),
+            "use_capability rejects non-whitelisted goal tools");
+
+        var listCall = ExecuteUseCapability(
+            dbPath,
+            "session-lifecycle",
+            registry,
+            capabilityContext,
+            "call",
+            "builtin:list_goals",
+            writer => writer.WriteNumber("limit", 2));
+        Assert(listCall.GetProperty("goals").GetArrayLength() == 2,
+            "use_capability calls list_goals through the tool dispatcher");
+
+        var historyCall = ExecuteUseCapability(
+            dbPath,
+            "session-lifecycle",
+            registry,
+            capabilityContext,
+            "call",
+            "builtin:get_goal_history",
+            writer =>
+            {
+                writer.WriteString("goalId", historySourceId);
+                writer.WriteNumber("limit", 1);
+            });
+        AssertEqual(historySourceId,
+            historyCall.GetProperty("goal").GetProperty("goalId").GetString(),
+            "use_capability calls get_goal_history through the tool dispatcher");
+
+        var reopenCall = ExecuteUseCapability(
+            dbPath,
+            "session-lifecycle",
+            registry,
+            capabilityContext,
+            "call",
+            "builtin:reopen_goal",
+            writer =>
+            {
+                writer.WriteString("goalId", historySourceId);
+                writer.WriteString("objective", "reopened through use_capability");
+            });
+        Assert(reopenCall.TryGetProperty("error", out _),
+            "use_capability reopen_goal keeps the user confirmation boundary");
+        AssertEqual(GoalStatusValues.Aborted,
+            ScalarString(DbClient.GetClient(),
+                "SELECT status FROM goals WHERE session_id = 'session-lifecycle' " +
+                "AND objective = 'reopened through use_capability' ORDER BY created_at DESC LIMIT 1"),
+            "use_capability reopen cancellation archives the new goal");
+    }
+
+    private static JsonElement ExecuteUseCapability(
         string dbPath,
         string sessionId,
-        string objective,
-        IWorkerRequestContext context)
+        ToolRegistry registry,
+        IWorkerRequestContext context,
+        string action,
+        string? capabilityId = null,
+        Action<Utf8JsonWriter>? writeArguments = null)
     {
-        var state = new AgentRuntimeRunState($"test-{Guid.NewGuid():N}", sessionId);
+        using var state = new AgentRuntimeRunState($"test-{Guid.NewGuid():N}", sessionId);
         state.ReplaceParameters(WorkerJsonHelper.BuildJsonElement(writer =>
         {
             writer.WriteStartObject();
@@ -165,17 +329,75 @@ internal static partial class Program
         }));
         var call = new AgentRuntimeNativeToolCall(
             $"call-{Guid.NewGuid():N}",
-            "create_goal",
+            "use_capability",
             WorkerJsonHelper.BuildJsonElement(writer =>
             {
                 writer.WriteStartObject();
-                writer.WriteString("objective", objective);
+                writer.WriteString("action", action);
+                if (capabilityId != null)
+                    writer.WriteString("capability_id", capabilityId);
+                if (writeArguments != null)
+                {
+                    writer.WriteStartObject("arguments");
+                    writeArguments(writer);
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndObject();
+            }));
+        var json = AgentRuntimeUseCapabilityExecutor.ExecuteAsync(
+                call,
+                state,
+                context,
+                registry,
+                null,
+                null,
+                null,
+                state.CancellationToken)
+            .GetAwaiter()
+            .GetResult();
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
+
+    private static JsonElement ExecuteCreateGoal(
+        string dbPath,
+        string sessionId,
+        string objective,
+        IWorkerRequestContext context)
+        => ExecuteGoalTool(
+            dbPath,
+            sessionId,
+            "create_goal",
+            writer => writer.WriteString("objective", objective),
+            context);
+
+    private static JsonElement ExecuteGoalTool(
+        string dbPath,
+        string sessionId,
+        string toolName,
+        Action<Utf8JsonWriter> writeInput,
+        IWorkerRequestContext context)
+    {
+        using var state = new AgentRuntimeRunState($"test-{Guid.NewGuid():N}", sessionId);
+        state.ReplaceParameters(WorkerJsonHelper.BuildJsonElement(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("dbPath", dbPath);
+            writer.WriteString("sessionId", sessionId);
+            writer.WriteEndObject();
+        }));
+        var call = new AgentRuntimeNativeToolCall(
+            $"call-{Guid.NewGuid():N}",
+            toolName,
+            WorkerJsonHelper.BuildJsonElement(writer =>
+            {
+                writer.WriteStartObject();
+                writeInput(writer);
                 writer.WriteEndObject();
             }));
         var json = AgentRuntimeGoalExecutor.ExecuteAsync(call, state, context)
             .GetAwaiter()
             .GetResult();
-        state.Dispose();
         using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
     }

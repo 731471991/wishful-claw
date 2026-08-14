@@ -1,4 +1,4 @@
-﻿import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -374,6 +374,10 @@ registerWebSearchHandlers()
     'db:goals:list:msgpack',
     async (args) => getNativeWorker().request('db/goals-list', args)
   )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'db:goals:list-page:msgpack',
+    async (args) => getNativeWorker().request('db/goals-list-page', args)
+  )
   registerMessagePackHandler<string, unknown | null>(
     'db:goals:get:msgpack',
     async (sessionId) => getNativeWorker().request('db/goals-get', { sessionId })
@@ -397,6 +401,10 @@ registerWebSearchHandlers()
   registerMessagePackHandler<Record<string, unknown>, unknown[]>(
     'db:goal-events:list:msgpack',
     async (args) => getNativeWorker().request('db/goal-events-list', args)
+  )
+  registerMessagePackHandler<Record<string, unknown>, unknown>(
+    'db:goal-events:list-page:msgpack',
+    async (args) => getNativeWorker().request('db/goal-events-list-page', args)
   )
   registerMessagePackHandler<Record<string, unknown>, unknown>(
     'db:goal-events:add:msgpack',

@@ -20,6 +20,16 @@ public static partial class SubAgentExecutor
             return SubAgentDefinitionLoader.CreateCustomDefinition(workingFolder);
         }
 
+        if (subAgentType is "goal-decomposer" or "goal-evaluator")
+        {
+            var systemPrompt = JsonHelpers.GetString(input, "systemPrompt")
+                ?? "Return only the requested structured JSON.";
+            return SubAgentDefinitionLoader.CreateStructuredDefinition(
+                subAgentType,
+                "Goal structured response agent",
+                systemPrompt);
+        }
+
         // Look up in the in-memory registry (populated at startup)
         return SubAgentRegistry.Get(subAgentType);
     }
@@ -53,6 +63,8 @@ public static partial class SubAgentExecutor
 
             // Override maxIterations with the definition's maxTurns
             writer.WriteNumber("maxIterations", definition.MaxTurns);
+            if (definition.ProviderTurnOnly)
+                writer.WriteBoolean("providerTurnOnly", true);
 
             // Set sub-agent depth for recursion control
             writer.WriteNumber("subAgentDepth", childDepth);

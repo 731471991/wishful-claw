@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -24,7 +24,11 @@ public static partial class GoalOrchestrator
         cancellationToken.ThrowIfCancellationRequested();
         var prompt = GoalPromptTemplates.BuildDecompositionUserPrompt(goalText, null);
 
-        var input = CreateTaskInput(prompt, "Goal Decomposition");
+        var input = CreateTaskInput(
+            prompt,
+            "Goal Decomposition",
+            "goal-decomposer",
+            GoalPromptTemplates.DecompositionSystemPrompt);
         var toolCallId = $"goal-decompose-{Guid.NewGuid():N}";
 
         var result = await SubAgentExecutor.ExecuteAsync(
@@ -103,7 +107,11 @@ public static partial class GoalOrchestrator
         var prompt = GoalPromptTemplates.BuildEvaluationUserPrompt(
             goalText, planTitle, planDescription, executionResult);
 
-        var input = CreateTaskInput(prompt, "Goal Evaluation");
+        var input = CreateTaskInput(
+            prompt,
+            "Goal Evaluation",
+            "goal-evaluator",
+            GoalPromptTemplates.EvaluationSystemPrompt);
         var toolCallId = $"goal-eval-{Guid.NewGuid():N}";
 
         try
@@ -156,15 +164,20 @@ public static partial class GoalOrchestrator
     /// <summary>
     /// Create a Task tool input JSON for spawning a sub-agent.
     /// </summary>
-    private static JsonElement CreateTaskInput(string prompt, string description)
+    private static JsonElement CreateTaskInput(
+        string prompt,
+        string description,
+        string subagentType,
+        string systemPrompt)
     {
         using var stream = new MemoryStream();
         using (var w = new Utf8JsonWriter(stream))
         {
             w.WriteStartObject();
-            w.WriteString("subagent_type", "custom");
+            w.WriteString("subagent_type", subagentType);
             w.WriteString("description", description);
             w.WriteString("prompt", prompt);
+            w.WriteString("systemPrompt", systemPrompt);
             w.WriteBoolean("background", false);
             w.WriteEndObject();
         }

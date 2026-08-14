@@ -12,7 +12,7 @@ namespace WishfulClaw.Agent;
 public static partial class AgentRuntimeGoalExecutor
 {
     public static bool IsGoalTool(string toolName) =>
-        toolName is "get_goal" or "create_goal" or "update_goal" or "pause_goal" or "resume_goal" or "abort_goal";
+        toolName is "get_goal" or "list_goals" or "get_goal_history" or "create_goal" or "reopen_goal" or "update_goal" or "pause_goal" or "resume_goal" or "abort_goal";
 
     public static async Task<string> ExecuteAsync(
         AgentRuntimeNativeToolCall call,
@@ -27,7 +27,15 @@ public static partial class AgentRuntimeGoalExecutor
         return call.Name switch
         {
             "get_goal" => await GetGoalAsync(sessionId, context),
+            "list_goals" => ListGoals(call.Input, sessionId, state.Parameters),
+            "get_goal_history" => GetGoalHistory(call.Input, sessionId, state.Parameters),
             "create_goal" => await CreateGoalAsync(
+                call.Input,
+                sessionId,
+                state.Parameters,
+                state.CancellationToken,
+                context),
+            "reopen_goal" => await ReopenGoalAsync(
                 call.Input,
                 sessionId,
                 state.Parameters,
@@ -212,6 +220,94 @@ public static partial class AgentRuntimeGoalExecutor
                 $"Goal confirmation failed: {ex.Message}");
             return EncodeError($"Goal confirmation failed: {ex.Message}");
         }
+    }
+
+    private static string ListGoals(
+        JsonElement input,
+        string sessionId,
+        JsonElement parameters)
+    {
+        var page = DbGoalTools.QueryGoalPage(BuildGoalPageParameters(input, parameters, sessionId));
+        return EncodeGoalPage(new GoalToolPageResult(
+            page.Items.Select(PersistedGoal).ToList(),
+            page.HasMore,
+            page.NextCurrentRank,
+            page.NextUpdatedAt,
+            page.NextGoalId));
+    }
+
+    private static string GetGoalHistory(
+        JsonElement input,
+        string sessionId,
+        JsonElement parameters)
+    {
+        var goalId = JsonHelpers.GetString(input, "goalId")?.Trim() ?? string.Empty;
+        if (goalId.Length == 0)
+            return EncodeGoalHistory(new GoalToolHistoryResult(null, [], false, Error: "goalId is required."));
+
+        var goal = DbGoalTools.GetByGoalId(goalId, sessionId);
+        if (goal == null)
+            return EncodeGoalHistory(new GoalToolHistoryResult(null, [], false, Error: "Goal not found."));
+
+        var page = DbGoalTools.QueryGoalEventPage(
+            BuildGoalHistoryParameters(input, parameters, sessionId, goalId));
+        var events = page.Items.Select(item => new GoalToolEvent(
+            item.Id,
+            item.EventType,
+            item.Message,
+            item.MetadataJson,
+            item.CreatedAt)).ToList();
+        return EncodeGoalHistory(new GoalToolHistoryResult(
+            PersistedGoal(goal),
+            events,
+            page.HasMore,
+            page.NextCreatedAt,
+            page.NextEventId));
+    }
+
+    private static async Task<string> ReopenGoalAsync(
+        JsonElement input,
+        string sessionId,
+        JsonElement parameters,
+        CancellationToken cancellationToken,
+        IWorkerRequestContext context)
+    {
+        var sourceGoalId = JsonHelpers.GetString(input, "goalId")?.Trim() ?? string.Empty;
+        if (sourceGoalId.Length == 0)
+            return EncodeError("reopen_goal requires goalId.");
+
+        var result = DbGoalTools.ReopenGoal(
+            BuildReopenParameters(input, parameters, sessionId, sourceGoalId));
+        if (!result.Success || result.Goal == null)
+            return EncodeError(result.Error ?? "Goal could not be reopened.");
+
+        var reopened = result.Goal;
+        try
+        {
+            GoalOrchestrator.CreatePendingGoal(
+                reopened.GoalId,
+                reopened.Objective,
+                sessionId,
+                reopened.WorkingFolder,
+                parameters);
+        }
+        catch (Exception ex)
+        {
+            DbGoalTools.SetStatusByGoalId(
+                reopened.GoalId,
+                sessionId,
+                GoalStatusValues.Pending,
+                GoalStatusValues.Failed,
+                $"Reopened goal could not enter pending runtime state: {ex.Message}");
+            return EncodeError($"Reopened goal could not enter pending runtime state: {ex.Message}");
+        }
+
+        return await AwaitGoalConfirmationAsync(
+            reopened.GoalId,
+            sessionId,
+            reopened.Objective,
+            context,
+            cancellationToken);
     }
 
     private static async Task<string> UpdateGoalAsync(

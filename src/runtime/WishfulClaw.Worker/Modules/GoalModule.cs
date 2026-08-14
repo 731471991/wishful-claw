@@ -51,16 +51,19 @@ public sealed class GoalModule : IWorkerModule
             WorkerLog.Warn($"[GoalModule] InitializeAsync failed: {ex.Message}");
         }
     }
-    private static WorkerResponse PauseGoal(JsonElement parameters)
+    private static async Task<WorkerResponse> PauseGoal(JsonElement parameters, IWorkerRequestContext context)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
+        var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
         var result = string.IsNullOrEmpty(goalId)
             ? MissingGoalId("pause")
             : GoalOrchestrator.Pause(goalId);
+        if (!string.IsNullOrEmpty(sessionId))
+            await GoalOrchestrator.EmitRunStateChangedAsync(sessionId, result, context);
         return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 
-    private static Task<WorkerResponse> ResumeGoal(JsonElement parameters, IWorkerRequestContext context)
+    private static async Task<WorkerResponse> ResumeGoal(JsonElement parameters, IWorkerRequestContext context)
     {
         var goalId = parameters.TryGetProperty("goalId", out var id) ? id.GetString() : null;
         var sessionId = parameters.TryGetProperty("sessionId", out var sid) ? sid.GetString() : null;
@@ -70,9 +73,11 @@ public sealed class GoalModule : IWorkerModule
         var result = string.IsNullOrEmpty(goalId)
             ? MissingGoalId("resume")
             : GoalOrchestrator.Resume(goalId, sessionId, provider, context);
-        return Task.FromResult(WorkerResponse.Json(
+        if (!string.IsNullOrEmpty(sessionId))
+            await GoalOrchestrator.EmitRunStateChangedAsync(sessionId, result, context);
+        return WorkerResponse.Json(
             result,
-            WishfulClawJsonContext.Default.GoalActionResult));
+            WishfulClawJsonContext.Default.GoalActionResult);
     }
 
     private static async Task<WorkerResponse> AbortGoal(
@@ -112,17 +117,21 @@ public sealed class GoalModule : IWorkerModule
             }
 
             GoalOrchestrator.RemovePendingGoal(goalId);
+            var action = new GoalActionResult(
+                true,
+                "aborted",
+                GoalStatusValues.Aborted,
+                GoalRunStateValues.Idle,
+                goalId);
+            await GoalOrchestrator.EmitRunStateChangedAsync(resolvedSessionId, action, context);
             return WorkerResponse.Json(
-                new GoalActionResult(
-                    true,
-                    "aborted",
-                    GoalStatusValues.Aborted,
-                    GoalRunStateValues.Idle,
-                    goalId),
+                action,
                 WishfulClawJsonContext.Default.GoalActionResult);
         }
 
         var result = await GoalOrchestrator.AbortAsync(goalId, context);
+        if (!string.IsNullOrEmpty(sessionId))
+            await GoalOrchestrator.EmitRunStateChangedAsync(sessionId, result, context);
         return WorkerResponse.Json(result, WishfulClawJsonContext.Default.GoalActionResult);
     }
 
@@ -159,6 +168,16 @@ public sealed class GoalModule : IWorkerModule
                 GoalStatusValues.Active,
                 GoalStatusValues.Failed,
                 "Goal confirmation could not start the orchestrator");
+        }
+        else
+        {
+            var action = new GoalActionResult(
+                true,
+                "started",
+                GoalStatusValues.Active,
+                GoalRunStateValues.Running,
+                goalId);
+            await GoalOrchestrator.EmitRunStateChangedAsync(sessionId, action, context);
         }
 
         return WorkerResponse.Json(new SimpleSuccessResult(ok), WishfulClawJsonContext.Default.SimpleSuccessResult);

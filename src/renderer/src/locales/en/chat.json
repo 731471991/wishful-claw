@@ -1,4 +1,4 @@
-﻿{
+{
   "home": {
     "title": "How can I help you today?",
     "subtitle": "Start a conversation or pick a quick prompt below.",
@@ -433,6 +433,7 @@
       "updateFailed": "Goal update failed",
       "createFailed": "Goal creation failed",
       "cancelFailed": "Goal cancellation failed",
+      "actionFailed": "Goal action failed",
       "objectiveInvalid": "Goal objective invalid",
       "budgetInvalid": "Goal budget invalid",
       "budgetStillExhausted": "Goal budget is still exhausted",
@@ -454,6 +455,8 @@
       "aborted": "Goal cancelled",
       "stall_paused": "Paused by stall guard",
       "auto_continue_blocked": "Auto-continue waiting",
+      "reopened": "Goal reopened",
+      "reopened_from": "Reopened from historical goal",
       "cleared": "Goal cleared by a legacy version",
       "usageDetail": "+{{tokens}} tokens, +{{time}}",
       "statusDetail": "{{from}} -> {{to}}"
@@ -478,6 +481,8 @@
       "plans": "Plans",
       "awaitingConfirmation": "Awaiting confirmation in chat",
       "planProgress": "Plans {{completed}} / {{total}}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading...",
       "filters": {
         "all": "All",
         "current": "Active",

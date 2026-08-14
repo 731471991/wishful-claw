@@ -20,13 +20,13 @@ public sealed class UseCapabilityToolProvider : IToolProvider
     {
         registry.Register(new ToolDefinitionPlaceholder(
             "use_capability",
-            "Stable capability proxy: list available MCP servers/tools and Skills, "
-            + "inspect a specific capability's schema, or call an MCP tool / Skill by id. "
+            "Stable capability proxy: list available MCP servers/tools, Skills, and proxied built-in tools, "
+            + "inspect a specific capability's schema, or call a capability by id. "
             + "Use action=\"list\" to discover capabilities, action=\"inspect\" with "
             + "capability_id to see a tool's input schema, action=\"call\" with "
             + "capability_id and arguments to execute. "
             + "capability_id format: \"mcp-tool:serverName/toolName\" for MCP tools, "
-            + "\"skill:skillName\" for Skills.",
+            + "\"skill:skillName\" for Skills, or \"builtin:toolName\" for proxied built-in tools.",
             ToolSchemaBuilder.Object(
                 new()
                 {
@@ -34,7 +34,7 @@ public sealed class UseCapabilityToolProvider : IToolProvider
                         "list | inspect | call",
                         new[] { "list", "inspect", "call" }),
                     ["capability_id"] = ToolSchemaBuilder.String(
-                        "Capability id: mcp-tool:server/tool, mcp-server:name, or skill:name. "
+                        "Capability id: mcp-tool:server/tool, mcp-server:name, skill:name, or builtin:toolName. "
                         + "Not required for action=list."),
                     ["arguments"] = ToolSchemaBuilder.Object(
                         new()

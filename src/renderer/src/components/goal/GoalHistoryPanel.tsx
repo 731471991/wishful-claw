@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import { ArrowLeft, Loader2, Pause, Play, RefreshCw, Target, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@renderer/components/ui/button'
@@ -18,6 +18,10 @@ import {
   type SessionGoal,
   type SessionGoalStatus
 } from '@renderer/stores/goal-store'
+import { type SessionGoalEvent } from '@renderer/stores/goal-store-helpers'
+
+const EMPTY_GOALS: SessionGoal[] = []
+const EMPTY_EVENTS: SessionGoalEvent[] = []
 
 interface GoalHistoryPanelProps {
   projectId?: string | null
@@ -58,8 +62,9 @@ export function GoalHistoryPanel({
   const { t } = useTranslation('chat')
   const { t: tCommon } = useTranslation('common')
   const projectKey = goalProjectKey(projectId)
-  const goals = useGoalHistoryStore((state) => state.goalsByProject[projectKey] ?? [])
+  const goals = useGoalHistoryStore((state) => state.goalsByProject[projectKey] ?? EMPTY_GOALS)
   const loading = useGoalHistoryStore((state) => state.loadingProjects[projectKey] ?? false)
+  const hasMoreGoals = useGoalHistoryStore((state) => state.goalHasMoreByProject[projectKey] ?? false)
   const error = useGoalHistoryStore((state) => state.errorsByProject[projectKey])
   const sessions = useChatStore((state) => state.sessions)
   const [selectedGoalId, setSelectedGoalId] = React.useState<string | null>(initialGoalId ?? null)
@@ -93,10 +98,13 @@ export function GoalHistoryPanel({
     ? goalHistoryKey(selectedGoal.sessionId, selectedGoal.goalId)
     : ''
   const events = useGoalHistoryStore((state) =>
-    selectedKey ? state.eventsByGoal[selectedKey] ?? [] : []
+    selectedKey ? state.eventsByGoal[selectedKey] ?? EMPTY_EVENTS : EMPTY_EVENTS
   )
   const eventsLoading = useGoalHistoryStore((state) =>
     selectedKey ? state.loadingGoals[selectedKey] ?? false : false
+  )
+  const hasMoreEvents = useGoalHistoryStore((state) =>
+    selectedKey ? state.eventHasMoreByGoal[selectedKey] ?? false : false
   )
 
   React.useEffect(() => {
@@ -162,13 +170,13 @@ export function GoalHistoryPanel({
           {selectedGoal.status === 'pending' || selectedGoal.status === 'active' ? (
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/60 p-2">
               {selectedControls.canPause ? (
-                <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => void selectedActions.setGoalStatus('paused')}>
+                <Button variant="outline" size="sm" className="h-7 gap-1.5" disabled={selectedActions.transitioning !== null} onClick={() => void selectedActions.setGoalStatus('paused')}>
                   <Pause className="size-3.5" />
                   {t('goal.pause')}
                 </Button>
               ) : selectedControls.canResume ? (
-                <Button variant="outline" size="sm" className="h-7 gap-1.5" onClick={() => void selectedActions.setGoalStatus('active')}>
-                  <Play className="size-3.5" />
+                <Button variant="outline" size="sm" className="h-7 gap-1.5" disabled={selectedActions.transitioning !== null} onClick={() => void selectedActions.setGoalStatus('active')}>
+                  {selectedActions.transitioning === 'starting' ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
                   {selectedRunState === 'idle' ? t('goal.start') : t('goal.resume')}
                 </Button>
               ) : null}
@@ -205,7 +213,22 @@ export function GoalHistoryPanel({
           ) : null}
           <section className="space-y-2">
             <h3 className="text-xs font-medium text-muted-foreground">{t('goal.timeline')}</h3>
-            {eventsLoading ? <Loader2 className="size-4 animate-spin text-muted-foreground" /> : <GoalEventTimeline events={events} />}
+            {eventsLoading && events.length === 0 ? (
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            ) : (
+              <GoalEventTimeline events={events} maxItems={events.length} />
+            )}
+            {hasMoreEvents ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-full text-[11px]"
+                disabled={eventsLoading}
+                onClick={() => void useGoalHistoryStore.getState().loadMoreGoalEvents(selectedGoal.sessionId, selectedGoal.goalId)}
+              >
+                {eventsLoading ? t('goal.history.loadingMore') : t('goal.history.loadMore')}
+              </Button>
+            ) : null}
           </section>
         </div>
       </div>
@@ -244,7 +267,7 @@ export function GoalHistoryPanel({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {error ? <p className="p-2 text-xs text-destructive">{error}</p> : null}
-        {!loading && filteredGoals.length === 0 ? (
+        {!loading && filteredGoals.length === 0 && !hasMoreGoals ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <Target className="size-6 opacity-60" />
             <p className="text-xs">{t('goal.history.empty')}</p>
@@ -275,6 +298,17 @@ export function GoalHistoryPanel({
                 </button>
               )
             })}
+            {hasMoreGoals ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-full text-[11px]"
+                disabled={loading}
+                onClick={() => void useGoalHistoryStore.getState().loadMoreProjectGoals(projectId)}
+              >
+                {loading ? t('goal.history.loadingMore') : t('goal.history.loadMore')}
+              </Button>
+            ) : null}
           </div>
         )}
       </div>

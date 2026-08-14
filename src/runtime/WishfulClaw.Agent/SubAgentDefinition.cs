@@ -20,7 +20,8 @@ public sealed record SubAgentDefinition(
     string SystemPrompt,
     int MaxTurns,
     string? Model = null,
-    double? Temperature = null);
+    double? Temperature = null,
+    bool ProviderTurnOnly = false);
 
 /// <summary>
 /// Loads sub-agent definitions from the filesystem.
@@ -118,6 +119,12 @@ internal static partial class SubAgentDefinitionLoader
             BuildDefaultSystemPrompt(workingFolder),
             DefaultMaxTurns);
     }
+
+    public static SubAgentDefinition CreateStructuredDefinition(
+        string name,
+        string description,
+        string systemPrompt)
+        => new(name, description, systemPrompt, 2, Temperature: 0, ProviderTurnOnly: true);
 
     /// <summary>
     /// Default system prompt for custom sub-agents.

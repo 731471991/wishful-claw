@@ -1,4 +1,4 @@
-﻿
+
 using WishfulClaw.Contracts;
 
 namespace WishfulClaw.Infrastructure.Db;
@@ -139,3 +139,19 @@ public sealed record GoalFindResult(bool Success, GoalRow? Goal, string? Error);
 public sealed record GoalMutationResult(bool Success, int Changed, string? Error);
 public sealed record GoalEventFindResult(bool Success, List<GoalEventRow> Events, string? Error);
 public sealed record GoalEventMutationResult(bool Success, GoalEventRow? Event, string? Error);
+public sealed record GoalPageResult(
+    List<GoalRow> Items,
+    bool HasMore,
+    int? NextCurrentRank = null,
+    long? NextUpdatedAt = null,
+    string? NextGoalId = null);
+public sealed record GoalEventPageResult(
+    List<GoalEventRow> Items,
+    bool HasMore,
+    long? NextCreatedAt = null,
+    long? NextEventId = null);
+public sealed record GoalReopenResult(
+    bool Success,
+    GoalRow? Goal = null,
+    string? SourceGoalId = null,
+    string? Error = null);

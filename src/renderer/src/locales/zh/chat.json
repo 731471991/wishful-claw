@@ -1,4 +1,4 @@
-﻿{
+{
   "home": {
     "title": "今天我能帮你做什么？",
     "subtitle": "开始对话或选择下方快捷提示。",
@@ -432,6 +432,7 @@
       "updateFailed": "Goal 更新失败",
       "createFailed": "Goal 创建失败",
       "cancelFailed": "Goal 取消失败",
+      "actionFailed": "Goal 操作失败",
       "objectiveInvalid": "Goal 目标无效",
       "budgetInvalid": "Goal 预算无效",
       "budgetStillExhausted": "Goal 预算仍然耗尽",
@@ -453,6 +454,8 @@
       "aborted": "Goal 已取消",
       "stall_paused": "因停滞保护暂停",
       "auto_continue_blocked": "自动续跑等待中",
+      "reopened": "Goal 已重开",
+      "reopened_from": "从历史 Goal 重开",
       "cleared": "旧版本已清空 Goal",
       "usageDetail": "+{{tokens}} tokens，+{{time}}",
       "statusDetail": "{{from}} -> {{to}}"
@@ -477,6 +480,8 @@
       "plans": "计划",
       "awaitingConfirmation": "等待聊天中的确认",
       "planProgress": "计划 {{completed}} / {{total}}",
+      "loadMore": "加载更多",
+      "loadingMore": "正在加载...",
       "filters": {
         "all": "全部",
         "current": "进行中",

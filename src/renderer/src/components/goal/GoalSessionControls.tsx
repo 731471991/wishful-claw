@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Pause, Pencil, Play, Save, Target, XCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
@@ -155,6 +155,7 @@ function GoalManagerDialog({
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5"
+                disabled={actions.transitioning !== null}
                 onClick={() => void actions.setGoalStatus('paused')}
               >
                 <Pause className="size-3.5" />
@@ -166,6 +167,7 @@ function GoalManagerDialog({
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5"
+                disabled={actions.transitioning !== null}
                 onClick={() => void actions.setGoalStatus('active')}
               >
                 <Play className="size-3.5" />

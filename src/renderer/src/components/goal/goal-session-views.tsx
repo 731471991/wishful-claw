@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
 import { formatGoalElapsedSeconds, formatGoalTokens, validateGoalObjective } from '../../lib/agent/goal-context'
@@ -17,6 +17,7 @@ import {
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import { buildProviderPayload } from '@renderer/hooks/use-chat-actions'
 import { useProviderStore } from '@renderer/stores/provider-store'
+import type { GoalActionResult } from '@renderer/stores/goal-store-helpers'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import {
   GOAL_PAUSE_MSGPACK_CHANNEL,
@@ -75,9 +76,15 @@ export function formatGoalEvent(
   }
 }
 
-export function GoalEventTimeline({ events }: { events: SessionGoalEvent[] }): React.JSX.Element {
+export function GoalEventTimeline({
+  events,
+  maxItems = 8
+}: {
+  events: SessionGoalEvent[]
+  maxItems?: number
+}): React.JSX.Element {
   const { t } = useTranslation('chat')
-  const visibleEvents = events.slice(0, 8)
+  const visibleEvents = events.slice(0, maxItems)
   if (visibleEvents.length === 0) {
     return <p className="text-xs text-muted-foreground">{t('goal.timelineEmpty')}</p>
   }
@@ -126,6 +133,7 @@ export function useGoalActions(
   goal?: SessionGoal
 ): {
   open: boolean
+  transitioning: 'starting' | 'pausing' | null
   objectiveDraft: string
   tokenBudgetDraft: string
   saving: boolean
@@ -148,6 +156,7 @@ export function useGoalActions(
   const [saving, setSaving] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
   const [confirming, setConfirming] = React.useState(false)
+  const [transitioning, setTransitioning] = React.useState<'starting' | 'pausing' | null>(null)
 
   const openManager = React.useCallback(() => {
     setObjectiveDraft(goal?.objective ?? '')
@@ -175,30 +184,40 @@ export function useGoalActions(
 
   const setGoalStatus = React.useCallback(
     async (status: 'active' | 'paused'): Promise<void> => {
-      if (!sessionId) return
-      // 执行状态（RunState）由后端 Orchestrator 管理，不修改 DB 目标状态（Status）。
-      // Resume/Pause 只发送 IPC 让后端切换 RunState。
-      if (status === 'active') {
-        // 构建 provider 配置，让后端 Resume 时能启动子 Agent
-        const providerStore = useProviderStore.getState()
-        const activeProvider = providerStore.getActiveProvider()
-        const modelId = providerStore.activeModelId || activeProvider?.defaultModel
-        const provider = activeProvider && modelId
-          ? buildProviderPayload(activeProvider, modelId, useSettingsStore.getState())
-          : undefined
-        try {
-          await invokeMessagePackBinary(GOAL_RESUME_MSGPACK_CHANNEL, {
+      if (!sessionId || !goal?.goalId || transitioning) return
+      setTransitioning(status === 'active' ? 'starting' : 'pausing')
+      try {
+        let result: GoalActionResult
+        if (status === 'active') {
+          const providerStore = useProviderStore.getState()
+          const activeProvider = providerStore.getActiveProvider()
+          const modelId = providerStore.activeModelId || activeProvider?.defaultModel
+          const provider = activeProvider && modelId
+            ? buildProviderPayload(activeProvider, modelId, useSettingsStore.getState())
+            : undefined
+          result = await invokeMessagePackBinary<GoalActionResult>(GOAL_RESUME_MSGPACK_CHANNEL, {
             sessionId,
-            goalId: goal?.goalId,
+            goalId: goal.goalId,
             provider
           })
-        } catch { /* orchestrator may not be running */ }
-      }
-      if (status === 'paused') {
-        try { await invokeMessagePackBinary(GOAL_PAUSE_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
+        } else {
+          result = await invokeMessagePackBinary<GoalActionResult>(GOAL_PAUSE_MSGPACK_CHANNEL, {
+            sessionId,
+            goalId: goal.goalId
+          })
+        }
+        if (!result.success) {
+          toast.error(t('goal.toasts.actionFailed'), { description: result.error ?? result.action })
+          return
+        }
+        useGoalStore.getState().applyGoalAction(sessionId, goal.goalId, result)
+      } catch (error) {
+        toast.error(t('goal.toasts.actionFailed'), { description: error instanceof Error ? error.message : String(error) })
+      } finally {
+        setTransitioning(null)
       }
     },
-    [sessionId, goal?.goalId]
+    [goal?.goalId, sessionId, t, transitioning]
   )
 
   const cancelGoal = React.useCallback(async (): Promise<void> => {
@@ -269,6 +288,7 @@ export function useGoalActions(
 
   return {
     open,
+    transitioning,
     objectiveDraft,
     tokenBudgetDraft,
     saving,

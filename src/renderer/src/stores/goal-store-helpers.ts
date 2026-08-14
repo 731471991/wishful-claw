@@ -1,4 +1,4 @@
-﻿
+
 export type SessionGoalStatus =
   | 'pending'
   | 'active'
@@ -26,6 +26,8 @@ export type SessionGoalEventType =
   | 'aborted'
   | 'stall_paused'
   | 'auto_continue_blocked'
+  | 'reopened'
+  | 'reopened_from'
   | 'cleared'
 
 export interface SessionGoal {
@@ -84,13 +86,28 @@ export interface SessionGoalRow {
 }
 
 export interface SessionGoalEventRow {
-  id: string
+  id: string | number
   sessionId: string
   goalId: string | null
   eventType: SessionGoalEventType
   message: string | null
   metadataJson: string | null
   createdAt: number
+}
+
+export interface GoalPageResult {
+  items: SessionGoalRow[]
+  hasMore: boolean
+  nextCurrentRank?: number | null
+  nextUpdatedAt?: number | null
+  nextGoalId?: string | null
+}
+
+export interface GoalEventPageResult {
+  items: SessionGoalEventRow[]
+  hasMore: boolean
+  nextCreatedAt?: number | null
+  nextEventId?: number | null
 }
 
 export interface GoalMutationResult {
@@ -185,6 +202,14 @@ export interface GoalStore {
   finishGoalRun: (sessionId: string, goalId?: string | null) => void
   applySyncedGoal: (goal: SessionGoal) => void
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
+  applyGoalAction: (sessionId: string, goalId: string, action: GoalActionResult) => void
+  applyGoalRunState: (input: {
+    sessionId: string
+    goalId: string
+    status?: string
+    runState: GoalRunState
+    startedAt?: number
+  }) => void
   applyGoalProgress: (progress: GoalProgressState) => void
   clearGoalProgress: (sessionId: string, goalId?: string | null) => void
 }
@@ -223,7 +248,7 @@ export function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
   }
 
   return {
-    id: row.id,
+    id: String(row.id),
     sessionId: row.sessionId,
     goalId: row.goalId,
     eventType: row.eventType,

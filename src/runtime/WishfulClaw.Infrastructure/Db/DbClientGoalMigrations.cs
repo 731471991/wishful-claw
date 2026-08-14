@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 
 namespace WishfulClaw.Infrastructure.Db;
 
@@ -30,18 +30,18 @@ public static partial class DbClient
             _db.Execute(
                 connection,
                 transaction,
-                "CREATE INDEX IF NOT EXISTS ix_goals_project_updated " +
-                "ON goals(project_id, updated_at DESC)");
+                "CREATE INDEX IF NOT EXISTS ix_goals_project_updated_goal " +
+                "ON goals(project_id, updated_at DESC, goal_id DESC)");
             _db.Execute(
                 connection,
                 transaction,
-                "CREATE INDEX IF NOT EXISTS ix_goals_session_updated " +
-                "ON goals(session_id, updated_at DESC)");
+                "CREATE INDEX IF NOT EXISTS ix_goals_session_updated_goal " +
+                "ON goals(session_id, updated_at DESC, goal_id DESC)");
             _db.Execute(
                 connection,
                 transaction,
-                "CREATE INDEX IF NOT EXISTS ix_goal_events_goal_created " +
-                "ON goal_events(goal_id, created_at DESC)");
+                "CREATE INDEX IF NOT EXISTS ix_goal_events_goal_created_id " +
+                "ON goal_events(goal_id, created_at DESC, id DESC)");
         });
     }
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -56,6 +56,39 @@ public static partial class GoalOrchestrator
     }
 
     // ── Event emission ──
+
+    public static async Task EmitRunStateChangedAsync(
+        string sessionId,
+        GoalActionResult action,
+        IWorkerRequestContext context)
+    {
+        if (string.IsNullOrWhiteSpace(action.GoalId) || string.IsNullOrWhiteSpace(sessionId))
+            return;
+
+        var goal = GetContext(action.GoalId);
+        var startedAt = goal is null
+            ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            : new DateTimeOffset(goal.StartedAt).ToUnixTimeMilliseconds();
+        var payload = new GoalRunStateChanged(
+            sessionId,
+            action.GoalId,
+            action.Status,
+            action.RunState,
+            action.Action,
+            startedAt,
+            action.Error);
+        try
+        {
+            await context.EmitEventAsync(
+                "goal:run-state",
+                payload,
+                AgentRuntimeJsonContext.Default.GoalRunStateChanged);
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"Failed to emit goal run state: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Emit a goal progress event to the frontend via the agent stream.

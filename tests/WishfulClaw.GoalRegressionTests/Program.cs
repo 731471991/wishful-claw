@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Agent;
@@ -179,6 +179,99 @@ internal static partial class Program
         Assert(afterSessionDelete.Any(item =>
                 item.GetProperty("goalId").GetString() == "goal-active-new-a"),
             "project history remains queryable after session deletion");
+
+        db.Execute(
+            "INSERT INTO sessions (id, project_id, title, mode, created_at, updated_at) " +
+            "VALUES ('session-page', 'project-a', 'Paging', 'goal', 700, 700)");
+        foreach (var index in Enumerable.Range(1, 5))
+        {
+            var goalId = $"goal-page-{index}";
+            DbGoalTools.CreateCurrentGoal(GoalParameters(
+                dbPath,
+                "session-page",
+                goalId,
+                $"page objective {index}",
+                GoalStatusValues.Complete));
+            db.Execute(
+                "UPDATE goals SET created_at = 800, updated_at = 800 WHERE goal_id = @goalId",
+                new SqliteParameter("@goalId", goalId));
+            db.Execute(
+                "INSERT INTO goal_events (session_id, goal_id, event_type, message, created_at) " +
+                "VALUES ('session-page', @goalId, 'completed', @message, 900)",
+                new SqliteParameter("@goalId", goalId),
+                new SqliteParameter("@message", $"page event {index}"));
+        }
+
+        var firstGoalPage = DbGoalTools.QueryGoalPage(GoalPageParameters(
+            dbPath,
+            "session-page",
+            limit: 2));
+        AssertEqual(2, firstGoalPage.Items.Count, "goal pagination returns requested page size");
+        Assert(firstGoalPage.HasMore && firstGoalPage.NextGoalId != null,
+            "goal pagination returns a stable cursor");
+        var secondGoalPage = DbGoalTools.QueryGoalPage(GoalPageParameters(
+            dbPath,
+            "session-page",
+            limit: 3,
+            firstGoalPage));
+        var pagedGoalIds = firstGoalPage.Items.Concat(secondGoalPage.Items)
+            .Select(item => item.GoalId)
+            .ToList();
+        AssertEqual(5, pagedGoalIds.Distinct(StringComparer.Ordinal).Count(),
+            "goal cursor pagination has no duplicates with equal timestamps");
+        Assert(pagedGoalIds.Contains("goal-page-1") && pagedGoalIds.Contains("goal-page-5"),
+            "goal cursor pagination has no omissions");
+
+        var firstEventPage = DbGoalTools.QueryGoalEventPage(GoalEventPageParameters(
+            dbPath,
+            "session-page",
+            "goal-page-1",
+            limit: 1));
+        Assert(firstEventPage.Items.Count == 1 && firstEventPage.HasMore,
+            "goal event pagination returns a cursor");
+        var secondEventPage = DbGoalTools.QueryGoalEventPage(GoalEventPageParameters(
+            dbPath,
+            "session-page",
+            "goal-page-1",
+            limit: 10,
+            firstEventPage));
+        AssertEqual(
+            firstEventPage.Items.Count + secondEventPage.Items.Count,
+            firstEventPage.Items.Concat(secondEventPage.Items).Select(item => item.Id).Distinct().Count(),
+            "goal event cursor pagination has no duplicates");
+
+        var sourceBefore = DbGoalTools.GetByGoalId("goal-page-1", "session-page")!;
+        var reopen = DbGoalTools.ReopenGoal(ReopenParameters(
+            dbPath,
+            "session-page",
+            "goal-page-1",
+            "reopened objective"));
+        Assert(reopen.Success && reopen.Goal?.Status == GoalStatusValues.Pending,
+            "reopen creates a new pending goal");
+        Assert(reopen.Goal?.GoalId != sourceBefore.GoalId,
+            "reopen preserves source identity and creates a new goalId");
+        var sourceAfter = DbGoalTools.GetByGoalId("goal-page-1", "session-page")!;
+        AssertEqual(sourceBefore.Status, sourceAfter.Status,
+            "reopen does not mutate source status");
+        AssertEqual(sourceBefore.UpdatedAt, sourceAfter.UpdatedAt,
+            "reopen does not mutate source timestamps");
+        AssertEqual(sourceBefore.PlansJson, sourceAfter.PlansJson,
+            "reopen does not mutate source plan snapshot");
+        AssertEqual(1L, db.QueryScalar<long>(
+            "SELECT COUNT(*) FROM goal_events WHERE goal_id = 'goal-page-1' " +
+            "AND event_type = 'reopened' AND metadata_json LIKE '%\"newGoalId\"%'"),
+            "source goal receives an audit link to the reopened goal");
+        AssertEqual(1L, db.QueryScalar<long>(
+            "SELECT COUNT(*) FROM goal_events WHERE goal_id = @goalId " +
+            "AND event_type = 'reopened_from' AND metadata_json LIKE '%\"sourceGoalId\"%'",
+            new SqliteParameter("@goalId", reopen.Goal!.GoalId)),
+            "reopened goal receives an audit link to the source goal");
+        var blockedReopen = DbGoalTools.ReopenGoal(ReopenParameters(
+            dbPath,
+            "session-page",
+            "goal-page-2"));
+        Assert(!blockedReopen.Success && blockedReopen.Error?.Contains("current goal", StringComparison.Ordinal) == true,
+            "reopen rejects a second current goal");
     }
 
 }

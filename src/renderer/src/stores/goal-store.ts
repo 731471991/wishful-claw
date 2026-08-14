@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import { ipcClient } from '../lib/ipc/ipc-client'
 import { useGoalHistoryStore } from './goal-history-store'
 import { invokeMessagePackBinary } from '../lib/ipc/messagepack-ipc-client'
@@ -14,7 +14,7 @@ import {
   GOAL_ABORT_MSGPACK_CHANNEL,
   GOAL_CONFIRM_MSGPACK_CHANNEL,
 } from '../../../shared/messagepack/binary-ipc'
-import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalActionResult, GoalEventMutationResult, GoalMutationResult, GoalStore, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
+import { upsertGoal, upsertGoalEvent, asGoal, mutationError, markGoalEventsIpcUnavailable, rowToGoal, rowToEvent, EMPTY_SESSION_GOAL_EVENTS, isGoalEventsIpcUnavailable, GoalActionResult, GoalEventMutationResult, GoalMutationResult, GoalStore, GoalRunState, SessionGoal, SessionGoalEventRow, SessionGoalRow } from './goal-store-helpers'
 import { applyGoalProgressState, removeRuntimeGoalState } from './goal-state-transitions'
 export { EMPTY_SESSION_GOAL_EVENTS }
 
@@ -309,6 +309,38 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     upsertGoalEvent(set, event)
   },
 
+  applyGoalAction: (sessionId, goalId, action) => {
+    if (!action.success || action.goalId && action.goalId !== goalId) return
+    get().applyGoalRunState({
+      sessionId,
+      goalId,
+      status: action.status,
+      runState: action.runState as GoalRunState
+    })
+  },
+
+  applyGoalRunState: ({ sessionId, goalId, status, runState, startedAt }) => {
+    const current = get().goalsBySession[sessionId]
+    if (!current || current.goalId !== goalId) return
+    set((state) => {
+      const nextRunStates = { ...state.goalRunStatesBySession, [sessionId]: runState }
+      const nextRuns = { ...state.activeGoalRunsBySession }
+      if (runState === 'running') {
+        nextRuns[sessionId] = { goalId, startedAt: startedAt ?? Date.now() }
+      } else {
+        delete nextRuns[sessionId]
+      }
+      const nextGoals = status && status !== current.status
+        ? { ...state.goalsBySession, [sessionId]: { ...current, status: status as SessionGoal['status'], updatedAt: Date.now() } }
+        : state.goalsBySession
+      return {
+        goalRunStatesBySession: nextRunStates,
+        activeGoalRunsBySession: nextRuns,
+        goalsBySession: nextGoals
+      }
+    })
+  },
+
   applyGoalProgress: (progress) => {
     set((state) => {
       const existingGoal = state.goalsBySession[progress.sessionId]
@@ -362,24 +394,25 @@ export function installGoalSyncListener(): () => void {
             sessionId?: unknown
             active?: unknown
             goalId?: unknown
+            status?: unknown
+            runState?: unknown
+            action?: unknown
             startedAt?: unknown
           })
         : null
     const sessionId = typeof record?.sessionId === 'string' ? record.sessionId : ''
-    if (!sessionId) return
-    if (record?.active === true && typeof record.goalId === 'string' && record.goalId.trim()) {
-      useGoalStore
-        .getState()
-        .startGoalRun(
-          sessionId,
-          record.goalId.trim(),
-          typeof record.startedAt === 'number' ? record.startedAt : Date.now()
-        )
-      return
-    }
-    useGoalStore
-      .getState()
-      .finishGoalRun(sessionId, typeof record?.goalId === 'string' ? record.goalId : undefined)
+    const goalId = typeof record?.goalId === 'string' ? record.goalId.trim() : ''
+    if (!sessionId || !goalId) return
+    const runState = typeof record?.runState === 'string'
+      ? record.runState as GoalRunState
+      : record?.active === true ? 'running' : 'idle'
+    useGoalStore.getState().applyGoalRunState({
+      sessionId,
+      goalId,
+      status: typeof record?.status === 'string' ? record.status : undefined,
+      runState,
+      startedAt: typeof record?.startedAt === 'number' ? record.startedAt : undefined
+    })
   })
 
   return () => {

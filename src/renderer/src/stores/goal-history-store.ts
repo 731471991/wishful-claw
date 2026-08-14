@@ -1,23 +1,38 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import {
-  DB_GOALS_LIST_MSGPACK_CHANNEL,
-  DB_GOAL_EVENTS_LIST_MSGPACK_CHANNEL
+  DB_GOALS_LIST_PAGE_MSGPACK_CHANNEL,
+  DB_GOAL_EVENTS_LIST_PAGE_MSGPACK_CHANNEL
 } from '@shared/messagepack/binary-ipc'
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
   mutationError,
   rowToEvent,
   rowToGoal,
+  type GoalEventPageResult,
+  type GoalPageResult,
   type SessionGoal,
-  type SessionGoalEvent,
-  type SessionGoalEventRow,
-  type SessionGoalRow
+  type SessionGoalEvent
 } from './goal-store-helpers'
 import { applyGoalStatusToProjects } from './goal-state-transitions'
+
+interface GoalPageCursor {
+  currentRank: number
+  updatedAt: number
+  goalId: string
+}
+
+interface GoalEventPageCursor {
+  createdAt: number
+  eventId: number
+}
 
 interface GoalHistoryState {
   goalsByProject: Record<string, SessionGoal[]>
   eventsByGoal: Record<string, SessionGoalEvent[]>
+  goalCursorsByProject: Record<string, GoalPageCursor | null>
+  eventCursorsByGoal: Record<string, GoalEventPageCursor | null>
+  goalHasMoreByProject: Record<string, boolean>
+  eventHasMoreByGoal: Record<string, boolean>
   loadingProjects: Record<string, boolean>
   loadingGoals: Record<string, boolean>
   errorsByProject: Record<string, string | undefined>
@@ -31,11 +46,13 @@ interface GoalHistoryState {
   ) => void
   refreshLoadedProjects: () => void
   loadProjectGoals: (projectId: string | null, force?: boolean) => Promise<SessionGoal[]>
+  loadMoreProjectGoals: (projectId: string | null) => Promise<SessionGoal[]>
   loadGoalEvents: (
     sessionId: string,
     goalId: string,
     force?: boolean
   ) => Promise<SessionGoalEvent[]>
+  loadMoreGoalEvents: (sessionId: string, goalId: string) => Promise<SessionGoalEvent[]>
 }
 
 export function goalProjectKey(projectId: string | null): string {
@@ -49,6 +66,10 @@ export function goalHistoryKey(sessionId: string, goalId: string): string {
 export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
   goalsByProject: {},
   eventsByGoal: {},
+  goalCursorsByProject: {},
+  eventCursorsByGoal: {},
+  goalHasMoreByProject: {},
+  eventHasMoreByGoal: {},
   loadingProjects: {},
   loadingGoals: {},
   errorsByProject: {},
@@ -101,13 +122,20 @@ export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
       errorsByProject: { ...state.errorsByProject, [key]: undefined }
     }))
     try {
-      const rows = await invokeMessagePackBinary<SessionGoalRow[]>(
-        DB_GOALS_LIST_MSGPACK_CHANNEL,
-        { projectId }
+      const page = await invokeMessagePackBinary<GoalPageResult>(
+        DB_GOALS_LIST_PAGE_MSGPACK_CHANNEL,
+        { projectId, limit: 30 }
       )
-      const goals = rows.map(rowToGoal)
+      const goals = page.items.map(rowToGoal)
       set((state) => ({
         goalsByProject: { ...state.goalsByProject, [key]: goals },
+        goalHasMoreByProject: { ...state.goalHasMoreByProject, [key]: page.hasMore },
+        goalCursorsByProject: {
+          ...state.goalCursorsByProject,
+          [key]: page.hasMore && page.nextCurrentRank != null && page.nextUpdatedAt != null && page.nextGoalId
+            ? { currentRank: page.nextCurrentRank, updatedAt: page.nextUpdatedAt, goalId: page.nextGoalId }
+            : null
+        },
         loadingProjects: { ...state.loadingProjects, [key]: false }
       }))
       return goals
@@ -121,6 +149,53 @@ export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
     }
   },
 
+  loadMoreProjectGoals: async (projectId) => {
+    const key = goalProjectKey(projectId)
+    const state = get()
+    const cached = state.goalsByProject[key] ?? []
+    const cursor = state.goalCursorsByProject[key]
+    if (!cursor || !state.goalHasMoreByProject[key] || state.loadingProjects[key]) return cached
+
+    set((current) => ({
+      loadingProjects: { ...current.loadingProjects, [key]: true },
+      errorsByProject: { ...current.errorsByProject, [key]: undefined }
+    }))
+    try {
+      const page = await invokeMessagePackBinary<GoalPageResult>(
+        DB_GOALS_LIST_PAGE_MSGPACK_CHANNEL,
+        {
+          projectId,
+          limit: 30,
+          cursorCurrentRank: cursor.currentRank,
+          cursorUpdatedAt: cursor.updatedAt,
+          cursorGoalId: cursor.goalId
+        }
+      )
+      const appended = page.items.map(rowToGoal)
+      const seen = new Set(cached.map((goal) => goal.goalId))
+      const goals = [...cached, ...appended.filter((goal) => !seen.has(goal.goalId))]
+      set((current) => ({
+        goalsByProject: { ...current.goalsByProject, [key]: goals },
+        goalHasMoreByProject: { ...current.goalHasMoreByProject, [key]: page.hasMore },
+        goalCursorsByProject: {
+          ...current.goalCursorsByProject,
+          [key]: page.hasMore && page.nextCurrentRank != null && page.nextUpdatedAt != null && page.nextGoalId
+            ? { currentRank: page.nextCurrentRank, updatedAt: page.nextUpdatedAt, goalId: page.nextGoalId }
+            : null
+        },
+        loadingProjects: { ...current.loadingProjects, [key]: false }
+      }))
+      return goals
+    } catch (error) {
+      const message = mutationError(error)
+      set((current) => ({
+        loadingProjects: { ...current.loadingProjects, [key]: false },
+        errorsByProject: { ...current.errorsByProject, [key]: message }
+      }))
+      return cached
+    }
+  },
+
   loadGoalEvents: async (sessionId, goalId, force = false) => {
     const key = goalHistoryKey(sessionId, goalId)
     const cached = get().eventsByGoal[key]
@@ -128,19 +203,66 @@ export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
 
     set((state) => ({ loadingGoals: { ...state.loadingGoals, [key]: true } }))
     try {
-      const rows = await invokeMessagePackBinary<SessionGoalEventRow[]>(
-        DB_GOAL_EVENTS_LIST_MSGPACK_CHANNEL,
-        { sessionId, goalId, limit: 200 }
+      const page = await invokeMessagePackBinary<GoalEventPageResult>(
+        DB_GOAL_EVENTS_LIST_PAGE_MSGPACK_CHANNEL,
+        { sessionId, goalId, limit: 50 }
       )
-      const events = rows.map(rowToEvent)
+      const events = page.items.map(rowToEvent)
       set((state) => ({
         eventsByGoal: { ...state.eventsByGoal, [key]: events },
+        eventHasMoreByGoal: { ...state.eventHasMoreByGoal, [key]: page.hasMore },
+        eventCursorsByGoal: {
+          ...state.eventCursorsByGoal,
+          [key]: page.hasMore && page.nextCreatedAt != null && page.nextEventId != null
+            ? { createdAt: page.nextCreatedAt, eventId: page.nextEventId }
+            : null
+        },
         loadingGoals: { ...state.loadingGoals, [key]: false }
       }))
       return events
     } catch {
       set((state) => ({ loadingGoals: { ...state.loadingGoals, [key]: false } }))
       return cached ?? []
+    }
+  },
+
+  loadMoreGoalEvents: async (sessionId, goalId) => {
+    const key = goalHistoryKey(sessionId, goalId)
+    const state = get()
+    const cached = state.eventsByGoal[key] ?? []
+    const cursor = state.eventCursorsByGoal[key]
+    if (!cursor || !state.eventHasMoreByGoal[key] || state.loadingGoals[key]) return cached
+
+    set((current) => ({ loadingGoals: { ...current.loadingGoals, [key]: true } }))
+    try {
+      const page = await invokeMessagePackBinary<GoalEventPageResult>(
+        DB_GOAL_EVENTS_LIST_PAGE_MSGPACK_CHANNEL,
+        {
+          sessionId,
+          goalId,
+          limit: 50,
+          cursorCreatedAt: cursor.createdAt,
+          cursorEventId: cursor.eventId
+        }
+      )
+      const appended = page.items.map(rowToEvent)
+      const seen = new Set(cached.map((event) => event.id))
+      const events = [...cached, ...appended.filter((event) => !seen.has(event.id))]
+      set((current) => ({
+        eventsByGoal: { ...current.eventsByGoal, [key]: events },
+        eventHasMoreByGoal: { ...current.eventHasMoreByGoal, [key]: page.hasMore },
+        eventCursorsByGoal: {
+          ...current.eventCursorsByGoal,
+          [key]: page.hasMore && page.nextCreatedAt != null && page.nextEventId != null
+            ? { createdAt: page.nextCreatedAt, eventId: page.nextEventId }
+            : null
+        },
+        loadingGoals: { ...current.loadingGoals, [key]: false }
+      }))
+      return events
+    } catch {
+      set((current) => ({ loadingGoals: { ...current.loadingGoals, [key]: false } }))
+      return cached
     }
   }
 }))

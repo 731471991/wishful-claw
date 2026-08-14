@@ -26,3 +26,26 @@ public sealed record GoalToolResult(
     GoalToolProgress? Progress = null,
     GoalActionResult? Action = null,
     string? Error = null);
+
+public sealed record GoalToolEvent(
+    long Id,
+    string EventType,
+    string? Message,
+    string? MetadataJson,
+    long CreatedAt);
+
+public sealed record GoalToolPageResult(
+    List<GoalToolGoal> Goals,
+    bool HasMore,
+    int? NextCurrentRank = null,
+    long? NextUpdatedAt = null,
+    string? NextGoalId = null,
+    string? Error = null);
+
+public sealed record GoalToolHistoryResult(
+    GoalToolGoal? Goal,
+    List<GoalToolEvent> Events,
+    bool HasMore,
+    long? NextCreatedAt = null,
+    long? NextEventId = null,
+    string? Error = null);

@@ -112,6 +112,65 @@ internal static partial class Program
             writer.WriteEndObject();
         });
 
+    private static JsonElement GoalPageParameters(
+        string dbPath,
+        string sessionId,
+        int limit,
+        GoalPageResult? cursor = null)
+        => WorkerJsonHelper.BuildJsonElement(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("dbPath", dbPath);
+            writer.WriteString("sessionId", sessionId);
+            writer.WriteNumber("limit", limit);
+            if (cursor?.NextCurrentRank != null
+                && cursor.NextUpdatedAt != null
+                && cursor.NextGoalId != null)
+            {
+                writer.WriteNumber("cursorCurrentRank", cursor.NextCurrentRank.Value);
+                writer.WriteNumber("cursorUpdatedAt", cursor.NextUpdatedAt.Value);
+                writer.WriteString("cursorGoalId", cursor.NextGoalId);
+            }
+            writer.WriteEndObject();
+        });
+
+    private static JsonElement GoalEventPageParameters(
+        string dbPath,
+        string sessionId,
+        string goalId,
+        int limit,
+        GoalEventPageResult? cursor = null)
+        => WorkerJsonHelper.BuildJsonElement(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("dbPath", dbPath);
+            writer.WriteString("sessionId", sessionId);
+            writer.WriteString("goalId", goalId);
+            writer.WriteNumber("limit", limit);
+            if (cursor?.NextCreatedAt != null && cursor.NextEventId != null)
+            {
+                writer.WriteNumber("cursorCreatedAt", cursor.NextCreatedAt.Value);
+                writer.WriteNumber("cursorEventId", cursor.NextEventId.Value);
+            }
+            writer.WriteEndObject();
+        });
+
+    private static JsonElement ReopenParameters(
+        string dbPath,
+        string sessionId,
+        string goalId,
+        string? objective = null)
+        => WorkerJsonHelper.BuildJsonElement(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("dbPath", dbPath);
+            writer.WriteString("sessionId", sessionId);
+            writer.WriteString("goalId", goalId);
+            if (!string.IsNullOrEmpty(objective))
+                writer.WriteString("objective", objective);
+            writer.WriteEndObject();
+        });
+
     private static List<JsonElement> ReadResultArray(WorkerResponse response)
     {
         using var document = JsonDocument.Parse(response.ToJsonBytes(null));
@@ -187,6 +246,57 @@ internal static partial class Program
         public ValueTask EmitEventIgnoringCancellationAsync<T>(string eventName, T parameters, JsonTypeInfo<T> typeInfo)
             => ValueTask.CompletedTask;
         public ValueTask EmitMessagePackEventAsync(string eventName, ReadOnlyMemory<byte> payload)
+            => ValueTask.CompletedTask;
+    }
+
+    private sealed class CapabilityRequestContext(bool confirmed) : IWorkerRequestContext
+    {
+        public CancellationToken CancellationToken => CancellationToken.None;
+        public CancellationToken ConnectionCancellationToken => CancellationToken.None;
+        public IWorkerRequestContext ForBackgroundOperation() => this;
+
+        public ValueTask EmitEventAsync<T>(
+            string eventName,
+            T parameters,
+            JsonTypeInfo<T> typeInfo)
+        {
+            if (eventName != "agent/reverse-request"
+                || parameters is not AgentRuntimeReverseRequestEnvelope request)
+            {
+                return ValueTask.CompletedTask;
+            }
+
+            AgentRuntimeReverseRequests.Complete(WorkerJsonHelper.BuildJsonElement(writer =>
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", request.Id);
+                writer.WriteStartObject("result");
+                if (request.Method == "mcp:capability-list")
+                {
+                    writer.WriteStartArray("servers");
+                    writer.WriteEndArray();
+                    writer.WriteStartArray("skills");
+                    writer.WriteEndArray();
+                }
+                else if (request.Method == "goal/confirm-request")
+                {
+                    writer.WriteBoolean("confirmed", confirmed);
+                }
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }));
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask EmitEventIgnoringCancellationAsync<T>(
+            string eventName,
+            T parameters,
+            JsonTypeInfo<T> typeInfo)
+            => ValueTask.CompletedTask;
+
+        public ValueTask EmitMessagePackEventAsync(
+            string eventName,
+            ReadOnlyMemory<byte> payload)
             => ValueTask.CompletedTask;
     }
 
