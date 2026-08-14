@@ -12,6 +12,7 @@ import { FileTreeHeader } from './file-tree-header'
 import { FileTreeSearchBar } from './file-tree-search-bar'
 import { FileTreeContent } from './file-tree-content'
 import { FileTreeContextMenuItems } from './file-tree-context-menu'
+import { AgentFileTreeToolbar } from './agent-file-tree-toolbar'
 
 interface FileTreePanelProps {
   sessionId?: string | null
@@ -35,7 +36,8 @@ export function FileTreePanel({
     searchQuery, setSearchQuery, searchResults, searchLoading,
     agentRootExpanded, setAgentRootExpanded,
     newItemParent, newItemType, handleToggle,
-    refreshTree, sshConnectionId
+    refreshTree, sshConnectionId,
+    handleAddToChat, handleCopyPath
   } = fileTreeState
   const { treeActions, editState, treeStats, activePath } = actions
   const compactSheetSurface = surface === 'sheet' || surface === 'agent'
@@ -80,7 +82,27 @@ export function FileTreePanel({
               : 'workspace-filetree-surface--card rounded-[20px]'
         )}
       >
-        <div
+                {agentSurface && (
+          <AgentFileTreeToolbar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            loading={loading}
+            refreshTree={refreshTree}
+            workingFolder={workingFolder}
+            sshConnectionId={sshConnectionId ?? null}
+            t={t}
+            handleNewFile={actions.handleNewFile}
+            handleNewFolder={actions.handleNewFolder}
+            handleAddToChat={handleAddToChat}
+            handleCopyPath={handleCopyPath}
+            handleOpenTerminal={actions.handleOpenTerminal}
+            handleOpenDefault={actions.handleOpenDefault}
+            handleOpenWithCode={actions.handleOpenWithCode}
+            handleReveal={actions.handleReveal}
+          />
+        )}
+
+<div
           className={cn(
             'workspace-filetree-header',
             agentSurface ? 'workspace-filetree-header--agent px-0 py-0' : 'px-3 py-3'
@@ -142,8 +164,8 @@ export function FileTreePanel({
                 t={t}
                 handlePreview={actions.handlePreview}
                 handleToggle={handleToggle}
-                handleAddToChat={actions.handleAddToChat}
-                handleCopyPath={actions.handleCopyPath}
+                handleAddToChat={handleAddToChat}
+                handleCopyPath={handleCopyPath}
                 editState={editState}
                 treeActions={treeActions}
               />
@@ -157,8 +179,8 @@ export function FileTreePanel({
               handleNewFile={actions.handleNewFile}
               handleNewFolder={actions.handleNewFolder}
               refreshTree={refreshTree}
-              handleAddToChat={actions.handleAddToChat}
-              handleCopyPath={actions.handleCopyPath}
+              handleAddToChat={handleAddToChat}
+              handleCopyPath={handleCopyPath}
               handleOpenTerminal={actions.handleOpenTerminal}
               handleOpenDefault={actions.handleOpenDefault}
               handleOpenWithCode={actions.handleOpenWithCode}

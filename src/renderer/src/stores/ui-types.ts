@@ -95,7 +95,7 @@ export type SettingsTab =
   | 'plugin'
   | 'extension'
   | 'mcp'
-  | 'websearch'
+
   | 'ssh'
   | 'skills'
 
