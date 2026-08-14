@@ -463,6 +463,28 @@ registerWebSearchHandlers()
     }
   )
 
+  registerMessagePackHandler<string, void>(
+    'shell:showItemInFolder',
+    async (args) => {
+      shell.showItemInFolder(args)
+    }
+  )
+
+  registerMessagePackHandler<string, void>(
+    'shell:trashPath',
+    async (args) => {
+      await shell.trashItem(args)
+    }
+  )
+
+  registerMessagePackHandler<{ path: string; appId?: string }, void>(
+    'shell:openWithApp',
+    async (args) => {
+      // Open file with default app (appId ignored for now, uses OS default)
+      await shell.openPath(args.path)
+    }
+  )
+
   // -- File selection dialog --
   registerMessagePackHandler<{ multiSelections?: boolean }, { canceled: boolean; path: string; paths: string[] }>(
     'fs:select-file',

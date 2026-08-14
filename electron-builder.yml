@@ -109,7 +109,7 @@ npmRebuild: false
 
 win:
   executableName: WishfulClaw
-  icon: resources/icon-bmp.ico
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch:

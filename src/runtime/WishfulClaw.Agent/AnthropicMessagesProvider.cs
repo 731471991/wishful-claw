@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -21,7 +21,7 @@ internal static partial class AnthropicMessagesProvider
         ServerCertificateCustomValidationCallback = (_, _, _, _) => true
     })
     {
-        Timeout = TimeSpan.FromMinutes(5)
+        Timeout = Timeout.InfiniteTimeSpan
     };
 
     private static readonly JsonWriterOptions WriterOptions = new()
@@ -63,8 +63,8 @@ internal static partial class AnthropicMessagesProvider
         var parseState = new AnthropicParseState();
         WorkerLog.Debug($"anthropic messages request start model={model} url={url}");
 
-        using var response = await Http.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead, state.CancellationToken);
+        using var response = await AgentRuntimeRequestTimeout.SendAsync(
+            Http, request, provider, "Anthropic Messages", state.CancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw await ProviderHttpException.CreateAsync(

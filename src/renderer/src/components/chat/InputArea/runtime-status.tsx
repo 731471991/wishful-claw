@@ -1,4 +1,4 @@
-// Runtime status bar: token/cost/TPS/TTFT metrics + streaming status indicator
+﻿// Runtime status bar: token/cost/TPS/TTFT metrics + streaming status indicator
 
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -583,3 +583,4 @@ export function ComposerRuntimeStatus({
 
 
 export { RuntimeTokenStatistics } from './runtime-token-statistics'
+export { ComposerStatusIndicator } from './composer-status-indicator'

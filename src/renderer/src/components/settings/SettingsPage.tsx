@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Search, Puzzle, Cable } from 'lucide-react'
+import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Puzzle, Cable } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
@@ -36,8 +36,7 @@ function SettingsPage(): React.JSX.Element {
     {
       label: t('tabs.groups.aiService'),
       items: [
-        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') },
-        { id: 'websearch', icon: <Search className="size-4" />, label: t('tabs.websearch.label', { defaultValue: '联网搜索' }) }
+        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') }
       ]
     },
     {
@@ -174,8 +173,8 @@ function AboutPanel(): React.JSX.Element {
 
   return (
     <div className="mx-auto max-w-2xl px-8 pb-16 pt-10">
-      <h1 className="mb-2 text-xl font-semibold">{t('about.title')}</h1>
-      <p className="text-sm text-muted-foreground">{t('about.version')}</p>
+      <h1 className="mb-1 text-xl font-semibold">{t('about.title')}</h1>
+      <p className="text-sm text-muted-foreground">{APP_VERSION_LABEL}</p>
       <div className="mt-6 space-y-3 text-sm text-muted-foreground">
         <p>{t('about.description')}</p>
         <ul className="ml-4 list-disc space-y-1">

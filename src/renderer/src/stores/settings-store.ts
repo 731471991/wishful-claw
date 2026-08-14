@@ -1,4 +1,4 @@
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { ProviderType, ReasoningEffortLevel } from '../lib/api/types'
 import { ipcStorage } from '../lib/ipc/ipc-storage'
@@ -52,6 +52,19 @@ export type {
   ThemeMode,
 } from './settings-store-types'
 import { isThemeSetting, normalizeWorkingFolderPath, sanitizeClaudeCodeConfigs, sanitizeCodexConfigs, sanitizeRecentWorkingTargets } from './settings-store-types'
+
+// API request deadline constants (seconds, 0 = no limit)
+export const DEFAULT_API_REQUEST_TIMEOUT_SECONDS = 100
+export const MIN_API_REQUEST_TIMEOUT_SECONDS = 0
+export const MAX_API_REQUEST_TIMEOUT_SECONDS = 86_400
+
+export function clampApiRequestTimeoutSeconds(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_API_REQUEST_TIMEOUT_SECONDS
+  return Math.min(
+    MAX_API_REQUEST_TIMEOUT_SECONDS,
+    Math.max(MIN_API_REQUEST_TIMEOUT_SECONDS, Math.floor(value))
+  )
+}
 
 // Re-export constants and functions for consumers
 export {
@@ -169,6 +182,9 @@ interface SettingsStore {
   webSearchEngine: string
   webSearchMaxResults: number
   webSearchTimeout: number
+
+  // API Request Timeout (seconds, 0 = no limit)
+  apiRequestTimeoutSeconds: number
 
   // CodeGraph Settings (opt-in standalone sidecar; default off)
   codegraphEnabled: boolean
@@ -291,6 +307,9 @@ export const useSettingsStore = create<SettingsStore>()(
       webSearchMaxResults: 5,
       webSearchTimeout: 30000,
 
+      // API Request Timeout (seconds, 0 = no limit, default 100s)
+      apiRequestTimeoutSeconds: 100,
+
       // CodeGraph Settings (opt-in standalone sidecar; default off)
       codegraphEnabled: false,
       codegraphFullToolSurface: false,
@@ -393,6 +412,14 @@ export const useSettingsStore = create<SettingsStore>()(
         }
         if (state.systemProxyUrl === undefined) {
           state.systemProxyUrl = ''
+        }
+        if (state.apiRequestTimeoutSeconds === undefined ||
+            typeof state.apiRequestTimeoutSeconds !== 'number') {
+          state.apiRequestTimeoutSeconds = DEFAULT_API_REQUEST_TIMEOUT_SECONDS
+        } else {
+          state.apiRequestTimeoutSeconds = clampApiRequestTimeoutSeconds(
+            state.apiRequestTimeoutSeconds
+          )
         }
         // Add CodeGraph opt-in flag if missing (default off)
         if (state.codegraphEnabled === undefined) {
@@ -724,6 +751,9 @@ export const useSettingsStore = create<SettingsStore>()(
         webSearchEngine: state.webSearchEngine,
         webSearchMaxResults: state.webSearchMaxResults,
         webSearchTimeout: state.webSearchTimeout,
+        apiRequestTimeoutSeconds: clampApiRequestTimeoutSeconds(
+          state.apiRequestTimeoutSeconds
+        ),
         // CodeGraph Settings
         codegraphEnabled: state.codegraphEnabled,
         codegraphFullToolSurface: state.codegraphFullToolSurface,

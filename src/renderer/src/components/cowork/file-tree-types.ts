@@ -20,6 +20,7 @@ export interface AgentFileTreeCommand {
 export interface FileSearchItem {
   name: string
   path: string
+  type?: 'file' | 'directory'
 }
 
 export interface TreeEditState {

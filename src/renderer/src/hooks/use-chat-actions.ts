@@ -204,7 +204,8 @@ export function buildProviderPayload(
     maxTokens: settings.maxTokens ?? undefined,
     thinkingEnabled,
     thinkingConfig: thinkingConfig ?? undefined,
-    reasoningEffort
+    reasoningEffort,
+    requestTimeoutSeconds: settings.apiRequestTimeoutSeconds ?? 100
   }
 }
 

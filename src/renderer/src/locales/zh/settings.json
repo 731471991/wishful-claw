@@ -1,4 +1,4 @@
-{
+﻿{
   "title": "设置",
   "tabs": {
     "general": {
@@ -124,6 +124,11 @@
         "desc": "同时运行的子 Agent 数量上限"
       }
     },
+    "apiRequestTimeout": "API 请求超时",
+    "apiRequestTimeoutDesc": "等待模型响应头的最长时间（秒）。设为 0 表示不限时；流式输出开始后不会被此设置中断。",
+    "apiRequestTimeoutNoLimit": "不限时",
+    "apiRequestTimeoutSeconds": "{{count}} 秒",
+    "apiRequestTimeoutHint": "默认：{{default}} 秒，适用于所有服务商。",
     "contextCompression": {
       "label": "上下文压缩",
       "desc": "当对话接近上下文窗口上限时，自动总结早期消息以释放空间",

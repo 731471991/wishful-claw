@@ -106,7 +106,6 @@ export function registerFsHandlers(): void {
           const entries = await fs.promises.readdir(args.path, { withFileTypes: true })
           const sep = args.path.includes('/') && !args.path.includes('\\') ? '/' : '\\'
           return entries
-            .filter((entry) => !entry.name.startsWith('.'))
             .map((entry) => ({
               name: entry.name,
               type: entry.isDirectory() ? ('directory' as const) : ('file' as const),
@@ -268,13 +267,13 @@ export function registerFsHandlers(): void {
     )
 
     // Search files by name
-    registerMessagePackHandler<{ query: string; path?: string }, { path: string; name: string }[]>(
+    registerMessagePackHandler<{ query: string; path?: string }, { path: string; name: string; type: 'file' | 'directory' }[]>(
       'fs:search-files',
       async (args) => {
         try {
           const cwd = args.path ?? process.cwd()
           const query = args.query.toLowerCase()
-          const results: { path: string; name: string }[] = []
+          const results: { path: string; name: string; type: 'file' | 'directory' }[] = []
           const walk = async (dir: string, depth: number): Promise<void> => {
             if (depth > 5 || results.length > 200) return
             const entries = await fs.promises.readdir(dir, { withFileTypes: true })
@@ -282,7 +281,7 @@ export function registerFsHandlers(): void {
               if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
               const fullPath = join(dir, entry.name)
               if (entry.name.toLowerCase().includes(query)) {
-                results.push({ path: fullPath, name: entry.name })
+                results.push({ path: fullPath, name: entry.name, type: entry.isDirectory() ? 'directory' : 'file' })
               }
               if (entry.isDirectory() && depth < 5) {
                 await walk(fullPath, depth + 1)

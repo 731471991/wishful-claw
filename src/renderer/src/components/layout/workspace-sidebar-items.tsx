@@ -19,8 +19,9 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Session, type Project } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
 import { toast } from 'sonner'
-import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFolderSelectorDialog'
 import { MoreHorizontal } from 'lucide-react'
+import { ipcClient } from '@renderer/lib/ipc/ipc-client'
+import { IPC } from '@renderer/lib/ipc/channels'
 
 // ─── Helpers ───
 
@@ -259,7 +260,6 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
   const deleteProject = useChatStore((s) => s.deleteProject)
   const renameProject = useChatStore((s) => s.renameProject)
   const togglePinProject = useChatStore((s) => s.togglePinProject)
-  const updateProjectDirectory = useChatStore((s) => s.updateProjectDirectory)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
   const navigateToArchive = useUIStore((s) => s.navigateToArchive)
   const navigateToGit = useUIStore((s) => s.navigateToGit)
@@ -300,11 +300,19 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
     toast.success(t('sidebar.projectDeleted', { defaultValue: 'Project deleted' }))
   }, [project.id, deleteProject, t])
 
-  const [changeFolderDialogOpen, setChangeFolderDialogOpen] = useState(false)
-
-  const handleChangeFolder = useCallback(() => {
-    setChangeFolderDialogOpen(true)
-  }, [])
+  const handleChangeFolder = useCallback(async () => {
+    if (!project.workingFolder) {
+      toast.error(t('sidebar.noWorkingFolder', { defaultValue: 'No working folder set' }))
+      return
+    }
+    // shell.openPath returns string (empty on success, error message on failure)
+    const result = await ipcClient.invoke(IPC.SHELL_OPEN_PATH, project.workingFolder)
+    if (typeof result === 'string' && result.length > 0) {
+      toast.error(t('sidebar.openFailed', { defaultValue: 'Failed to open folder' }), {
+        description: result
+      })
+    }
+  }, [project.workingFolder, t])
 
   const handleNewSessionInProject = useCallback(() => {
     // Navigate to project home. Session is created when user sends a message.
@@ -452,23 +460,6 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-
-      <WorkingFolderSelectorDialog
-        open={changeFolderDialogOpen}
-        onOpenChange={setChangeFolderDialogOpen}
-        workingFolder={project.workingFolder}
-        sshConnectionId={project.sshConnectionId}
-        onSelectLocalFolder={(folderPath) => {
-          updateProjectDirectory(project.id, { workingFolder: folderPath, sshConnectionId: null })
-          toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
-          setChangeFolderDialogOpen(false)
-        }}
-        onSelectSshFolder={(folderPath, connectionId) => {
-          updateProjectDirectory(project.id, { workingFolder: folderPath, sshConnectionId: connectionId })
-          toast.success(t('sidebar.folderUpdated', { defaultValue: 'Working folder updated' }))
-          setChangeFolderDialogOpen(false)
-        }}
-      />
 
       {/* Sessions under this project */}
       {isExpanded && sortedSessions.length > 0 && (

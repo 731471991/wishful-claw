@@ -43,6 +43,19 @@ function classifyItem(item: ToolExecutionItem): keyof CategoryCount {
 }
 
 /**
+ * Extract a file path from a tool execution item's input.
+ * Returns null for tools without a file path (e.g. WebSearch, Grep without path).
+ */
+function getItemFilePath(item: ToolExecutionItem): string | null {
+  const input = item.input
+  if (!input || typeof input !== 'object') return null
+  // Read/Write/Edit/Delete use file_path
+  const filePath = input.file_path ?? input.filePath ?? input.path
+  if (typeof filePath === 'string' && filePath.length > 0) return filePath
+  return null
+}
+
+/**
  * Generate a compact summary string from the tool execution outline.
  */
 export function buildProcessSummary(
@@ -60,8 +73,28 @@ export function buildProcessSummary(
     browser: 0, desktop: 0, orchestration: 0,
     mcp: 0, interactive: 0, visual: 0, skill: 0, other: 0,
   }
+
+  // Deduplicate reads and edits by file path — same file accessed multiple
+  // times should only count as 1 in the summary.
+  const seenReadFiles = new Set<string>()
+  const seenEditFiles = new Set<string>()
+
   for (const item of visibleItems) {
-    counts[classifyItem(item)] += 1
+    const category = classifyItem(item)
+    if (category === 'reads') {
+      const fp = getItemFilePath(item)
+      if (fp) {
+        if (seenReadFiles.has(fp)) continue
+        seenReadFiles.add(fp)
+      }
+    } else if (category === 'edits') {
+      const fp = getItemFilePath(item)
+      if (fp) {
+        if (seenEditFiles.has(fp)) continue
+        seenEditFiles.add(fp)
+      }
+    }
+    counts[category] += 1
   }
 
   const parts: string[] = []

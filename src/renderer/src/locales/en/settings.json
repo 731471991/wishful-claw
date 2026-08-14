@@ -1,4 +1,4 @@
-{
+﻿{
   "title": "Settings",
   "tabs": {
     "general": {
@@ -119,6 +119,11 @@
         "desc": "Maximum number of sub-agents running simultaneously"
       }
     },
+    "apiRequestTimeout": "API Request Timeout",
+    "apiRequestTimeoutDesc": "Maximum seconds to wait for response headers. Set 0 to wait indefinitely; an active stream is not cut off.",
+    "apiRequestTimeoutNoLimit": "No limit",
+    "apiRequestTimeoutSeconds": "{{count}} seconds",
+    "apiRequestTimeoutHint": "Default: {{default}} seconds. Applies to all providers.",
     "contextCompression": {
       "label": "Context Compression",
       "desc": "Automatically summarize earlier messages when the conversation approaches the context window limit",

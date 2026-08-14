@@ -170,6 +170,36 @@ public static class ProviderTestService
             return (url, request);
         }
 
+        if (provider.Type == "openai-responses")
+        {
+            var url = $"{baseUrl}/responses";
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            if (!string.IsNullOrEmpty(provider.ApiKey))
+            {
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", provider.ApiKey);
+            }
+            request.Content = new StringContent(
+                WorkerJsonHelper.BuildJsonString(w =>
+                {
+                    w.WriteStartObject();
+                    w.WriteString("model", provider.ModelId ?? "gpt-5.6-sol");
+                    w.WriteBoolean("stream", false);
+                    w.WriteNumber("max_output_tokens", 1);
+                    w.WritePropertyName("input");
+                    w.WriteStartArray();
+                    w.WriteStartObject();
+                    w.WriteString("type", "message");
+                    w.WriteString("role", "user");
+                    w.WriteString("content", "Hi");
+                    w.WriteEndObject();
+                    w.WriteEndArray();
+                    w.WriteEndObject();
+                }),
+                Encoding.UTF8,
+                "application/json");
+            return (url, request);
+        }
+
         // Default: OpenAI-compatible
         var chatUrl = $"{baseUrl}/chat/completions";
         var req = new HttpRequestMessage(HttpMethod.Post, chatUrl);
