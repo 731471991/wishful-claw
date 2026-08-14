@@ -207,7 +207,7 @@ export function ComposerStatusIndicator({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute left-4 top-2 z-10 inline-flex min-w-0 items-center gap-1 truncate text-[10px] leading-4',
+        'pointer-events-none absolute left-5 top-2 z-10 inline-flex min-w-0 items-center gap-1 truncate text-[10px] leading-4',
         statusView.className,
         className
       )}
