@@ -1,4 +1,4 @@
-// File system IPC handlers — extracted from main/index.ts
+﻿// File system IPC handlers — extracted from main/index.ts
 
 import * as fs from 'fs'
 import { registerMessagePackHandler } from './messagepack-handler'
@@ -106,7 +106,6 @@ export function registerFsHandlers(): void {
           const entries = await fs.promises.readdir(args.path, { withFileTypes: true })
           const sep = args.path.includes('/') && !args.path.includes('\\') ? '/' : '\\'
           return entries
-            .filter((entry) => !entry.name.startsWith('.'))
             .map((entry) => ({
               name: entry.name,
               type: entry.isDirectory() ? ('directory' as const) : ('file' as const),
