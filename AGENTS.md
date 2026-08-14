@@ -290,19 +290,23 @@ Worker
 
 **迭代是否完结由用户确认，Agent 不得自行判定。**
 
+**版本规则**：`v2-iter-{N}` 仅表示 MVP v2 阶段的迭代编号，不是产品主版本号。正式版发布前，产品版本统一为 `0.2.{N}`，Git tag 为 `v0.2.{N}`。每次迭代收尾必须先将 `package.json` 版本更新为 `0.2.{N}`；应用 UI 从 `package.json` 读取版本号，README 版本徽章同步更新。
+
 用户确认完结后，Agent 必须执行以下收尾步骤，确保 main 是最新的，下个会话可以直接从 main 开始新迭代：
 
 ```bash
+# 0. 更新产品版本（package.json = 0.2.{N}，README 徽章同步）
+
 # 1. 合并到 main
  git checkout main
 git merge dev/v2-iter-{N} --no-ff -m "merge: v2-iter-{N} - {迭代名称}"
 
 # 2. 打 tag
-git tag -a v2.{N}.0 -m "v2-iter-{N}: {迭代名称} - 验证通过"
+git tag -a v0.2.{N} -m "v2-iter-{N}: {迭代名称} - 验证通过"
 
 # 3. 推送远程（需要代理）
 git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin main
-git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin v2.{N}.0
+git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 push origin v0.2.{N}
 
 # 4. 删除本地迭代分支
 git branch -d dev/v2-iter-{N}
