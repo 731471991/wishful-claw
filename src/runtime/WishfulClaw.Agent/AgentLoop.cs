@@ -31,10 +31,10 @@ internal static partial class AgentLoop
         var provider = GetObject(parameters, "provider");
         var providerType = JsonHelpers.GetString(provider, "type") ?? string.Empty;
 
-        if (providerType is not ("openai-chat" or "anthropic"))
+        if (providerType is not ("openai-chat" or "anthropic" or "openai-responses"))
         {
             throw new InvalidOperationException(
-                $"Provider type not supported yet: {providerType}. Supported: openai-chat, anthropic.");
+                $"Provider type not supported yet: {providerType}. Supported: openai-chat, anthropic, openai-responses.");
         }
 
         ValidateProvider(provider);
@@ -396,6 +396,12 @@ internal static partial class AgentLoop
         {
             return await AnthropicMessagesProvider.ExecuteTurnAsync(
                 parameters, provider, conversation, toolDefs, state, context);
+        }
+
+        if (providerType == "openai-responses")
+        {
+            return await OpenAIResponsesProvider.ExecuteTurnAsync(
+                parameters, provider, conversation, state, context);
         }
 
         // Default: openai-chat
