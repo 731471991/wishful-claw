@@ -119,6 +119,9 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     )
   }, [canSessionTriggerStreamingAutoScroll, isAtBottom])
 
+  const canAutoScrollRef = React.useRef(canAutoScroll)
+  canAutoScrollRef.current = canAutoScroll
+
   const markProgrammaticScroll = React.useCallback(() => {
     programmaticScrollUntilRef.current = window.performance.now() + PROGRAMMATIC_SCROLL_GUARD_MS
   }, [])
@@ -402,21 +405,27 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     if (pendingInitialScrollSessionIdRef.current !== activeSessionId) return
     if (!(messages.length > 0 || streamingMessageId)) return
     autoScrollModeRef.current = isSessionOutputting ? 'stream' : 'user'
-    // Use deferred scroll with multiple frames to allow the virtualizer to measure
-    // row heights before scrolling to bottom. With turn-based pagination (5 turns),
-    // the initial content is smaller and the virtualizer needs a few frames to stabilize.
-    requestScrollToBottom({ force: true, maxFrames: 15 })
+    // Scroll immediately — the ResizeObserver will keep adjusting as the
+    // virtualizer progressively measures row heights.
+    scrollToBottomImmediate()
     if (initialTailReleaseFrameRef.current !== null) {
-      window.cancelAnimationFrame(initialTailReleaseFrameRef.current)
+      window.clearTimeout(initialTailReleaseFrameRef.current as unknown as number)
     }
     const initializedSessionId = activeSessionId
-    initialTailReleaseFrameRef.current = window.requestAnimationFrame(() => {
+    // Keep the initial-scroll flag (and tail range extractor) for 300ms
+    // so the virtualizer renders the tail while content stabilizes.
+    initialTailReleaseFrameRef.current = window.setTimeout(() => {
       if (pendingInitialScrollSessionIdRef.current === initializedSessionId) {
         pendingInitialScrollSessionIdRef.current = null
       }
       initialTailReleaseFrameRef.current = null
-    })
-  }, [activeSessionId, isSessionOutputting, messages.length, requestScrollToBottom, streamingMessageId])
+    }, 300) as unknown as number
+    return () => {
+      if (initialTailReleaseFrameRef.current !== null) {
+        window.clearTimeout(initialTailReleaseFrameRef.current as unknown as number)
+      }
+    }
+  }, [activeSessionId, isSessionOutputting, messages.length, scrollToBottomImmediate, streamingMessageId])
 
   // ── Streaming state transition ──────────────────────────────────
   React.useEffect(() => {
@@ -447,15 +456,18 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   }, [canAutoScroll, isAtBottom, pendingAskUserQuestion, scrollToBottomImmediate, virtualListTotalSize])
 
   // ── Resize observer ─────────────────────────────────────────────
+  // Uses canAutoScrollRef to avoid re-creating the observer on every isAtBottom change
   React.useEffect(() => {
     const viewport = listRef.current
     const content = virtualContentRef.current
     if (!activeSessionId || !viewport || !content || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => { if (canAutoScroll() && !isLoadingOlderMessagesRef.current) scrollToBottomImmediate() })
+    const observer = new ResizeObserver(() => {
+      if (canAutoScrollRef.current() && !isLoadingOlderMessagesRef.current) scrollToBottomImmediate()
+    })
     observer.observe(viewport)
     observer.observe(content)
     return () => observer.disconnect()
-  }, [activeSessionId, canAutoScroll, scrollToBottomImmediate])
+  }, [activeSessionId, scrollToBottomImmediate])
 
   // ── Auto-load older messages if too few ─────────────────────────
   React.useEffect(() => {
@@ -473,7 +485,7 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   // ── Cleanup ─────────────────────────────────────────────────────
   React.useEffect(() => {
     return () => {
-      if (initialTailReleaseFrameRef.current !== null) window.cancelAnimationFrame(initialTailReleaseFrameRef.current)
+      if (initialTailReleaseFrameRef.current !== null) window.clearTimeout(initialTailReleaseFrameRef.current as unknown as number)
       if (scheduledScrollFrameRef.current !== null) window.cancelAnimationFrame(scheduledScrollFrameRef.current)
       if (scheduledAssistantRailSyncRef.current !== null) window.cancelAnimationFrame(scheduledAssistantRailSyncRef.current)
       if (highlightedMessageTimerRef.current !== null) window.clearTimeout(highlightedMessageTimerRef.current)
