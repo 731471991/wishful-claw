@@ -10,7 +10,7 @@
 | 滚动锚点保持 | `useMessageListScroll.ts:266-303` | ✅ 保存 `scrollHeight/scrollTop`，加载后计算 `scrollDelta` 调整 |
 | 防重复加载 | `useMessageListScroll.ts:103,111,267,282` | ✅ `isLoadingOlderMessages` + `stalledOlderLoadStartRef` |
 | 范围跟踪 | `session-slice.ts:59` + `types.ts:64-68` | ✅ `loadedRangeStart/End`, `messageCount`, `lastKnownMessageCount` |
-| 尾页加载 | `session-slice.ts:448-507` | ✅ `loadRecentSessionMessages` — offset = max(0, count - limit) |
+| 尾页加载 | `session-slice.ts:448-507` | ✅ `loadRecentSessionMessages` — offset = max(0, count - limit)，limit=100 |
 | DB 查询封装 | `db-helpers.ts:323-339` | ✅ `dbListMessagesPage({ sessionId, limit, offset })` |
 | 消息计数 | `db-helpers.ts:340-344` | ✅ `dbGetMessageCount(sessionId)` |
 
@@ -24,54 +24,57 @@ loadOlderSessionMessages: async (_sessionId, _limit, _options) => {
 }
 ```
 
-这是整个功能的唯一缺口。所有上游（滚动触发）和下游（DB 查询）都已就位。
+### 后端现有分页
 
-### 后端（已完整）
+`DbMessageTools.cs:340-380` — `ListPage` 方法用 `LIMIT @limit OFFSET @offset`，按 `created_at ASC, sort_order ASC` 排序。
 
-`DbMessageTools.cs:340-380` — `ListPage` 方法：
-```sql
-SELECT * FROM messages WHERE session_id = @sid ORDER BY created_at ASC, sort_order ASC LIMIT @limit OFFSET @offset
-```
+### 消息数据模型
 
-- limit 范围 1~5000，offset ≥ 0
-- 按 `created_at ASC, sort_order ASC` 排序
-- 返回 `List<MessageRow>`
+- `MessageEntity` 字段：`Id`, `SessionId`, `Role`('user'/'assistant'/'system'), `Content`, `Meta`(JSON), `CreatedAt`, `Usage`(JSON), `SortOrder`(int)
+- `sort_order` = 消息在会话中的序号，0 开始递增，由前端 `session.messages.indexOf(msg)` 分配
+- 一轮对话 = 一个 `role='user'` 消息 + 后续所有 `role='assistant'`/`'system'` 消息（直到下一个 user 消息）
 
-### Reasonix 参考实现
+### 老大的需求
 
-Reasonix `loadOlderHistory`（`useController.ts:2188`）：
-- 基于 turn 游标分页（`beforeTurn = state.historyStartTurn`）
-- 调用后端 `HistoryPageForTab(tabId, beforeTurn, HISTORY_PAGE_TURNS)`
-- 通过 reducer prepend 到消息列表
-- **触发方式**：点击 Transcript 组件中的"显示更早历史"按钮（`Transcript.tsx:906-913`）
+> "加载顺序是反向的，比如默认就获取最近最新5条用户发言到agent的回复内容，而不是单纯的多少条数据"
 
-### 老大要求的差异
+- **分页单位**：对话轮次（user → assistant 完整往返），不是消息条数
+- **默认加载**：最近 5 轮对话
+- **反向分页**：往上滚动加载更早 5 轮
+- **触发方式**：滚动到顶部（非 Reasonix 的点击按钮）
 
-> "往上拉取数据，是通过滚动，而不是 Reasonix 的通过点击元素加载"
+### Reasonix 参考
 
-wishful-claw 已通过 `handleListScroll` 实现滚动触发，无需 Reasonix 的按钮。
+- Reasonix `loadOlderHistory`（`useController.ts:2188`）用 turn 游标分页（`beforeTurn`）
+- 触发方式是点击按钮（`Transcript.tsx:906`），老大要求改为滚动触发（已有基础设施）
+
+### `loadedRangeStart` 语义变更
+
+当前 `loadedRangeStart` = DB offset（如 50 表示从第 50 条开始）。
+改为 `loadedRangeStart` = 已加载消息中最早消息的 `sort_order`。
+- `loadedRangeStart <= 0` → 已加载到最早消息，无更早历史
+- `loadedRangeStart > 0` → 可能还有更早消息可加载
 
 ## 实现方案
 
-只需实现 `loadOlderSessionMessages`：
+### 后端：新增 `db/messages-list-by-turns` 端点
 
-1. 读取当前 session 的 `loadedRangeStart`
-2. `pageSize = 50`（每次加载 50 条）
-3. `offset = max(0, loadedRangeStart - pageSize)`
-4. `limit = min(loadedRangeStart, pageSize)`（最后一段可能不足 pageSize）
-5. 调用 `dbListMessagesPage({ sessionId, limit, offset })`
-6. 将返回的消息 prepend 到 `session.messages` 数组头部
-7. 更新 `loadedRangeStart = offset`
-8. 返回加载的消息数量
+参数：`sessionId`, `beforeSortOrder`（可选，不传 = 从最新开始）, `turns`（默认 5）
 
-### 不需要
+逻辑：
+1. 查出 `beforeSortOrder` 之前最近的 N 个 user 消息的 sort_order
+2. 取最早的 sort_order 作为 rangeStart
+3. 查出 rangeStart 到 beforeSortOrder 之间的所有消息
+4. 返回 messages + rangeStart + hasMore
 
-- 新 IPC 端点（复用 `db/messages-list-page`）
-- 后端改动（`ListPage` 已支持 offset 分页）
-- 前端 UI 改动（滚动触发已完整）
-- 新组件（无 loading 指示器需求——滚动锚点处理已在 `loadOlderMessages` 中）
+### 前端
+
+1. 新增 `dbListMessagesByTurns` 封装
+2. `loadRecentSessionMessages` 改为调用新端点（turns=5）
+3. `loadOlderSessionMessages` 实现为调用新端点（beforeSortOrder=loadedRangeStart, turns=5），prepend 到 messages
 
 ## 潜在风险
 
-1. **消息去重** — 如果 DB 在加载期间新增了消息，offset 会偏移导致重复。但 `loadRecentSessionMessages` 加载的是尾部，`loadOlderSessionMessages` 加载的是头部，两者范围不重叠，风险低。
-2. **性能** — 每次加载 50 条，prepend 到数组头部是 O(n) 操作。对于 1000+ 条消息的会话可能有轻微卡顿，但 immer 的结构共享会优化大部分场景。
+1. **AOT 兼容**：新增结果 record 类型需注册到 `InfrastructureJsonContext`
+2. **sort_order=0 边界**：`loadedRangeStart <= 0` 既表示"已到最早"也表示"初始未加载"，需区分（用 `messagesLoaded` flag 已有）
+3. **消息去重**：prepend 时按 id 去重防边界重复

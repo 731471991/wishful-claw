@@ -1,50 +1,78 @@
-# Plan: v2-iter-14 历史消息反向分页
+# Plan: v2-iter-14 历史消息反向分页（按对话轮次）
 
 ## 目标
 
-实现 `loadOlderSessionMessages`，用户滚动到消息列表顶部时自动加载更早的历史消息，保持滚动位置不跳动。
-
-参考 Reasonix 的反向分页思路（尾页加载 + prepend），但触发方式从点击按钮改为滚动到顶部。
+实现按对话轮次的反向分页：默认加载最近 5 轮对话（user → assistant 完整往返），滚动到顶部时自动加载更早 5 轮。参考 Reasonix 的轮次分页思路，触发方式改为滚动。
 
 ## 步骤清单
 
-- [ ] 步骤1：实现 `loadOlderSessionMessages` — 调用 `dbListMessagesPage` 加载 `loadedRangeStart` 之前的消息，prepend 到 messages 数组，更新 `loadedRangeStart`
-  - 验证检查点：TS 编译通过；函数返回加载的消息数量；`loadedRangeStart` 正确更新
-  
-- [ ] 步骤2：调整 `loadOlderMessages` 调用参数 — 当前 `useMessageListScroll.ts` 调用 `loadOlderSessionMessages(activeSessionId, undefined, ...)` 传了 `undefined` 作为 limit，确认默认 pageSize 在函数内部处理
-  - 验证检查点：TS 编译通过；滚动到顶部能触发加载
+- [ ] 步骤1：后端新增 `ListByTurns` 方法 — `DbMessageTools.cs` 新增按轮次查询方法，`DbModule.cs` 注册 `db/messages-list-by-turns` 端点，新增 `MessageListByTurnsResult` record + 注册到 `InfrastructureJsonContext`
+  - 验证检查点：C# 编译 0 错误
 
-- [ ] 步骤3：编译验证 + 功能测试
-  - 验证检查点：三个 TS 配置全部 0 错误；C# build 0 错误
+- [ ] 步骤2：前端新增 `dbListMessagesByTurns` 封装 — `db-helpers.ts` 新增 IPC 调用封装
+  - 验证检查点：TS 编译通过
+
+- [ ] 步骤3：改写 `loadRecentSessionMessages` — 从 offset 分页改为调用 `dbListMessagesByTurns(turns=5)`，`loadedRangeStart` 语义从 DB offset 改为 sort_order
+  - 验证检查点：TS 编译通过；打开会话只加载最近 5 轮对话
+
+- [ ] 步骤4：实现 `loadOlderSessionMessages` — 调用 `dbListMessagesByTurns(beforeSortOrder=loadedRangeStart, turns=5)`，prepend 到 messages 数组头部，更新 `loadedRangeStart`
+  - 验证检查点：TS 编译通过；滚动到顶部触发加载更早 5 轮
+
+- [ ] 步骤5：编译验证 — 三个 TS 配置 + C# build 全部 0 错误
+  - 验证检查点：全部编译通过
 
 ## 涉及文件
 
-- `src/renderer/src/stores/chat-store/session-slice.ts` — 修改 `loadOlderSessionMessages` 实现（唯一核心改动）
-- `src/renderer/src/components/chat/MessageList/useMessageListScroll.ts` — 确认调用参数传递（可能微调）
-- `src/renderer/src/stores/chat-store/db-helpers.ts` — 只读引用（已有 `dbListMessagesPage`）
-- `src/renderer/src/stores/chat-store/types.ts` — 只读引用（已有分页字段定义）
+- `src/runtime/WishfulClaw.Infrastructure/Db/DbMessageTools.cs` — 新增 `ListByTurns` 方法
+- `src/runtime/WishfulClaw.Infrastructure/Db/DbModule.cs` — 注册新端点
+- `src/runtime/WishfulClaw.Infrastructure/Db/Entities/MessageEntity.cs` — 新增 `MessageListByTurnsResult` record
+- `src/runtime/WishfulClaw.Infrastructure/JsonContexts/InfrastructureJsonContext.cs` — 注册新类型
+- `src/renderer/src/stores/chat-store/db-helpers.ts` — 新增 `dbListMessagesByTurns`
+- `src/renderer/src/stores/chat-store/session-slice.ts` — 改写 `loadRecentSessionMessages` + 实现 `loadOlderSessionMessages`
+- `src/renderer/src/stores/chat-store/types.ts` — 可能调整类型注释（无需改字段）
 
 ## 参考源码
 
-- Reasonix: `D:\claw\DeepSeek-Reasonix\desktop\frontend\src\lib\useController.ts:2188` — `loadOlderHistory` 游标分页思路
+- Reasonix: `D:\claw\DeepSeek-Reasonix\desktop\frontend\src\lib\useController.ts:2188` — `loadOlderHistory` 轮次游标分页思路
 - Reasonix: `D:\claw\DeepSeek-Reasonix\desktop\frontend\src\components\Transcript.tsx:906` — 按钮触发方式（不采用，改用滚动）
 
 ## 设计决策
 
-### offset 分页 vs 游标分页
+### 后端 ListByTurns 逻辑
 
-Reasonix 用 turn 游标分页（`beforeTurn`），wishful-claw 用 offset 分页。
+```sql
+-- 1. 找出 beforeSortOrder 之前最近的 N 个 user 消息
+SELECT sort_order FROM messages
+WHERE session_id = @sid AND role = 'user'
+  AND (@before IS NULL OR sort_order < @before)
+ORDER BY sort_order DESC
+LIMIT @turns
 
-选择保持 offset 分页，理由：
-1. 后端 `ListPage` 已实现 `LIMIT/OFFSET`，无需改动
-2. `loadedRangeStart` 已跟踪当前加载范围起始位置
-3. wishful-claw 的消息按 `created_at ASC, sort_order ASC` 稳定排序，offset 可靠
+-- 2. 取最早的 sort_order 作为 rangeStart
 
-### pageSize 选择
+-- 3. 查出 rangeStart 到 beforeSortOrder 之间的所有消息
+SELECT * FROM messages
+WHERE session_id = @sid AND sort_order >= @rangeStart
+  AND (@before IS NULL OR sort_order < @before)
+ORDER BY sort_order ASC
 
-- 尾页加载（`loadRecentSessionMessages`）默认 100 条
-- 反向分页默认 50 条 — 因为用户已经在看消息了，50 条够回看一段历史，不会太卡
+-- 4. 检查是否还有更早的 user 消息
+SELECT EXISTS(SELECT 1 FROM messages
+WHERE session_id = @sid AND role = 'user' AND sort_order < @rangeStart)
+```
 
-### 消息去重
+### loadedRangeStart 语义变更
 
-prepend 时按 `id` 去重，防止边界情况下重复加载。
+| 场景 | 旧值（DB offset） | 新值（sort_order） |
+|------|-------------------|-------------------|
+| 初始未加载 | 0 | 0 |
+| 已加载最近5轮，第6条消息是第一个user | 100（假设共150条） | 5（sort_order） |
+| 已加载到最早 | 0 | 0 |
+
+`loadedRangeStart <= 0` 的检查仍然有效——sort_order=0 表示第一条消息。
+
+### pageSize
+
+- 默认每次加载 5 轮对话
+- 一轮 = 1 个 user + 1~N 个 assistant（含工具调用等）
+- 实际消息条数不固定，由 DB 查询结果决定
