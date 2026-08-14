@@ -1,4 +1,4 @@
-﻿// File system IPC handlers — extracted from main/index.ts
+// File system IPC handlers — extracted from main/index.ts
 
 import * as fs from 'fs'
 import { registerMessagePackHandler } from './messagepack-handler'

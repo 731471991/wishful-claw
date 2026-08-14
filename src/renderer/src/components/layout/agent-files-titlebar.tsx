@@ -1,4 +1,4 @@
-﻿import type React from 'react'
+import type React from 'react'
 import {
   ChevronDown, FilePlus2, FolderPlus, GitBranch, GitMerge,
   MoreHorizontal, RefreshCw, Search

@@ -1,4 +1,4 @@
-﻿// process-summary.ts — generate a human-readable summary of the execution process
+// process-summary.ts — generate a human-readable summary of the execution process
 // for display in the collapsed ExecutionProcessBlock header.
 //
 // Example output: "运行了3个命令，查看了2个文件，编辑了1个文件"
