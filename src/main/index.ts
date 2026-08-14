@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+﻿import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -460,6 +460,28 @@ registerWebSearchHandlers()
     'shell:openPath',
     async (args) => {
       await shell.openPath(args)
+    }
+  )
+
+  registerMessagePackHandler<string, void>(
+    'shell:showItemInFolder',
+    async (args) => {
+      shell.showItemInFolder(args)
+    }
+  )
+
+  registerMessagePackHandler<string, void>(
+    'shell:trashPath',
+    async (args) => {
+      await shell.trashItem(args)
+    }
+  )
+
+  registerMessagePackHandler<{ path: string; appId?: string }, void>(
+    'shell:openWithApp',
+    async (args) => {
+      // Open file with default app (appId ignored for now, uses OS default)
+      await shell.openPath(args.path)
     }
   )
 
