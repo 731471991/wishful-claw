@@ -335,6 +335,35 @@ export async function dbListMessagesPage(args: {
 }
 
 /**
+ * Load messages by conversation turns (e.g. 5 most recent user→assistant rounds).
+ * If beforeSortOrder is omitted, loads from the latest message.
+ * Returns messages + rangeStart (earliest sort_order) + hasMore.
+ */
+export async function dbListMessagesByTurns(args: {
+  sessionId: string
+  turns?: number
+  beforeSortOrder?: number
+}): Promise<{ messages: ChatMessage[]; rangeStart: number; hasMore: boolean }> {
+  await ensureDbInitialized()
+  const result = await window.api.workerRequest<{
+    success: boolean
+    messages: MessageRow[]
+    rangeStart: number
+    hasMore: boolean
+    error: string | null
+  }>('db/messages-list-by-turns', {
+    sessionId: args.sessionId,
+    turns: args.turns ?? 5,
+    beforeSortOrder: args.beforeSortOrder
+  })
+  return {
+    messages: (result.messages ?? []).map(deserializeMessage),
+    rangeStart: result.rangeStart ?? 0,
+    hasMore: result.hasMore ?? false
+  }
+}
+
+/**
  * Get message count for a session.
  */
 export async function dbGetMessageCount(sessionId: string): Promise<number> {
