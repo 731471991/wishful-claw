@@ -1,4 +1,4 @@
-﻿import { decode, encode } from '@msgpack/msgpack'
+import { decode, encode } from '@msgpack/msgpack'
 
 export const SIDECAR_APPROVAL_REQUEST_MSGPACK_CHANNEL = 'sidecar:approval-request:msgpack'
 export const SIDECAR_APPROVAL_RESPONSE_MSGPACK_CHANNEL = 'sidecar:approval-response:msgpack'
@@ -41,13 +41,14 @@ export const DB_SESSIONS_CLEAR_ALL_MSGPACK_CHANNEL = 'db:sessions:clear-all:msgp
 export const DB_SESSIONS_CLEAR_PROJECT_MSGPACK_CHANNEL = 'db:sessions:clear-project:msgpack'
 
 export const DB_GOALS_LIST_MSGPACK_CHANNEL = 'db:goals:list:msgpack'
+export const DB_GOALS_LIST_PAGE_MSGPACK_CHANNEL = 'db:goals:list-page:msgpack'
 export const DB_GOALS_GET_MSGPACK_CHANNEL = 'db:goals:get:msgpack'
 export const DB_GOALS_CREATE_MSGPACK_CHANNEL = 'db:goals:create:msgpack'
 export const DB_GOALS_SET_MSGPACK_CHANNEL = 'db:goals:set:msgpack'
 export const DB_GOALS_UPDATE_MSGPACK_CHANNEL = 'db:goals:update:msgpack'
-export const DB_GOALS_CLEAR_MSGPACK_CHANNEL = 'db:goals:clear:msgpack'
 export const DB_GOALS_ACCOUNT_MSGPACK_CHANNEL = 'db:goals:account:msgpack'
 export const DB_GOAL_EVENTS_LIST_MSGPACK_CHANNEL = 'db:goal-events:list:msgpack'
+export const DB_GOAL_EVENTS_LIST_PAGE_MSGPACK_CHANNEL = 'db:goal-events:list-page:msgpack'
 export const DB_GOAL_EVENTS_ADD_MSGPACK_CHANNEL = 'db:goal-events:add:msgpack'
 export const GOAL_PAUSE_MSGPACK_CHANNEL = 'goal:pause:msgpack'
 export const GOAL_RESUME_MSGPACK_CHANNEL = 'goal:resume:msgpack'

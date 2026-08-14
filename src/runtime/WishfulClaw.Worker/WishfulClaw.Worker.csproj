@@ -8,6 +8,16 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- AOT: 禁用反射序列化，所有类型通过源生成器注册 -->
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <!-- NativeAOT 属性（写进 csproj 让编译器识别为原生发布模式） -->
+    <PublishAot>true</PublishAot>
+    <StripSymbols>true</StripSymbols>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- 体积优化（参考 OpenCowork 实测） -->
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetricsSupport>false</MetricsSupport>
   </PropertyGroup>
 
   <ItemGroup>

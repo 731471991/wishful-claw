@@ -43,8 +43,6 @@ const dotnetCmd = [
   '-c Release',
   '-r win-x64',
   '--self-contained true',
-  '-p:PublishAot=true',
-  '-p:StripSymbols=true',
   `-o "${join(projectRoot, 'resources/worker')}"`
 ].join(' ')
 

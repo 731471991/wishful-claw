@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -20,89 +20,80 @@ public static partial class GoalOrchestrator
     /// <summary>
     /// Main orchestration loop. Runs until goal is completed or aborted.
     /// </summary>
-    private static async Task RunAsync(
+    private static async Task<GoalRunOutcome> RunAsync(
         GoalContext goal,
         JsonElement parameters,
         AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
-        var ct = goal.CancellationTokenSource.Token;
+        var ct = parentState.CancellationToken;
+        await ReachSafePointAsync(goal, context, ct);
 
-        // 1. Decompose goal into plans
-        var decomposition = await DecomposeGoalAsync(
-            goal.GoalText, parameters, parentState, context, ct);
-
-        if (!decomposition.Success || decomposition.Plans.Count == 0)
+        // 1. Decompose goal into plans (skip if already has plans from DB recovery)
+        if (goal.Plans.Count == 0)
         {
-            goal.Status = "failed";
-            await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                $"Goal failed: {decomposition.Error ?? "No plans generated"}", context);
-            return;
-        }
+            var decomposition = await DecomposeGoalAsync(
+                goal.GoalText, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
-        goal.Plans = decomposition.Plans;
-        await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
-            $"Goal started: {goal.GoalText}. {goal.Plans.Count} plans generated.", context);
+            if (!decomposition.Success || decomposition.Plans.Count == 0)
+            {
+                return new GoalRunOutcome(
+                    GoalStatusValues.Failed,
+                    GoalEventType.GoalFailed,
+                    $"Goal failed: {decomposition.Error ?? "No plans generated"}");
+            }
+
+            goal.Plans = decomposition.Plans;
+            await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
+                $"Goal started: {goal.GoalText}. {goal.Plans.Count} plans generated.", context);
+        }
+        else
+        {
+            await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
+                $"Goal resumed: {goal.GoalText}. Resuming from plan {Math.Max(0, goal.CurrentPlanIndex) + 1} of {goal.Plans.Count}.", context);
+        }
 
         WriteGoalState(goal);
         SyncGoalToDb(goal, parameters);
 
-        // 2. Serial execution loop
-        for (int i = 0; i < goal.Plans.Count; i++)
+        // 2. Serial execution loop — start from where we left off
+        var startIndex = goal.Plans.Count > 0 && goal.CurrentPlanIndex >= 0
+            ? goal.CurrentPlanIndex + 1 // resume from next plan
+            : 0;
+        // If the current plan was still executing (not completed/failed), re-execute it
+        if (goal.CurrentPlanIndex >= 0 && goal.CurrentPlanIndex < goal.Plans.Count
+            && goal.Plans[goal.CurrentPlanIndex].Status is "pending" or "executing")
         {
-            if (ct.IsCancellationRequested)
-            {
-                goal.Status = "aborted";
-                await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted by user", context);
-                break;
-            }
+            startIndex = goal.CurrentPlanIndex;
+        }
 
-            // Check for pause
-            if (goal.Status == "paused")
-            {
-                await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
-                // Wait for resume or abort
-                while (goal.Status == "paused" && !ct.IsCancellationRequested)
-                {
-                    await Task.Delay(1000, ct);
-                }
-                if (ct.IsCancellationRequested)
-                {
-                    goal.Status = "aborted";
-                    await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
-                    break;
-                }
-                await EmitGoalEventAsync(goal, GoalEventType.GoalResumed, "Goal resumed", context);
-            }
-
+        for (int i = startIndex; i < goal.Plans.Count; i++)
+        {
+            await ReachSafePointAsync(goal, context, ct);
             goal.CurrentPlanIndex = i;
             var plan = goal.Plans[i];
 
             // Execute plan with retry + evaluation loop
             await ExecutePlanWithRetryAsync(goal, plan, i, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
         }
 
         // 3. Goal completion check
-        if (goal.Status != "aborted" && goal.Status != "paused")
+        var allCompleted = goal.Plans.All(p => p.Status == GoalPlanStatusValues.Completed);
+        if (allCompleted)
         {
-            var allCompleted = goal.Plans.All(p => p.Status == "completed");
-            if (allCompleted)
-            {
-                goal.Status = "completed";
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                    "All plans completed successfully", context);
-            }
-            else
-            {
-                goal.Status = "completed_with_failures";
-                var failedCount = goal.Plans.Count(p => p.Status != "completed");
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted,
-                    $"Goal completed with {failedCount} failed plan(s)", context);
-            }
+            return new GoalRunOutcome(
+                GoalStatusValues.Complete,
+                GoalEventType.GoalCompleted,
+                "All plans completed successfully");
         }
 
-        WriteGoalState(goal);
-        SyncGoalToDb(goal, parameters);
+        var failedCount = goal.Plans.Count(p => p.Status != GoalPlanStatusValues.Completed);
+        return new GoalRunOutcome(
+            GoalStatusValues.Failed,
+            GoalEventType.GoalFailed,
+            $"Goal failed with {failedCount} incomplete plan(s)");
     }
 
     /// <summary>
@@ -121,18 +112,19 @@ public static partial class GoalOrchestrator
 
         while (plan.RetryCount <= maxRetries)
         {
-            if (ct.IsCancellationRequested)
-                return;
+            await ReachSafePointAsync(goal, context, ct);
 
             // Execute the plan
             var result = await ExecutePlanAsync(
                 goal, plan, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             // Handle 429: backoff and retry
             if (result.Is429)
             {
                 var (backoffOutcome, backoffResult) = await Handle429BackoffAsync(
                     goal, plan, planIndex, result, parameters, parentState, context, ct);
+                await ReachSafePointAsync(goal, context, ct);
 
                 if (backoffOutcome == BackoffOutcome.Timeout)
                 {
@@ -156,6 +148,7 @@ public static partial class GoalOrchestrator
             // Self-check evaluation
             var evaluation = await EvaluateResultAsync(
                 goal, plan, result, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             if (evaluation.Satisfied)
             {
@@ -184,6 +177,7 @@ public static partial class GoalOrchestrator
             }
 
             // Adjust plan based on evaluation
+            await ReachSafePointAsync(goal, context, ct);
             plan.RetryCount++;
             if (evaluation.NextAction == "adjust" && !string.IsNullOrEmpty(evaluation.AdjustedDescription))
             {
@@ -225,8 +219,7 @@ public static partial class GoalOrchestrator
 
         while (true)
         {
-            if (ct.IsCancellationRequested)
-                return (BackoffOutcome.Timeout, null);
+            await ReachSafePointAsync(goal, context, ct);
 
             var (delaySeconds, phase) = GoalBackoffStrategy.CalculateBackoff(
                 attempt, result.RetryAfterHint);
@@ -242,23 +235,16 @@ public static partial class GoalOrchestrator
             await EmitGoalEventAsync(goal, GoalEventType.BackoffStarted,
                 GoalBackoffStrategy.GetStatusMessage(attempt, phase, totalWaitedSeconds), context);
 
-            // Wait with cancellation support
-            try
-            {
-                await Task.Delay(delaySeconds * 1000, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                return (BackoffOutcome.Timeout, null);
-            }
-
+            await Task.Delay(delaySeconds * 1000, ct);
             totalWaitedSeconds += delaySeconds;
+            await ReachSafePointAsync(goal, context, ct);
 
             // Try a quick test request to see if 429 is resolved
             // Re-execute the plan — if it succeeds, backoff is resolved
             // If it fails with 429 again, continue the backoff loop
             var retryResult = await ExecutePlanAsync(
                 goal, plan, parameters, parentState, context, ct);
+            await ReachSafePointAsync(goal, context, ct);
 
             if (!retryResult.Is429)
             {
@@ -290,7 +276,8 @@ public static partial class GoalOrchestrator
             ? result.Summary
             : result.Error ?? "No output";
 
-        return await EvaluateViaLlmAsync(
+        ct.ThrowIfCancellationRequested();
+        var evaluation = await EvaluateViaLlmAsync(
             goal.GoalText,
             plan.Title,
             plan.Description,
@@ -299,6 +286,8 @@ public static partial class GoalOrchestrator
             parentState,
             context,
             ct);
+        ct.ThrowIfCancellationRequested();
+        return evaluation;
     }
 
     // ─── Plan Execution ───
@@ -314,19 +303,25 @@ public static partial class GoalOrchestrator
         IWorkerRequestContext context,
         CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         var stopwatch = Stopwatch.StartNew();
         await EmitGoalEventAsync(goal, GoalEventType.PlanStarted,
             $"Plan started: {plan.Title}", context);
 
         GoalPlanTracker.StartPlan(goal.WorkingFolder, goal.GoalId, plan);
         var prompt = BuildPlanExecutionPrompt(plan.Title, plan.Description);
-        var input = CreateTaskInput(prompt, $"Plan: {plan.Title}");
+        var input = CreateTaskInput(
+            prompt,
+            $"Plan: {plan.Title}",
+            "custom",
+            GoalPromptTemplates.ExecutionSystemPrompt);
         var toolCallId = $"goal-plan-{plan.PlanId}-{Guid.NewGuid():N}";
 
         try
         {
             var result = await SubAgentExecutor.ExecuteAsync(
                 input, parameters, parentState, context, toolCallId);
+            ct.ThrowIfCancellationRequested();
 
             stopwatch.Stop();
             var output = result.Content?.Trim() ?? string.Empty;
@@ -355,18 +350,10 @@ public static partial class GoalOrchestrator
                 ElapsedMs = stopwatch.ElapsedMilliseconds
             };
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             stopwatch.Stop();
-            return new PlanExecutionResult
-            {
-                PlanId = plan.PlanId,
-                Title = plan.Title,
-                Status = "failed",
-                Error = "Cancelled",
-                RetryCount = plan.RetryCount,
-                ElapsedMs = stopwatch.ElapsedMilliseconds
-            };
+            throw;
         }
         catch (Exception ex)
         {
@@ -413,27 +400,30 @@ public static partial class GoalOrchestrator
     /// Sync the goal's current state to the SQLite DB.
     /// Called after each state change (status, plan progress, etc.).
     /// </summary>
-    private static void SyncGoalToDb(GoalContext goal, JsonElement parameters)
+    private static void SyncGoalToDb(
+        GoalContext goal,
+        JsonElement parameters,
+        string? statusEventMessage = null)
     {
         try
         {
-            var rootParams = parameters.ValueKind == JsonValueKind.Object
-                ? parameters
-                : new JsonElement();
-
-            // Build the update parameters: sessionId + patch fields
+            // Build the update parameters: exact persisted identity + patch fields.
             var updateParams = WorkerJsonHelper.BuildJsonElement(w =>
             {
                 w.WriteStartObject();
                 w.WriteString("sessionId", goal.SessionId);
+                w.WriteString("goalId", goal.GoalId);
+                if (!string.IsNullOrEmpty(statusEventMessage))
+                    w.WriteString("statusEventMessage", statusEventMessage);
                 w.WriteStartObject("patch");
                 w.WriteString("status", goal.Status);
                 w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);
                 w.WriteNumber("planCount", goal.Plans.Count);
-                w.WriteNumber("completedPlanCount", goal.Plans.Count(p => p.Status == "completed"));
+                w.WriteNumber("completedPlanCount", goal.Plans.Count(p => p.Status == GoalPlanStatusValues.Completed));
                 if (goal.Plans.Count > 0)
                 {
-                    w.WriteString("plansJson", JsonSerializer.Serialize(goal.Plans));
+                    w.WritePropertyName("plansJson");
+                    JsonSerializer.Serialize(w, goal.Plans, AgentRuntimeJsonContext.Default.ListGoalPlanItem);
                 }
                 w.WriteEndObject();
                 w.WriteEndObject();
@@ -445,6 +435,27 @@ public static partial class GoalOrchestrator
         {
             WorkerLog.Warn($"Failed to sync goal to DB: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Stop at a lifecycle safe point. Abort is immediate; Pause waits without
+    /// cancelling the current sub-agent and resumes from the same control point.
+    /// </summary>
+    private static async Task ReachSafePointAsync(
+        GoalContext goal, IWorkerRequestContext context, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (goal.RunState != GoalRunStateValues.Paused)
+            return;
+
+        await EmitGoalEventAsync(goal, GoalEventType.GoalPaused, "Goal paused", context);
+        while (goal.RunState == GoalRunStateValues.Paused)
+        {
+            await Task.Delay(250, ct);
+        }
+
+        ct.ThrowIfCancellationRequested();
+        await EmitGoalEventAsync(goal, GoalEventType.GoalResumed, "Goal resumed", context);
     }
 }
 

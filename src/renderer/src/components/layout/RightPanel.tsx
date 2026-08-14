@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
@@ -15,7 +15,7 @@ import { BrowserPanel } from '@renderer/components/layout/BrowserPanel'
 import { PreviewPanel } from '@renderer/components/layout/PreviewPanel'
 import { AgentFilesPanel } from '@renderer/components/layout/AgentFilesPanel'
 import { SessionChangeReviewPanel } from '@renderer/components/layout/SessionChangeReviewPanel'
-import { GoalPanelCard } from '@renderer/components/goal/GoalSessionControls'
+import { GoalHistoryPanel } from '@renderer/components/goal/GoalHistoryPanel'
 import { RIGHT_PANEL_DEFAULT_WIDTH, clampRightPanelWidth } from './right-panel-defs'
 
 
@@ -142,7 +142,13 @@ export function RightPanel(): React.JSX.Element {
     if (tab.kind === 'files') return <AgentFilesPanel sessionId={tab.sessionId ?? panelSessionId} />
     if (tab.kind === 'review') return <SessionChangeReviewPanel sessionId={tab.sessionId ?? panelSessionId} />
     if (tab.kind === 'goal') {
-      return <GoalPanelCard sessionId={tab.sessionId ?? panelSessionId} />
+      return (
+        <GoalHistoryPanel
+          projectId={tab.projectId ?? activeProjectId}
+          initialSessionId={tab.sessionId ?? null}
+          initialGoalId={tab.goalId ?? null}
+        />
+      )
     }
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -175,6 +181,7 @@ export function RightPanel(): React.JSX.Element {
               onSelectTab={setRightPanelActiveTab}
               onCloseTab={closeRightPanelTab}
               onAddBrowser={() => ensureBrowserTab(undefined, panelSessionId)}
+              onAddGoals={() => useUIStore.getState().openGoalPanel(panelSessionId, activeProjectId)}
               onOpenFile={() => {
                 import('@renderer/lib/ipc/ipc-client').then(({ ipcClient }) => {
                   ipcClient.invoke('fs:select-file', { multiSelections: true }).then((result) => {

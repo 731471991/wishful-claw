@@ -9,7 +9,7 @@ namespace WishfulClaw.Infrastructure.Db;
 /// Replaces SqlSugarScope with DbService (Microsoft.Data.Sqlite, zero reflection, AOT-safe).
 /// dbPath = ~/.wishful-claw/index.db
 /// </summary>
-public static class DbClient
+public static partial class DbClient
 {
     private static DbService? _db;
     private static string? _dbPath;
@@ -141,6 +141,7 @@ public static class DbClient
                 @"CREATE TABLE IF NOT EXISTS goals (
                     goal_id TEXT PRIMARY KEY NOT NULL,
                     session_id TEXT NOT NULL,
+                    project_id TEXT,
                     objective TEXT NOT NULL DEFAULT '',
                     status TEXT NOT NULL DEFAULT 'active',
                     token_budget INTEGER,
@@ -238,12 +239,17 @@ public static class DbClient
             EnsureColumn("messages", "usage", "TEXT");
             EnsureColumn("messages", "sort_order", "INTEGER");
             EnsureColumn("goals", "plans_json", "TEXT");
-            EnsureColumn("goals", "plan_count", "INTEGER");
-            EnsureColumn("goals", "completed_plan_count", "INTEGER");
-            EnsureColumn("goals", "current_plan_index", "INTEGER");
+            EnsureColumn("goals", "plan_count", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn("goals", "completed_plan_count", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn("goals", "current_plan_index", "INTEGER NOT NULL DEFAULT -1");
             EnsureColumn("goals", "working_folder", "TEXT");
             EnsureColumn("goals", "token_budget", "INTEGER");
-            EnsureColumn("goals", "time_used_seconds", "INTEGER");
+            EnsureColumn("goals", "time_used_seconds", "INTEGER NOT NULL DEFAULT 0");
+            EnsureColumn("goals", "project_id", "TEXT");
+            NormalizeGoalNumericColumns();
+            NormalizeGoalStatuses();
+            NormalizeGoalPlansJson();
+            EnsureGoalHistorySchema();
             WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;
@@ -302,6 +308,67 @@ public static class DbClient
             throw new InvalidOperationException("DB has not been initialized. Call EnsureInitialized(parameters) from an IPC handler first.");
         }
     }
+
+    private static void NormalizeGoalNumericColumns()
+    {
+        _db!.Execute(
+            "UPDATE goals SET " +
+            "plan_count = COALESCE(plan_count, 0), " +
+            "completed_plan_count = COALESCE(completed_plan_count, 0), " +
+            "current_plan_index = COALESCE(current_plan_index, -1), " +
+            "time_used_seconds = COALESCE(time_used_seconds, 0) " +
+            "WHERE plan_count IS NULL OR completed_plan_count IS NULL " +
+            "OR current_plan_index IS NULL OR time_used_seconds IS NULL");
+    }
+
+    private static void NormalizeGoalStatuses()
+    {
+        _db!.Execute(
+            "UPDATE goals SET status = CASE status " +
+            "WHEN 'paused' THEN 'active' " +
+            "WHEN 'completed' THEN 'complete' " +
+            "WHEN 'completed_with_failures' THEN 'failed' " +
+            "ELSE status END " +
+            "WHERE status IN ('paused', 'completed', 'completed_with_failures')");
+    }
+
+    private static void NormalizeGoalPlansJson()
+    {
+        var rows = _db!.Query(
+            "SELECT goal_id, plans_json FROM goals WHERE plans_json IS NOT NULL",
+            reader => new GoalPlansJsonMigrationRow(
+                reader.GetString("goal_id"),
+                reader.GetString("plans_json")));
+
+        foreach (var row in rows)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(row.PlansJson);
+                if (document.RootElement.ValueKind != JsonValueKind.String)
+                    continue;
+
+                var innerJson = document.RootElement.GetString();
+                if (string.IsNullOrWhiteSpace(innerJson))
+                    continue;
+
+                using var innerDocument = JsonDocument.Parse(innerJson);
+                if (innerDocument.RootElement.ValueKind != JsonValueKind.Array)
+                    continue;
+
+                _db.Execute(
+                    "UPDATE goals SET plans_json = @plans WHERE goal_id = @goalId",
+                    new SqliteParameter("@plans", innerDocument.RootElement.GetRawText()),
+                    new SqliteParameter("@goalId", row.GoalId));
+            }
+            catch (JsonException)
+            {
+                // Preserve malformed legacy values for diagnostics instead of deleting data.
+            }
+        }
+    }
+
+    private sealed record GoalPlansJsonMigrationRow(string GoalId, string PlansJson);
 
     /// <summary>
     /// Add a column to an existing table if it doesn't exist.

@@ -1,6 +1,5 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Threading.Channels;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -28,101 +27,11 @@ public static partial class GoalOrchestrator
     private static readonly ConcurrentDictionary<string, PendingGoal> PendingGoals = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Start a new Goal execution asynchronously.
-    /// Returns immediately; the orchestration loop runs in the background.
-    /// </summary>
-    public static async Task<string> StartAsync(
-        string goalText,
-        string sessionId,
-        string? workingFolder,
-        JsonElement parameters,
-        AgentRuntimeRunState parentState,
-        IWorkerRequestContext context)
-    {
-        var goalId = $"goal-{Guid.NewGuid():N}".Substring(0, 21);
-        var goal = new GoalContext
-        {
-            GoalId = goalId,
-            SessionId = sessionId,
-            GoalText = goalText,
-            WorkingFolder = workingFolder,
-            Status = "active",
-            StartedAt = DateTime.UtcNow
-        };
-
-        ActiveGoals[goalId] = goal;
-
-        // Emit preliminary event immediately so the frontend knows a goal is in progress
-        // (the full GoalStarted event with plan details is emitted after decomposition)
-        _ = EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
-            $"Goal created: {goalText}. Decomposing into plans...", context);
-
-        // Fire and forget the orchestration loop
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await RunAsync(goal, parameters, parentState, context);
-            }
-            catch (OperationCanceledException)
-            {
-                goal.Status = "aborted";
-                await EmitGoalEventAsync(goal, GoalEventType.GoalAborted, "Goal aborted", context);
-            }
-            catch (Exception ex)
-            {
-                goal.Status = "failed";
-                await EmitGoalEventAsync(goal, GoalEventType.GoalCompleted, $"Goal failed: {ex.Message}", context);
-            }
-            finally
-            {
-                ActiveGoals.TryRemove(goalId, out _);
-            }
-        }, goal.CancellationTokenSource.Token);
-
-        return goalId;
-    }
-
-    /// <summary>
-    /// Pause a running Goal.
-    /// </summary>
-    public static void Pause(string goalId)
-    {
-        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "active")
-        {
-            goal.Status = "paused";
-        }
-    }
-
-    /// <summary>
-    /// Resume a paused Goal.
-    /// </summary>
-    public static void Resume(string goalId)
-    {
-        if (ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "paused")
-        {
-            goal.Status = "active";
-        }
-    }
-
-    /// <summary>
-    /// Abort a running Goal.
-    /// </summary>
-    public static void Abort(string goalId)
-    {
-        if (ActiveGoals.TryGetValue(goalId, out var goal))
-        {
-            goal.CancellationTokenSource.Cancel();
-            goal.Status = "aborted";
-        }
-    }
-
-    /// <summary>
     /// Check if a Goal is currently running.
     /// </summary>
     public static bool IsActive(string goalId)
     {
-        return ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == "active";
+        return ActiveGoals.TryGetValue(goalId, out var goal) && goal.Status == GoalStatusValues.Active;
     }
 
     /// <summary>
@@ -148,6 +57,39 @@ public static partial class GoalOrchestrator
 
     // ── Event emission ──
 
+    public static async Task EmitRunStateChangedAsync(
+        string sessionId,
+        GoalActionResult action,
+        IWorkerRequestContext context)
+    {
+        if (string.IsNullOrWhiteSpace(action.GoalId) || string.IsNullOrWhiteSpace(sessionId))
+            return;
+
+        var goal = GetContext(action.GoalId);
+        var startedAt = goal is null
+            ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            : new DateTimeOffset(goal.StartedAt).ToUnixTimeMilliseconds();
+        var payload = new GoalRunStateChanged(
+            sessionId,
+            action.GoalId,
+            action.Status,
+            action.RunState,
+            action.Action,
+            startedAt,
+            action.Error);
+        try
+        {
+            await context.EmitEventAsync(
+                "goal:run-state",
+                payload,
+                AgentRuntimeJsonContext.Default.GoalRunStateChanged);
+        }
+        catch (Exception ex)
+        {
+            WorkerLog.Warn($"Failed to emit goal run state: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// Emit a goal progress event to the frontend via the agent stream.
     /// </summary>
@@ -172,6 +114,7 @@ public static partial class GoalOrchestrator
                     w.WriteString("eventType", eventType.ToString());
                     w.WriteString("message", message);
                     w.WriteString("status", goal.Status);
+                    w.WriteString("runState", goal.RunState);
                     w.WriteNumber("currentPlanIndex", goal.CurrentPlanIndex);
                     w.WriteNumber("planCount", goal.Plans.Count);
                     w.WriteNumber("completedPlans", goal.Plans.Count(p => p.Status == "completed"));
@@ -197,12 +140,12 @@ public static partial class GoalOrchestrator
     /// The goal will be stored in memory until the user confirms via ConfirmGoalAsync.
     /// </summary>
     public static string CreatePendingGoal(
+        string goalId,
         string goalText,
         string sessionId,
         string? workingFolder,
         JsonElement parameters)
     {
-        var goalId = $"goal-{Guid.NewGuid():N}".Substring(0, 21);
         PendingGoals[goalId] = new PendingGoal
         {
             GoalId = goalId,
@@ -266,7 +209,6 @@ public static partial class GoalOrchestrator
         string sessionId,
         string? workingFolder,
         JsonElement parameters,
-        AgentRuntimeRunState parentState,
         IWorkerRequestContext context)
     {
         if (!PendingGoals.TryRemove(goalId, out var pending))
@@ -281,8 +223,8 @@ public static partial class GoalOrchestrator
             pending.GoalText,
             sessionId,
             workingFolder ?? pending.WorkingFolder,
+            goalId,
             actualParameters,
-            parentState,
             context);
 
         return true;

@@ -1,4 +1,5 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using WishfulClaw.Contracts;
 
 namespace WishfulClaw.Agent;
 
@@ -13,7 +14,7 @@ public sealed class PlanExecutionResult
 {
     public string PlanId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string Status { get; set; } = "pending"; // pending | executing | completed | failed
+    public string Status { get; set; } = GoalPlanStatusValues.Pending; // pending | executing | completed | failed
     public string? Summary { get; set; }
     public string? Error { get; set; }
     public bool Is429 { get; set; }
@@ -50,11 +51,25 @@ public sealed class GoalContext
     public string SessionId { get; set; } = string.Empty;
     public string GoalText { get; set; } = string.Empty;
     public string? WorkingFolder { get; set; }
-    public string Status { get; set; } = "active"; // active | paused | completed | aborted
+    /// <summary>目标状态：active（进行中）| complete | failed | aborted（终态）。</summary>
+    public string Status { get; set; } = GoalStatusValues.Active;
+    private string _runState = GoalRunStateValues.Idle;
+    /// <summary>执行状态（仅内存）：idle（未运行）| running（编排中）| paused（暂停）。</summary>
+    public string RunState
+    {
+        get => Volatile.Read(ref _runState);
+        set => Volatile.Write(ref _runState, value);
+    }
     public List<GoalPlanItem> Plans { get; set; } = new();
     public int CurrentPlanIndex { get; set; } = -1;
+    /// <summary>创建时的完整参数（含 provider 配置），用于 Resume 时重建子 Agent。</summary>
+    public JsonElement? OriginalParameters { get; set; }
     public CancellationTokenSource CancellationTokenSource { get; set; } = new();
     public DateTime StartedAt { get; set; } = DateTime.UtcNow;
+    internal object LifecycleSync { get; } = new();
+    internal Task? RunTask { get; set; }
+    internal AgentRuntimeRunState? RuntimeState { get; set; }
+    internal long RunGeneration { get; set; }
 }
 
 /// <summary>
@@ -75,6 +90,7 @@ public enum GoalEventType
     GoalResumed,
     GoalAborted,
     GoalCompleted,
+    GoalFailed,
     GoalEvaluationPassed,
     GoalEvaluationFailed
 }

@@ -1,13 +1,15 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { formatGoalElapsedSeconds, formatGoalTokens, goalStatusLabel } from '@renderer/lib/agent/goal-context'
 import {
   EMPTY_SESSION_GOAL_EVENTS,
   useGoalStore,
+  type GoalRunState,
   type SessionGoal,
   type SessionGoalEvent,
 } from '@renderer/stores/goal-store'
+import { isRuntimeGoalVisible } from '@renderer/stores/goal-state-transitions'
 
 
 
@@ -21,12 +23,33 @@ export function eventMetadataString(event: SessionGoalEvent, key: string): strin
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
+export interface GoalRuntimeControls {
+  runState: GoalRunState
+  canPause: boolean
+  canResume: boolean
+}
+
+export function getGoalRuntimeControls(
+  goal?: SessionGoal,
+  runState?: GoalRunState
+): GoalRuntimeControls {
+  const effectiveRunState = runState ?? 'idle'
+  const active = isRuntimeGoalVisible(goal)
+  return {
+    runState: effectiveRunState,
+    canPause: active && effectiveRunState === 'running',
+    canResume: active && effectiveRunState !== 'running'
+  }
+}
+
 export function useGoalSession(sessionId?: string | null): {
   goal: SessionGoal | undefined
   events: SessionGoalEvent[]
+  runState: GoalRunState
 } {
   const goal = useGoalStore((s) => (sessionId ? s.goalsBySession[sessionId] : undefined))
   const progress = useGoalStore((s) => (sessionId ? s.goalProgressBySession[sessionId] : undefined))
+  const runState = useGoalStore((s) => (sessionId ? s.goalRunStatesBySession[sessionId] : undefined))
   const events = useGoalStore((s) =>
     sessionId
       ? (s.goalEventsBySession[sessionId] ?? EMPTY_SESSION_GOAL_EVENTS)
@@ -46,14 +69,17 @@ export function useGoalSession(sessionId?: string | null): {
       updatedAt: progress.timestamp,
       tokensUsed: 0,
       timeUsedSeconds: 0,
-      plans: [],
+      plansJson: null,
+      planCount: progress.planCount,
+      completedPlanCount: progress.completedPlans,
+      currentPlanIndex: progress.currentPlanIndex,
       workingFolder: null
     }
   }, [progress, goal])
 
   React.useEffect(() => {
     if (!sessionId) return
-    void useGoalStore.getState().loadGoalForSession(sessionId)
+    void useGoalStore.getState().loadGoalForSession(sessionId, true)
   }, [sessionId])
 
   React.useEffect(() => {
@@ -63,7 +89,7 @@ export function useGoalSession(sessionId?: string | null): {
       .loadGoalEventsForSession(sessionId, { goalId: goal?.goalId, force: true })
   }, [sessionId, goal?.goalId])
 
-  return { goal: goal ?? fallbackGoal, events }
+  return { goal: goal ?? fallbackGoal, events, runState: runState ?? 'idle' }
 }
 
 export function statusTone(status?: SessionGoal['status']): string {
@@ -118,13 +144,19 @@ export function GoalUsageLine({
       : t('goal.tokensOnly', { tokens: formatGoalTokens(goal.tokensUsed) })
   return (
     <>
-      <span>{formatGoalElapsedSeconds(displayTimeUsedSeconds)}</span>
+      {displayTimeUsedSeconds > 0 ? (
+        <span>{formatGoalElapsedSeconds(displayTimeUsedSeconds)}</span>
+      ) : null}
       <span>{tokenText}</span>
     </>
   )
 }
 
-export function useLiveGoalElapsedSeconds(goal?: SessionGoal, activeRunStartedAt?: number | null): number {
+export function useLiveGoalElapsedSeconds(
+  goal?: SessionGoal,
+  activeRunStartedAt?: number | null,
+  runState?: GoalRunState | undefined
+): number {
   const [now, setNow] = React.useState(() => Date.now())
 
   React.useEffect(() => {
@@ -137,7 +169,7 @@ export function useLiveGoalElapsedSeconds(goal?: SessionGoal, activeRunStartedAt
 
   if (!goal) return 0
   const activeRunSeconds =
-    goal.status === 'active' && activeRunStartedAt
+    runState === 'running' && activeRunStartedAt
       ? Math.max(0, Math.floor((now - activeRunStartedAt) / 1000))
       : 0
   return goal.timeUsedSeconds + activeRunSeconds

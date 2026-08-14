@@ -8,7 +8,6 @@ namespace WishfulClaw.Infrastructure;
     GenerationMode = JsonSourceGenerationMode.Metadata,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(GoalClearResult))]
 [JsonSerializable(typeof(DbInitializeResult))]
 [JsonSerializable(typeof(GoalFindResult))]
 [JsonSerializable(typeof(GoalMutationResult))]
@@ -16,6 +15,9 @@ namespace WishfulClaw.Infrastructure;
 [JsonSerializable(typeof(List<GoalRow>))]
 [JsonSerializable(typeof(GoalEventRow))]
 [JsonSerializable(typeof(List<GoalEventRow>))]
+[JsonSerializable(typeof(GoalPageResult))]
+[JsonSerializable(typeof(GoalEventPageResult))]
+[JsonSerializable(typeof(GoalReopenResult))]
 [JsonSerializable(typeof(MessageCompactResult))]
 [JsonSerializable(typeof(MessageCountResult))]
 [JsonSerializable(typeof(MessageDeleteLastResult))]

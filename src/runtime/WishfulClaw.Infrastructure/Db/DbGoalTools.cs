@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Contracts;
@@ -6,80 +5,14 @@ using WishfulClaw.Core.Protocol;
 
 namespace WishfulClaw.Infrastructure.Db;
 
-public static class DbGoalTools
+public static partial class DbGoalTools
 {
-    public static WorkerResponse List(JsonElement parameters)
-    {
-        try
-        {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var entities = db.Query("SELECT * FROM goals ORDER BY updated_at DESC", EntityMappers.MapGoal);
-            var rows = entities.Select(GoalRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListGoalRow);
-        }
-        catch (Exception ex) { WorkerLog.Error($"DbGoalTools.List failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
-    }
-
-    public static WorkerResponse Get(JsonElement parameters)
-    {
-        try
-        {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var sessionId = parameters.TryGetProperty("sessionId", out var sidEl) ? sidEl.GetString() : null;
-            if (string.IsNullOrEmpty(sessionId))
-                return WorkerResponse.Json(new GoalFindResult(false, null, "sessionId is required"), InfrastructureJsonContext.Default.GoalFindResult);
-
-            var entity = db.QueryFirstOrDefault(
-                "SELECT * FROM goals WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
-                EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
-            var row = entity != null ? GoalRow.FromEntity(entity) : null;
-            if (row != null)
-                return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
-            return WorkerResponse.Json(new GoalFindResult(false, null, null), InfrastructureJsonContext.Default.GoalFindResult);
-        }
-        catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Get failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
-    }
-
     public static WorkerResponse Create(JsonElement parameters)
     {
         try
         {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var goalId = GetString(parameters, "goalId") ?? Guid.NewGuid().ToString("N");
-            var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
-            var objective = GetString(parameters, "objective") ?? throw new InvalidOperationException("objective is required");
-
-            db.Execute(
-                "INSERT INTO goals (goal_id, session_id, objective, status, token_budget, tokens_used, " +
-                "time_used_seconds, plans_json, plan_count, completed_plan_count, current_plan_index, " +
-                "working_folder, created_at, updated_at) " +
-                "VALUES (@gid, @sid, @obj, @status, @tb, 0, 0, @pj, @pc, @cpc, @cpi, @wf, @ca, @ua)",
-                new SqliteParameter("@gid", goalId),
-                new SqliteParameter("@sid", sessionId),
-                new SqliteParameter("@obj", objective),
-                new SqliteParameter("@status", GetString(parameters, "status") ?? "active"),
-                new SqliteParameter("@tb", (object?)GetLongOrNull(parameters, "tokenBudget") ?? DBNull.Value),
-                new SqliteParameter("@pj", (object?)GetString(parameters, "plansJson") ?? DBNull.Value),
-                new SqliteParameter("@pc", GetInt(parameters, "planCount", 0)),
-                new SqliteParameter("@cpc", GetInt(parameters, "completedPlanCount", 0)),
-                new SqliteParameter("@cpi", GetInt(parameters, "currentPlanIndex", -1)),
-                new SqliteParameter("@wf", (object?)GetString(parameters, "workingFolder") ?? DBNull.Value),
-                new SqliteParameter("@ca", now),
-                new SqliteParameter("@ua", now));
-
-            InsertEvent(db, sessionId, goalId, "created", "Goal created", null, now);
-
-            var entity = new GoalEntity { GoalId = goalId, SessionId = sessionId, Objective = objective,
-                Status = GetString(parameters, "status") ?? "active", TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
-                PlansJson = GetString(parameters, "plansJson"), PlanCount = GetInt(parameters, "planCount", 0),
-                CompletedPlanCount = GetInt(parameters, "completedPlanCount", 0),
-                CurrentPlanIndex = GetInt(parameters, "currentPlanIndex", -1),
-                WorkingFolder = GetString(parameters, "workingFolder"), CreatedAt = now, UpdatedAt = now };
-            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
+            var row = CreateCurrentGoal(parameters);
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Create failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
@@ -88,118 +21,91 @@ public static class DbGoalTools
     {
         try
         {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
-            var objective = GetString(parameters, "objective") ?? throw new InvalidOperationException("objective is required");
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-            db.Execute("DELETE FROM goals WHERE session_id = @sid", new SqliteParameter("@sid", sessionId));
-
-            var goalId = GetString(parameters, "goalId") ?? Guid.NewGuid().ToString("N");
-            db.Execute(
-                "INSERT INTO goals (goal_id, session_id, objective, status, token_budget, tokens_used, " +
-                "time_used_seconds, working_folder, created_at, updated_at) " +
-                "VALUES (@gid, @sid, @obj, @status, @tb, 0, 0, @wf, @ca, @ua)",
-                new SqliteParameter("@gid", goalId),
-                new SqliteParameter("@sid", sessionId),
-                new SqliteParameter("@obj", objective),
-                new SqliteParameter("@status", GetString(parameters, "status") ?? "active"),
-                new SqliteParameter("@tb", (object?)GetLongOrNull(parameters, "tokenBudget") ?? DBNull.Value),
-                new SqliteParameter("@wf", (object?)GetString(parameters, "workingFolder") ?? DBNull.Value),
-                new SqliteParameter("@ca", now),
-                new SqliteParameter("@ua", now));
-
-            InsertEvent(db, sessionId, goalId, "replaced", "Goal replaced", null, now);
-
-            var entity = new GoalEntity { GoalId = goalId, SessionId = sessionId, Objective = objective,
-                Status = GetString(parameters, "status") ?? "active", TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
-                WorkingFolder = GetString(parameters, "workingFolder"), CreatedAt = now, UpdatedAt = now };
-            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
+            var row = CreateCurrentGoal(parameters);
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Set failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
+
+    public static GoalRow CreateCurrentGoal(JsonElement parameters)
+        => InsertGoal(parameters, "created", "Goal created");
 
     public static WorkerResponse Update(JsonElement parameters)
     {
         try
         {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
-            var entity = db.QueryFirstOrDefault(
-                "SELECT * FROM goals WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
-                EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
-
-            if (entity == null)
+            var row = UpdateByGoalId(parameters);
+            if (row == null)
                 return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"), InfrastructureJsonContext.Default.GoalMutationResult);
 
-            if (parameters.TryGetProperty("patch", out var patch) && patch.ValueKind == JsonValueKind.Object)
-            {
-                if (patch.TryGetProperty("objective", out var obj) && obj.ValueKind != JsonValueKind.Null)
-                    entity.Objective = obj.GetString()!;
-                if (patch.TryGetProperty("status", out var st) && st.ValueKind != JsonValueKind.Null)
-                {
-                    var newStatus = st.GetString()!;
-                    if (entity.Status != newStatus)
-                        InsertEvent(db, sessionId, entity.GoalId, "status_changed",
-                            $"Status changed: {entity.Status} \u2192 {newStatus}", null, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-                    entity.Status = newStatus;
-                }
-                if (patch.TryGetProperty("tokenBudget", out var tb))
-                    entity.TokenBudget = tb.ValueKind == JsonValueKind.Null ? null : tb.GetInt64();
-                if (patch.TryGetProperty("plansJson", out var pj))
-                    entity.PlansJson = pj.ValueKind == JsonValueKind.Null ? null : pj.GetRawText();
-                if (patch.TryGetProperty("planCount", out var pc) && pc.ValueKind == JsonValueKind.Number)
-                    entity.PlanCount = pc.GetInt32();
-                if (patch.TryGetProperty("completedPlanCount", out var cpc) && cpc.ValueKind == JsonValueKind.Number)
-                    entity.CompletedPlanCount = cpc.GetInt32();
-                if (patch.TryGetProperty("currentPlanIndex", out var cpi) && cpi.ValueKind == JsonValueKind.Number)
-                    entity.CurrentPlanIndex = cpi.GetInt32();
-                if (patch.TryGetProperty("workingFolder", out var wf))
-                    entity.WorkingFolder = wf.ValueKind == JsonValueKind.Null ? null : wf.GetString();
-            }
-
-            entity.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            db.Execute(
-                "UPDATE goals SET objective = @obj, status = @status, token_budget = @tb, plans_json = @pj, " +
-                "plan_count = @pc, completed_plan_count = @cpc, current_plan_index = @cpi, " +
-                "working_folder = @wf, updated_at = @ua WHERE goal_id = @gid",
-                new SqliteParameter("@obj", entity.Objective),
-                new SqliteParameter("@status", entity.Status),
-                new SqliteParameter("@tb", (object?)entity.TokenBudget ?? DBNull.Value),
-                new SqliteParameter("@pj", (object?)entity.PlansJson ?? DBNull.Value),
-                new SqliteParameter("@pc", entity.PlanCount),
-                new SqliteParameter("@cpc", entity.CompletedPlanCount),
-                new SqliteParameter("@cpi", entity.CurrentPlanIndex),
-                new SqliteParameter("@wf", (object?)entity.WorkingFolder ?? DBNull.Value),
-                new SqliteParameter("@ua", entity.UpdatedAt),
-                new SqliteParameter("@gid", entity.GoalId));
-
-            return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
+            return WorkerResponse.Json(row, InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Update failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
 
-    public static WorkerResponse Clear(JsonElement parameters)
+    public static GoalRow? UpdateByGoalId(JsonElement parameters)
     {
-        try
+        DbClient.EnsureInitialized(parameters);
+        var db = DbClient.GetClient(parameters);
+        var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
+        var goalId = GetString(parameters, "goalId") ?? throw new InvalidOperationException("goalId is required");
+        var entity = db.ExecuteInTransaction((connection, transaction) =>
         {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
+            var current = db.QueryFirstOrDefault(
+                connection,
+                transaction,
+                "SELECT * FROM goals WHERE goal_id = @gid AND session_id = @sid LIMIT 1",
+                EntityMappers.MapGoal,
+                new SqliteParameter("@gid", goalId),
+                new SqliteParameter("@sid", sessionId));
+            if (current == null)
+                return null;
+
+            var previousStatus = current.Status;
+            ApplyGoalPatch(current, parameters);
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            current.UpdatedAt = now;
+            var changed = db.Execute(
+                connection,
+                transaction,
+                "UPDATE goals SET objective = @obj, status = @status, token_budget = @tb, plans_json = @pj, " +
+                "plan_count = @pc, completed_plan_count = @cpc, current_plan_index = @cpi, " +
+                "working_folder = @wf, updated_at = @ua WHERE goal_id = @gid AND session_id = @sid",
+                new SqliteParameter("@obj", current.Objective),
+                new SqliteParameter("@status", current.Status),
+                new SqliteParameter("@tb", (object?)current.TokenBudget ?? DBNull.Value),
+                new SqliteParameter("@pj", (object?)current.PlansJson ?? DBNull.Value),
+                new SqliteParameter("@pc", current.PlanCount),
+                new SqliteParameter("@cpc", current.CompletedPlanCount),
+                new SqliteParameter("@cpi", current.CurrentPlanIndex),
+                new SqliteParameter("@wf", (object?)current.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ua", current.UpdatedAt),
+                new SqliteParameter("@gid", goalId),
+                new SqliteParameter("@sid", sessionId));
+            if (changed != 1)
+                throw new InvalidOperationException("Goal changed during update");
 
-            var entity = db.QueryFirstOrDefault(
-                "SELECT * FROM goals WHERE session_id = @sid LIMIT 1",
-                EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
-            if (entity != null)
-                InsertEvent(db, sessionId, entity.GoalId, "cleared", "Goal cleared", null, now);
+            if (!string.Equals(previousStatus, current.Status, StringComparison.Ordinal))
+            {
+                var (eventType, message) = GoalStatusEvent(
+                    previousStatus,
+                    current.Status,
+                    GetString(parameters, "statusEventMessage"));
+                InsertEvent(
+                    db,
+                    connection,
+                    transaction,
+                    sessionId,
+                    goalId,
+                    eventType,
+                    message,
+                    null,
+                    now);
+            }
+            return current;
+        });
 
-            var changed = db.Execute("DELETE FROM goals WHERE session_id = @sid", new SqliteParameter("@sid", sessionId));
-            return WorkerResponse.Json(new GoalClearResult(true, changed > 0), InfrastructureJsonContext.Default.GoalClearResult);
-        }
-        catch (Exception ex) { WorkerLog.Error($"DbGoalTools.Clear failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
+        return entity == null ? null : GoalRow.FromEntity(entity);
     }
 
     public static WorkerResponse AccountUsage(JsonElement parameters)
@@ -209,45 +115,57 @@ public static class DbGoalTools
             DbClient.EnsureInitialized(parameters);
             var db = DbClient.GetClient(parameters);
             var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
+            var goalId = GetString(parameters, "goalId") ?? GetString(parameters, "expectedGoalId")
+                ?? throw new InvalidOperationException("goalId is required");
             var tokenDelta = GetLong(parameters, "tokenDelta", 0);
             var timeDeltaSeconds = GetLong(parameters, "timeDeltaSeconds", 0);
+            var entity = db.ExecuteInTransaction((connection, transaction) =>
+            {
+                var current = db.QueryFirstOrDefault(
+                    connection,
+                    transaction,
+                    "SELECT * FROM goals WHERE goal_id = @gid AND session_id = @sid LIMIT 1",
+                    EntityMappers.MapGoal,
+                    new SqliteParameter("@gid", goalId),
+                    new SqliteParameter("@sid", sessionId));
+                if (current == null)
+                    return null;
 
-            var entity = db.QueryFirstOrDefault(
-                "SELECT * FROM goals WHERE session_id = @sid ORDER BY updated_at DESC LIMIT 1",
-                EntityMappers.MapGoal, new SqliteParameter("@sid", sessionId));
+                current.TokensUsed += tokenDelta;
+                current.TimeUsedSeconds += timeDeltaSeconds;
+                current.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var changed = db.Execute(
+                    connection,
+                    transaction,
+                    "UPDATE goals SET tokens_used = @tu, time_used_seconds = @tus, updated_at = @ua " +
+                    "WHERE goal_id = @gid AND session_id = @sid",
+                    new SqliteParameter("@tu", current.TokensUsed),
+                    new SqliteParameter("@tus", current.TimeUsedSeconds),
+                    new SqliteParameter("@ua", current.UpdatedAt),
+                    new SqliteParameter("@gid", goalId),
+                    new SqliteParameter("@sid", sessionId));
+                if (changed != 1)
+                    return null;
+
+                InsertEvent(
+                    db,
+                    connection,
+                    transaction,
+                    sessionId,
+                    goalId,
+                    "usage_accounted",
+                    $"Usage: +{tokenDelta} tokens, +{timeDeltaSeconds}s",
+                    null,
+                    current.UpdatedAt);
+                return current;
+            });
+
             if (entity == null)
                 return WorkerResponse.Json(new GoalMutationResult(false, 0, "Goal not found"), InfrastructureJsonContext.Default.GoalMutationResult);
 
-            entity.TokensUsed += tokenDelta;
-            entity.TimeUsedSeconds += timeDeltaSeconds;
-            entity.UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            db.Execute(
-                "UPDATE goals SET tokens_used = @tu, time_used_seconds = @tus, updated_at = @ua WHERE goal_id = @gid",
-                new SqliteParameter("@tu", entity.TokensUsed),
-                new SqliteParameter("@tus", entity.TimeUsedSeconds),
-                new SqliteParameter("@ua", entity.UpdatedAt),
-                new SqliteParameter("@gid", entity.GoalId));
-
-            InsertEvent(db, sessionId, entity.GoalId, "usage_accounted",
-                $"Usage: +{tokenDelta} tokens, +{timeDeltaSeconds}s", null, entity.UpdatedAt);
             return WorkerResponse.Json(GoalRow.FromEntity(entity), InfrastructureJsonContext.Default.GoalRow);
         }
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.AccountUsage failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
-    }
-
-    public static WorkerResponse ListActive(JsonElement parameters)
-    {
-        try
-        {
-            DbClient.EnsureInitialized(parameters);
-            var db = DbClient.GetClient(parameters);
-            var entities = db.Query(
-                "SELECT * FROM goals WHERE status = 'active' OR status = 'paused' ORDER BY updated_at DESC",
-                EntityMappers.MapGoal);
-            var rows = entities.Select(GoalRow.FromEntity).ToList();
-            return WorkerResponse.Json(rows, InfrastructureJsonContext.Default.ListGoalRow);
-        }
-        catch (Exception ex) { WorkerLog.Error($"DbGoalTools.ListActive failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
 
     public static WorkerResponse ListEvents(JsonElement parameters)
@@ -303,18 +221,169 @@ public static class DbGoalTools
         catch (Exception ex) { WorkerLog.Error($"DbGoalTools.AddEvent failed: {ex.Message}"); return WorkerResponse.Error(ex.Message); }
     }
 
+    private static GoalRow InsertGoal(
+        JsonElement parameters,
+        string eventType,
+        string eventMessage)
+    {
+        DbClient.EnsureInitialized(parameters);
+        var db = DbClient.GetClient(parameters);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var goalId = GetString(parameters, "goalId") ?? Guid.NewGuid().ToString("N");
+        var sessionId = GetString(parameters, "sessionId") ?? throw new InvalidOperationException("sessionId is required");
+        var objective = GetString(parameters, "objective") ?? throw new InvalidOperationException("objective is required");
+        var status = GetString(parameters, "status") ?? GoalStatusValues.Active;
+        var plansJson = GetJsonText(parameters, "plansJson");
+        var projectId = db.QueryScalar<string?>(
+            "SELECT project_id FROM sessions WHERE id = @sessionId LIMIT 1",
+            new SqliteParameter("@sessionId", sessionId));
+        var entity = new GoalEntity
+        {
+            GoalId = goalId,
+            SessionId = sessionId,
+            ProjectId = projectId,
+            Objective = objective,
+            Status = status,
+            TokenBudget = GetLongOrNull(parameters, "tokenBudget"),
+            PlansJson = plansJson,
+            PlanCount = GetInt(parameters, "planCount", 0),
+            CompletedPlanCount = GetInt(parameters, "completedPlanCount", 0),
+            CurrentPlanIndex = GetInt(parameters, "currentPlanIndex", -1),
+            WorkingFolder = GetString(parameters, "workingFolder"),
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        db.ExecuteInTransaction((connection, transaction) =>
+        {
+            if (!GoalStatusValues.IsTerminal(status))
+            {
+                var current = db.QueryFirstOrDefault(
+                    connection,
+                    transaction,
+                    "SELECT * FROM goals WHERE session_id = @sid " +
+                    "AND status IN ('pending', 'active') LIMIT 1",
+                    EntityMappers.MapGoal,
+                    new SqliteParameter("@sid", sessionId));
+                if (current != null)
+                    throw new InvalidOperationException("Session already has a current goal");
+            }
+
+            db.Execute(
+                connection,
+                transaction,
+                "INSERT INTO goals (goal_id, session_id, project_id, objective, status, token_budget, tokens_used, " +
+                "time_used_seconds, plans_json, plan_count, completed_plan_count, current_plan_index, " +
+                "working_folder, created_at, updated_at) " +
+                "VALUES (@gid, @sid, @pid, @obj, @status, @tb, 0, 0, @pj, @pc, @cpc, @cpi, @wf, @ca, @ua)",
+                new SqliteParameter("@gid", goalId),
+                new SqliteParameter("@sid", sessionId),
+                new SqliteParameter("@pid", (object?)entity.ProjectId ?? DBNull.Value),
+                new SqliteParameter("@obj", objective),
+                new SqliteParameter("@status", status),
+                new SqliteParameter("@tb", (object?)entity.TokenBudget ?? DBNull.Value),
+                new SqliteParameter("@pj", (object?)plansJson ?? DBNull.Value),
+                new SqliteParameter("@pc", entity.PlanCount),
+                new SqliteParameter("@cpc", entity.CompletedPlanCount),
+                new SqliteParameter("@cpi", entity.CurrentPlanIndex),
+                new SqliteParameter("@wf", (object?)entity.WorkingFolder ?? DBNull.Value),
+                new SqliteParameter("@ca", now),
+                new SqliteParameter("@ua", now));
+            InsertEvent(db, connection, transaction, sessionId, goalId, eventType, eventMessage, null, now);
+        });
+
+        return GoalRow.FromEntity(entity);
+    }
+
     private static void InsertEvent(DbService db, string sessionId, string goalId, string eventType, string? message, string? metadataJson, long createdAt)
     {
         db.Execute(
             "INSERT INTO goal_events (session_id, goal_id, event_type, message, metadata_json, created_at) " +
             "VALUES (@sid, @gid, @et, @msg, @mj, @ca)",
+            EventParameters(sessionId, goalId, eventType, message, metadataJson, createdAt));
+    }
+
+    private static void InsertEvent(
+        DbService db,
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sessionId,
+        string goalId,
+        string eventType,
+        string? message,
+        string? metadataJson,
+        long createdAt)
+    {
+        db.Execute(
+            connection,
+            transaction,
+            "INSERT INTO goal_events (session_id, goal_id, event_type, message, metadata_json, created_at) " +
+            "VALUES (@sid, @gid, @et, @msg, @mj, @ca)",
+            EventParameters(sessionId, goalId, eventType, message, metadataJson, createdAt));
+    }
+
+    private static SqliteParameter[] EventParameters(
+        string sessionId,
+        string goalId,
+        string eventType,
+        string? message,
+        string? metadataJson,
+        long createdAt)
+        =>
+        [
             new SqliteParameter("@sid", sessionId),
             new SqliteParameter("@gid", goalId),
             new SqliteParameter("@et", eventType),
             new SqliteParameter("@msg", (object?)message ?? DBNull.Value),
             new SqliteParameter("@mj", (object?)metadataJson ?? DBNull.Value),
-            new SqliteParameter("@ca", createdAt));
+            new SqliteParameter("@ca", createdAt)
+        ];
+
+    private static (string EventType, string Message) GoalStatusEvent(
+        string previousStatus,
+        string currentStatus,
+        string? eventMessage)
+        => currentStatus switch
+        {
+            GoalStatusValues.Complete => ("completed", eventMessage ?? "Goal completed"),
+            GoalStatusValues.Failed => ("failed", eventMessage ?? "Goal failed"),
+            GoalStatusValues.Aborted => ("aborted", eventMessage ?? "Goal aborted"),
+            _ => ("status_changed", eventMessage ?? $"Status changed: {previousStatus} -> {currentStatus}")
+        };
+
+    private static void ApplyGoalPatch(GoalEntity entity, JsonElement parameters)
+    {
+        if (!parameters.TryGetProperty("patch", out var patch) || patch.ValueKind != JsonValueKind.Object)
+            return;
+
+        if (patch.TryGetProperty("objective", out var objective) && objective.ValueKind == JsonValueKind.String)
+            entity.Objective = objective.GetString()!;
+        if (patch.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.String)
+            entity.Status = status.GetString()!;
+        if (patch.TryGetProperty("tokenBudget", out var tokenBudget))
+            entity.TokenBudget = tokenBudget.ValueKind == JsonValueKind.Null ? null : tokenBudget.GetInt64();
+        if (patch.TryGetProperty("plansJson", out var plansJson))
+            entity.PlansJson = plansJson.ValueKind == JsonValueKind.Null ? null : GetJsonText(plansJson);
+        if (patch.TryGetProperty("planCount", out var planCount) && planCount.ValueKind == JsonValueKind.Number)
+            entity.PlanCount = planCount.GetInt32();
+        if (patch.TryGetProperty("completedPlanCount", out var completedPlanCount) && completedPlanCount.ValueKind == JsonValueKind.Number)
+            entity.CompletedPlanCount = completedPlanCount.GetInt32();
+        if (patch.TryGetProperty("currentPlanIndex", out var currentPlanIndex) && currentPlanIndex.ValueKind == JsonValueKind.Number)
+            entity.CurrentPlanIndex = currentPlanIndex.GetInt32();
+        if (patch.TryGetProperty("workingFolder", out var workingFolder))
+            entity.WorkingFolder = workingFolder.ValueKind == JsonValueKind.Null ? null : workingFolder.GetString();
     }
+
+    private static string? GetJsonText(JsonElement element, string name)
+        => element.TryGetProperty(name, out var value) ? GetJsonText(value) : null;
+
+    private static string? GetJsonText(JsonElement element)
+        => element.ValueKind switch
+        {
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            JsonValueKind.String => element.GetString(),
+            _ => element.GetRawText()
+        };
 
     private static string? GetString(JsonElement element, string name)
         => element.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.String ? el.GetString() : null;
@@ -327,4 +396,5 @@ public static class DbGoalTools
 
     private static int GetInt(JsonElement element, string name, int defaultValue)
         => element.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number ? el.GetInt32() : defaultValue;
+
 }

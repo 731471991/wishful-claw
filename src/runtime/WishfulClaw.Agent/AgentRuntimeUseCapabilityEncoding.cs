@@ -81,6 +81,9 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         }
     }
 
+    private static bool IsProxiedBuiltinTool(string toolName, string category)
+        => ProxiedCategories.Contains(category) || ProxiedBuiltinTools.Contains(toolName);
+
     /// <summary>
     /// Collect built-in tools from the registry that belong to proxied categories.
     /// </summary>
@@ -92,8 +95,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         foreach (var name in registry.GetToolNames())
         {
             var category = registry.GetCategory(name);
-            if (category is null) continue;
-            if (!ProxiedCategories.Contains(category)) continue;
+            if (category is null || !IsProxiedBuiltinTool(name, category)) continue;
 
             // Get description from the tool definition
             if (registry.TryGetExecutor(name, out var executor) && executor is not null)
@@ -244,7 +246,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         }
 
         var category = registry.GetCategory(toolName);
-        if (category is null || !ProxiedCategories.Contains(category))
+        if (category is null || !IsProxiedBuiltinTool(toolName, category))
         {
             return EncodeError($"Tool '{toolName}' is not a proxied capability.");
         }

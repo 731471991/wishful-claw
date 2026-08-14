@@ -1,4 +1,6 @@
 
+using WishfulClaw.Contracts;
+
 namespace WishfulClaw.Infrastructure.Db;
 
 // ─── Goal Entity ───
@@ -9,12 +11,14 @@ public class GoalEntity
 
     public string SessionId { get; set; } = string.Empty;
 
+    public string? ProjectId { get; set; }
+
     public string Objective { get; set; } = string.Empty;
 
     /// <summary>
-    /// active | paused | blocked | usage_limited | budget_limited | complete
+    /// pending | active | complete | failed | aborted
     /// </summary>
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = GoalStatusValues.Active;
 
     public long? TokenBudget { get; set; }
 
@@ -52,9 +56,9 @@ public class GoalEventEntity
     public string? GoalId { get; set; }
 
     /// <summary>
-    /// created | replaced | objective_updated | budget_updated | status_changed | usage_accounted |
-    /// usage_limited | budget_limited | completion_deferred | blocked | completed | stall_paused |
-    /// auto_continue_blocked | cleared
+    /// created | confirmed | objective_updated | budget_updated | status_changed | usage_accounted |
+    /// usage_limited | budget_limited | completion_deferred | blocked | completed | failed | aborted |
+    /// stall_paused | auto_continue_blocked
     /// </summary>
     public string EventType { get; set; } = "created";
 
@@ -71,8 +75,9 @@ public sealed class GoalRow
 {
     public string GoalId { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
+    public string? ProjectId { get; set; }
     public string Objective { get; set; } = string.Empty;
-    public string Status { get; set; } = "active";
+    public string Status { get; set; } = GoalStatusValues.Active;
     public long? TokenBudget { get; set; }
     public long TokensUsed { get; set; }
     public long TimeUsedSeconds { get; set; }
@@ -88,6 +93,7 @@ public sealed class GoalRow
     {
     GoalId = e.GoalId,
     SessionId = e.SessionId,
+    ProjectId = e.ProjectId,
     Objective = e.Objective,
     Status = e.Status,
     TokenBudget = e.TokenBudget,
@@ -133,3 +139,19 @@ public sealed record GoalFindResult(bool Success, GoalRow? Goal, string? Error);
 public sealed record GoalMutationResult(bool Success, int Changed, string? Error);
 public sealed record GoalEventFindResult(bool Success, List<GoalEventRow> Events, string? Error);
 public sealed record GoalEventMutationResult(bool Success, GoalEventRow? Event, string? Error);
+public sealed record GoalPageResult(
+    List<GoalRow> Items,
+    bool HasMore,
+    int? NextCurrentRank = null,
+    long? NextUpdatedAt = null,
+    string? NextGoalId = null);
+public sealed record GoalEventPageResult(
+    List<GoalEventRow> Items,
+    bool HasMore,
+    long? NextCreatedAt = null,
+    long? NextEventId = null);
+public sealed record GoalReopenResult(
+    bool Success,
+    GoalRow? Goal = null,
+    string? SourceGoalId = null,
+    string? Error = null);

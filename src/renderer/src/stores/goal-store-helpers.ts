@@ -7,6 +7,9 @@ export type SessionGoalStatus =
   | 'usage_limited'
   | 'budget_limited'
   | 'complete'
+  | 'aborted'
+  | 'failed'
+export type GoalRunState = 'idle' | 'running' | 'paused'
 export type SessionGoalEventType =
   | 'created'
   | 'replaced'
@@ -19,18 +22,28 @@ export type SessionGoalEventType =
   | 'completion_deferred'
   | 'blocked'
   | 'completed'
+  | 'failed'
+  | 'aborted'
   | 'stall_paused'
   | 'auto_continue_blocked'
+  | 'reopened'
+  | 'reopened_from'
   | 'cleared'
 
 export interface SessionGoal {
   sessionId: string
   goalId: string
+  projectId?: string | null
   objective: string
   status: SessionGoalStatus
   tokenBudget?: number | null
   tokensUsed: number
   timeUsedSeconds: number
+  plansJson?: string | null
+  planCount: number
+  completedPlanCount: number
+  currentPlanIndex: number
+  workingFolder?: string | null
   createdAt: number
   updatedAt: number
 }
@@ -52,33 +65,64 @@ export interface ActiveGoalRun {
 
 export const EMPTY_SESSION_GOAL_EVENTS: SessionGoalEvent[] = []
 
+// 后端 GoalRow / GoalEventRow 通过 InfrastructureJsonContext（CamelCase）或
+// GoalEventRow 序列化，字段名为 camelCase。前端按 backend 实际返回的字段名对齐。
 export interface SessionGoalRow {
-  session_id: string
-  goal_id: string
+  sessionId: string
+  goalId: string
+  projectId: string | null
   objective: string
   status: SessionGoalStatus
-  token_budget: number | null
-  tokens_used: number
-  time_used_seconds: number
-  created_at: number
-  updated_at: number
+  tokenBudget: number | null
+  tokensUsed: number
+  timeUsedSeconds: number
+  plansJson: string | null
+  planCount: number
+  completedPlanCount: number
+  currentPlanIndex: number
+  workingFolder: string | null
+  createdAt: number
+  updatedAt: number
 }
 
 export interface SessionGoalEventRow {
-  id: string
-  session_id: string
-  goal_id: string | null
-  event_type: SessionGoalEventType
+  id: string | number
+  sessionId: string
+  goalId: string | null
+  eventType: SessionGoalEventType
   message: string | null
-  metadata_json: string | null
-  created_at: number
+  metadataJson: string | null
+  createdAt: number
+}
+
+export interface GoalPageResult {
+  items: SessionGoalRow[]
+  hasMore: boolean
+  nextCurrentRank?: number | null
+  nextUpdatedAt?: number | null
+  nextGoalId?: string | null
+}
+
+export interface GoalEventPageResult {
+  items: SessionGoalEventRow[]
+  hasMore: boolean
+  nextCreatedAt?: number | null
+  nextEventId?: number | null
 }
 
 export interface GoalMutationResult {
   success?: boolean
   error?: string
   goal?: SessionGoalRow | null
-  cleared?: boolean
+}
+
+export interface GoalActionResult {
+  success: boolean
+  action: string
+  status: string
+  runState: string
+  goalId?: string | null
+  error?: string | null
 }
 
 export interface GoalEventMutationResult {
@@ -101,6 +145,7 @@ export interface GoalProgressState {
   eventType: string
   message: string
   status: string
+  runState?: GoalRunState
   currentPlanIndex: number
   planCount: number
   completedPlans: number
@@ -112,6 +157,7 @@ export interface GoalStore {
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>
   goalProgressBySession: Record<string, GoalProgressState>
+  goalRunStatesBySession: Record<string, GoalRunState>
   _loaded: boolean
 
   loadGoalsFromDb: () => Promise<void>
@@ -138,7 +184,10 @@ export interface GoalStore {
     patch: Partial<Pick<SessionGoal, 'objective' | 'status' | 'tokenBudget'>>
   ) => Promise<{ success: boolean; goal?: SessionGoal; error?: string }>
   confirmGoal: (sessionId: string, goalId: string) => Promise<{ success: boolean; error?: string }>
-  clearGoal: (sessionId: string) => Promise<{ success: boolean; cleared: boolean; error?: string }>
+  cancelGoal: (
+    sessionId: string,
+    goalId?: string | null
+  ) => Promise<{ success: boolean; error?: string }>
   accountGoalUsage: (
     input: AccountGoalUsageInput
   ) => Promise<{ success: boolean; goal?: SessionGoal; error?: string }>
@@ -152,31 +201,44 @@ export interface GoalStore {
   startGoalRun: (sessionId: string, goalId: string, startedAt?: number) => void
   finishGoalRun: (sessionId: string, goalId?: string | null) => void
   applySyncedGoal: (goal: SessionGoal) => void
-  applySyncedGoalClear: (sessionId: string) => void
   applySyncedGoalEvent: (event: SessionGoalEvent) => void
+  applyGoalAction: (sessionId: string, goalId: string, action: GoalActionResult) => void
+  applyGoalRunState: (input: {
+    sessionId: string
+    goalId: string
+    status?: string
+    runState: GoalRunState
+    startedAt?: number
+  }) => void
   applyGoalProgress: (progress: GoalProgressState) => void
-  clearGoalProgress: (sessionId: string) => void
+  clearGoalProgress: (sessionId: string, goalId?: string | null) => void
 }
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {
   return {
-    sessionId: row.session_id,
-    goalId: row.goal_id,
+    sessionId: row.sessionId,
+    goalId: row.goalId,
+    projectId: row.projectId,
     objective: row.objective,
     status: row.status,
-    tokenBudget: row.token_budget,
-    tokensUsed: row.tokens_used,
-    timeUsedSeconds: row.time_used_seconds,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    tokenBudget: row.tokenBudget,
+    tokensUsed: row.tokensUsed,
+    timeUsedSeconds: row.timeUsedSeconds,
+    plansJson: row.plansJson,
+    planCount: row.planCount,
+    completedPlanCount: row.completedPlanCount,
+    currentPlanIndex: row.currentPlanIndex,
+    workingFolder: row.workingFolder,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
   }
 }
 
 export function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
   let metadata: Record<string, unknown> | null = null
-  if (row.metadata_json) {
+  if (row.metadataJson) {
     try {
-      const parsed = JSON.parse(row.metadata_json)
+      const parsed = JSON.parse(row.metadataJson)
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         metadata = parsed as Record<string, unknown>
       }
@@ -186,18 +248,18 @@ export function rowToEvent(row: SessionGoalEventRow): SessionGoalEvent {
   }
 
   return {
-    id: row.id,
-    sessionId: row.session_id,
-    goalId: row.goal_id,
-    eventType: row.event_type,
+    id: String(row.id),
+    sessionId: row.sessionId,
+    goalId: row.goalId,
+    eventType: row.eventType,
     message: row.message,
     metadata,
-    createdAt: row.created_at
+    createdAt: row.createdAt
   }
 }
 
 export function isGoalRow(value: GoalMutationResult | SessionGoalRow): value is SessionGoalRow {
-  return 'session_id' in value
+  return 'sessionId' in value
 }
 
 export function asGoal(

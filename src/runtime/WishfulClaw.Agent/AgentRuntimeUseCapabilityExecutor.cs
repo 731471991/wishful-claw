@@ -36,6 +36,13 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         "channel-plugin", "plugin", "ssh", "skill-management"
     };
 
+    private static readonly HashSet<string> ProxiedBuiltinTools = new(StringComparer.Ordinal)
+    {
+        "list_goals",
+        "get_goal_history",
+        "reopen_goal"
+    };
+
     public static bool IsUseCapabilityTool(string toolName)
     {
         return string.Equals(toolName, ToolName, StringComparison.Ordinal);
@@ -228,9 +235,9 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
                 return EncodeError($"Built-in tool not found: {toolName}");
             }
 
-            // Verify the tool is in a proxied category (not a core tool that should be called directly)
+            // Verify the tool is explicitly exposed through the capability proxy.
             var category = registry.GetCategory(toolName);
-            if (category is null || !ProxiedCategories.Contains(category))
+            if (category is null || !IsProxiedBuiltinTool(toolName, category))
             {
                 return EncodeError($"Tool '{toolName}' is not a proxied capability. Call it directly.");
             }

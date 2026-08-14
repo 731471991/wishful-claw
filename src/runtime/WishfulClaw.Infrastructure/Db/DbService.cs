@@ -67,6 +67,19 @@ public sealed class DbService
         return reader.Read() ? map(reader) : null;
     }
 
+    public T? QueryFirstOrDefault<T>(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sql,
+        Func<SqliteDataReader, T> map,
+        params SqliteParameter[] parameters)
+        where T : class
+    {
+        using var cmd = BuildCommand(connection, sql, parameters, transaction);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? map(reader) : null;
+    }
+
     /// <summary>
     /// Execute a query that returns a single scalar value (e.g. COUNT, MAX).
     /// </summary>
@@ -90,6 +103,42 @@ public sealed class DbService
         using var conn = CreateConnection();
         using var cmd = BuildCommand(conn, sql, parameters);
         return cmd.ExecuteNonQuery();
+    }
+
+    public int Execute(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sql,
+        params SqliteParameter[] parameters)
+    {
+        using var cmd = BuildCommand(connection, sql, parameters, transaction);
+        return cmd.ExecuteNonQuery();
+    }
+
+    public void ExecuteInTransaction(Action<SqliteConnection, SqliteTransaction> action)
+    {
+        ExecuteInTransaction<object?>((connection, transaction) =>
+        {
+            action(connection, transaction);
+            return null;
+        });
+    }
+
+    public T ExecuteInTransaction<T>(Func<SqliteConnection, SqliteTransaction, T> action)
+    {
+        using var conn = CreateConnection();
+        using var transaction = conn.BeginTransaction();
+        try
+        {
+            var result = action(conn, transaction);
+            transaction.Commit();
+            return result;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     /// <summary>
@@ -135,9 +184,14 @@ public sealed class DbService
 
     // ─── Helpers ───
 
-    private static SqliteCommand BuildCommand(SqliteConnection conn, string sql, SqliteParameter[] parameters)
+    private static SqliteCommand BuildCommand(
+        SqliteConnection conn,
+        string sql,
+        SqliteParameter[] parameters,
+        SqliteTransaction? transaction = null)
     {
         var cmd = conn.CreateCommand();
+        cmd.Transaction = transaction;
         cmd.CommandText = sql;
         foreach (var p in parameters)
         {

@@ -9,17 +9,19 @@ import {
   type SessionGoalEvent,
   type SessionGoalEventType
 } from '@renderer/stores/goal-store'
-import { abortSession, dispatchNextQueuedMessageForSession } from '@renderer/hooks/use-chat-actions'
 import { useTranslation } from 'react-i18next'
 import {
   eventMetadataNumber,
   eventMetadataString
 } from './goal-session-utils'
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
+import { buildProviderPayload } from '@renderer/hooks/use-chat-actions'
+import { useProviderStore } from '@renderer/stores/provider-store'
+import type { GoalActionResult } from '@renderer/stores/goal-store-helpers'
+import { useSettingsStore } from '@renderer/stores/settings-store'
 import {
   GOAL_PAUSE_MSGPACK_CHANNEL,
-  GOAL_RESUME_MSGPACK_CHANNEL,
-  GOAL_ABORT_MSGPACK_CHANNEL
+  GOAL_RESUME_MSGPACK_CHANNEL
 } from '@shared/messagepack/binary-ipc'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
@@ -74,9 +76,15 @@ export function formatGoalEvent(
   }
 }
 
-export function GoalEventTimeline({ events }: { events: SessionGoalEvent[] }): React.JSX.Element {
+export function GoalEventTimeline({
+  events,
+  maxItems = 8
+}: {
+  events: SessionGoalEvent[]
+  maxItems?: number
+}): React.JSX.Element {
   const { t } = useTranslation('chat')
-  const visibleEvents = events.slice(0, 8)
+  const visibleEvents = events.slice(0, maxItems)
   if (visibleEvents.length === 0) {
     return <p className="text-xs text-muted-foreground">{t('goal.timelineEmpty')}</p>
   }
@@ -125,19 +133,19 @@ export function useGoalActions(
   goal?: SessionGoal
 ): {
   open: boolean
+  transitioning: 'starting' | 'pausing' | null
   objectiveDraft: string
   tokenBudgetDraft: string
   saving: boolean
-  clearing: boolean
+  cancelling: boolean
   confirming: boolean
   setOpen: (open: boolean) => void
   setObjectiveDraft: (value: string) => void
   setTokenBudgetDraft: (value: string) => void
   openManager: () => void
   saveGoal: () => Promise<void>
-  clearGoal: () => Promise<void>
+  cancelGoal: () => Promise<void>
   setGoalStatus: (status: 'active' | 'paused') => Promise<void>
-  abortGoal: () => Promise<void>
   confirmGoal: () => Promise<void>
 } {
   const { t } = useTranslation('chat')
@@ -146,8 +154,9 @@ export function useGoalActions(
   const [objectiveDraft, setObjectiveDraft] = React.useState('')
   const [tokenBudgetDraft, setTokenBudgetDraft] = React.useState('')
   const [saving, setSaving] = React.useState(false)
-  const [clearing, setClearing] = React.useState(false)
+  const [cancelling, setCancelling] = React.useState(false)
   const [confirming, setConfirming] = React.useState(false)
+  const [transitioning, setTransitioning] = React.useState<'starting' | 'pausing' | null>(null)
 
   const openManager = React.useCallback(() => {
     setObjectiveDraft(goal?.objective ?? '')
@@ -175,54 +184,56 @@ export function useGoalActions(
 
   const setGoalStatus = React.useCallback(
     async (status: 'active' | 'paused'): Promise<void> => {
-      if (!sessionId) return
-      const result = await useGoalStore.getState().updateGoal(sessionId, { status })
-      if (!result.success) {
-        toast.error(t('goal.toasts.updateFailed'), { description: result.error })
-        return
-      }
-      if (status === 'active' && result.goal?.status === 'budget_limited') {
-        toast.info(t('goal.toasts.budgetStillExhausted'), {
-          description: t('goal.toasts.increaseBudget')
-        })
-      }
-      if (status === 'active' && result.goal?.status === 'active') {
-        dispatchNextQueuedMessageForSession(sessionId)
-        try { await invokeMessagePackBinary(GOAL_RESUME_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
-      }
-      if (status === 'paused' && result.goal?.status === 'paused') {
-        abortSession(sessionId)
-        try { await invokeMessagePackBinary(GOAL_PAUSE_MSGPACK_CHANNEL, { sessionId, goalId: goal?.goalId }) } catch { /* orchestrator may not be running */ }
-      }
-    },
-    [sessionId, t, goal?.goalId]
-  )
-
-  const abortGoal = React.useCallback(
-    async (): Promise<void> => {
-      if (!sessionId || !goal) return
+      if (!sessionId || !goal?.goalId || transitioning) return
+      setTransitioning(status === 'active' ? 'starting' : 'pausing')
       try {
-        await invokeMessagePackBinary(GOAL_ABORT_MSGPACK_CHANNEL, { sessionId, goalId: goal.goalId })
-      } catch { /* ignore */ }
-      await useGoalStore.getState().updateGoal(sessionId, { status: 'paused' })
+        let result: GoalActionResult
+        if (status === 'active') {
+          const providerStore = useProviderStore.getState()
+          const activeProvider = providerStore.getActiveProvider()
+          const modelId = providerStore.activeModelId || activeProvider?.defaultModel
+          const provider = activeProvider && modelId
+            ? buildProviderPayload(activeProvider, modelId, useSettingsStore.getState())
+            : undefined
+          result = await invokeMessagePackBinary<GoalActionResult>(GOAL_RESUME_MSGPACK_CHANNEL, {
+            sessionId,
+            goalId: goal.goalId,
+            provider
+          })
+        } else {
+          result = await invokeMessagePackBinary<GoalActionResult>(GOAL_PAUSE_MSGPACK_CHANNEL, {
+            sessionId,
+            goalId: goal.goalId
+          })
+        }
+        if (!result.success) {
+          toast.error(t('goal.toasts.actionFailed'), { description: result.error ?? result.action })
+          return
+        }
+        useGoalStore.getState().applyGoalAction(sessionId, goal.goalId, result)
+      } catch (error) {
+        toast.error(t('goal.toasts.actionFailed'), { description: error instanceof Error ? error.message : String(error) })
+      } finally {
+        setTransitioning(null)
+      }
     },
-    [sessionId, goal]
+    [goal?.goalId, sessionId, t, transitioning]
   )
 
-  const clearGoal = React.useCallback(async (): Promise<void> => {
+  const cancelGoal = React.useCallback(async (): Promise<void> => {
     if (!sessionId || !goal) return
     const confirmed = await (confirm as any)({
-      title: t('goal.clearConfirmTitle'),
-      description: t('goal.clearConfirmDesc'),
-      confirmLabel: tCommon('action.clear'),
+      title: t('goal.cancelConfirmTitle'),
+      description: t('goal.cancelConfirmDesc'),
+      confirmLabel: tCommon('action.cancel'),
       variant: 'destructive'
     })
     if (!confirmed) return
-    setClearing(true)
-    const result = await useGoalStore.getState().clearGoal(sessionId)
-    setClearing(false)
+    setCancelling(true)
+    const result = await useGoalStore.getState().cancelGoal(sessionId, goal.goalId)
+    setCancelling(false)
     if (!result.success) {
-      toast.error(t('goal.toasts.clearFailed'), { description: result.error })
+      toast.error(t('goal.toasts.cancelFailed'), { description: result.error })
       return
     }
     setOpen(false)
@@ -277,19 +288,19 @@ export function useGoalActions(
 
   return {
     open,
+    transitioning,
     objectiveDraft,
     tokenBudgetDraft,
     saving,
-    clearing,
+    cancelling,
     confirming,
     setOpen,
     setObjectiveDraft,
     setTokenBudgetDraft,
     openManager,
     saveGoal,
-    clearGoal,
+    cancelGoal,
     setGoalStatus,
-    abortGoal,
     confirmGoal
   }
 }

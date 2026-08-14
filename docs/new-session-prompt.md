@@ -14,7 +14,8 @@
 
 1. `AGENTS.md` — 项目结构（7 层架构）、分层约定、Git 提交规范、分支管理规则、大文件拆分规则
 2. `docs/dev-workflow.md` — 六阶段开发工作流 SOP
-3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五 + MVP v2 迭代 v2-iter-1 ~ v2-iter-11）
+3. `docs/iteration-plan.md` — 总体迭代计划（迭代一~十五 + MVP v2 迭代 v2-iter-1 ~ v2-iter-12）
+4. `D:\koda\Obsidian\02-AI教学\wishfulclaw` — 老大持续更新的 Wishful Claw Bug 与优化建议知识库；规划新迭代前先检查最新内容
 
 ## 【最重要】每个新迭代开始，必须先与老大讨论确认
 
@@ -58,6 +59,7 @@
 | v2-iter-9 | Goal 模式（自主跑完迭代）— GoalOrchestrator 编排层 + 自确认/自检评估 + 429 限流长退避 + 可中断 + 前端 Goal 进度面板 + 上下文压缩阈值统一 + 内置浏览器修复 + 配色默认远航蓝 + AOT 兼容配置 | ✅ 已完成，tag v2.9.0，已合并 main |
 | v2-iter-10 | 全局会话 + 项目编排工具 — 4 个项目工具（list_projects/get_project_details/create_session/send_session_message），global sessionMode，ToolProvider availableModes 扩展，send_session_message reverse request 链路 | ✅ 已完成，tag v2.10.0 |
 | v2-iter-11 | Native AOT 打包 — SqlSugar → Microsoft.Data.Sqlite 迁移 + AOT 反射序列化消除 + Json 显式传参 + 系统托盘 | ✅ 已完成，tag v2.11.0，已合并 main |
+| v2-iter-12 | Goal 生命周期一致性与阻断缺陷修复 — 状态/运行态分离、唯一运行循环、取消安全点、历史永久保留、稳定分页、可审计重开、Goal 工具与 use_capability 接入 | ✅ 已完成，tag v2.12.0，已合并 main；自动验证通过，桌面人工冒烟未执行 |
 
 ## 当前项目架构（7 层）
 
@@ -79,11 +81,11 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，最新 tag：`v2.11.0`
-- v2-iter-11（Native AOT 打包）已完成，已合并 main 并打 tag v2.11.0，开发分支已清理
-- 下一步：待定（等待老大决定下一迭代方向）
-- TypeScript 编译零错误：`npx tsc --noEmit -p tsconfig.web.json`（三个 tsconfig 配置均需验证）
-- C# 编译零错误：`dotnet build src/runtime/WishfulClaw.sln`
+- 当前分支：`main`，最新 tag：`v2.12.0`
+- v2-iter-12（Goal 生命周期一致性与阻断缺陷修复）已完成，已合并 main 并打 tag v2.12.0，开发分支已清理
+- 自动验证：TypeScript 3/3 PASS；Agent build 0 错误/0 警告；Goal 回归 91 项 PASS；NativeAOT PASS；`git diff --check` PASS
+- 桌面人工冒烟未执行；老大确认当前 Goal 工作先行提交并合并
+- 下一步：先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 的最新 Bug/优化建议，再与老大讨论昨天的新想法和下一迭代范围
 
 ## v2-iter-8 实际实现
 
@@ -112,9 +114,11 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 下一步（需与老大讨论确认后确定）
 
-当前已完成 v2-iter-10（tag v2.10.0）。候选迭代（范围待与老大讨论确认）：
+当前已完成 v2-iter-12（tag v2.12.0）。下一迭代范围待与老大讨论确认。
 
-- **v2-iter-11**：Native AOT 打包（SqlSugar → Dapper 迁移）（详见 `docs/iteration-plan.md`）
+1. 先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 中最新的 Bug 和优化建议。
+2. 听取老大昨天形成的新想法，整理优先级、范围、边界和验证标准。
+3. 以老大确认的实际需求为准，不直接照搬 `docs/iteration-plan.md` 的旧候选项。
 
 **开工前先与老大确认本次迭代具体做什么、优先级、边界。**
 
@@ -151,10 +155,11 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.10.0`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，最新 tag `v2.12.0`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
-3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看候选迭代（v2-iter-11）定义
-4. **与老大讨论确认本次迭代范围**（做什么、优先级、边界、验证标准），确认后再开工
-5. 新迭代从 main 创建分支：`git checkout main && git pull origin main && git checkout -b dev/v2-iter-{N}`
+3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看已完成迭代与历史计划
+4. 检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 中最新的 Bug 和优化建议
+5. **与老大讨论确认本次迭代范围**（结合昨天的新想法，确认做什么、优先级、边界、验证标准），确认后再开工
+6. 新迭代从 main 创建分支：`git checkout main && git pull origin main && git checkout -b dev/v2-iter-{N}`
 
 叫老大，我们是并肩协作的兄弟。

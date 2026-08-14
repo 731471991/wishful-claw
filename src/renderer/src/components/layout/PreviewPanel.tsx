@@ -40,6 +40,8 @@ const MonacoDiffEditor = lazy(() =>
   }))
 )
 
+import { createSelectFileToken } from '@renderer/lib/select-file-tags'
+import { composerEvents } from '@renderer/lib/composer-events'
 import { breadcrumbParts, isExternalUrl, shouldReadPreviewText, tabTitle, tabPathTitle, TabIcon } from './preview-utils'
 import { usePreviewSave } from './use-preview-save'
 import { PreviewToolbar } from './preview-toolbar'
@@ -223,6 +225,15 @@ export function PreviewPanel({
     }
   }
 
+  const handleSendPathToChat = (): void => {
+    if (!activeTab?.filePath) return
+    const filePath = activeTab.filePath
+    const text = activeTab.sshConnectionId
+      ? `\`${filePath}\``
+      : (createSelectFileToken(filePath) || filePath)
+    composerEvents.emit({ text })
+  }
+
   const requestCloseTab = (tab: PreviewPanelTab): void => {
     if (tab.modified) {
       setActivePreviewTab(tab.id)
@@ -401,6 +412,7 @@ export function PreviewPanel({
         onSave={() => void handleSave()}
         onReload={handleReload}
         onOpenInSystem={() => void handleOpenInSystem()}
+        onSendPathToChat={handleSendPathToChat}
       />
       <div className="min-h-0 flex-1 overflow-hidden">
         {isDiff ? (

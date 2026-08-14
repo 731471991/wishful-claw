@@ -1,4 +1,4 @@
-import type { TokenUsage } from '@renderer/lib/api/types'
+﻿import type { TokenUsage } from '@renderer/lib/api/types'
 import type { SessionGoal } from '@renderer/stores/goal-store'
 
 export const MAX_GOAL_OBJECTIVE_CHARS = 4000
@@ -67,6 +67,10 @@ export function goalStatusLabel(status: SessionGoal['status']): string {
       return 'limited by budget'
     case 'complete':
       return 'complete'
+    case 'aborted':
+      return 'aborted'
+    case 'failed':
+      return 'failed'
   }
 }
 

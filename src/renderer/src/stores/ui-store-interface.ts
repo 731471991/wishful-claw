@@ -1,4 +1,4 @@
-// Extracted from ui-store.ts — UIStore interface definition
+﻿// Extracted from ui-store.ts — UIStore interface definition
 
 import type React from 'react'
 import type {
@@ -269,7 +269,11 @@ export interface UIStore {
     sessionId?: string | null
   ) => void
   openSubAgentsPanel: (toolUseId?: string | null, sessionId?: string | null) => void
-  openGoalPanel: (sessionId: string) => void
+  openGoalPanel: (
+    sessionId?: string | null,
+    projectId?: string | null,
+    goalId?: string | null
+  ) => void
   ensureTerminalTab: () => void
   ensureFilesTab: (sessionId?: string | null) => void
   getBrowserWebviewRef: (sessionId?: string | null, projectId?: string | null) => React.RefObject<Electron.WebviewTag | null> | null

@@ -175,7 +175,7 @@ export function subscribePendingSessionMessages(onStoreChange: () => void): () =
 // Build a complete provider object matching handleSendMessage's logic.
 // Both sendImplementPlan and sendPlanRevision need this -- they bypass
 // handleSendMessage but must send the same provider shape to agent/run.
-function buildProviderPayload(
+export function buildProviderPayload(
   activeProvider: ReturnType<ReturnType<typeof useProviderStore.getState>['getActiveProvider']>,
   modelId: string,
   settings: ReturnType<typeof useSettingsStore.getState>

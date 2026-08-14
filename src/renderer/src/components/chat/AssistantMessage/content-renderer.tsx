@@ -44,6 +44,7 @@ export interface ContentRendererProps {
   normalizedContent: ContentBlock[] | null
   stringSegments: ThinkSegment[] | null
   renderItemsWithInlineSummaries: AssistantRenderItemWithInlineSummary[]
+  renderMode?: 'default' | 'transcript' | 'static'
   thinkingModelName: string
   liveComponentClassName: string
   liveScaleInClassName: string
@@ -80,6 +81,7 @@ export function ContentRenderer({
   normalizedContent,
   stringSegments,
   renderItemsWithInlineSummaries,
+  renderMode,
   thinkingModelName,
   liveComponentClassName,
   liveScaleInClassName,
@@ -461,6 +463,11 @@ export function ContentRenderer({
         <OrchestrationBlock run={orchestrationRun} />
       ) : null}
       {hasProcessContent ? (
+        renderMode === 'transcript' ? (
+          <div className="space-y-2">
+            {processItems.map((item) => renderItem(item))}
+          </div>
+        ) : (
         <ExecutionProcessBlock
           collapsible={true}
           isStreaming={!!isStreaming}
@@ -469,12 +476,13 @@ export function ContentRenderer({
         >
           {processItems.map((item) => renderItem(item))}
         </ExecutionProcessBlock>
+        )
       ) : (
         processItems.map((item) => renderItem(item))
       )}
       {finalItems.length > 0 ? (
         finalItems.map((item) => renderItem(item))
-      ) : hasProcessContent && !isStreaming ? (
+      ) : hasProcessContent && !isStreaming && renderMode !== 'transcript' ? (
         <div className={MD_CLASS}>
           <p className="text-muted-foreground">{t('assistantMessage.cancelledExecution', { defaultValue: '用户取消，中断执行' })}</p>
         </div>

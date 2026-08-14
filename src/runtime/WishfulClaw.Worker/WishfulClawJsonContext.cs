@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Infrastructure.Db;
@@ -21,7 +21,8 @@ namespace WishfulClaw.Worker;
 [JsonSerializable(typeof(SimpleSuccessResult))]
 [JsonSerializable(typeof(ProviderTestResult))]
 [JsonSerializable(typeof(GoalSimpleResult))]
-[JsonSerializable(typeof(GoalClearResult))]
+[JsonSerializable(typeof(GoalActionResult))]
+[JsonSerializable(typeof(GoalRunStateChanged))]
 [JsonSerializable(typeof(GoalStatusResponse))]
 [JsonSerializable(typeof(DbInitializeResult))]
 [JsonSerializable(typeof(ProjectFindResult))]
@@ -58,6 +59,9 @@ namespace WishfulClaw.Worker;
 [JsonSerializable(typeof(List<GoalRow>))]
 [JsonSerializable(typeof(GoalEventRow))]
 [JsonSerializable(typeof(List<GoalEventRow>))]
+[JsonSerializable(typeof(GoalPageResult))]
+[JsonSerializable(typeof(GoalEventPageResult))]
+[JsonSerializable(typeof(GoalReopenResult))]
 [JsonSerializable(typeof(SubAgentRunRow))]
 [JsonSerializable(typeof(List<SubAgentRunRow>))]
 [JsonSerializable(typeof(PluginSessionFindResult))]
@@ -126,6 +130,7 @@ namespace WishfulClaw.Worker;
 [JsonSerializable(typeof(List<SessionListRow>))]
 [JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(ProviderTestModelsResult))]
+[JsonSerializable(typeof(ProviderModelInfo))]
 [JsonSerializable(typeof(SystemMemorySnapshot))]
 public sealed partial class WishfulClawJsonContext : JsonSerializerContext
 {

@@ -36,6 +36,7 @@ appsettings.Local.json
 
 # Build
 publish/
+cache-electron/
 artifacts/
 TestResults/
 resources/worker/

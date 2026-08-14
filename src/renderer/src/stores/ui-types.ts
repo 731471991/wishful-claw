@@ -1,4 +1,4 @@
-// ─── Types ───
+﻿// ─── Types ───
 
 export type AppMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
 
@@ -77,6 +77,7 @@ export interface RightPanelTabInstance {
   sshTabId?: string
   previewTabId?: string
   projectId?: string | null
+  goalId?: string | null
   initialChangeId?: string | null
   selectionRequestId?: number
   modified?: boolean

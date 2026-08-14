@@ -1,4 +1,4 @@
-{
+﻿{
   "splash": {
     "enterMain": "Enter Main",
     "enterSettings": "AI Provider Settings",
@@ -291,6 +291,7 @@
     }
   },
   "rightPanel": {
+    "goals": "Goals",
     "browser": "Browser",
     "browserLoadFailed": "Failed to load page",
     "browserRetry": "Retry",
@@ -341,7 +342,8 @@
     "unsavedChangesDesc": "{fileName} has unsaved changes. Do you want to save before closing?",
     "discard": "Discard",
     "diffSplit": "Split",
-    "diffInline": "Inline"
+    "diffInline": "Inline",
+    "sendToChat": "Send path to chat"
   },
   "agentFiles": {
     "files": "Files",

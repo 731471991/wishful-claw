@@ -1,8 +1,7 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useGoalStore } from '@renderer/stores/goal-store'
 
 interface UseModeControlsOptions {
   projectScoped: boolean
@@ -50,18 +49,6 @@ export function useModeControls(opts: UseModeControlsOptions) {
 
       if (!enabled) {
         opts.setPendingGoalMode(false)
-        if (opts.draftSessionId && opts.hasActiveGoal) {
-          const sessionId = opts.draftSessionId
-          void useGoalStore
-            .getState()
-            .loadGoalForSession(sessionId, true)
-            .then(() => useGoalStore.getState().updateGoal(sessionId, { status: 'paused' }))
-            .then((result) => {
-              if (!result.success) {
-                toast.error(opts.t('goal.toasts.updateFailed'), { description: result.error })
-              }
-            })
-        }
         return
       }
 

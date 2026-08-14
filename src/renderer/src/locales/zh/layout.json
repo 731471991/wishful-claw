@@ -1,4 +1,4 @@
-{
+﻿{
   "splash": {
     "enterMain": "进入主页",
     "enterSettings": "AI 服务商设置",
@@ -291,6 +291,7 @@
     }
   },
   "rightPanel": {
+    "goals": "Goals",
     "browser": "浏览器",
     "browserLoadFailed": "页面加载失败",
     "browserRetry": "重试",
@@ -341,7 +342,8 @@
     "unsavedChangesDesc": "{fileName} 有未保存的更改。关闭前要保存吗？",
     "discard": "丢弃",
     "diffSplit": "分屏",
-    "diffInline": "内联"
+    "diffInline": "内联",
+    "sendToChat": "发送地址到聊天输入框"
   },
   "agentFiles": {
     "files": "文件",

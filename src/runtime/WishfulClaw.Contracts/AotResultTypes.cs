@@ -23,18 +23,41 @@ public sealed record ProviderTestResult(
     int? StatusCode2 = null);
 
 /// <summary>
-/// Provider test result with object models (for ParseModelsResponse).
+/// Single model entry returned by provider/fetch-models.
+/// </summary>
+public sealed record ProviderModelInfo(
+    string Id,
+    string Name,
+    bool Enabled);
+
+/// <summary>
+/// Provider test result with model list.
 /// </summary>
 public sealed record ProviderTestModelsResult(
     bool Ok,
-    List<object>? Models = null);
+    List<ProviderModelInfo>? Models = null);
 
 // ── Goal module results ──
 public sealed record GoalSimpleResult(bool Success);
-public sealed record GoalClearResult(bool Success, bool Cleared);
+public sealed record GoalActionResult(
+    bool Success,
+    string Action,
+    string Status,
+    string RunState,
+    string? GoalId = null,
+    string? Error = null);
+public sealed record GoalRunStateChanged(
+    string SessionId,
+    string GoalId,
+    string Status,
+    string RunState,
+    string Action,
+    long StartedAt,
+    string? Error = null);
 public sealed record GoalStatusResponse(
     bool Active,
     string Status = "unknown",
+    string RunState = "unknown",
     string? GoalId = null,
     int CurrentPlanIndex = -1,
     int PlanCount = 0,

@@ -376,7 +376,11 @@
     "blockedTitle": "已阻塞的目标",
     "usageLimitedTitle": "受配额限制的目标",
     "completedTitle": "已完成的目标",
+    "idleTitle": "空闲",
     "limitedTitle": "预算受限的目标",
+    "pendingConfirmTitle": "执行前确认此目标",
+    "discard": "取消目标",
+    "confirmRun": "确认并启动",
     "notSet": "未设置",
     "noSessionGoal": "当前会话还没有长期目标。",
     "noUsage": "0 秒",
@@ -385,7 +389,7 @@
     "pause": "暂停",
     "resume": "继续",
     "start": "启动",
-    "clear": "清空",
+    "cancel": "取消目标",
     "save": "保存",
     "show": "查看",
     "hide": "收起",
@@ -407,15 +411,18 @@
     "autoContinueOn": "自动续跑中",
     "tokensOnly": "{{tokens}} tokens",
     "tokensWithBudget": "{{used}} / {{budget}} tokens",
-    "clearConfirmTitle": "清空这个 Goal？",
-    "clearConfirmDesc": "这会移除当前会话的长期目标和自动续跑状态。",
+    "cancelConfirmTitle": "取消这个 Goal？",
+    "cancelConfirmDesc": "Goal 会停止运行并归档为已取消，目标与事件历史将永久保留。",
     "status": {
+      "pending": "待确认",
       "active": "进行中",
       "paused": "已暂停",
       "blocked": "已阻塞",
       "usage_limited": "受配额限制",
       "budget_limited": "预算耗尽",
-      "complete": "已完成"
+      "complete": "已完成",
+      "aborted": "已取消",
+      "failed": "失败"
     },
     "errors": {
       "invalidBudget": "Token 预算必须是正整数。",
@@ -424,7 +431,8 @@
     "toasts": {
       "updateFailed": "Goal 更新失败",
       "createFailed": "Goal 创建失败",
-      "clearFailed": "Goal 清空失败",
+      "cancelFailed": "Goal 取消失败",
+      "actionFailed": "Goal 操作失败",
       "objectiveInvalid": "Goal 目标无效",
       "budgetInvalid": "Goal 预算无效",
       "budgetStillExhausted": "Goal 预算仍然耗尽",
@@ -432,7 +440,7 @@
     },
     "events": {
       "created": "Goal 已创建",
-      "replaced": "Goal 已替换",
+      "confirmed": "Goal 已确认",
       "objective_updated": "目标已更新",
       "budget_updated": "预算已更新",
       "status_changed": "状态已变化",
@@ -442,9 +450,13 @@
       "completion_deferred": "完成被暂缓",
       "blocked": "Goal 已阻塞",
       "completed": "Goal 已完成",
+      "failed": "Goal 失败",
+      "aborted": "Goal 已取消",
       "stall_paused": "因停滞保护暂停",
       "auto_continue_blocked": "自动续跑等待中",
-      "cleared": "Goal 已清空",
+      "reopened": "Goal 已重开",
+      "reopened_from": "从历史 Goal 重开",
+      "cleared": "旧版本已清空 Goal",
       "usageDetail": "+{{tokens}} tokens，+{{time}}",
       "statusDetail": "{{from}} -> {{to}}"
     },
@@ -456,6 +468,27 @@
       "complete": "Goal 已完成。最终审计：{{usage}}；没有未完成任务、失败工具、排队用户消息或待处理 Plan gate。",
       "stallPaused": "Goal 已被停滞保护暂停：连续 {{count}} 轮续跑没有工具或任务进展。检查目标后可手动继续。",
       "autoContinueBlocked": "Goal 自动续跑正在等待：{{blockers}}。"
+    },
+    "createdAt": "创建",
+    "updatedAt": "更新",
+    "recentActivity": "近期动态",
+    "history": {
+      "title": "Goal 历史",
+      "subtitle": "当前项目下的全部目标",
+      "empty": "当前项目还没有 Goal 历史。",
+      "deletedSession": "已删除会话",
+      "plans": "计划",
+      "awaitingConfirmation": "等待聊天中的确认",
+      "planProgress": "计划 {{completed}} / {{total}}",
+      "loadMore": "加载更多",
+      "loadingMore": "正在加载...",
+      "filters": {
+        "all": "全部",
+        "current": "进行中",
+        "complete": "已完成",
+        "failed": "失败",
+        "aborted": "已取消"
+      }
     }
   },
   "permission": {

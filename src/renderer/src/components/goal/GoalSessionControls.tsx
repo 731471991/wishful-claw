@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronRight, CheckCircle2, Pause, Pencil, Play, Plus, Save, Target, Trash2, Zap } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pause, Pencil, Play, Save, Target, XCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import {
   Dialog,
@@ -16,7 +16,8 @@ import { cn } from '@renderer/lib/utils'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { formatGoalElapsedSeconds, formatGoalTokens } from '@renderer/lib/agent/goal-context'
-import { useGoalStore, type SessionGoal, type SessionGoalEvent, type SessionGoalEventType } from '@renderer/stores/goal-store'
+import { useGoalStore, type GoalRunState, type SessionGoal, type SessionGoalEvent, type SessionGoalEventType } from '@renderer/stores/goal-store'
+import { isRuntimeGoalVisible } from '@renderer/stores/goal-state-transitions'
 
 const BLOCKER_EVENT_TYPES = new Set<SessionGoalEventType>([
   'usage_limited',
@@ -31,17 +32,19 @@ import {
   useGoalSession,
   useLiveGoalElapsedSeconds,
   GoalStatusBadge,
-  GoalUsageLine
+  getGoalRuntimeControls
 } from './goal-session-utils'
 import { GoalEventTimeline, LatestGoalNotice, useGoalActions } from './goal-session-views'
 
 function GoalManagerDialog({
   goal,
   events,
+  runState,
   actions
 }: {
   goal?: SessionGoal
   events: SessionGoalEvent[]
+  runState: GoalRunState
   actions: ReturnType<typeof useGoalActions>
 }): React.JSX.Element {
   const { t } = useTranslation('chat')
@@ -50,6 +53,7 @@ function GoalManagerDialog({
     goal?.tokenBudget !== undefined && goal.tokenBudget !== null
       ? Math.min(100, (goal.tokensUsed / goal.tokenBudget) * 100)
       : null
+  const controls = getGoalRuntimeControls(goal, runState)
 
   return (
     <Dialog open={actions.open} onOpenChange={actions.setOpen}>
@@ -146,25 +150,28 @@ function GoalManagerDialog({
         </div>
         <DialogFooter className="items-center justify-between gap-2 sm:justify-between">
           <div className="flex items-center gap-1">
-            {goal?.status === 'active' ? (
+            {goal && controls.canPause ? (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5"
+                disabled={actions.transitioning !== null}
                 onClick={() => void actions.setGoalStatus('paused')}
               >
                 <Pause className="size-3.5" />
                 {t('goal.pause')}
               </Button>
-            ) : goal ? (
+            ) : null}
+            {goal && controls.canResume ? (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5"
+                disabled={actions.transitioning !== null}
                 onClick={() => void actions.setGoalStatus('active')}
               >
                 <Play className="size-3.5" />
-                {goal.status === 'complete' ? t('goal.start') : t('goal.resume')}
+                {controls.runState === 'idle' ? t('goal.start') : t('goal.resume')}
               </Button>
             ) : null}
             {goal && (
@@ -172,11 +179,11 @@ function GoalManagerDialog({
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5 text-destructive"
-                disabled={actions.clearing}
-                onClick={() => void actions.clearGoal()}
+                disabled={actions.cancelling}
+                onClick={() => void actions.cancelGoal()}
               >
-                <Trash2 className="size-3.5" />
-                {t('goal.clear')}
+                <XCircle className="size-3.5" />
+                {t('goal.cancel')}
               </Button>
             )}
           </div>
@@ -213,7 +220,7 @@ export function GoalSessionBar({
   className?: string
 }): React.JSX.Element | null {
   const { t } = useTranslation('chat')
-  const { goal, events } = useGoalSession(sessionId)
+  const { goal, events, runState } = useGoalSession(sessionId)
   const actions = useGoalActions(sessionId, goal)
   const [expanded, setExpanded] = React.useState(true)
   const animationsEnabled = useSettingsStore((s) => s.animationsEnabled)
@@ -222,59 +229,29 @@ export function GoalSessionBar({
     const activeRun = s.activeGoalRunsBySession[sessionId]
     return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
   })
-  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt)
+  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt, runState)
+  const controls = getGoalRuntimeControls(goal, runState)
 
   React.useEffect(() => {
     setExpanded(true)
   }, [sessionId])
 
-  if (!sessionId || !goal) return null
+  if (!sessionId || !isRuntimeGoalVisible(goal)) return null
 
   const statusTitle =
-    goal.status === 'pending'
-      ? t('goal.pendingTitle', { defaultValue: 'Goal awaiting confirmation' })
-      : goal.status === 'active'
-        ? t('goal.runningTitle', { defaultValue: 'Pursuing goal' })
-      : goal.status === 'paused'
+    runState === 'running'
+      ? t('goal.runningTitle', { defaultValue: 'Pursuing goal' })
+      : runState === 'paused'
         ? t('goal.pausedTitle', { defaultValue: 'Paused goal' })
-        : goal.status === 'blocked'
-          ? t('goal.blockedTitle', { defaultValue: 'Blocked goal' })
-          : goal.status === 'usage_limited'
-            ? t('goal.usageLimitedTitle', { defaultValue: 'Usage-limited goal' })
-            : goal.status === 'complete'
-              ? t('goal.completedTitle', { defaultValue: 'Completed goal' })
-              : t('goal.limitedTitle', { defaultValue: 'Budget-limited goal' })
+        : t('goal.idleTitle', { defaultValue: 'Goal ready' })
   const hasBlockerNotice = events.some((event) => BLOCKER_EVENT_TYPES.has(event.eventType))
-
-  if (goal.status === 'pending') {
-    return (
-      <div className={cn('mx-auto w-full max-w-[820px]', className)}>
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="flex items-center gap-2">
-            <Target className="size-4 shrink-0 text-amber-500" />
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold text-foreground/90">
-                {t('goal.pendingTitle', { defaultValue: 'Goal pending confirmation' })}
-              </div>
-              <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap break-words text-[11px] leading-4 text-muted-foreground">
-                {goal.objective}
-              </p>
-            </div>
-            <span className="shrink-0 text-[11px] text-muted-foreground">
-              {formatGoalElapsedSeconds(liveTimeUsedSeconds)}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <>
       <div className={cn('mx-auto w-full max-w-[820px]', className)}>
         <div
           className="rounded-2xl border border-border/70 bg-muted/40 px-3 py-2 shadow-sm backdrop-blur cursor-pointer hover:bg-muted/60 transition-colors"
-          onClick={() => useUIStore.getState().openGoalPanel(sessionId)}
+          onClick={() => useUIStore.getState().openGoalPanel(sessionId, goal.projectId, goal.goalId)}
         >
           <div className="flex items-start gap-2">
             <Target className="mt-0.5 size-3.5 shrink-0 text-primary/80" />
@@ -288,9 +265,11 @@ export function GoalSessionBar({
                     {goal.objective}
                   </span>
                 )}
+                {liveTimeUsedSeconds > 0 ? (
                 <span className="shrink-0 text-[11px] text-muted-foreground">
                   {formatGoalElapsedSeconds(liveTimeUsedSeconds)}
                 </span>
+              ) : null}
               </div>
               {animationsEnabled ? (
                 <CollapsibleHeightPanel
@@ -321,7 +300,7 @@ export function GoalSessionBar({
               >
                 <Pencil className="size-3.5" />
               </Button>
-              {goal.status === 'active' ? (
+              {controls.canPause ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -332,7 +311,7 @@ export function GoalSessionBar({
                 >
                   <Pause className="size-3.5" />
                 </Button>
-              ) : goal.status !== 'complete' ? (
+              ) : controls.canResume ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -348,11 +327,11 @@ export function GoalSessionBar({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md text-destructive/80"
-                title={t('goal.clear')}
-                aria-label={t('goal.clear')}
-                onClick={() => void actions.clearGoal()}
+                title={t('goal.cancel')}
+                aria-label={t('goal.cancel')}
+                onClick={() => void actions.cancelGoal()}
               >
-                <Trash2 className="size-3.5" />
+                <XCircle className="size-3.5" />
               </Button>
               <Button
                 variant="ghost"
@@ -378,110 +357,7 @@ export function GoalSessionBar({
           ) : null}
         </div>
       </div>
-      <GoalManagerDialog goal={goal} events={events} actions={actions} />
-    </>
-  )
-}
-
-export function GoalPanelCard({
-  sessionId,
-  className
-}: {
-  sessionId?: string | null
-  className?: string
-}): React.JSX.Element | null {
-  const { t } = useTranslation('chat')
-  const { goal, events } = useGoalSession(sessionId)
-  const actions = useGoalActions(sessionId, goal)
-  const activeRunStartedAt = useGoalStore((s) => {
-    if (!sessionId || !goal) return null
-    const activeRun = s.activeGoalRunsBySession[sessionId]
-    return activeRun && activeRun.goalId === goal.goalId ? activeRun.startedAt : null
-  })
-  const liveTimeUsedSeconds = useLiveGoalElapsedSeconds(goal, activeRunStartedAt)
-
-  if (!sessionId) return null
-
-  return (
-    <>
-      <div className={cn('space-y-2', className)}>
-        <div className="flex items-center justify-between gap-2">
-          <h4 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <Target className="size-3.5" />
-            {t('goal.title')}
-          </h4>
-          <GoalStatusBadge status={goal?.status} />
-        </div>
-        {goal ? (
-          <>
-            <p className="line-clamp-4 break-words text-xs leading-relaxed text-foreground/85">
-              {goal.objective}
-            </p>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-              <GoalUsageLine goal={goal} timeUsedSeconds={liveTimeUsedSeconds} />
-            </div>
-            <LatestGoalNotice events={events} />
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">{t('goal.noSessionGoal')}</p>
-        )}
-        <div className="flex items-center gap-1">
-          {goal?.status === 'active' ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              title={t('goal.pause')}
-              onClick={() => void actions.setGoalStatus('paused')}
-            >
-              <Pause className="size-3.5" />
-            </Button>
-          ) : goal && goal.status !== 'complete' ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              title={t('goal.resume')}
-              onClick={() => void actions.setGoalStatus('active')}
-            >
-              <Play className="size-3.5" />
-            </Button>
-          ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs"
-            title={goal ? t('goal.manage') : t('goal.set')}
-            onClick={actions.openManager}
-          >
-            {goal ? <Pencil className="size-3.5" /> : <Plus className="size-3.5" />}
-            {goal ? t('goal.manage') : t('goal.set')}
-          </Button>
-          {goal && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-destructive/80"
-              title={t('goal.clear')}
-              onClick={() => void actions.clearGoal()}
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          )}
-          {goal?.status === 'complete' ? (
-            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-sky-500">
-              <CheckCircle2 className="size-3" />
-              {t('goal.completeAudit')}
-            </span>
-          ) : goal?.status === 'active' ? (
-            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-emerald-500">
-              <Zap className="size-3" />
-              {t('goal.autoContinueOn')}
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <GoalManagerDialog goal={goal} events={events} actions={actions} />
+      <GoalManagerDialog goal={goal} events={events} runState={runState} actions={actions} />
     </>
   )
 }

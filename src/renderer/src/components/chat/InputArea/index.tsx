@@ -51,6 +51,7 @@ import { useModeControls } from './use-mode-controls'
 import { ComposerEditorArea } from './composer-editor-area'
 import { useInputAreaSelectors } from './use-input-area-selectors'
 import { useInputAreaEffects } from './use-input-area-effects'
+import { composerEvents } from '@renderer/lib/composer-events'
 
 export function InputArea({
   sessionId, onSend, onStop, onSelectFolder, isStreaming = false, workingFolder,
@@ -276,10 +277,6 @@ export function InputArea({
   const handleCollabModeChange = React.useCallback((nextMode: CollabMode): void => {
     if (disabled || isStreaming || isOptimizingLocked || pendingImageReads > 0) return
     if (nextMode === 'normal') {
-      if (draftSessionId && hasActiveGoal) {
-        void useGoalStore.getState().loadGoalForSession(draftSessionId, true)
-          .then(() => useGoalStore.getState().updateGoal(draftSessionId, { status: 'paused' }))
-      }
       if (draftSessionId) useUIStore.getState().setCollabMode(draftSessionId, 'normal')
       setPendingCollabMode(null)
     } else {
@@ -310,6 +307,15 @@ export function InputArea({
   const { dragging, handleDragOver, handleDragLeave, handleDropWrapped } = useDragDrop({ addFilesToEditor })
   const { contextCompressionStatus, isContextCompressing, handleCompressContext, contextCompressionStatusLabel } = useContextCompression({ onCompressContext, t })
   const { permissionMode, handleSelectPermissionMode } = usePermissionMode({ autoApprove, permissionWhitelistEnabled, t })
+
+  // Subscribe to external composer inject requests (e.g. from PreviewPanel)
+  React.useEffect(() => {
+    const unsub = composerEvents.on((event) => {
+      setText(event.text)
+      focusInputAtEnd()
+    })
+    return unsub
+  }, [setText, focusInputAtEnd])
 
   const editorPlaceholder = pendingReviewPlanId
     ? t('input.placeholderPlanReview', { defaultValue: 'Enter suggestions for this plan...' })
