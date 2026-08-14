@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-0.2.2-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.12-orange" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/Status-Private-lightgrey" alt="Status">
 </p>
