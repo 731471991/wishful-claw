@@ -1,6 +1,6 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Monitor, MoonStar, SunMedium } from 'lucide-react'
+import { Monitor, MoonStar, SunMedium, Keyboard } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import {
   APP_THEME_PRESETS,
@@ -172,6 +172,82 @@ function GeneralPanel(): React.JSX.Element {
   const handleLanguageChange = (value: string): void => {
     settings.updateSettings({ language: value as typeof settings.language })
     changeI18nLanguage(value)
+  }
+
+  // -- Shortcuts (Clipboard + Launcher) --
+  const [clipboardShortcut, setClipboardShortcut] = useState('')
+  const [launcherShortcut, setLauncherShortcut] = useState('')
+  const [capturingShortcut, setCapturingShortcut] = useState<null | 'clipboard' | 'launcher'>(null)
+  const [shortcutDraft, setShortcutDraft] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.invoke<{ enabled: boolean; accelerator: string }>('clipboard:get-config', null).then((cfg) => {
+      if (cancelled) return
+      setClipboardShortcut(cfg.accelerator)
+    })
+    void window.api.invoke<{ enabled: boolean; accelerator: string }>('launcher:get-config', null).then((cfg) => {
+      if (cancelled) return
+      setLauncherShortcut(cfg.accelerator)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // Global keydown for capturing shortcuts
+  useEffect(() => {
+    if (!capturingShortcut) return
+    const toAccelerator = (e: KeyboardEvent): string => {
+      const parts: string[] = []
+      if (e.ctrlKey) parts.push('Ctrl')
+      if (e.metaKey) parts.push('Super')
+      if (e.altKey) parts.push('Alt')
+      if (e.shiftKey) parts.push('Shift')
+      const modifierKeys = ['Control', 'Meta', 'Alt', 'Shift']
+      if (modifierKeys.includes(e.key)) return ''
+      let keyName: string
+      switch (e.key) {
+        case ' ': keyName = 'Space'; break
+        case 'ArrowUp': keyName = 'Up'; break
+        case 'ArrowDown': keyName = 'Down'; break
+        case 'ArrowLeft': keyName = 'Left'; break
+        case 'ArrowRight': keyName = 'Right'; break
+        case 'Enter': keyName = 'Return'; break
+        case 'Escape': keyName = 'Escape'; break
+        case 'Backspace': keyName = 'Backspace'; break
+        case 'Tab': keyName = 'Tab'; break
+        default: keyName = e.key.length === 1 ? e.key.toUpperCase() : e.key
+      }
+      parts.push(keyName)
+      return parts.join('+')
+    }
+    const handleCapture = (e: KeyboardEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.key === 'Escape') {
+        setCapturingShortcut(null)
+        setShortcutDraft('')
+        return
+      }
+      const accel = toAccelerator(e)
+      if (accel) {
+        setShortcutDraft(accel)
+        setCapturingShortcut(null)
+      }
+    }
+    window.addEventListener('keydown', handleCapture, true)
+    return () => window.removeEventListener('keydown', handleCapture, true)
+  }, [capturingShortcut])
+
+  const handleSaveShortcut = async (target: 'clipboard' | 'launcher'): Promise<void> => {
+    if (!shortcutDraft) return
+    if (target === 'clipboard') {
+      const cfg = await window.api.invoke<{ accelerator: string }>('clipboard:update-config', { accelerator: shortcutDraft })
+      setClipboardShortcut(cfg.accelerator)
+    } else {
+      const cfg = await window.api.invoke<{ accelerator: string }>('launcher:update-config', { accelerator: shortcutDraft })
+      setLauncherShortcut(cfg.accelerator)
+    }
+    setShortcutDraft('')
   }
 
   return (
@@ -604,6 +680,96 @@ function GeneralPanel(): React.JSX.Element {
               ? t('general.launchAtLogin.enabled', { defaultValue: 'Enabled' })
               : t('general.launchAtLogin.disabled', { defaultValue: 'Disabled' })}
           </span>
+        </div>
+      </section>
+
+      {/* Shortcuts */}
+      <section className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-foreground">{t('general.shortcuts.label', { defaultValue: 'Shortcuts' })}</div>
+          <p className="text-xs text-muted-foreground">{t('general.shortcuts.desc', { defaultValue: 'Configure global shortcuts for clipboard and launcher' })}</p>
+        </div>
+
+        {/* Clipboard shortcut */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Keyboard className="size-3.5 text-muted-foreground" />
+              <span className="text-sm text-foreground">{t('general.shortcuts.clipboard', { defaultValue: 'Clipboard Enhancer' })}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {capturingShortcut === 'clipboard' ? (
+                <span className="text-xs text-primary">{t('general.shortcuts.recording', { defaultValue: 'Press keys...' })}</span>
+              ) : shortcutDraft && !capturingShortcut ? (
+                <>
+                  <kbd className="rounded border border-border bg-muted px-2 py-1 text-xs text-amber-500">{shortcutDraft}</kbd>
+                  <button
+                    onClick={() => void handleSaveShortcut('clipboard')}
+                    className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    {t('general.shortcuts.save', { defaultValue: 'Save' })}
+                  </button>
+                  <button
+                    onClick={() => setShortcutDraft('')}
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    {t('general.shortcuts.cancel', { defaultValue: 'Cancel' })}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <kbd className="rounded border border-border bg-muted px-2 py-1 text-xs text-foreground">{clipboardShortcut}</kbd>
+                  <button
+                    onClick={() => { setCapturingShortcut('clipboard'); setShortcutDraft('') }}
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    {t('general.shortcuts.modify', { defaultValue: 'Modify' })}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Launcher shortcut */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Keyboard className="size-3.5 text-muted-foreground" />
+              <span className="text-sm text-foreground">{t('general.shortcuts.launcher', { defaultValue: 'Quick Launcher' })}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {capturingShortcut === 'launcher' ? (
+                <span className="text-xs text-primary">{t('general.shortcuts.recording', { defaultValue: 'Press keys...' })}</span>
+              ) : shortcutDraft && !capturingShortcut ? (
+                <>
+                  <kbd className="rounded border border-border bg-muted px-2 py-1 text-xs text-amber-500">{shortcutDraft}</kbd>
+                  <button
+                    onClick={() => void handleSaveShortcut('launcher')}
+                    className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    {t('general.shortcuts.save', { defaultValue: 'Save' })}
+                  </button>
+                  <button
+                    onClick={() => setShortcutDraft('')}
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    {t('general.shortcuts.cancel', { defaultValue: 'Cancel' })}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <kbd className="rounded border border-border bg-muted px-2 py-1 text-xs text-foreground">{launcherShortcut}</kbd>
+                  <button
+                    onClick={() => { setCapturingShortcut('launcher'); setShortcutDraft('') }}
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    {t('general.shortcuts.modify', { defaultValue: 'Modify' })}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </section>
     </div>

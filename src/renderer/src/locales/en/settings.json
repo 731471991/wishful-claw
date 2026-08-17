@@ -145,6 +145,16 @@
       "desc": "Automatically start WishfulClaw when you log in to your computer",
       "enabled": "Enabled",
       "disabled": "Disabled"
+    },
+    "shortcuts": {
+      "label": "Shortcuts",
+      "desc": "Configure global shortcuts for clipboard and launcher",
+      "clipboard": "Clipboard Enhancer",
+      "launcher": "Quick Launcher",
+      "recording": "Press keys...",
+      "save": "Save",
+      "cancel": "Cancel",
+      "modify": "Modify"
     }
   },
   "provider": {

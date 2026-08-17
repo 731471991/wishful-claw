@@ -1,8 +1,11 @@
 /**
- * Quick Launcher — Ctrl+Alt+Space global shortcut launcher (utools-style).
+ * Quick Launcher — configurable global shortcut launcher (utools-style).
  *
  * Scans Windows Start Menu .lnk files, provides fuzzy search,
  * and launches the selected application.
+ *
+ * Shortcut is stored in ~/.wishful-claw/launcher-config.json and can be
+ * modified from both the main settings page and (future) the launcher window.
  */
 
 import { app, BrowserWindow, globalShortcut, shell, screen } from 'electron'
@@ -13,6 +16,8 @@ import { registerMessagePackHandler } from './ipc/messagepack-handler'
 let launcherWindow: BrowserWindow | null = null
 let appListCache: AppShortcut[] | null = null
 let cacheTime = 0
+let currentAccelerator: string | null = null
+let config: LauncherConfig
 
 interface AppShortcut {
   name: string
@@ -20,7 +25,76 @@ interface AppShortcut {
   iconPath?: string
 }
 
+interface LauncherConfig {
+  enabled: boolean
+  accelerator: string
+}
+
 const CACHE_TTL_MS = 5 * 60 * 1000
+
+const DATA_DIR = join(app.getPath('home'), '.wishful-claw')
+const CONFIG_FILE = join(DATA_DIR, 'launcher-config.json')
+
+const DEFAULT_CONFIG: LauncherConfig = {
+  enabled: true,
+  accelerator: 'Ctrl+Alt+Space'
+}
+
+// ── Config persistence ──
+
+function loadConfig(): LauncherConfig {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const raw = fs.readFileSync(CONFIG_FILE, 'utf8')
+      const parsed = JSON.parse(raw)
+      return {
+        enabled: parsed.enabled ?? DEFAULT_CONFIG.enabled,
+        accelerator: typeof parsed.accelerator === 'string' ? parsed.accelerator : DEFAULT_CONFIG.accelerator
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { ...DEFAULT_CONFIG }
+}
+
+function saveConfig(): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 })
+    }
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600
+    })
+  } catch {
+    // ignore
+  }
+}
+
+// ── Shortcut registration ──
+
+function unregisterShortcut(): void {
+  if (currentAccelerator) {
+    globalShortcut.unregister(currentAccelerator)
+    currentAccelerator = null
+  }
+}
+
+function registerShortcut(): void {
+  unregisterShortcut()
+  if (!config.enabled) return
+  const ret = globalShortcut.register(config.accelerator, () => {
+    createLauncherWindow()
+  })
+  if (ret) {
+    currentAccelerator = config.accelerator
+  } else {
+    console.warn('[QuickLauncher] Failed to register shortcut:', config.accelerator)
+  }
+}
+
+// ── App scanning ──
 
 /** Scan Windows Start Menu directories for .lnk shortcut files. */
 function scanStartMenuApps(): AppShortcut[] {
@@ -74,6 +148,8 @@ function getOrRefreshAppList(): AppShortcut[] {
   return appListCache
 }
 
+// ── IPC ──
+
 let ipcRegistered = false
 
 function registerLauncherIpc(): void {
@@ -94,7 +170,29 @@ function registerLauncherIpc(): void {
     launcherWindow?.hide()
     return true
   })
+
+  // ── Config IPC ──
+
+  registerMessagePackHandler<void, LauncherConfig>('launcher:get-config', () => config)
+
+  registerMessagePackHandler<Partial<LauncherConfig>, LauncherConfig>('launcher:update-config', (patch) => {
+    const wasEnabled = config.enabled
+    config = { ...config, ...patch }
+    saveConfig()
+
+    if (patch.enabled !== undefined || patch.accelerator !== undefined) {
+      if (!config.enabled) {
+        unregisterShortcut()
+      } else if (patch.accelerator !== undefined || !wasEnabled) {
+        registerShortcut()
+      }
+    }
+
+    return config
+  })
 }
+
+// ── Window ──
 
 export function createLauncherWindow(): void {
   registerLauncherIpc()
@@ -146,16 +244,14 @@ export function createLauncherWindow(): void {
   launcherWindow.focus()
 }
 
+// ── Init ──
+
 export function registerQuickLauncher(): void {
-  const accelerator = 'Ctrl+Alt+Space'
-  const ret = globalShortcut.register(accelerator, () => {
-    createLauncherWindow()
-  })
-  if (!ret) {
-    console.warn('[QuickLauncher] Failed to register global shortcut:', accelerator)
-  }
+  config = loadConfig()
+  registerLauncherIpc()
+  registerShortcut()
 
   app.on('will-quit', () => {
-    globalShortcut.unregister(accelerator)
+    unregisterShortcut()
   })
 }

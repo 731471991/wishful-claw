@@ -150,6 +150,16 @@
       "desc": "登录电脑时自动启动 WishfulClaw",
       "enabled": "已启用",
       "disabled": "已禁用"
+    },
+    "shortcuts": {
+      "label": "快捷键",
+      "desc": "配置剪贴板和启动器的全局快捷键",
+      "clipboard": "剪贴板增强",
+      "launcher": "快速启动器",
+      "recording": "请按下快捷键...",
+      "save": "保存",
+      "cancel": "取消",
+      "modify": "修改"
     }
   },
   "provider": {
