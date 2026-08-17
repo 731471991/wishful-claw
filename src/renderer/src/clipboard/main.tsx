@@ -2,6 +2,7 @@ import '../assets/main.css'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Clipboard, Trash2, X, Settings, ArrowLeft, Keyboard } from 'lucide-react'
+import { syncThemeFromSettings } from '../lib/theme-sync'
 
 interface ClipboardEntry {
   id: string
@@ -373,5 +374,8 @@ function ClipboardEnhancer(): React.JSX.Element {
   )
 }
 
-const root = createRoot(document.getElementById('root')!)
-root.render(<ClipboardEnhancer />)
+// Sync theme from main app settings before rendering to avoid flash
+void syncThemeFromSettings().finally(() => {
+  const root = createRoot(document.getElementById('root')!)
+  root.render(<ClipboardEnhancer />)
+})

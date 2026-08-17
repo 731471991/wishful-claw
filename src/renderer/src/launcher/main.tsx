@@ -2,6 +2,7 @@ import '../assets/main.css'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Search, CornerDownLeft } from 'lucide-react'
+import { syncThemeFromSettings } from '../lib/theme-sync'
 
 interface AppShortcut {
   name: string
@@ -116,5 +117,8 @@ function QuickLauncher(): React.JSX.Element {
   )
 }
 
-const root = createRoot(document.getElementById('root')!)
-root.render(<QuickLauncher />)
+// Sync theme from main app settings before rendering to avoid flash
+void syncThemeFromSettings().finally(() => {
+  const root = createRoot(document.getElementById('root')!)
+  root.render(<QuickLauncher />)
+})
