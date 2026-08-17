@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Keyboard } from 'lucide-react'
 
@@ -37,18 +37,32 @@ function toAccelerator(e: KeyboardEvent): string {
 
 type Target = 'clipboard' | 'launcher'
 
-interface ShortcutRowProps {
+type RowState = 'idle' | 'recording' | 'draft'
+
+interface RowDraft {
+  target: Target
+  draft: string
+}
+
+function ShortcutRow({
+  label,
+  accelerator,
+  state,
+  draft,
+  t,
+  onStartCapture,
+  onSave,
+  onCancel
+}: {
   label: string
   accelerator: string
-  state: 'idle' | 'recording' | 'draft'
+  state: RowState
   draft: string
   t: (key: string, opts?: Record<string, unknown>) => string
   onStartCapture: () => void
   onSave: () => void
   onCancel: () => void
-}
-
-function ShortcutRow({ label, accelerator, state, draft, t, onStartCapture, onSave, onCancel }: ShortcutRowProps): React.JSX.Element {
+}): React.JSX.Element {
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
       <div className="flex items-center gap-2.5">
@@ -76,7 +90,7 @@ function ShortcutRow({ label, accelerator, state, draft, t, onStartCapture, onSa
           </>
         ) : (
           <>
-            <kbd className="rounded border border-border bg-muted px-2.5 py-1 text-xs text-foreground">{accelerator}</kbd>
+            <kbd className="rounded border border-border bg-muted px-2.5 py-1 text-xs text-foreground">{accelerator || '—'}</kbd>
             <button
               onClick={onStartCapture}
               className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -94,10 +108,10 @@ function ShortcutsPanel(): React.JSX.Element {
   const { t } = useTranslation('settings')
   const [clipboardShortcut, setClipboardShortcut] = useState('')
   const [launcherShortcut, setLauncherShortcut] = useState('')
-  // Which row is currently active: null = none, or { target, phase }
-  const [activeTarget, setActiveTarget] = useState<Target | null>(null)
-  const [phase, setPhase] = useState<'recording' | 'draft'>('recording')
-  const [draft, setDraft] = useState('')
+  // recordingTarget !== null means we're capturing keys for that target
+  const [recordingTarget, setRecordingTarget] = useState<Target | null>(null)
+  // After capture, the draft is stored here with its target
+  const [draftInfo, setDraftInfo] = useState<RowDraft | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -112,57 +126,57 @@ function ShortcutsPanel(): React.JSX.Element {
     return () => { cancelled = true }
   }, [])
 
+  // Keydown listener for capturing shortcuts
   useEffect(() => {
-    if (phase !== 'recording' || !activeTarget) return
+    if (!recordingTarget) return
     const handleCapture = (e: KeyboardEvent): void => {
       e.preventDefault()
       e.stopPropagation()
       if (e.key === 'Escape') {
-        setActiveTarget(null)
-        setPhase('recording')
-        setDraft('')
+        setRecordingTarget(null)
         return
       }
       const accel = toAccelerator(e)
       if (accel) {
-        setDraft(accel)
-        setPhase('draft')
+        setDraftInfo({ target: recordingTarget, draft: accel })
+        setRecordingTarget(null)
       }
     }
     window.addEventListener('keydown', handleCapture, true)
     return () => window.removeEventListener('keydown', handleCapture, true)
-  }, [phase, activeTarget])
+  }, [recordingTarget])
 
-  const startCapture = (target: Target): void => {
-    setActiveTarget(target)
-    setPhase('recording')
-    setDraft('')
-  }
+  const startCapture = useCallback((target: Target): void => {
+    setDraftInfo(null)
+    setRecordingTarget(target)
+  }, [])
 
-  const handleSave = async (): Promise<void> => {
-    if (!draft || !activeTarget) return
-    if (activeTarget === 'clipboard') {
-      const cfg = await window.api.invoke<ShortcutConfig>('clipboard:update-config', { accelerator: draft })
-      setClipboardShortcut(cfg.accelerator)
-    } else {
-      const cfg = await window.api.invoke<ShortcutConfig>('launcher:update-config', { accelerator: draft })
-      setLauncherShortcut(cfg.accelerator)
+  const handleSave = useCallback(async (): Promise<void> => {
+    if (!draftInfo) return
+    const { target, draft } = draftInfo
+    try {
+      if (target === 'clipboard') {
+        const cfg = await window.api.invoke<ShortcutConfig>('clipboard:update-config', { accelerator: draft })
+        setClipboardShortcut(cfg.accelerator)
+      } else {
+        const cfg = await window.api.invoke<ShortcutConfig>('launcher:update-config', { accelerator: draft })
+        setLauncherShortcut(cfg.accelerator)
+      }
+    } catch (err) {
+      console.error('[ShortcutsPanel] Failed to save shortcut:', err)
     }
-    setActiveTarget(null)
-    setPhase('recording')
-    setDraft('')
-  }
+    setDraftInfo(null)
+  }, [draftInfo])
 
-  const handleCancel = (): void => {
-    setActiveTarget(null)
-    setPhase('recording')
-    setDraft('')
-  }
+  const handleCancel = useCallback((): void => {
+    setDraftInfo(null)
+  }, [])
 
-  const rowState = (target: Target): 'idle' | 'recording' | 'draft' => {
-    if (activeTarget !== target) return 'idle'
-    return phase
-  }
+  const getRowState = useCallback((target: Target): RowState => {
+    if (recordingTarget === target) return 'recording'
+    if (draftInfo && draftInfo.target === target) return 'draft'
+    return 'idle'
+  }, [recordingTarget, draftInfo])
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-8 pb-16 pt-10">
@@ -177,8 +191,8 @@ function ShortcutsPanel(): React.JSX.Element {
         <ShortcutRow
           label={t('shortcuts.clipboard', { defaultValue: 'Clipboard Enhancer' })}
           accelerator={clipboardShortcut}
-          state={rowState('clipboard')}
-          draft={draft}
+          state={getRowState('clipboard')}
+          draft={draftInfo?.target === 'clipboard' ? draftInfo.draft : ''}
           t={t}
           onStartCapture={() => startCapture('clipboard')}
           onSave={() => void handleSave()}
@@ -187,8 +201,8 @@ function ShortcutsPanel(): React.JSX.Element {
         <ShortcutRow
           label={t('shortcuts.launcher', { defaultValue: 'Quick Launcher' })}
           accelerator={launcherShortcut}
-          state={rowState('launcher')}
-          draft={draft}
+          state={getRowState('launcher')}
+          draft={draftInfo?.target === 'launcher' ? draftInfo.draft : ''}
           t={t}
           onStartCapture={() => startCapture('launcher')}
           onSave={() => void handleSave()}

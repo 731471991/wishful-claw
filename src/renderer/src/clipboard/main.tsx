@@ -73,10 +73,13 @@ function ClipboardEnhancer(): React.JSX.Element {
       setConfig(c)
     })
 
-    const cleanup = window.api.on<ClipboardEntry[]>('clipboard:history-updated', (entries: ClipboardEntry[]) => {
+    const cleanupHistory = window.api.on<ClipboardEntry[]>('clipboard:history-updated', (entries: ClipboardEntry[]) => {
       setHistory(entries)
     })
-    return () => cleanup()
+    const cleanupTheme = window.api.on<unknown>('clipboard:theme-refresh', () => {
+      void syncThemeFromSettings()
+    })
+    return () => { cleanupHistory(); cleanupTheme() }
   }, [])
 
   useEffect(() => {

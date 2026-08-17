@@ -4,12 +4,14 @@
  * - Polls clipboard (250ms) for near-instant capture
  * - Stores history with expiry (configurable days)
  * - Popup via configurable global shortcut
+ * - Click an item to paste into the previously focused app
  * - Independent config file (not in settings-store)
  */
 
 import { app, BrowserWindow, globalShortcut, clipboard, screen } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
+import { exec } from 'child_process'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
@@ -130,6 +132,13 @@ function pushHistoryUpdate(): void {
   }
 }
 
+/** Tell the renderer to re-sync theme from main app settings. */
+function pushThemeRefresh(): void {
+  if (clipboardWindow) {
+    safeSendMessagePackToWindow(clipboardWindow, 'clipboard:theme-refresh', null)
+  }
+}
+
 function startClipboardPolling(): void {
   if (pollTimer) return
   pollTimer = setInterval(() => {
@@ -151,6 +160,17 @@ function startClipboardPolling(): void {
       pushHistoryUpdate()
     }
   }, 250)
+}
+
+/** Simulate Ctrl+V paste in the previously focused application. */
+function simulatePaste(): void {
+  // PowerShell SendKeys: ^ = Ctrl, v = v
+  const script = `Add-Type -AssemblyName System.Windows.Forms; Start-Sleep -Milliseconds 80; [System.Windows.Forms.SendKeys]::SendWait('^v')`
+  exec(`powershell -NoProfile -NonInteractive -Command "${script.replace(/"/g, '\\"')}"`, (err) => {
+    if (err) {
+      console.warn('[ClipboardEnhancer] simulatePaste failed:', err.message)
+    }
+  })
 }
 
 // ── Shortcut registration ──
@@ -183,15 +203,12 @@ function registerClipboardIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
 
-  registerMessagePackHandler<void, ClipboardEntry[]>('clipboard:get-history', () => {
-    purgeExpired()
-    return history
-  })
-
   registerMessagePackHandler<string, boolean>('clipboard:copy', (text) => {
     clipboard.writeText(text)
     lastClipboardText = text
     clipboardWindow?.hide()
+    // Simulate Ctrl+V in the previously focused app
+    simulatePaste()
     return true
   })
 
@@ -253,6 +270,7 @@ export function createClipboardWindow(): void {
     } else {
       clipboardWindow.show()
       clipboardWindow.focus()
+      pushThemeRefresh()
       pushHistoryUpdate()
     }
     return
@@ -293,7 +311,10 @@ export function createClipboardWindow(): void {
 
   clipboardWindow.show()
   clipboardWindow.focus()
-  setTimeout(() => pushHistoryUpdate(), 200)
+  setTimeout(() => {
+    pushThemeRefresh()
+    pushHistoryUpdate()
+  }, 200)
 }
 
 // ── Init ──
