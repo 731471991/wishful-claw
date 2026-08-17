@@ -1,27 +1,20 @@
-import * as React from 'react'
+﻿import * as React from 'react'
+import { flushSync } from 'react-dom'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import { useChatStore } from '@renderer/stores/chat-store'
 import {
   type MessageListRow,
-  type AutoScrollMode,
   areStringSetsEqual,
   getDistanceToBottom,
   AUTO_SCROLL_BOTTOM_THRESHOLD,
-  AUTO_SCROLL_MIN_DELTA,
-  BOTTOM_SCROLL_CORRECTION_EPSILON,
-  FOLLOW_BOTTOM_SETTLE_FRAMES,
   INITIAL_TAIL_RENDER_COUNT,
-  MIN_RENDERABLE_HISTORY_ROWS,
   OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD,
   PROGRAMMATIC_SCROLL_GUARD_MS,
   STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD,
-  STREAMING_AUTO_SCROLL_POLL_MS,
-  STREAMING_AUTO_SCROLL_STOP_THRESHOLD,
   VIRTUAL_ROW_ESTIMATED_HEIGHT,
   VIRTUAL_ROW_OVERSCAN,
 } from './utils'
 import type { UnifiedMessage } from '@renderer/lib/api/types'
-import type { ChatRenderableMessageMeta } from '../transcript-utils'
 import type { AssistantReplyRailItem as RailItem } from './utils'
 import { createJumpToAssistantMessage, applySuggestedPrompt as applySuggestedPromptImpl } from './scroll-utils'
 import { AssistantReplyRailItem } from './utils'
@@ -36,10 +29,8 @@ export interface MessageListScrollInput {
   isSessionOutputting: boolean
   canSessionTriggerStreamingAutoScroll: boolean
   pendingAskUserQuestion: ReturnType<typeof import('./utils').findPendingAskUserQuestion>
-  renderableMessages: ChatRenderableMessageMeta[]
   assistantRailItems: RailItem[]
   assistantRailItemById: Map<string, RailItem>
-  isAwaitingInitialMessages: boolean
   measuredMessageHeightsRef: React.RefObject<Map<string, number>>
   setAssistantRailMeasureVersion: React.Dispatch<React.SetStateAction<number>>
 }
@@ -72,10 +63,8 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     isSessionOutputting,
     canSessionTriggerStreamingAutoScroll,
     pendingAskUserQuestion,
-    renderableMessages,
     assistantRailItems,
     assistantRailItemById,
-    isAwaitingInitialMessages,
     measuredMessageHeightsRef,
     setAssistantRailMeasureVersion,
   } = input
@@ -92,16 +81,15 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     renderedSessionIdRef.current = activeSessionId
     pendingInitialScrollSessionIdRef.current = activeSessionId
   }
-  const autoScrollModeRef = React.useRef<AutoScrollMode>('off')
+  const autoScrollModeRef = React.useRef<'off' | 'stream' | 'user'>('off')
   const initialTailReleaseFrameRef = React.useRef<number | null>(null)
-  const scheduledScrollFrameRef = React.useRef<number | null>(null)
   const scheduledAssistantRailSyncRef = React.useRef<number | null>(null)
   const highlightedMessageTimerRef = React.useRef<number | null>(null)
   const lastScrollOffsetRef = React.useRef(0)
   const programmaticScrollUntilRef = React.useRef(0)
   const wasSessionOutputtingRef = React.useRef(isSessionOutputting)
-  const stalledOlderLoadStartRef = React.useRef<number | null>(null)
   const isLoadingOlderMessagesRef = React.useRef(false)
+  const prevScrollHeightRef = React.useRef(0)
 
   // ── State ───────────────────────────────────────────────────────
   const [isAtBottom, setIsAtBottom] = React.useState(true)
@@ -145,11 +133,9 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     const threshold = isSessionOutputting ? STREAMING_AUTO_SCROLL_BOTTOM_THRESHOLD : AUTO_SCROLL_BOTTOM_THRESHOLD
     const prev = lastScrollOffsetRef.current
     const cur = ref.scrollTop
-    const scrolledUp = cur < prev - BOTTOM_SCROLL_CORRECTION_EPSILON
     const isProg = window.performance.now() < programmaticScrollUntilRef.current
     lastScrollOffsetRef.current = cur
-    const releaseThreshold = isSessionOutputting ? STREAMING_AUTO_SCROLL_STOP_THRESHOLD : threshold
-    if (scrolledUp && dist > releaseThreshold && !isProg) {
+    if (cur < prev && dist > threshold && !isProg) {
       autoScrollModeRef.current = 'off'
       setIsAtBottom(false)
       return
@@ -219,6 +205,8 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   const shouldAdjustScrollPositionOnItemSizeChange = React.useCallback(
     (item: { end: number }, _delta: number, instance: { scrollOffset: number | null }): boolean => {
       if (canAutoScroll()) return false
+      // 加载历史消息期间不让虚拟列表调整 scrollTop，由 loadOlderMessages
+      // 的 scrollHeight 差值补偿统一处理。
       if (isLoadingOlderMessagesRef.current) return false
       const scrollOffset = instance.scrollOffset ?? 0
       return item.end < scrollOffset
@@ -231,8 +219,6 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     count: virtualRowCount,
     getScrollElement: () => listRef.current,
     estimateSize: () => VIRTUAL_ROW_ESTIMATED_HEIGHT,
-    // initialOffset removed — initial scroll to bottom is handled by the
-    // Initial scroll to bottom useLayoutEffect with requestScrollToBottom.
     overscan: VIRTUAL_ROW_OVERSCAN,
     rangeExtractor: (range) => {
       if (pendingInitialScrollSessionIdRef.current !== activeSessionId || range.count === 0) {
@@ -268,113 +254,73 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   )
 
   // ── Load older messages ─────────────────────────────────────────
+  // flushSync 同步提交 DOM 后立即用 scrollHeight 差值补偿 scrollTop。
+  // shouldAdjustScrollPositionOnItemSizeChange 在加载期间返回 false，
+  // 不让虚拟列表干扰 scrollTop。
   const loadOlderMessages = React.useCallback(
-    async (preserveResidentHistory = false): Promise<number> => {
-      if (!activeSessionId || isLoadingOlderMessages || loadedRangeStart <= 0) return 0
-      const ref = listRef.current
-      const previousScrollHeight = ref?.scrollHeight ?? 0
-      const previousScrollTop = ref?.scrollTop ?? 0
-      const startBefore = loadedRangeStart
+    async (_preserveResidentHistory = false): Promise<number> => {
+      if (!activeSessionId || isLoadingOlderMessagesRef.current || loadedRangeStart <= 0) return 0
       autoScrollModeRef.current = 'off'
       isLoadingOlderMessagesRef.current = true
       setIsLoadingOlderMessages(true)
       try {
-        const loaded = await useChatStore
+        const ref = listRef.current
+        const oldScrollTop = ref?.scrollTop ?? 0
+        const oldHeight = ref?.scrollHeight ?? 0
+
+        const { messages: newMessages, rangeStart, hasMore } = await useChatStore
           .getState()
-          .loadOlderSessionMessages(activeSessionId, undefined, { preserveResidentHistory })
-        const startAfter =
-          useChatStore.getState().sessions.find((s) => s.id === activeSessionId)
-            ?.loadedRangeStart ?? startBefore
-        if (loaded <= 0 || startAfter >= startBefore) {
-          stalledOlderLoadStartRef.current = startBefore
-          return loaded > 0 ? loaded : 0
-        }
-        stalledOlderLoadStartRef.current = null
-        await new Promise<void>((resolve) => {
-          window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => resolve())
-          })
+          .fetchOlderMessages?.(activeSessionId) ?? { messages: [], rangeStart: 0, hasMore: false }
+
+        if (newMessages.length === 0) return 0
+
+        flushSync(() => {
+          useChatStore.getState().prependMessages?.(activeSessionId, newMessages, rangeStart, hasMore)
         })
-        const nextRef = listRef.current
-        if (nextRef) {
-          const scrollDelta = nextRef.scrollHeight - previousScrollHeight
-          if (scrollDelta !== 0) {
+        if (ref) {
+          const newHeight = ref.scrollHeight
+          const delta = newHeight - oldHeight
+          if (delta > 0) {
             markProgrammaticScroll()
-            nextRef.scrollTop = Math.max(0, previousScrollTop + scrollDelta)
+            ref.scrollTop = oldScrollTop + delta
           }
         }
+
         syncBottomState()
         requestAssistantRailSync()
-        return loaded
+        return newMessages.length
       } finally {
         isLoadingOlderMessagesRef.current = false
         setIsLoadingOlderMessages(false)
       }
     },
-    [activeSessionId, isLoadingOlderMessages, loadedRangeStart, markProgrammaticScroll, requestAssistantRailSync, syncBottomState]
+    [activeSessionId, loadedRangeStart, markProgrammaticScroll, requestAssistantRailSync, syncBottomState]
   )
-
-  // ── Request scroll to bottom ────────────────────────────────────
-  const requestScrollToBottom = React.useCallback(
-    ({
-      behavior = 'auto',
-      force = false,
-      maxFrames = 1
-    }: {
-      behavior?: ScrollBehavior
-      force?: boolean
-      maxFrames?: number
-    } = {}) => {
-      if (scheduledScrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(scheduledScrollFrameRef.current)
-      }
-      let framesLeft = Math.max(1, maxFrames)
-      const run = (): void => {
-        scheduledScrollFrameRef.current = null
-        const ref = listRef.current
-        if (!ref) return
-        if (!force && !canAutoScroll()) return
-        if (force || getDistanceToBottom(ref) > AUTO_SCROLL_MIN_DELTA) {
-          scrollToBottomImmediate(behavior)
-        }
-        framesLeft -= 1
-        if (framesLeft > 0) {
-          scheduledScrollFrameRef.current = window.requestAnimationFrame(run)
-          return
-        }
-        syncBottomState()
-      }
-      scheduledScrollFrameRef.current = window.requestAnimationFrame(run)
-    },
-    [canAutoScroll, scrollToBottomImmediate, syncBottomState]
-  )
-
-  // ── Streaming auto-scroll poll ──────────────────────────────────
-  React.useEffect(() => {
-    if (!canSessionTriggerStreamingAutoScroll) return
-    if (pendingAskUserQuestion) return
-    const intervalId = window.setInterval(() => {
-      if (!canAutoScroll()) return
-      requestScrollToBottom({ maxFrames: FOLLOW_BOTTOM_SETTLE_FRAMES })
-    }, STREAMING_AUTO_SCROLL_POLL_MS)
-    return () => { window.clearInterval(intervalId) }
-  }, [canAutoScroll, canSessionTriggerStreamingAutoScroll, pendingAskUserQuestion, requestScrollToBottom])
 
   // ── Scroll handler ──────────────────────────────────────────────
   const handleListScroll = React.useCallback(() => {
     syncBottomState()
     requestAssistantRailSync()
     const ref = listRef.current
+    if (!ref) return
+    const currentScrollHeight = ref.scrollHeight
+    const currentScrollTop = ref.scrollTop
+    const prevHeight = prevScrollHeightRef.current
+    const heightChanged = currentScrollHeight !== prevHeight
+    prevScrollHeightRef.current = currentScrollHeight
+    // 渲染/测量过程中不触发加载
+    if (heightChanged) return
+    // 程序滚动期间（scrollToBottom 等）不触发加载
+    const isProg = window.performance.now() < programmaticScrollUntilRef.current
+    if (isProg) return
     if (
-      ref &&
-      !isLoadingOlderMessages &&
+      !isLoadingOlderMessagesRef.current &&
       loadedRangeStart > 0 &&
-      stalledOlderLoadStartRef.current !== loadedRangeStart &&
-      ref.scrollTop <= OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD
+      currentScrollTop <= OLDER_MESSAGE_LOAD_SCROLL_THRESHOLD
     ) {
       void loadOlderMessages()
     }
-  }, [isLoadingOlderMessages, loadOlderMessages, loadedRangeStart, requestAssistantRailSync, syncBottomState])
+  }, [loadOlderMessages, loadedRangeStart, requestAssistantRailSync, syncBottomState])
 
   // ── Load recent messages on session change ──────────────────────
   React.useEffect(() => {
@@ -394,7 +340,6 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     lastScrollOffsetRef.current = 0
     programmaticScrollUntilRef.current = 0
     measuredMessageHeightsRef.current.clear()
-    stalledOlderLoadStartRef.current = null
     setAssistantRailMeasureVersion((version) => version + 1)
     setActiveAssistantRailIds(new Set())
   }, [activeSessionId, setActiveAssistantRailIds])
@@ -405,15 +350,11 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     if (pendingInitialScrollSessionIdRef.current !== activeSessionId) return
     if (!(messages.length > 0 || streamingMessageId)) return
     autoScrollModeRef.current = isSessionOutputting ? 'stream' : 'user'
-    // Scroll immediately — the ResizeObserver will keep adjusting as the
-    // virtualizer progressively measures row heights.
     scrollToBottomImmediate()
     if (initialTailReleaseFrameRef.current !== null) {
       window.clearTimeout(initialTailReleaseFrameRef.current as unknown as number)
     }
     const initializedSessionId = activeSessionId
-    // Keep the initial-scroll flag (and tail range extractor) for 300ms
-    // so the virtualizer renders the tail while content stabilizes.
     initialTailReleaseFrameRef.current = window.setTimeout(() => {
       if (pendingInitialScrollSessionIdRef.current === initializedSessionId) {
         pendingInitialScrollSessionIdRef.current = null
@@ -456,7 +397,6 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   }, [canAutoScroll, isAtBottom, pendingAskUserQuestion, scrollToBottomImmediate, virtualListTotalSize])
 
   // ── Resize observer ─────────────────────────────────────────────
-  // Uses canAutoScrollRef to avoid re-creating the observer on every isAtBottom change
   React.useEffect(() => {
     const viewport = listRef.current
     const content = virtualContentRef.current
@@ -469,14 +409,6 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
     return () => observer.disconnect()
   }, [activeSessionId, scrollToBottomImmediate])
 
-  // ── Auto-load older messages if too few ─────────────────────────
-  React.useEffect(() => {
-    if (!activeSessionId || isAwaitingInitialMessages || isLoadingOlderMessages) return
-    if (loadedRangeStart <= 0 || renderableMessages.length >= MIN_RENDERABLE_HISTORY_ROWS) return
-    if (stalledOlderLoadStartRef.current === loadedRangeStart) return
-    void loadOlderMessages()
-  }, [activeSessionId, isAwaitingInitialMessages, isLoadingOlderMessages, loadOlderMessages, loadedRangeStart, renderableMessages.length])
-
   // ── Rail sync on mount ──────────────────────────────────────────
   React.useEffect(() => {
     requestAssistantRailSync()
@@ -486,7 +418,6 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   React.useEffect(() => {
     return () => {
       if (initialTailReleaseFrameRef.current !== null) window.clearTimeout(initialTailReleaseFrameRef.current as unknown as number)
-      if (scheduledScrollFrameRef.current !== null) window.cancelAnimationFrame(scheduledScrollFrameRef.current)
       if (scheduledAssistantRailSyncRef.current !== null) window.cancelAnimationFrame(scheduledAssistantRailSyncRef.current)
       if (highlightedMessageTimerRef.current !== null) window.clearTimeout(highlightedMessageTimerRef.current)
     }
@@ -496,8 +427,8 @@ export function useMessageListScroll(input: MessageListScrollInput): MessageList
   const scrollToBottom = React.useCallback(() => {
     autoScrollModeRef.current = 'user'
     setIsAtBottom(true)
-    requestScrollToBottom({ behavior: 'smooth', force: true })
-  }, [requestScrollToBottom])
+    scrollToBottomImmediate('smooth')
+  }, [scrollToBottomImmediate])
 
   // ── Apply suggested prompt (delegated to scroll-utils) ─────────
   const applySuggestedPrompt = React.useCallback(applySuggestedPromptImpl, [])

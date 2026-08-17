@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -63,10 +63,8 @@ function MessageListInner(props: MessageListProps): React.JSX.Element {
     isSessionOutputting: data.isSessionOutputting,
     canSessionTriggerStreamingAutoScroll: data.canSessionTriggerStreamingAutoScroll,
     pendingAskUserQuestion: data.pendingAskUserQuestion,
-    renderableMessages: data.renderableMessages,
     assistantRailItems: data.assistantRailItems,
     assistantRailItemById: data.assistantRailItemById,
-    isAwaitingInitialMessages: data.isAwaitingInitialMessages,
     measuredMessageHeightsRef,
     setAssistantRailMeasureVersion,
   })

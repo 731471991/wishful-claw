@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, MessageSquare, Sparkles } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
@@ -102,7 +102,7 @@ export function FloatingChatWindow({
       </div>
 
       {/* Message list or empty state */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0">
         {sessionId ? (
           <MessageList sessionId={sessionId} fullWidth />
         ) : (

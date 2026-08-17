@@ -1,6 +1,6 @@
 ﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, PanelLeftClose, Image, CalendarDays, ArrowDownAZ, ListFilter } from 'lucide-react'
+import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, Image, CalendarDays, ArrowDownAZ, ListFilter } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuLabel } from '@renderer/components/ui/dropdown-menu'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -18,7 +18,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   const { t } = useTranslation('layout')
   const leftSidebarOpen = useUIStore((s) => s.leftSidebarOpen)
   const leftSidebarWidth = useUIStore((s) => s.leftSidebarWidth)
-  const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar)
   const setActiveNavItem = useUIStore((s) => s.setActiveNavItem)
   const navigateToHome = useUIStore((s) => s.navigateToHome)
   const navigateToSession = useUIStore((s) => s.navigateToSession)
@@ -204,13 +203,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
     >
       {/* Title bar area */}
       <div className="flex h-10 shrink-0 items-center gap-2 px-2">
-        <button
-          onClick={toggleLeftSidebar}
-          className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 hover:text-sidebar-foreground"
-          title={t('sidebar.collapse', { defaultValue: 'Collapse sidebar' })}
-        >
-          <PanelLeftClose className="size-4" />
-        </button>
         <div className="min-w-0 flex-1 truncate text-sm font-semibold text-sidebar-foreground/90">
           Wishful Claw
         </div>

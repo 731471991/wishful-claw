@@ -54,9 +54,10 @@ export interface SessionSlice {
   getActiveSession: () => Session | undefined
   getSessionMessages: (sessionId: string) => ChatMessage[]
 
-  // Message loading (stub - no DB layer yet, messages are in-memory)
+  // Message loading
   loadRecentSessionMessages: (sessionId: string, force?: boolean, limit?: number) => Promise<void>
-  loadOlderSessionMessages: (sessionId: string, limit?: number, options?: { preserveResidentHistory?: boolean }) => Promise<number>
+  fetchOlderMessages: (sessionId: string, limit?: number) => Promise<{ messages: ChatMessage[]; rangeStart: number; hasMore: boolean }>
+  prependMessages: (sessionId: string, messages: ChatMessage[], rangeStart: number, hasMore: boolean) => void
 }
 
 function syncSessionsById(state: { sessions: Session[]; sessionsById: Record<string, number> }): void {
@@ -504,14 +505,11 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
     }
   },
 
-  loadOlderSessionMessages: async (sessionId, _limit, _options) => {
+  fetchOlderMessages: async (sessionId, _limit) => {
     const state = get()
     const session = state.sessions.find((s) => s.id === sessionId)
-    if (!session) return 0
-
-    // loadedRangeStart = sort_order of earliest loaded message.
-    // If 0, we've already loaded from the beginning.
-    if (session.loadedRangeStart <= 0) return 0
+    if (!session) return { messages: [], rangeStart: 0, hasMore: false }
+    if (session.loadedRangeStart <= 0) return { messages: [], rangeStart: 0, hasMore: false }
 
     try {
       const { messages, rangeStart, hasMore } = await dbListMessagesByTurns({
@@ -519,30 +517,24 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         turns: _limit ?? 5,
         beforeCreatedAt: session.loadedRangeStart
       })
-
-      if (messages.length === 0) return 0
-
-      // Deduplicate by id (in case of boundary overlap)
+      if (messages.length === 0) return { messages: [], rangeStart: 0, hasMore: false }
       const existingIds = new Set(session.messages.map((m) => m.id))
       const newMessages = messages.filter((m) => !existingIds.has(m.id))
-
-      if (newMessages.length === 0) return 0
-
-      set((state) => {
-        const target = state.sessions.find((s) => s.id === sessionId)
-        if (!target) return
-        // Prepend older messages to the beginning of the array
-        target.messages = [...newMessages, ...target.messages]
-        // Update rangeStart to the earliest loaded created_at
-        target.loadedRangeStart = hasMore ? rangeStart : 0
-        target.loadedRangeEnd = target.loadedRangeStart + target.messages.length
-      })
-
-      return newMessages.length
+      return { messages: newMessages, rangeStart, hasMore }
     } catch (err) {
-      console.error('[DB] loadOlderSessionMessages failed:', err)
-      return 0
+      console.error('[DB] fetchOlderMessages failed:', err)
+      return { messages: [], rangeStart: 0, hasMore: false }
     }
+  },
+
+  prependMessages: (sessionId, messages, rangeStart, hasMore) => {
+    set((state) => {
+      const target = state.sessions.find((s) => s.id === sessionId)
+      if (!target) return
+      target.messages = [...messages, ...target.messages]
+      target.loadedRangeStart = hasMore ? rangeStart : 0
+      target.loadedRangeEnd = target.loadedRangeStart + target.messages.length
+    })
   },
 
   loadMessageWindowAround: async (sessionId, options, _windowSize) => {

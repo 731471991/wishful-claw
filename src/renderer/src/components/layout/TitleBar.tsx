@@ -1,5 +1,5 @@
-import { useTranslation } from 'react-i18next'
-import { FolderOpen, PanelLeftOpen, PanelRightClose, PanelRightOpen, SquareTerminal } from 'lucide-react'
+﻿import { useTranslation } from 'react-i18next'
+import { FolderOpen, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, SquareTerminal } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore } from '@renderer/stores/chat-store'
@@ -43,16 +43,16 @@ export function TitleBar({
 
   return (
     <header className="titlebar-drag flex h-10 shrink-0 items-center justify-between border-b bg-background/90 backdrop-blur">
-      {/* Left: sidebar toggle only */}
+      {/* Left: sidebar toggle (always visible) */}
       <div className="flex items-center gap-1 px-2">
-        {showSidebarToggle && !leftSidebarOpen && (
+        {showSidebarToggle && (
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={toggleLeftSidebar}
                 className="titlebar-no-drag flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
-                <PanelLeftOpen className="size-4" />
+                {leftSidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">{t('topbar.toggleSidebar', { defaultValue: 'Toggle sidebar' })}</TooltipContent>
