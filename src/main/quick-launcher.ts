@@ -1,5 +1,5 @@
 /**
- * Quick Launcher — Alt+Space global shortcut launcher (utools-style).
+ * Quick Launcher — Ctrl+Alt+Space global shortcut launcher (utools-style).
  *
  * Scans Windows Start Menu .lnk files, provides fuzzy search,
  * and launches the selected application.
@@ -147,7 +147,7 @@ export function createLauncherWindow(): void {
 }
 
 export function registerQuickLauncher(): void {
-  const accelerator = 'Alt+Space'
+  const accelerator = 'Ctrl+Alt+Space'
   const ret = globalShortcut.register(accelerator, () => {
     createLauncherWindow()
   })

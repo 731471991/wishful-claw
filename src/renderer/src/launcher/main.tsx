@@ -1,3 +1,4 @@
+import '../assets/main.css'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Search, CornerDownLeft } from 'lucide-react'
