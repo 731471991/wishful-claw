@@ -26,6 +26,7 @@ namespace WishfulClaw.Infrastructure;
 [JsonSerializable(typeof(MessageUsageStatsResult))]
 [JsonSerializable(typeof(MessageRow))]
 [JsonSerializable(typeof(List<MessageRow>))]
+[JsonSerializable(typeof(MessageListByTurnsResult))]
 [JsonSerializable(typeof(PlanFindResult))]
 [JsonSerializable(typeof(PlanMutationResult))]
 [JsonSerializable(typeof(PlanRow))]

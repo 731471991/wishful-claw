@@ -306,14 +306,26 @@ export function useMessageListData(input: MessageListDataInput): MessageListData
     }
     const loadMessageLocatorRows = async (): Promise<void> => {
       try {
-        const rows = await invokeMessagePackBinary<MessageLocatorIndexRow[] | null>(
+        const rawRows = await invokeMessagePackBinary<Record<string, unknown>[] | null>(
           DB_MESSAGES_LIST_LOCATOR_MSGPACK_CHANNEL,
           activeSessionId
         )
         if (!cancelled) {
+          // Map camelCase fields from Worker to snake_case expected by MessageLocatorIndexRow
+          const mapped: MessageLocatorIndexRow[] = Array.isArray(rawRows)
+            ? rawRows.map((r) => ({
+                id: r.id as string,
+                session_id: r.sessionId as string,
+                role: r.role as string,
+                content: r.content as string,
+                meta: (r.meta as string | null) ?? null,
+                created_at: r.createdAt as number,
+                sort_order: r.sortOrder as number
+              }))
+            : EMPTY_MESSAGE_LOCATOR_ROWS
           setMessageLocatorSnapshot({
             sessionId: activeSessionId,
-            rows: Array.isArray(rows) ? rows : EMPTY_MESSAGE_LOCATOR_ROWS
+            rows: mapped
           })
         }
       } catch (err) {

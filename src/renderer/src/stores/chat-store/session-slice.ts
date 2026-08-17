@@ -1,7 +1,7 @@
 ﻿import { nanoid } from 'nanoid'
 import type { StateCreator } from 'zustand'
 import type { Session, CreateSessionOptions, ChatMessage } from './types'
-import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbListMessagesPage, dbGetMessageCount, dbUpdateProject } from './db-helpers'
+import { dbCreateSession, dbDeleteSession, dbUpdateSession, dbGetMessageCount, dbUpdateProject, dbListMessagesByTurns } from './db-helpers'
 
 export interface SessionSlice {
   sessions: Session[]
@@ -54,9 +54,10 @@ export interface SessionSlice {
   getActiveSession: () => Session | undefined
   getSessionMessages: (sessionId: string) => ChatMessage[]
 
-  // Message loading (stub - no DB layer yet, messages are in-memory)
+  // Message loading
   loadRecentSessionMessages: (sessionId: string, force?: boolean, limit?: number) => Promise<void>
-  loadOlderSessionMessages: (sessionId: string, limit?: number, options?: { preserveResidentHistory?: boolean }) => Promise<number>
+  fetchOlderMessages: (sessionId: string, limit?: number) => Promise<{ messages: ChatMessage[]; rangeStart: number; hasMore: boolean }>
+  prependMessages: (sessionId: string, messages: ChatMessage[], rangeStart: number, hasMore: boolean) => void
 }
 
 function syncSessionsById(state: { sessions: Session[]; sessionsById: Record<string, number> }): void {
@@ -450,36 +451,35 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
     const session = state.sessions.find((s) => s.id === sessionId)
     if (!session) return
 
-    const knownCount = session.messageCount ?? session.messages.length
-
     // Already loaded and no change
     if (!_force && session.messagesLoaded && session.messages.length > 0) {
       return
     }
 
-    // No messages to load (only skip if we have already confirmed via DB)
-    if (knownCount === 0 && session.messagesLoaded) {
-      set((state) => {
-        const target = state.sessions.find((s) => s.id === sessionId)
-        if (!target) return
-        target.messages = []
-        target.messagesLoaded = true
-        target.messageCount = 0
-        target.loadedRangeStart = 0
-        target.loadedRangeEnd = 0
-        target.lastKnownMessageCount = 0
-      })
-      return
-    }
-
     try {
-      // Load the most recent messages (like WishfulClaw: tail page).
-      // Query the actual count from DB — don't trust session.messageCount,
-      // which can be stale and cause the newest messages to be dropped.
+      // Load the most recent N conversation turns (user -> assistant round-trips).
+      // This replaces the old offset-based pagination with turn-based loading.
       const actualCount = await dbGetMessageCount(sessionId)
-      const limit = _limit ?? 100
-      const offset = Math.max(0, actualCount - limit)
-      const messages = await dbListMessagesPage({ sessionId, limit, offset })
+
+      // No messages in DB
+      if (actualCount === 0) {
+        set((state) => {
+          const target = state.sessions.find((s) => s.id === sessionId)
+          if (!target) return
+          target.messages = []
+          target.messagesLoaded = true
+          target.messageCount = 0
+          target.loadedRangeStart = 0
+          target.loadedRangeEnd = 0
+          target.lastKnownMessageCount = 0
+        })
+        return
+      }
+
+      const { messages, rangeStart, hasMore } = await dbListMessagesByTurns({
+        sessionId,
+        turns: _limit ?? 5
+      })
 
       set((state) => {
         const target = state.sessions.find((s) => s.id === sessionId)
@@ -487,14 +487,13 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
         target.messages = messages
         target.messageCount = actualCount
         target.messagesLoaded = true
-        target.loadedRangeStart = offset
-        target.loadedRangeEnd = offset + messages.length
+        // loadedRangeStart = created_at timestamp of the earliest loaded message.
+        // If hasMore is false, we've loaded everything from the beginning.
+        target.loadedRangeStart = hasMore ? rangeStart : 0
+        target.loadedRangeEnd = rangeStart + messages.length
         target.lastKnownMessageCount = actualCount
       })
-      // Restore backend session from DB (Reasonix-style: backend is the
-      // single source of truth for conversation history).
-      // Fire-and-forget: the next agent/run will see MessageCount > 0
-      // and append instead of initializing.
+      // Restore backend session from DB
       void window.api.workerRequest('agent/restore-session', { sessionId })
     } catch (err) {
       console.error('[DB] loadRecentSessionMessages failed:', err)
@@ -506,8 +505,73 @@ export const createSessionSlice: StateCreator<SessionSlice, [['zustand/immer', n
     }
   },
 
-  loadOlderSessionMessages: async (_sessionId, _limit, _options) => {
-    // Stub: no DB layer, all messages are already in memory
-    return 0
+  fetchOlderMessages: async (sessionId, _limit) => {
+    const state = get()
+    const session = state.sessions.find((s) => s.id === sessionId)
+    if (!session) return { messages: [], rangeStart: 0, hasMore: false }
+    if (session.loadedRangeStart <= 0) return { messages: [], rangeStart: 0, hasMore: false }
+
+    try {
+      const { messages, rangeStart, hasMore } = await dbListMessagesByTurns({
+        sessionId,
+        turns: _limit ?? 5,
+        beforeCreatedAt: session.loadedRangeStart
+      })
+      if (messages.length === 0) return { messages: [], rangeStart: 0, hasMore: false }
+      const existingIds = new Set(session.messages.map((m) => m.id))
+      const newMessages = messages.filter((m) => !existingIds.has(m.id))
+      return { messages: newMessages, rangeStart, hasMore }
+    } catch (err) {
+      console.error('[DB] fetchOlderMessages failed:', err)
+      return { messages: [], rangeStart: 0, hasMore: false }
+    }
+  },
+
+  prependMessages: (sessionId, messages, rangeStart, hasMore) => {
+    set((state) => {
+      const target = state.sessions.find((s) => s.id === sessionId)
+      if (!target) return
+      target.messages = [...messages, ...target.messages]
+      target.loadedRangeStart = hasMore ? rangeStart : 0
+      target.loadedRangeEnd = target.loadedRangeStart + target.messages.length
+    })
+  },
+
+  loadMessageWindowAround: async (sessionId, options, _windowSize) => {
+    const state = get()
+    const session = state.sessions.find((s) => s.id === sessionId)
+    if (!session) return
+
+    // If the target message is already loaded, do nothing — the scroll utility handles the jump.
+    if (options?.messageId && session.messages.some((m) => m.id === options.messageId)) {
+      return
+    }
+
+    // Use the target's createdAt to load a window of turns around it.
+    const targetCreatedAt = options?.sortOrder
+    if (targetCreatedAt === undefined) return
+
+    try {
+      // Load 5 turns ending just after the target (so the target is included)
+      const { messages, rangeStart, hasMore } = await dbListMessagesByTurns({
+        sessionId,
+        turns: _windowSize ?? 5,
+        // beforeSortOrder = target + 1 so the target is included in the range
+        beforeCreatedAt: targetCreatedAt + 1
+      })
+
+      if (messages.length === 0) return
+
+      set((state) => {
+        const target = state.sessions.find((s) => s.id === sessionId)
+        if (!target) return
+        target.messages = messages
+        target.messagesLoaded = true
+        target.loadedRangeStart = hasMore ? rangeStart : 0
+        target.loadedRangeEnd = rangeStart + messages.length
+      })
+    } catch (err) {
+      console.error('[DB] loadMessageWindowAround failed:', err)
+    }
   }
 })

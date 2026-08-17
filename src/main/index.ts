@@ -364,10 +364,10 @@ registerWebSearchHandlers()
     () => undefined
   )
 
-  // ── DB stub handlers (no SQLite layer yet) ──
-  registerMessagePackHandler<string, unknown[] | null>(
+  // ── DB locator (forwarded to Worker) ──
+  registerMessagePackHandler<string, unknown[]>(
     'db:messages:list-locator:msgpack',
-    async () => null
+    async (sessionId) => getNativeWorker().request('db/messages-list-locator', { sessionId })
   )
   // ── Goal DB handlers (forwarded to Worker) ──
   registerMessagePackHandler<Record<string, unknown>, unknown[]>(
