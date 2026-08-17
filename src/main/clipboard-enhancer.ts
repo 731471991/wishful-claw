@@ -182,16 +182,18 @@ function unregisterShortcut(): void {
   }
 }
 
-function registerShortcut(): void {
+function registerShortcut(): boolean {
   unregisterShortcut()
-  if (!config.enabled) return
+  if (!config.enabled) return false
   const ret = globalShortcut.register(config.accelerator, () => {
     createClipboardWindow()
   })
   if (ret) {
     currentAccelerator = config.accelerator
+    return true
   } else {
     console.warn('[ClipboardEnhancer] Failed to register shortcut:', config.accelerator)
+    return false
   }
 }
 
@@ -203,12 +205,20 @@ function registerClipboardIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
 
+  // Copy without pasting — just update clipboard, keep window open
+  registerMessagePackHandler<string, boolean>('clipboard:copy-no-paste', (text) => {
+    clipboard.writeText(text)
+    lastClipboardText = text
+    return true
+  })
+
+  // Copy + paste into previously focused app — hides window first
   registerMessagePackHandler<string, boolean>('clipboard:copy', (text) => {
     clipboard.writeText(text)
     lastClipboardText = text
     clipboardWindow?.hide()
-    // Simulate Ctrl+V in the previously focused app
-    simulatePaste()
+    // Simulate Ctrl+V after a short delay for window focus to return
+    setTimeout(() => simulatePaste(), 150)
     return true
   })
 
@@ -232,12 +242,13 @@ function registerClipboardIpc(): void {
     clipboardWindow?.hide()
   })
 
-  registerMessagePackHandler<Partial<ClipboardConfig>, ClipboardConfig>('clipboard:update-config', (patch) => {
+  registerMessagePackHandler<Partial<ClipboardConfig>, ClipboardConfig & { shortcutRegistered: boolean }>('clipboard:update-config', (patch) => {
     const oldAccelerator = config.accelerator
     const wasEnabled = config.enabled
     config = { ...config, ...patch }
     saveConfig()
 
+    let shortcutRegistered = true
     // Apply changes
     if (patch.maxDays !== undefined) {
       purgeExpired()
@@ -250,12 +261,12 @@ function registerClipboardIpc(): void {
       if (!config.enabled) {
         unregisterShortcut()
       } else if (config.accelerator !== oldAccelerator || !wasEnabled) {
-        registerShortcut()
+        shortcutRegistered = registerShortcut()
       }
     }
 
     pushHistoryUpdate()
-    return config
+    return { ...config, shortcutRegistered }
   })
 }
 

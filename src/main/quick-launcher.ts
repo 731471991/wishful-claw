@@ -81,16 +81,18 @@ function unregisterShortcut(): void {
   }
 }
 
-function registerShortcut(): void {
+function registerShortcut(): boolean {
   unregisterShortcut()
-  if (!config.enabled) return
+  if (!config.enabled) return false
   const ret = globalShortcut.register(config.accelerator, () => {
     createLauncherWindow()
   })
   if (ret) {
     currentAccelerator = config.accelerator
+    return true
   } else {
     console.warn('[QuickLauncher] Failed to register shortcut:', config.accelerator)
+    return false
   }
 }
 
@@ -175,20 +177,21 @@ function registerLauncherIpc(): void {
 
   registerMessagePackHandler<void, LauncherConfig>('launcher:get-config', () => config)
 
-  registerMessagePackHandler<Partial<LauncherConfig>, LauncherConfig>('launcher:update-config', (patch) => {
+  registerMessagePackHandler<Partial<LauncherConfig>, LauncherConfig & { shortcutRegistered: boolean }>('launcher:update-config', (patch) => {
     const wasEnabled = config.enabled
     config = { ...config, ...patch }
     saveConfig()
 
+    let shortcutRegistered = true
     if (patch.enabled !== undefined || patch.accelerator !== undefined) {
       if (!config.enabled) {
         unregisterShortcut()
       } else if (patch.accelerator !== undefined || !wasEnabled) {
-        registerShortcut()
+        shortcutRegistered = registerShortcut()
       }
     }
 
-    return config
+    return { ...config, shortcutRegistered }
   })
 }
 

@@ -9,6 +9,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "modify": "Modify",
+    "registerFailed": "Shortcut registration failed — it may be occupied by another application. Please try a different combination.",
     "hint": "Click \"Modify\" then press the desired key combination. Press ESC to cancel recording. Changes take effect immediately and sync with the clipboard window settings."
   },
   "tabs": {

@@ -115,7 +115,13 @@ function ClipboardEnhancer(): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleCapture, true)
   }, [capturingHotkey])
 
-  const handleCopy = useCallback(async (text: string): Promise<void> => {
+  // Single click: copy to clipboard only, keep window visible
+  const handleSelect = useCallback((text: string): void => {
+    void window.api.invoke<boolean>('clipboard:copy-no-paste', text)
+  }, [])
+
+  // Double click: copy + paste into previously focused app
+  const handlePaste = useCallback(async (text: string): Promise<void> => {
     await window.api.invoke<boolean>('clipboard:copy', text)
   }, [])
 
@@ -343,7 +349,8 @@ function ClipboardEnhancer(): React.JSX.Element {
           filteredHistory.map((entry) => (
             <div
               key={entry.id}
-              onClick={() => void handleCopy(entry.text)}
+              onClick={() => handleSelect(entry.text)}
+              onDoubleClick={() => void handlePaste(entry.text)}
               className="group cursor-pointer border-b border-border/50 px-4 py-3 transition-colors hover:bg-accent"
             >
               <div className="flex items-start justify-between gap-2">

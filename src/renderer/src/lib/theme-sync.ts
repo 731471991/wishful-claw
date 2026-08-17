@@ -20,15 +20,37 @@ interface PersistedSettings {
   fontSize?: number
 }
 
-/** Read theme-related fields from the main process settings store. */
+/**
+ * Read theme-related fields from the main process settings store.
+ *
+ * The IPC returns a Zustand persist object: { state: { ... }, version: N }
+ * We need to extract fields from .state.
+ */
 async function readThemeSettings(): Promise<PersistedSettings> {
   try {
     const raw = await window.api.invoke<unknown>('settings:get', 'wishfulclaw-settings')
-    if (typeof raw === 'string') {
-      return JSON.parse(raw) as PersistedSettings
+    if (!raw) return {}
+
+    // Zustand persist format: { state: { ... }, version: N }
+    let state: Record<string, unknown> | null = null
+    if (typeof raw === 'object' && raw !== null) {
+      const obj = raw as Record<string, unknown>
+      if (obj.state && typeof obj.state === 'object') {
+        state = obj.state as Record<string, unknown>
+      } else {
+        // Maybe the caller returned state directly
+        state = obj
+      }
     }
-    if (raw && typeof raw === 'object') {
-      return raw as PersistedSettings
+
+    if (!state) return {}
+
+    return {
+      theme: typeof state.theme === 'string' ? state.theme : undefined,
+      themePreset: typeof state.themePreset === 'string' ? state.themePreset : undefined,
+      backgroundColor: typeof state.backgroundColor === 'string' ? state.backgroundColor : undefined,
+      fontFamily: typeof state.fontFamily === 'string' ? state.fontFamily : undefined,
+      fontSize: typeof state.fontSize === 'number' ? state.fontSize : undefined
     }
   } catch {
     // ignore — fall through to defaults
@@ -81,36 +103,5 @@ export async function syncThemeFromSettings(): Promise<void> {
   }
   if (typeof settings.fontSize === 'number' && Number.isFinite(settings.fontSize)) {
     root.style.setProperty('--app-font-size', `${settings.fontSize}px`)
-  }
-}
-
-/**
- * Inline script version (no async) — applies a best-guess theme synchronously
- * from next-themes localStorage key to prevent FOUC.
- * The full async syncThemeFromSettings() should still be called after mount.
- */
-export function applyThemeInline(): void {
-  try {
-    const stored = localStorage.getItem('theme')
-    let mode: AppThemeMode = 'dark'
-    if (stored === 'light') {
-      mode = 'light'
-    } else if (stored === 'dark') {
-      mode = 'dark'
-    } else {
-      // system or null
-      mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-
-    const root = document.documentElement
-    root.classList.remove('light', 'dark')
-    root.classList.add(mode)
-
-    // Apply default preset CSS vars as a baseline; async sync will override
-    applyThemePresetCssVars(root, DEFAULT_APP_THEME_PRESET, mode)
-    root.dataset.themePreset = DEFAULT_APP_THEME_PRESET
-  } catch {
-    // last resort: assume dark
-    document.documentElement.classList.add('dark')
   }
 }

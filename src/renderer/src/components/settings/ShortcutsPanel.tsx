@@ -5,6 +5,7 @@ import { Keyboard } from 'lucide-react'
 interface ShortcutConfig {
   enabled: boolean
   accelerator: string
+  shortcutRegistered?: boolean
 }
 
 /** Convert a browser KeyboardEvent into an Electron accelerator string. */
@@ -112,6 +113,7 @@ function ShortcutsPanel(): React.JSX.Element {
   const [recordingTarget, setRecordingTarget] = useState<Target | null>(null)
   // After capture, the draft is stored here with its target
   const [draftInfo, setDraftInfo] = useState<RowDraft | null>(null)
+  const [shortcutError, setShortcutError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -148,6 +150,7 @@ function ShortcutsPanel(): React.JSX.Element {
 
   const startCapture = useCallback((target: Target): void => {
     setDraftInfo(null)
+    setShortcutError('')
     setRecordingTarget(target)
   }, [])
 
@@ -155,12 +158,19 @@ function ShortcutsPanel(): React.JSX.Element {
     if (!draftInfo) return
     const { target, draft } = draftInfo
     try {
+      setShortcutError('')
       if (target === 'clipboard') {
         const cfg = await window.api.invoke<ShortcutConfig>('clipboard:update-config', { accelerator: draft })
         setClipboardShortcut(cfg.accelerator)
+        if (cfg.shortcutRegistered === false) {
+          setShortcutError(t('shortcuts.registerFailed', { defaultValue: 'Shortcut registration failed — it may be occupied by another application. Please try a different combination.' }))
+        }
       } else {
         const cfg = await window.api.invoke<ShortcutConfig>('launcher:update-config', { accelerator: draft })
         setLauncherShortcut(cfg.accelerator)
+        if (cfg.shortcutRegistered === false) {
+          setShortcutError(t('shortcuts.registerFailed', { defaultValue: 'Shortcut registration failed — it may be occupied by another application. Please try a different combination.' }))
+        }
       }
     } catch (err) {
       console.error('[ShortcutsPanel] Failed to save shortcut:', err)
@@ -209,6 +219,13 @@ function ShortcutsPanel(): React.JSX.Element {
           onCancel={handleCancel}
         />
       </section>
+
+      {/* Error message */}
+      {shortcutError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
+          <p className="text-xs text-destructive">{shortcutError}</p>
+        </div>
+      )}
 
       {/* Hint */}
       <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
