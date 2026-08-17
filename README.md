@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <h1 align="center">Wishful Claw</h1>
   <p align="center">
     <strong>Agent 编程软件 — 融合记忆系统与人格系统的桌面 AI 助手</strong><br>
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-0.2.13-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-0.2.14-orange" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/Status-Private-lightgrey" alt="Status">
 </p>
