@@ -159,7 +159,7 @@
       "desc": "Automatically start WishfulClaw when you log in to your computer",
       "enabled": "Enabled",
       "disabled": "Disabled"
-    },
+    }
   },
   "provider": {
     "list": {
