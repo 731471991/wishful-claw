@@ -139,7 +139,13 @@
       "enabled": "Enabled",
       "disabled": "Disabled"
     },
-    "reset": "Reset"
+    "reset": "Reset",
+    "launchAtLogin": {
+      "label": "Launch at Startup",
+      "desc": "Automatically start WishfulClaw when you log in to your computer",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    }
   },
   "provider": {
     "list": {

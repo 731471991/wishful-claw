@@ -121,6 +121,23 @@ function createTray(): void {
   tray.on('click', () => mainWindow?.show())
 }
 
+/**
+ * Login item (auto-start) IPC handlers.
+ * Uses Electron's native app.setLoginItemSettings API.
+ * In dev mode this registers electron.exe; in packaged builds it registers the app exe.
+ */
+function registerLoginItemHandlers(): void {
+  registerMessagePackHandler<void, boolean>('app:get-login-item-settings', () => {
+    const settings = app.getLoginItemSettings()
+    return settings.openAtLogin
+  })
+
+  registerMessagePackHandler<boolean, boolean>('app:set-login-item-settings', (openAtLogin) => {
+    app.setLoginItemSettings({ openAtLogin })
+    return app.getLoginItemSettings().openAtLogin
+  })
+}
+
 function registerWindowControlHandlers(): void {
   registerMessagePackHandler<void>('window:minimize', (_args, event) => {
     BrowserWindow.fromWebContents(event.sender)?.minimize()
@@ -164,6 +181,9 @@ if (!gotTheLock) {
 
   // Window control handlers (minimize / maximize / close / isMaximized)
   registerWindowControlHandlers()
+
+  // Login item (auto-start) handlers
+  registerLoginItemHandlers()
 
   // Desktop notification handler — renderer calls this when agent loop ends
   // and the window is NOT focused (user is away from the app).

@@ -210,6 +210,7 @@ interface SettingsStore {
   lastProjectDirectory: string
   recentWorkingTargets: RecentWorkingTarget[]
   defaultShell: string
+  launchAtLogin: boolean
 
   updateSettings: (patch: Partial<SettingsStoreData>) => void
   pushRecentWorkingTarget: (target: {
@@ -335,6 +336,7 @@ export const useSettingsStore = create<SettingsStore>()(
       codexConfigs: [createDefaultCodexConfig()],
       projectDefaultDirectoryMode: 'last-used',
       defaultShell: '',
+      launchAtLogin: false,
       projectDefaultDirectory: '',
       lastProjectDirectory: '',
       recentWorkingTargets: [],
@@ -376,7 +378,7 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'wishfulclaw-settings',
-      version: 31,
+      version: 32,
       storage: createJSONStorage(() => ipcStorage),
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>
@@ -488,6 +490,9 @@ export const useSettingsStore = create<SettingsStore>()(
           state.lastProjectDirectory = ''
         }
         state.recentWorkingTargets = sanitizeRecentWorkingTargets(state.recentWorkingTargets)
+        if (state.launchAtLogin === undefined) {
+          state.launchAtLogin = false
+        }
         // Add appearance settings if missing
         if (!isThemeSetting(state.theme)) {
           state.theme = DEFAULT_THEME_MODE
@@ -773,6 +778,7 @@ export const useSettingsStore = create<SettingsStore>()(
         lastProjectDirectory: state.lastProjectDirectory,
         recentWorkingTargets: state.recentWorkingTargets,
         defaultShell: state.defaultShell,
+        launchAtLogin: state.launchAtLogin,
         builtinBrowserEnabled: state.builtinBrowserEnabled,
         hooksEnabled: state.hooksEnabled,
         browserUserDataReuseEnabled: state.browserUserDataReuseEnabled,

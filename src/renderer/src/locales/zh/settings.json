@@ -144,7 +144,13 @@
       "enabled": "已启用",
       "disabled": "已禁用"
     },
-    "reset": "重置"
+    "reset": "重置",
+    "launchAtLogin": {
+      "label": "开机启动",
+      "desc": "登录电脑时自动启动 WishfulClaw",
+      "enabled": "已启用",
+      "disabled": "已禁用"
+    }
   },
   "provider": {
     "list": {
