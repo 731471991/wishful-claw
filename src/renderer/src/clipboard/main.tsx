@@ -34,46 +34,22 @@ function toAccelerator(e: KeyboardEvent): string {
   if (e.shiftKey) parts.push('Shift')
 
   const key = e.key
-  // Ignore pure modifier presses
   const modifierKeys = ['Control', 'Meta', 'Alt', 'Shift']
   if (modifierKeys.includes(key)) return ''
 
-  // Normalize key names
   let keyName: string
   switch (key) {
-    case ' ':
-      keyName = 'Space'
-      break
-    case 'ArrowUp':
-      keyName = 'Up'
-      break
-    case 'ArrowDown':
-      keyName = 'Down'
-      break
-    case 'ArrowLeft':
-      keyName = 'Left'
-      break
-    case 'ArrowRight':
-      keyName = 'Right'
-      break
-    case 'Enter':
-      keyName = 'Return'
-      break
-    case 'Escape':
-      keyName = 'Escape'
-      break
-    case 'Backspace':
-      keyName = 'Backspace'
-      break
-    case 'Tab':
-      keyName = 'Tab'
-      break
+    case ' ': keyName = 'Space'; break
+    case 'ArrowUp': keyName = 'Up'; break
+    case 'ArrowDown': keyName = 'Down'; break
+    case 'ArrowLeft': keyName = 'Left'; break
+    case 'ArrowRight': keyName = 'Right'; break
+    case 'Enter': keyName = 'Return'; break
+    case 'Escape': keyName = 'Escape'; break
+    case 'Backspace': keyName = 'Backspace'; break
+    case 'Tab': keyName = 'Tab'; break
     default:
-      if (key.length === 1) {
-        keyName = key.toUpperCase()
-      } else {
-        keyName = key
-      }
+      keyName = key.length === 1 ? key.toUpperCase() : key
   }
   parts.push(keyName)
   return parts.join('+')
@@ -88,7 +64,6 @@ function ClipboardEnhancer(): React.JSX.Element {
   const [hotkeyDraft, setHotkeyDraft] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
 
-  // Load history + config on mount
   useEffect(() => {
     void window.api.invoke<ClipboardEntry[]>('clipboard:get-history', null).then((h: ClipboardEntry[]) => {
       setHistory(h)
@@ -103,7 +78,6 @@ function ClipboardEnhancer(): React.JSX.Element {
     return () => cleanup()
   }, [])
 
-  // ESC key handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
@@ -113,7 +87,6 @@ function ClipboardEnhancer(): React.JSX.Element {
         } else if (view === 'settings') {
           setView('list')
         } else {
-          // Hide window via IPC
           void window.api.invoke('clipboard:hide', null)
         }
       }
@@ -122,7 +95,6 @@ function ClipboardEnhancer(): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [capturingHotkey, view])
 
-  // Hotkey capture
   useEffect(() => {
     if (!capturingHotkey) return
 
@@ -132,11 +104,9 @@ function ClipboardEnhancer(): React.JSX.Element {
       const accel = toAccelerator(e)
       if (accel) {
         setHotkeyDraft(accel)
-        // Auto-stop capturing after a valid combo
         setCapturingHotkey(false)
       }
     }
-    // Use capture phase to intercept before any other handler
     window.addEventListener('keydown', handleCapture, true)
     return () => window.removeEventListener('keydown', handleCapture, true)
   }, [capturingHotkey])
@@ -167,7 +137,6 @@ function ClipboardEnhancer(): React.JSX.Element {
     }
   }, [hotkeyDraft, updateConfig])
 
-  // Filtered history
   const filteredHistory = searchQuery
     ? history.filter(
         (e) => e.text.toLowerCase().includes(searchQuery.toLowerCase()) || e.preview.toLowerCase().includes(searchQuery.toLowerCase())
@@ -177,17 +146,17 @@ function ClipboardEnhancer(): React.JSX.Element {
   // ── Settings Panel ──
   if (view === 'settings') {
     return (
-      <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-xl">
+      <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <button
             onClick={() => setView('list')}
-            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200"
+            className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ArrowLeft className="size-3.5" />
             返回
           </button>
-          <span className="flex-1 text-sm font-medium text-zinc-200">剪贴板设置</span>
+          <span className="flex-1 text-sm font-medium text-foreground">剪贴板设置</span>
         </div>
 
         {/* Settings content */}
@@ -197,13 +166,13 @@ function ClipboardEnhancer(): React.JSX.Element {
               {/* Enable / Disable */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-200">启用剪贴板增强</p>
-                  <p className="text-[11px] text-zinc-500">关闭后停止监听和快捷键</p>
+                  <p className="text-sm text-foreground">启用剪贴板增强</p>
+                  <p className="text-[11px] text-muted-foreground">关闭后停止监听和快捷键</p>
                 </div>
                 <button
                   onClick={() => void updateConfig({ enabled: !config.enabled })}
                   className={`relative h-5 w-9 rounded-full transition-colors ${
-                    config.enabled ? 'bg-emerald-500' : 'bg-zinc-600'
+                    config.enabled ? 'bg-primary' : 'bg-muted-foreground/30'
                   }`}
                 >
                   <span
@@ -216,8 +185,8 @@ function ClipboardEnhancer(): React.JSX.Element {
 
               {/* Max days */}
               <div>
-                <label className="mb-1.5 block text-sm text-zinc-200">过期时间（天）</label>
-                <p className="mb-2 text-[11px] text-zinc-500">超过此天数的记录将自动删除</p>
+                <label className="mb-1.5 block text-sm text-foreground">过期时间（天）</label>
+                <p className="mb-2 text-[11px] text-muted-foreground">超过此天数的记录将自动删除</p>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -228,16 +197,16 @@ function ClipboardEnhancer(): React.JSX.Element {
                       const val = parseInt(e.target.value) || 1
                       void updateConfig({ maxDays: Math.max(1, Math.min(365, val)) })
                     }}
-                    className="w-20 rounded-md border border-white/10 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-200 outline-none focus:border-emerald-500/50"
+                    className="w-20 rounded-md border border-input bg-muted px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary/50"
                   />
-                  <span className="text-xs text-zinc-500">天</span>
+                  <span className="text-xs text-muted-foreground">天</span>
                 </div>
               </div>
 
               {/* Max items */}
               <div>
-                <label className="mb-1.5 block text-sm text-zinc-200">最大记录数</label>
-                <p className="mb-2 text-[11px] text-zinc-500">超过此数量时自动清理最旧记录</p>
+                <label className="mb-1.5 block text-sm text-foreground">最大记录数</label>
+                <p className="mb-2 text-[11px] text-muted-foreground">超过此数量时自动清理最旧记录</p>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -249,31 +218,31 @@ function ClipboardEnhancer(): React.JSX.Element {
                       const val = parseInt(e.target.value) || 100
                       void updateConfig({ maxItems: Math.max(10, Math.min(1000, val)) })
                     }}
-                    className="w-20 rounded-md border border-white/10 bg-zinc-800 px-2 py-1.5 text-sm text-zinc-200 outline-none focus:border-emerald-500/50"
+                    className="w-20 rounded-md border border-input bg-muted px-2 py-1.5 text-sm text-foreground outline-none focus:border-primary/50"
                   />
-                  <span className="text-xs text-zinc-500">条</span>
+                  <span className="text-xs text-muted-foreground">条</span>
                 </div>
               </div>
 
               {/* Hotkey */}
               <div>
-                <label className="mb-1.5 block text-sm text-zinc-200">唤起快捷键</label>
-                <p className="mb-2 text-[11px] text-zinc-500">点击下方按钮后按下新的快捷键组合</p>
+                <label className="mb-1.5 block text-sm text-foreground">唤起快捷键</label>
+                <p className="mb-2 text-[11px] text-muted-foreground">点击下方按钮后按下新的快捷键组合</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex flex-1 items-center gap-2 rounded-md border border-white/10 bg-zinc-800 px-3 py-1.5">
-                    <Keyboard className="size-3.5 text-zinc-500" />
+                  <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-muted px-3 py-1.5">
+                    <Keyboard className="size-3.5 text-muted-foreground" />
                     {capturingHotkey ? (
-                      <span className="flex-1 text-sm text-emerald-400">请按下快捷键...</span>
+                      <span className="flex-1 text-sm text-primary">请按下快捷键...</span>
                     ) : hotkeyDraft ? (
                       <span className="flex-1 text-sm text-amber-400">{hotkeyDraft}</span>
                     ) : (
-                      <kbd className="flex-1 text-sm text-zinc-300">{config.accelerator}</kbd>
+                      <kbd className="flex-1 text-sm text-foreground">{config.accelerator}</kbd>
                     )}
                   </div>
                   {hotkeyDraft && !capturingHotkey && (
                     <button
                       onClick={() => void handleSaveHotkey()}
-                      className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-600"
+                      className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90"
                     >
                       保存
                     </button>
@@ -284,7 +253,7 @@ function ClipboardEnhancer(): React.JSX.Element {
                         setCapturingHotkey(false)
                         setHotkeyDraft('')
                       }}
-                      className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:bg-white/5"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
                     >
                       取消
                     </button>
@@ -292,7 +261,7 @@ function ClipboardEnhancer(): React.JSX.Element {
                     !hotkeyDraft && (
                       <button
                         onClick={() => setCapturingHotkey(true)}
-                        className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200"
+                        className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       >
                         修改
                       </button>
@@ -300,18 +269,18 @@ function ClipboardEnhancer(): React.JSX.Element {
                   )}
                 </div>
                 {hotkeyDraft && !capturingHotkey && (
-                  <p className="mt-1.5 text-[11px] text-zinc-600">点击"保存"应用新快捷键</p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">点击"保存"应用新快捷键</p>
                 )}
               </div>
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-xs text-zinc-600">加载中...</div>
+            <div className="flex h-full items-center justify-center text-xs text-muted-foreground">加载中...</div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-white/10 px-4 py-2 text-[10px] text-zinc-600">
-          <kbd className="rounded border border-white/10 px-1 py-0.5">ESC</kbd> 返回列表
+        <div className="border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
+          <kbd className="rounded border border-border px-1 py-0.5">ESC</kbd> 返回列表
         </div>
       </div>
     )
@@ -319,14 +288,14 @@ function ClipboardEnhancer(): React.JSX.Element {
 
   // ── History List ──
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-xl">
+    <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-xl">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-        <Clipboard className="size-4 shrink-0 text-zinc-400" />
-        <span className="flex-1 text-sm font-medium text-zinc-200">剪贴板历史</span>
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <Clipboard className="size-4 shrink-0 text-muted-foreground" />
+        <span className="flex-1 text-sm font-medium text-foreground">剪贴板历史</span>
         <button
           onClick={() => setView('settings')}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-300"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Settings className="size-3" />
           设置
@@ -334,13 +303,13 @@ function ClipboardEnhancer(): React.JSX.Element {
         {history.length > 0 && (
           <button
             onClick={handleClear}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-zinc-500 transition-colors hover:bg-white/5 hover:text-red-400"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
           >
             <Trash2 className="size-3" />
             清空
           </button>
         )}
-        <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-600">ESC</kbd>
+        <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">ESC</kbd>
       </div>
 
       {/* Search */}
@@ -352,7 +321,7 @@ function ClipboardEnhancer(): React.JSX.Element {
             placeholder="搜索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-emerald-500/50"
+            className="w-full rounded-md border border-input bg-muted px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/50"
           />
         </div>
       )}
@@ -360,7 +329,7 @@ function ClipboardEnhancer(): React.JSX.Element {
       {/* History list */}
       <div className="flex-1 overflow-y-auto">
         {filteredHistory.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-zinc-600">
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <Clipboard className="size-8 opacity-40" />
             <span className="text-xs">
               {searchQuery ? '无匹配结果' : '暂无剪贴板历史'}
@@ -371,20 +340,20 @@ function ClipboardEnhancer(): React.JSX.Element {
             <div
               key={entry.id}
               onClick={() => void handleCopy(entry.text)}
-              className="group cursor-pointer border-b border-white/5 px-4 py-3 transition-colors hover:bg-white/5"
+              className="group cursor-pointer border-b border-border/50 px-4 py-3 transition-colors hover:bg-accent"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 flex-1 truncate text-xs leading-5 text-zinc-300">
+                <p className="min-w-0 flex-1 truncate text-xs leading-5 text-foreground">
                   {entry.preview}
                 </p>
                 <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <span className="text-[10px] text-zinc-600">{formatTime(entry.timestamp)}</span>
+                  <span className="text-[10px] text-muted-foreground">{formatTime(entry.timestamp)}</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       void handleDelete(entry.id)
                     }}
-                    className="rounded p-0.5 text-zinc-600 hover:text-red-400"
+                    className="rounded p-0.5 text-muted-foreground hover:text-destructive"
                   >
                     <X className="size-3" />
                   </button>
@@ -396,7 +365,7 @@ function ClipboardEnhancer(): React.JSX.Element {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[10px] text-zinc-600">
+      <div className="flex items-center justify-between border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
         <span>{filteredHistory.length} 条记录</span>
         <span>{config?.accelerator ?? 'Ctrl+Shift+V'} 唤起</span>
       </div>

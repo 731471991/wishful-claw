@@ -60,9 +60,9 @@ function QuickLauncher(): React.JSX.Element {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-xl">
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-        <Search className="size-4 shrink-0 text-zinc-500" />
+    <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <Search className="size-4 shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
           type="text"
@@ -70,17 +70,17 @@ function QuickLauncher(): React.JSX.Element {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="搜索应用..."
-          className="min-w-0 flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           autoFocus
         />
-        <kbd className="shrink-0 rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-600">
+        <kbd className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
           ESC
         </kbd>
       </div>
 
       <div ref={listRef} className="flex-1 overflow-y-auto py-1">
         {results.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-xs text-zinc-600">
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             无搜索结果
           </div>
         ) : (
@@ -92,23 +92,23 @@ function QuickLauncher(): React.JSX.Element {
               className={
                 'flex cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors ' +
                 (index === selectedIndex
-                  ? 'bg-blue-600/20 text-blue-300'
-                  : 'text-zinc-300 hover:bg-white/5')
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50')
               }
             >
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/5 text-xs text-zinc-400">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
                 {app.name.charAt(0).toUpperCase()}
               </div>
               <span className="min-w-0 flex-1 truncate">{app.name}</span>
               {index === selectedIndex && (
-                <CornerDownLeft className="size-3 shrink-0 text-zinc-600" />
+                <CornerDownLeft className="size-3 shrink-0 text-muted-foreground" />
               )}
             </div>
           ))
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/10 px-4 py-2 text-[10px] text-zinc-600">
+      <div className="flex items-center justify-between border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
         <span>{'\u2191\u2193'} 选择 {'\u00b7'} Enter 启动</span>
         <span>WishfulClaw Quick Launcher</span>
       </div>
