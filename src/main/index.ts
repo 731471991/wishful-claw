@@ -27,6 +27,8 @@ import { registerSshFsHandlers } from './ipc/ssh-fs-handlers'
 import { ChannelManager } from './channels/channel-manager'
 import { registerBuiltInChannelProviders } from './channels/register-providers'
 import { registerChannelHandlers, autoStartChannels } from './ipc/channel-handlers'
+import { registerQuickLauncher } from './quick-launcher'
+import { registerClipboardEnhancer } from './clipboard-enhancer'
 import { setPluginManager } from './channels/auto-reply'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
@@ -622,6 +624,10 @@ registerWebSearchHandlers()
 
   createWindow()
   createTray()
+
+  // Quick Launcher (Alt+Space) and Clipboard Enhancer (Ctrl+Shift+V)
+  registerQuickLauncher()
+  registerClipboardEnhancer()
 
   // Auto-start enabled channels after window is ready
   if (channelManager) {
