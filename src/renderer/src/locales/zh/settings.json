@@ -1,6 +1,20 @@
 {
   "title": "设置",
+  "shortcuts": {
+    "title": "快捷键",
+    "desc": "配置剪贴板和启动器的全局快捷键",
+    "clipboard": "剪贴板增强",
+    "launcher": "快速启动器",
+    "recording": "请按下快捷键...",
+    "save": "保存",
+    "cancel": "取消",
+    "modify": "修改",
+    "hint": "点击“修改”后按下目标快捷键组合。按 ESC 取消录制。修改即时生效并与剪贴板窗口设置同步。"
+  },
   "tabs": {
+    "shortcuts": {
+      "label": "快捷键"
+    },
     "general": {
       "label": "通用设置",
       "desc": "主题、外观和偏好设置"
@@ -151,16 +165,6 @@
       "enabled": "已启用",
       "disabled": "已禁用"
     },
-    "shortcuts": {
-      "label": "快捷键",
-      "desc": "配置剪贴板和启动器的全局快捷键",
-      "clipboard": "剪贴板增强",
-      "launcher": "快速启动器",
-      "recording": "请按下快捷键...",
-      "save": "保存",
-      "cancel": "取消",
-      "modify": "修改"
-    }
   },
   "provider": {
     "list": {

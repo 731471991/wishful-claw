@@ -1,6 +1,20 @@
 {
   "title": "Settings",
+  "shortcuts": {
+    "title": "Shortcuts",
+    "desc": "Configure global shortcuts for clipboard and launcher",
+    "clipboard": "Clipboard Enhancer",
+    "launcher": "Quick Launcher",
+    "recording": "Press keys...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "modify": "Modify",
+    "hint": "Click \"Modify\" then press the desired key combination. Press ESC to cancel recording. Changes take effect immediately and sync with the clipboard window settings."
+  },
   "tabs": {
+    "shortcuts": {
+      "label": "Shortcuts"
+    },
     "general": {
       "label": "General",
       "desc": "Theme, appearance and preferences"
@@ -146,16 +160,6 @@
       "enabled": "Enabled",
       "disabled": "Disabled"
     },
-    "shortcuts": {
-      "label": "Shortcuts",
-      "desc": "Configure global shortcuts for clipboard and launcher",
-      "clipboard": "Clipboard Enhancer",
-      "launcher": "Quick Launcher",
-      "recording": "Press keys...",
-      "save": "Save",
-      "cancel": "Cancel",
-      "modify": "Modify"
-    }
   },
   "provider": {
     "list": {
