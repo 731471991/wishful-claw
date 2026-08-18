@@ -3,6 +3,14 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type { AIProvider, AIModelConfig, ProviderType } from '../../../shared/types/provider'
 import { aiProviderStorage } from '@renderer/lib/ipc/ai-provider-storage'
 import { createProviderFromPreset, enrichDiscoveredModel, createCustomProvider, ensureBuiltinPresets, STORAGE_KEY, type ProviderState } from './provider-store-helpers'
+import {
+  toManagedModelConfig,
+  cloneManagedModelConfig,
+  sortManagedModels,
+  collectBuiltinManagedModels,
+  mergeManagedModelMissingFields,
+  normalizeModelKey
+} from './managed-models'
 
 export const useProviderStore = create<ProviderState>()(
   persist(
@@ -13,6 +21,10 @@ export const useProviderStore = create<ProviderState>()(
       activeFastProviderId: null,
       activeFastModelId: '',
       defaultModel: null,
+
+      // ── Managed models (global model library) ──
+      managedModels: [],
+      managedModelTombstones: [],
 
       getActiveProvider: () => {
         const { providers, activeProviderId } = get()
@@ -196,6 +208,72 @@ export const useProviderStore = create<ProviderState>()(
         }
         // Enrich discovered models with builtin metadata (thinkingConfig, icon, pricing, etc.)
         return (result.models ?? []).map(enrichDiscoveredModel)
+      },
+
+      // ── Managed model methods ──
+      addManagedModel: (model) =>
+        set((state) => {
+          const nextModel = toManagedModelConfig(model)
+          const managedModels = sortManagedModels([
+            ...state.managedModels.filter((item) => item.normalizedKey !== nextModel.normalizedKey),
+            nextModel
+          ])
+          return {
+            managedModels,
+            managedModelTombstones: state.managedModelTombstones.filter(
+              (item) => item !== nextModel.normalizedKey
+            )
+          }
+        }),
+
+      updateManagedModel: (modelId, model) =>
+        set((state) => {
+          const previousKey = normalizeModelKey(modelId)
+          const nextModel = toManagedModelConfig(model)
+          const managedModels = sortManagedModels([
+            ...state.managedModels.filter(
+              (item) =>
+                item.normalizedKey !== previousKey && item.normalizedKey !== nextModel.normalizedKey
+            ),
+            nextModel
+          ])
+          const tombstones = new Set(state.managedModelTombstones)
+          tombstones.delete(nextModel.normalizedKey)
+          if (previousKey !== nextModel.normalizedKey) {
+            tombstones.add(previousKey)
+          }
+          return {
+            managedModels,
+            managedModelTombstones: Array.from(tombstones)
+          }
+        }),
+
+      removeManagedModel: (modelId) =>
+        set((state) => {
+          const modelKey = normalizeModelKey(modelId)
+          const managedModels = state.managedModels.filter(
+            (model) => model.normalizedKey !== modelKey
+          )
+          if (managedModels.length === state.managedModels.length) {
+            return state
+          }
+          const tombstones = new Set(state.managedModelTombstones)
+          tombstones.add(modelKey)
+          return {
+            managedModels,
+            managedModelTombstones: Array.from(tombstones)
+          }
+        }),
+
+      resetModelConfigurationToDefaults: () =>
+        set(() => ({
+          managedModels: sortManagedModels(collectBuiltinManagedModels()),
+          managedModelTombstones: []
+        })),
+
+      getManagedModelById: (modelId) => {
+        const modelKey = normalizeModelKey(modelId)
+        return get().managedModels.find((model) => model.normalizedKey === modelKey) ?? null
       }
     }),
     {
@@ -203,6 +281,8 @@ export const useProviderStore = create<ProviderState>()(
       storage: createJSONStorage(() => aiProviderStorage),
       partialize: (state) => ({
         providers: state.providers,
+        managedModels: state.managedModels,
+        managedModelTombstones: state.managedModelTombstones,
         activeProviderId: state.activeProviderId,
         activeModelId: state.activeModelId,
         activeFastProviderId: state.activeFastProviderId,
@@ -213,11 +293,51 @@ export const useProviderStore = create<ProviderState>()(
         // After hydration, ensure all builtin presets exist
         if (state) {
           ensureBuiltinPresets()
+          syncManagedModelsWithBuiltins()
         }
       }
     }
   )
 )
+
+// ── Sync managed models with builtin presets ──
+
+function syncManagedModelsWithBuiltins(): void {
+  const state = useProviderStore.getState()
+  const builtinModels = collectBuiltinManagedModels()
+  if (builtinModels.length === 0) return
+
+  const tombstones = new Set(state.managedModelTombstones)
+  const managedModels = state.managedModels.map((model) => cloneManagedModelConfig(model))
+  const managedIndexes = new Map(
+    managedModels.map((model, index) => [model.normalizedKey, index] as const)
+  )
+  let changed = false
+
+  for (const builtinModel of builtinModels) {
+    if (tombstones.has(builtinModel.normalizedKey)) {
+      continue
+    }
+
+    const existingIndex = managedIndexes.get(builtinModel.normalizedKey)
+    if (existingIndex === undefined) {
+      managedIndexes.set(builtinModel.normalizedKey, managedModels.length)
+      managedModels.push(cloneManagedModelConfig(builtinModel))
+      changed = true
+      continue
+    }
+
+    const result = mergeManagedModelMissingFields(managedModels[existingIndex], builtinModel)
+    if (result.changed) {
+      managedModels[existingIndex] = result.model
+      changed = true
+    }
+  }
+
+  if (changed) {
+    useProviderStore.setState({ managedModels: sortManagedModels(managedModels) })
+  }
+}
 
 // ── Helper functions (from WishfulClaw, simplified) ──
 

@@ -1,0 +1,359 @@
+﻿/**
+ * Clipboard Enhancer — ditto-style clipboard history.
+ *
+ * - Polls clipboard (250ms) for near-instant capture
+ * - Stores history with expiry (configurable days)
+ * - Popup via configurable global shortcut
+ * - Click an item to paste into the previously focused app
+ * - Independent config file (not in settings-store)
+ */
+
+import { app, BrowserWindow, clipboard, screen } from 'electron'
+import { join } from 'path'
+import * as fs from 'fs'
+import { registerMessagePackHandler } from './ipc/messagepack-handler'
+import { pasteToForegroundWindow, registerPriorityShortcut, unregisterPriorityShortcut } from './priority-shortcuts'
+import { safeSendMessagePackToWindow } from './window-ipc'
+
+let clipboardWindow: BrowserWindow | null = null
+let pollTimer: NodeJS.Timeout | null = null
+let lastClipboardText = ''
+let history: ClipboardEntry[] = []
+let config: ClipboardConfig
+let previousForegroundWindow: string | null = null
+
+const DATA_DIR = join(app.getPath('home'), '.wishful-claw')
+const HISTORY_FILE = join(DATA_DIR, 'clipboard-history.json')
+const CONFIG_FILE = join(DATA_DIR, 'clipboard-config.json')
+
+const DEFAULT_CONFIG: ClipboardConfig = {
+  enabled: true,
+  maxDays: 7,
+  maxItems: 100,
+  accelerators: ['Ctrl+Shift+V']
+}
+
+interface ClipboardEntry {
+  id: string
+  text: string
+  timestamp: number
+  preview: string
+  lastUsed?: number
+}
+
+interface ClipboardConfig {
+  enabled: boolean
+  maxDays: number
+  maxItems: number
+  accelerators: string[]
+}
+
+// ── Config persistence ──
+
+function loadConfig(): ClipboardConfig {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const raw = fs.readFileSync(CONFIG_FILE, 'utf8')
+      const parsed = JSON.parse(raw)
+      const accelerators = Array.isArray(parsed.accelerators)
+        ? parsed.accelerators
+            .filter((value: unknown): value is string => typeof value === 'string')
+            .filter((value: string, index: number, values: string[]) => values.indexOf(value) === index)
+        : typeof parsed.accelerator === 'string'
+          ? [parsed.accelerator]
+          : DEFAULT_CONFIG.accelerators
+      return {
+        enabled: parsed.enabled ?? DEFAULT_CONFIG.enabled,
+        maxDays: typeof parsed.maxDays === 'number' ? parsed.maxDays : DEFAULT_CONFIG.maxDays,
+        maxItems: typeof parsed.maxItems === 'number' ? parsed.maxItems : DEFAULT_CONFIG.maxItems,
+        accelerators: accelerators.length > 0 ? accelerators : DEFAULT_CONFIG.accelerators
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { ...DEFAULT_CONFIG }
+}
+
+function saveConfig(): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 })
+    }
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600
+    })
+  } catch {
+    // ignore
+  }
+}
+
+// ── History persistence ──
+
+function loadHistory(): void {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const raw = fs.readFileSync(HISTORY_FILE, 'utf8')
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        history = parsed.slice(0, config.maxItems)
+        lastClipboardText = history[0]?.text ?? ''
+        purgeExpired()
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function saveHistory(): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 })
+    }
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history.slice(0, config.maxItems), null, 2), {
+      encoding: 'utf8',
+      mode: 0o600
+    })
+  } catch {
+    // ignore
+  }
+}
+
+/** Remove entries older than maxDays. */
+function purgeExpired(): void {
+  if (config.maxDays <= 0) return
+  const cutoff = Date.now() - config.maxDays * 24 * 60 * 60 * 1000
+  const before = history.length
+  history = history.filter((entry) => entry.timestamp >= cutoff)
+  if (history.length !== before) {
+    saveHistory()
+  }
+}
+
+// ── Clipboard polling ──
+
+function pushHistoryUpdate(): void {
+  if (clipboardWindow?.isVisible()) {
+    safeSendMessagePackToWindow(clipboardWindow, 'clipboard:history-updated', history)
+  }
+}
+
+/** Tell the renderer to re-sync theme from main app settings. */
+function pushThemeRefresh(): void {
+  if (clipboardWindow) {
+    safeSendMessagePackToWindow(clipboardWindow, 'clipboard:theme-refresh', null)
+  }
+}
+
+function startClipboardPolling(): void {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
+    if (!config.enabled) return
+    const text = clipboard.readText()
+    if (text && text !== lastClipboardText) {
+      lastClipboardText = text
+      const entry: ClipboardEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        text,
+        timestamp: Date.now(),
+        preview: text.slice(0, 200).replace(/\n/g, ' ')
+      }
+      // Deduplicate
+      history = history.filter((item) => item.text !== text)
+      history.unshift(entry)
+      history = history.slice(0, config.maxItems)
+      saveHistory()
+      pushHistoryUpdate()
+    }
+  }, 250)
+}
+
+// ── Shortcut registration ──
+
+const registeredShortcutIds: string[] = []
+
+function unregisterShortcut(): void {
+  for (const id of registeredShortcutIds) {
+    unregisterPriorityShortcut(id)
+  }
+  registeredShortcutIds.length = 0
+}
+
+function registerShortcut(): boolean {
+  unregisterShortcut()
+  if (!config.enabled) return false
+  let allRegistered = true
+  for (let index = 0; index < config.accelerators.length; index++) {
+    const id = `clipboard-enhancer-${index}`
+    const registered = registerPriorityShortcut(id, config.accelerators[index], ({ foregroundWindow }) => {
+      createClipboardWindow(foregroundWindow)
+    })
+    registeredShortcutIds.push(id)
+    if (!registered) allRegistered = false
+  }
+  return allRegistered
+}
+
+// ── IPC ──
+
+let ipcRegistered = false
+
+function registerClipboardIpc(): void {
+  if (ipcRegistered) return
+  ipcRegistered = true
+
+  registerMessagePackHandler<void, ClipboardEntry[]>('clipboard:get-history', () => history)
+
+  // Copy + paste into the app that was active before the panel opened.
+  registerMessagePackHandler<string, boolean>('clipboard:copy', (text) => {
+    const targetWindow = previousForegroundWindow
+    previousForegroundWindow = null
+    clipboardWindow?.hide()
+    clipboard.writeText(text)
+    lastClipboardText = text
+    // Move the used entry to top and update lastUsed
+    const now = Date.now()
+    const existing = history.find((item) => item.text === text)
+    if (existing) {
+      existing.lastUsed = now
+      existing.timestamp = now
+      history = history.filter((item) => item.id !== existing.id)
+      history.unshift(existing)
+      saveHistory()
+    }
+    return pasteToForegroundWindow(targetWindow)
+  })
+
+  registerMessagePackHandler<string, ClipboardEntry[]>('clipboard:delete', (id) => {
+    history = history.filter((item) => item.id !== id)
+    saveHistory()
+    return history
+  })
+
+  registerMessagePackHandler<void, ClipboardEntry[]>('clipboard:clear', () => {
+    history = []
+    saveHistory()
+    return []
+  })
+
+  // ── Config IPC ──
+
+  registerMessagePackHandler<void, ClipboardConfig>('clipboard:get-config', () => config)
+
+  registerMessagePackHandler<void, void>('clipboard:hide', () => {
+    clipboardWindow?.hide()
+  })
+
+  registerMessagePackHandler<Partial<ClipboardConfig>, ClipboardConfig & { shortcutRegistered: boolean }>('clipboard:update-config', (patch) => {
+    const oldAccelerators = config.accelerators
+    const wasEnabled = config.enabled
+    config = { ...config, ...patch }
+    saveConfig()
+
+    let shortcutRegistered = true
+    // Apply changes
+    if (patch.maxDays !== undefined) {
+      purgeExpired()
+    }
+    if (patch.maxItems !== undefined && history.length > config.maxItems) {
+      history = history.slice(0, config.maxItems)
+      saveHistory()
+    }
+    if (patch.enabled !== undefined || patch.accelerators !== undefined) {
+      if (!config.enabled) {
+        unregisterShortcut()
+      } else if (config.accelerators !== oldAccelerators || !wasEnabled) {
+        shortcutRegistered = registerShortcut()
+      }
+    }
+
+    pushHistoryUpdate()
+    return { ...config, shortcutRegistered }
+  })
+}
+
+// ── Window ──
+
+export function createClipboardWindow(foregroundWindow: string | null = null): void {
+  registerClipboardIpc()
+
+  if (clipboardWindow) {
+    if (clipboardWindow.isVisible()) {
+      previousForegroundWindow = null
+      clipboardWindow.hide()
+    } else {
+      previousForegroundWindow = foregroundWindow
+      clipboardWindow.show()
+      clipboardWindow.focus()
+      pushThemeRefresh()
+      pushHistoryUpdate()
+    }
+    return
+  }
+
+  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
+  const winWidth = 420
+  const winHeight = 560
+
+  clipboardWindow = new BrowserWindow({
+    width: winWidth,
+    height: winHeight,
+    x: Math.round((screenWidth - winWidth) / 2),
+    y: Math.round((screenHeight - winHeight) / 2 - 50),
+    frame: false,
+    transparent: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    show: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  clipboardWindow.on('blur', () => {
+    clipboardWindow?.hide()
+  })
+
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
+    clipboardWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/clipboard.html`)
+  } else {
+    clipboardWindow.loadFile(join(__dirname, '../renderer/clipboard.html'))
+  }
+
+  previousForegroundWindow = foregroundWindow
+  clipboardWindow.show()
+  clipboardWindow.focus()
+  setTimeout(() => {
+    pushThemeRefresh()
+    pushHistoryUpdate()
+  }, 200)
+}
+
+// ── Init ──
+
+export function registerClipboardEnhancer(): void {
+  config = loadConfig()
+  registerClipboardIpc()
+  loadHistory()
+  purgeExpired()
+  startClipboardPolling()
+  registerShortcut()
+
+  // Periodic purge every 10 minutes
+  setInterval(() => purgeExpired(), 10 * 60 * 1000)
+
+  app.on('will-quit', () => {
+    unregisterShortcut()
+    previousForegroundWindow = null
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  })
+}

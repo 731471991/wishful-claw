@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+﻿import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -27,6 +27,8 @@ import { registerSshFsHandlers } from './ipc/ssh-fs-handlers'
 import { ChannelManager } from './channels/channel-manager'
 import { registerBuiltInChannelProviders } from './channels/register-providers'
 import { registerChannelHandlers, autoStartChannels } from './ipc/channel-handlers'
+import { registerQuickLauncher } from './quick-launcher'
+import { registerClipboardEnhancer } from './clipboard-enhancer'
 import { setPluginManager } from './channels/auto-reply'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
@@ -121,6 +123,23 @@ function createTray(): void {
   tray.on('click', () => mainWindow?.show())
 }
 
+/**
+ * Login item (auto-start) IPC handlers.
+ * Uses Electron's native app.setLoginItemSettings API.
+ * In dev mode this registers electron.exe; in packaged builds it registers the app exe.
+ */
+function registerLoginItemHandlers(): void {
+  registerMessagePackHandler<void, boolean>('app:get-login-item-settings', () => {
+    const settings = app.getLoginItemSettings()
+    return settings.openAtLogin
+  })
+
+  registerMessagePackHandler<boolean, boolean>('app:set-login-item-settings', (openAtLogin) => {
+    app.setLoginItemSettings({ openAtLogin })
+    return app.getLoginItemSettings().openAtLogin
+  })
+}
+
 function registerWindowControlHandlers(): void {
   registerMessagePackHandler<void>('window:minimize', (_args, event) => {
     BrowserWindow.fromWebContents(event.sender)?.minimize()
@@ -164,6 +183,9 @@ if (!gotTheLock) {
 
   // Window control handlers (minimize / maximize / close / isMaximized)
   registerWindowControlHandlers()
+
+  // Login item (auto-start) handlers
+  registerLoginItemHandlers()
 
   // Desktop notification handler — renderer calls this when agent loop ends
   // and the window is NOT focused (user is away from the app).
@@ -602,6 +624,10 @@ registerWebSearchHandlers()
 
   createWindow()
   createTray()
+
+  // Clipboard Enhancer and Quick Launcher desktop utilities
+  registerClipboardEnhancer()
+  registerQuickLauncher()
 
   // Auto-start enabled channels after window is ready
   if (channelManager) {

@@ -87,6 +87,7 @@ export interface RightPanelTabInstance {
 export type SettingsTab =
   | 'provider'
   | 'modelManagement'
+  | 'shortcuts'
   | 'general'
   | 'persona'
   | 'about'

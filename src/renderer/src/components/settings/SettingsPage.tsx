@@ -1,5 +1,5 @@
-import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Puzzle, Cable } from 'lucide-react'
+﻿import { useTranslation } from 'react-i18next'
+import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Puzzle, Cable, Layers, Keyboard } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
 import { WindowControls } from '@renderer/components/layout/WindowControls'
@@ -13,6 +13,8 @@ import { APP_VERSION_LABEL } from '@renderer/lib/app-version'
 import { SshPanel } from '@renderer/components/settings/SshPanel'
 import { SkillPanel } from '@renderer/components/settings/skill-panel'
 import { McpPanel } from '@renderer/components/settings/mcp-panel'
+import { ModelManagementPanel } from '@renderer/components/settings/model-management/ModelManagementPanel'
+import { ShortcutsPanel } from '@renderer/components/settings/ShortcutsPanel'
 import { Server as ServerIcon } from 'lucide-react'
 
 function SettingsPage(): React.JSX.Element {
@@ -29,6 +31,7 @@ function SettingsPage(): React.JSX.Element {
       label: t('tabs.groups.general'),
       items: [
         { id: 'general', icon: <Settings className="size-4" />, label: t('tabs.general.label') },
+        { id: 'shortcuts', icon: <Keyboard className="size-4" />, label: t('tabs.shortcuts.label', { defaultValue: '快捷键' }) },
         { id: 'persona', icon: <User className="size-4" />, label: t('tabs.persona.label', { defaultValue: '人格管理' }) },
         { id: 'ssh', icon: <ServerIcon className="size-4" />, label: t('tabs.ssh.label', { defaultValue: 'SSH 连接' }) }
       ]
@@ -36,7 +39,8 @@ function SettingsPage(): React.JSX.Element {
     {
       label: t('tabs.groups.aiService'),
       items: [
-        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') }
+        { id: 'provider', icon: <Server className="size-4" />, label: t('tabs.provider.label') },
+        { id: 'modelManagement', icon: <Layers className="size-4" />, label: t('provider.modelManagement', { defaultValue: 'Model Management' }) }
       ]
     },
     {
@@ -131,6 +135,14 @@ function SettingsPage(): React.JSX.Element {
             {settingsTab === 'provider' ? (
               <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <ProviderPanel />
+              </div>
+            ) : settingsTab === 'modelManagement' ? (
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                <ModelManagementPanel />
+              </div>
+            ) : settingsTab === 'shortcuts' ? (
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                <ShortcutsPanel />
               </div>
             ) : settingsTab === 'general' ? (
               <div className="flex-1 overflow-y-auto">

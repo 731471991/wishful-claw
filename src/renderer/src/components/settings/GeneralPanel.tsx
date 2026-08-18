@@ -1,4 +1,5 @@
-﻿import { useTranslation } from 'react-i18next'
+import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Monitor, MoonStar, SunMedium } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import {
@@ -146,6 +147,27 @@ function GeneralPanel(): React.JSX.Element {
   ]
 
   const clampFontSize = (value: number): number => Math.min(20, Math.max(12, value))
+
+  // -- Launch at Login --
+  const [launchAtLoginChecked, setLaunchAtLoginChecked] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.invoke<boolean>('app:get-login-item-settings', null).then((osEnabled) => {
+      if (cancelled) return
+      setLaunchAtLoginChecked(osEnabled)
+      if (osEnabled !== settings.launchAtLogin) {
+        settings.updateSettings({ launchAtLogin: osEnabled })
+      }
+    })
+    return () => { cancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleLaunchAtLoginChange = (checked: boolean): void => {
+    setLaunchAtLoginChecked(checked)
+    settings.updateSettings({ launchAtLogin: checked })
+    void window.api.invoke<boolean>('app:set-login-item-settings', checked)
+  }
 
   const handleLanguageChange = (value: string): void => {
     settings.updateSettings({ language: value as typeof settings.language })
@@ -565,6 +587,26 @@ function GeneralPanel(): React.JSX.Element {
           </span>
         </div>
       </section>
+
+      {/* Launch at Login */}
+      <section className="space-y-3">
+        <div>
+          <div className="text-sm font-medium text-foreground">{t('general.launchAtLogin.label', { defaultValue: 'Launch at Startup' })}</div>
+          <p className="text-xs text-muted-foreground">{t('general.launchAtLogin.desc', { defaultValue: 'Automatically start WishfulClaw when you log in to your computer' })}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={launchAtLoginChecked}
+            onCheckedChange={handleLaunchAtLoginChange}
+          />
+          <span className="text-xs text-muted-foreground">
+            {launchAtLoginChecked
+              ? t('general.launchAtLogin.enabled', { defaultValue: 'Enabled' })
+              : t('general.launchAtLogin.disabled', { defaultValue: 'Disabled' })}
+          </span>
+        </div>
+      </section>
+
     </div>
   )
 }

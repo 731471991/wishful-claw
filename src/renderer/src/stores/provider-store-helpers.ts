@@ -1,11 +1,13 @@
 import { nanoid } from 'nanoid'
 import type { AIProvider, AIModelConfig, BuiltinProviderPreset, ProviderType, ReasoningEffortLevel } from '../../../shared/types/provider'
+import type { ManagedModelConfig } from './managed-models'
 import { builtinProviderPresets } from '@renderer/stores/providers'
 import { useProviderStore } from '@renderer/stores/provider-store'
 
 export const STORAGE_KEY = 'wishful-claw-providers'
 
 export { builtinProviderPresets }
+export type { ManagedModelConfig } from './managed-models'
 export type { BuiltinProviderPreset }
 
 export interface ProviderState {
@@ -50,6 +52,15 @@ export interface ProviderState {
   updateModel: (providerId: string, modelId: string, updates: Partial<AIModelConfig>) => void
   deleteModel: (providerId: string, modelId: string) => void
   setModels: (providerId: string, models: AIModelConfig[]) => void
+
+  // ── Managed models (global model library) ──
+  managedModels: ManagedModelConfig[]
+  managedModelTombstones: string[]
+  addManagedModel: (model: AIModelConfig) => void
+  updateManagedModel: (modelId: string, model: AIModelConfig) => void
+  removeManagedModel: (modelId: string) => void
+  resetModelConfigurationToDefaults: () => void
+  getManagedModelById: (modelId: string) => ManagedModelConfig | null
 
   // ── Worker API (test + fetch models) ──
   testConnection: (provider: AIProvider, modelId?: string) => Promise<{ ok: boolean; statusCode?: number; error?: string }>

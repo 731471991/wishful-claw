@@ -38,12 +38,14 @@ export function ModelFormDialog({
   onOpenChange,
   providerType,
   initial,
+  allowIdEditing,
   onSave
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   providerType?: ProviderType | null
   initial?: AIModelConfig
+  allowIdEditing?: boolean
   onSave: (model: AIModelConfig) => void
 }): React.JSX.Element {
   const { t: ts } = useTranslation('settings')
@@ -219,7 +221,7 @@ export function ModelFormDialog({
                 placeholder={ts('provider.modelForm.idPlaceholder')}
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                disabled={isEdit}
+                disabled={isEdit && !allowIdEditing}
                 autoFocus={!isEdit}
                 className="text-xs"
               />
