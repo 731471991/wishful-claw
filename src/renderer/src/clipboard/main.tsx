@@ -266,6 +266,11 @@ function ClipboardEnhancer(): React.JSX.Element {
                 (index === selectedIndex ? 'bg-accent' : 'hover:bg-accent')
               }
             >
+              <span className="mt-0.5 flex w-4 shrink-0 justify-center">
+                {entry.pinned && (
+                  <Pin className="size-2.5 text-primary" fill="currentColor" />
+                )}
+              </span>
               {index < 10 && (
                 <span className="mt-0.5 shrink-0 w-4 text-center text-[10px] font-medium text-muted-foreground/60">
                   {index === 9 ? 0 : index + 1}
