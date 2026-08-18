@@ -468,5 +468,13 @@
     "copyFailed": "Copy failed",
     "pasteFailed": "Paste failed",
     "agentSshSession": "Agent SSH Session"
+  },
+  "searchDialog": {
+    "quickActions": "Quick Actions",
+    "keyboardShortcuts": "Keyboard Shortcuts",
+    "toggleSidebar": "Toggle Sidebar",
+    "toggleRightPanel": "Toggle Right Panel",
+    "toggleTheme": "Toggle Theme",
+    "recentSessions": "Recent Sessions"
   }
 }
