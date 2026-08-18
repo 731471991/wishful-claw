@@ -222,9 +222,8 @@ internal static partial class Program
             "list");
         var goalTools = listed.GetProperty("capabilities")
             .EnumerateArray()
-            .Where(capability => capability.GetProperty("capability_id").GetString() == "builtin-group:goal")
-            .SelectMany(capability => capability.GetProperty("tools").EnumerateArray())
-            .Select(tool => tool.GetProperty("name").GetString())
+            .Where(capability => capability.GetProperty("category").GetString() == "goal")
+            .Select(capability => capability.GetProperty("name").GetString())
             .Where(name => name != null)
             .Cast<string>()
             .ToList();
@@ -308,6 +307,144 @@ internal static partial class Program
                 "SELECT status FROM goals WHERE session_id = 'session-lifecycle' " +
                 "AND objective = 'reopened through use_capability' ORDER BY created_at DESC LIMIT 1"),
             "use_capability reopen cancellation archives the new goal");
+
+        RunUseCapabilityDiscoveryRegressionSuite(dbPath, capabilityContext);
+    }
+
+    private static void RunUseCapabilityDiscoveryRegressionSuite(
+        string dbPath,
+        IWorkerRequestContext context)
+    {
+        var registry = new ToolRegistry();
+        registry.PushCategory("goal");
+        new GoalToolProvider().RegisterTools(registry);
+        registry.PopCategory();
+        registry.PushCategory("project");
+        new ProjectToolsProvider().RegisterTools(registry);
+        registry.PopCategory();
+
+        var firstPage = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "list",
+            writeInput: writer => writer.WriteNumber("page_size", 2));
+        AssertEqual(2, firstPage.GetProperty("capabilities").GetArrayLength(),
+            "use_capability list honors page_size");
+        Assert(firstPage.GetProperty("has_more").GetBoolean()
+               && firstPage.GetProperty("next_cursor").ValueKind == JsonValueKind.String,
+            "use_capability list returns a continuation cursor");
+
+        var secondPage = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "list",
+            writeInput: writer =>
+            {
+                writer.WriteNumber("page_size", 100);
+                writer.WriteString("cursor", firstPage.GetProperty("next_cursor").GetString());
+            });
+        var pagedIds = firstPage.GetProperty("capabilities").EnumerateArray()
+            .Concat(secondPage.GetProperty("capabilities").EnumerateArray())
+            .Select(capability => capability.GetProperty("capability_id").GetString())
+            .Where(id => id != null)
+            .Cast<string>()
+            .ToList();
+        AssertEqual(firstPage.GetProperty("total").GetInt32(),
+            pagedIds.Distinct(StringComparer.Ordinal).Count(),
+            "use_capability pagination has no duplicates or omissions");
+
+        var filtered = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "list",
+            writeInput: writer =>
+            {
+                writer.WriteString("type", "builtin");
+                writer.WriteString("category", "goal");
+                writer.WriteString("query", "get_goal_history");
+            });
+        AssertEqual(1, filtered.GetProperty("total").GetInt32(),
+            "use_capability list combines type, category, and query filters");
+        AssertEqual("builtin:get_goal_history",
+            filtered.GetProperty("capabilities")[0].GetProperty("capability_id").GetString(),
+            "use_capability filters return the expected capability");
+
+        var globalProjects = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "list",
+            sessionMode: "global",
+            writeInput: writer => writer.WriteString("category", "project"));
+        AssertEqual(4, globalProjects.GetProperty("total").GetInt32(),
+            "global sessions discover all project tools through use_capability");
+
+        var normalProjects = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "list",
+            sessionMode: "normal",
+            writeInput: writer => writer.WriteString("category", "project"));
+        AssertEqual(0, normalProjects.GetProperty("total").GetInt32(),
+            "normal sessions cannot discover global project tools");
+
+        var rejectedProjectInspect = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "inspect",
+            "builtin:list_projects", sessionMode: "normal");
+        Assert(rejectedProjectInspect.TryGetProperty("error", out _),
+            "normal sessions cannot inspect global project tools");
+
+        var globalProjectInspect = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "inspect",
+            "builtin:list_projects", sessionMode: "global");
+        AssertEqual("list_projects", globalProjectInspect.GetProperty("name").GetString(),
+            "global sessions inspect project tool schemas");
+
+        registry.Register(new ProjectModeProbeTool(), "project");
+        var globalProjectCall = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "call",
+            "builtin:project_mode_probe", sessionMode: "global");
+        Assert(globalProjectCall.GetProperty("ok").GetBoolean(),
+            "global sessions call project tools through use_capability");
+
+        var rejectedProjectCall = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "call",
+            "builtin:project_mode_probe", sessionMode: "normal");
+        Assert(rejectedProjectCall.TryGetProperty("error", out _),
+            "normal sessions cannot call global project tools");
+
+        var longJson = "{\"payload\":\"" + new string('x', 40_000) + "\"}";
+        var listCall = new AgentRuntimeNativeToolCall(
+            "limit-list", "use_capability", WorkerJsonHelper.BuildJsonElement(writer =>
+            {
+                writer.WriteStartObject();
+                writer.WriteString("action", "list");
+                writer.WriteEndObject();
+            }));
+        var capabilityListOutput = ToolCallProcessor.ApplyToolOutputLimit(listCall, longJson);
+        using (JsonDocument.Parse(capabilityListOutput)) { }
+        AssertEqual(longJson.Length, capabilityListOutput.Length,
+            "use_capability list bypasses destructive string truncation");
+
+        var inspectCall = new AgentRuntimeNativeToolCall(
+            "limit-inspect", "use_capability", WorkerJsonHelper.BuildJsonElement(writer =>
+            {
+                writer.WriteStartObject();
+                writer.WriteString("action", "inspect");
+                writer.WriteEndObject();
+            }));
+        var capabilityInspectOutput = ToolCallProcessor.ApplyToolOutputLimit(inspectCall, longJson);
+        using (JsonDocument.Parse(capabilityInspectOutput)) { }
+        AssertEqual(longJson.Length, capabilityInspectOutput.Length,
+            "use_capability inspect preserves complete schema JSON");
+
+        var invalidCursor = ExecuteUseCapability(
+            dbPath, "session-lifecycle", registry, context, "list",
+            writeInput: writer => writer.WriteString("cursor", "not-a-cursor"));
+        Assert(invalidCursor.TryGetProperty("error", out _),
+            "use_capability list returns valid JSON errors for invalid cursors");
+
+        var callCall = new AgentRuntimeNativeToolCall(
+            "limit-call", "use_capability", WorkerJsonHelper.BuildJsonElement(writer =>
+            {
+                writer.WriteStartObject();
+                writer.WriteString("action", "call");
+                writer.WriteEndObject();
+            }));
+        var capabilityCallOutput = ToolCallProcessor.ApplyToolOutputLimit(callCall, longJson);
+        Assert(capabilityCallOutput.Contains("[truncated ", StringComparison.Ordinal),
+            "use_capability call results retain the ordinary output limit");
+        AssertThrows<JsonException>(() => JsonDocument.Parse(capabilityCallOutput),
+            "ordinary head-tail truncation is not used for discovery JSON");
     }
 
     private static JsonElement ExecuteUseCapability(
@@ -317,7 +454,9 @@ internal static partial class Program
         IWorkerRequestContext context,
         string action,
         string? capabilityId = null,
-        Action<Utf8JsonWriter>? writeArguments = null)
+        Action<Utf8JsonWriter>? writeArguments = null,
+        string sessionMode = "goal",
+        Action<Utf8JsonWriter>? writeInput = null)
     {
         using var state = new AgentRuntimeRunState($"test-{Guid.NewGuid():N}", sessionId);
         state.ReplaceParameters(WorkerJsonHelper.BuildJsonElement(writer =>
@@ -325,6 +464,7 @@ internal static partial class Program
             writer.WriteStartObject();
             writer.WriteString("dbPath", dbPath);
             writer.WriteString("sessionId", sessionId);
+            writer.WriteString("sessionMode", sessionMode);
             writer.WriteEndObject();
         }));
         var call = new AgentRuntimeNativeToolCall(
@@ -336,6 +476,7 @@ internal static partial class Program
                 writer.WriteString("action", action);
                 if (capabilityId != null)
                     writer.WriteString("capability_id", capabilityId);
+                writeInput?.Invoke(writer);
                 if (writeArguments != null)
                 {
                     writer.WriteStartObject("arguments");

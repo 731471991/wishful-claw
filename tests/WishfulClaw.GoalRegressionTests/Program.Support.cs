@@ -3,6 +3,7 @@ using System.Text.Json.Serialization.Metadata;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Agent;
 using WishfulClaw.Contracts;
+using WishfulClaw.Core.Tools;
 using WishfulClaw.Infrastructure.Db;
 
 namespace WishfulClaw.GoalRegressionTests;
@@ -247,6 +248,21 @@ internal static partial class Program
             => ValueTask.CompletedTask;
         public ValueTask EmitMessagePackEventAsync(string eventName, ReadOnlyMemory<byte> payload)
             => ValueTask.CompletedTask;
+    }
+
+    private sealed class ProjectModeProbeTool : IToolExecutor
+    {
+        public string Name => "project_mode_probe";
+        public string Description => "Project mode capability probe.";
+        public JsonElement InputSchema => WorkerJsonHelper.BuildJsonElement(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("type", "object");
+            writer.WriteEndObject();
+        });
+        public string[]? AvailableModes => ["global"];
+        public Task<ToolResult> ExecuteAsync(JsonElement input, ToolExecutionContext context)
+            => Task.FromResult(new ToolResult("{\"ok\":true}"));
     }
 
     private sealed class CapabilityRequestContext(bool confirmed) : IWorkerRequestContext
