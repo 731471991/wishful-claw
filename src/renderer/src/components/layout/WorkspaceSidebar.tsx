@@ -1,8 +1,9 @@
 ﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, Image, CalendarDays, ArrowDownAZ, ListFilter } from 'lucide-react'
+import { MessageSquare, Settings, Plus, Search, FolderOpen, ChevronRight, Image, CalendarDays, ArrowDownAZ, ListFilter, SquareKanban, X } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuLabel } from '@renderer/components/ui/dropdown-menu'
+import { Input } from '@renderer/components/ui/input'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useChatStore, type Session } from '@renderer/stores/chat-store'
 import { cn } from '@renderer/lib/utils'
@@ -13,6 +14,8 @@ import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFo
 // ─── Helpers ───
 import { SessionItem, ProjectItem, sortProjects, sortSessions, readProjectSortMode, writeProjectSortMode, PROJECT_SORT_MODES, type ProjectSortMode } from './workspace-sidebar-items'
 import { ResizeHandle, renderNavItem, NavButtonItem } from './workspace-sidebar-nav'
+import { useSidebarSearch } from './use-sidebar-search'
+import { SidebarSearchResults } from './sidebar-search-results'
 
 export function WorkspaceSidebar(): React.JSX.Element | null {
   const { t } = useTranslation('layout')
@@ -31,6 +34,10 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [searchQuery] = useState('')
   const [extensionsOpen, setExtensionsOpen] = useState(false)
+
+  const openDrawPage = useUIStore((s) => s.openDrawPage)
+  const openTasksPage = useUIStore((s) => s.openTasksPage)
+  const openTaskBoardPage = useUIStore((s) => s.openTaskBoardPage)
 
   // Active project ID — used for highlighting only.
   // Expand/collapse is purely user-controlled via clicking the project title.
@@ -132,22 +139,16 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
     [createProject, t]
   )
 
-  const openCommandPalette = useCallback(() => {
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'k',
-        ctrlKey: true,
-        bubbles: true
-      })
-    )
-  }, [])
-
   // Collapsed state: completely hidden, use TitleBar button to expand
   if (!leftSidebarOpen) {
     return null
   }
 
-  // ─── Nav items ───
+  // ─── Search ───
+  const { search, setSearch, result, searching } = useSidebarSearch(sessions, projects)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // ─── Nav items (top buttons) ───
   const navItems: NavButtonItem[] = [
     {
       key: 'new-chat',
@@ -155,43 +156,14 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
       icon: <Plus className="size-4 shrink-0" />,
       active: false,
       onClick: handleNewChat
-    },
-    {
-      key: 'search',
-      label: t('sidebar.searchLabel', { defaultValue: 'Search' }),
-      icon: <Search className="size-4 shrink-0" />,
-      active: false,
-      onClick: openCommandPalette
-    },
-    {
-      key: 'draw',
-      label: t('sidebar.drawLabel', { defaultValue: 'Draw' }),
-      icon: <Image className="size-4 shrink-0" />,
-      active: false,
-      onClick: () => {
-        setActiveNavItem('draw')
-        toast.info(`Draw — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
-      }
-    },
-    {
-      key: 'automation',
-      label: t('sidebar.automationLabel', { defaultValue: 'Automation' }),
-      icon: <CalendarDays className="size-4 shrink-0" />,
-      active: false,
-      onClick: () => {
-        setActiveNavItem('tasks')
-        toast.info(`Automation — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
-      }
     }
   ]
 
+  // ─── Extension items ───
   const extensionItems = [
-    { id: 'resources', icon: <FolderTree className="size-4" />, label: t('sidebar.resources', { defaultValue: 'Resources' }) },
-    { id: 'skills', icon: <Sparkles className="size-4" />, label: t('sidebar.skills', { defaultValue: 'Skills' }) },
-    { id: 'souls', icon: <Ghost className="size-4" />, label: t('sidebar.souls', { defaultValue: 'Souls' }) },
-    { id: 'sync', icon: <RefreshCw className="size-4" />, label: t('sidebar.sync', { defaultValue: 'Sync' }) },
-    { id: 'translate', icon: <PenTool className="size-4" />, label: t('sidebar.translate', { defaultValue: 'Translate' }) },
-    { id: 'codegraph', icon: <GitBranch className="size-4" />, label: t('sidebar.codegraph', { defaultValue: 'Code Graph' }) }
+    { id: 'draw', icon: <Image className="size-4" />, label: t('sidebar.drawLabel', { defaultValue: 'Draw' }), onClick: openDrawPage },
+    { id: 'automation', icon: <CalendarDays className="size-4" />, label: t('sidebar.automationLabel', { defaultValue: 'Automation' }), onClick: openTasksPage },
+    { id: 'taskboard', icon: <SquareKanban className="size-4" />, label: t('sidebar.taskBoardLabel', { defaultValue: 'Task Board' }), onClick: openTaskBoardPage }
   ]
 
   const currentWidth = leftSidebarWidth || 260
@@ -208,9 +180,29 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
         </div>
       </div>
 
-      {/* Nav items + extensions */}
+      {/* Nav items + search + extensions */}
       <div className="space-y-1 px-2 py-1.5">
-        {navItems.slice(0, 3).map(renderNavItem)}
+        {navItems.map(renderNavItem)}
+
+        {/* Search input */}
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/50" />
+          <Input
+            ref={searchInputRef}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('sidebar.searchPlaceholder', { defaultValue: 'Search messages…' })}
+            className="h-8 rounded-md border-none bg-accent/50 pl-7 pr-7 text-[13px] placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-ring/30"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/50 hover:text-foreground"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
 
         {/* Extensions dropdown (collapsible) */}
         <DropdownMenu open={extensionsOpen} onOpenChange={setExtensionsOpen}>
@@ -234,8 +226,8 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
               <DropdownMenuItem
                 key={ext.id}
                 onSelect={() => {
-                  setActiveNavItem(ext.id as never)
-                  toast.info(`${ext.label} — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
+                  ext.onClick?.()
+                  setExtensionsOpen(false)
                 }}
               >
                 {ext.icon}
@@ -244,8 +236,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {navItems.slice(3).map(renderNavItem)}
       </div>
 
       {/* Project section header */}
@@ -304,44 +294,54 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
         </div>
       </div>
 
-      {/* Session list */}
+      {/* Session list / Search results */}
       <div className="flex-1 overflow-y-auto px-1.5 pb-2">
-        {/* Projects */}
-        {sortedProjects.map((project) => (
-          <ProjectItem
-            key={project.id}
-            project={project}
-            sessions={projectSessions[project.id] ?? []}
-            isExpanded={expandedProjects.has(project.id)}
-            onToggleExpand={() => toggleProjectExpand(project.id)}
+        {search.trim() && result ? (
+          <SidebarSearchResults
+            messageHits={result.messageHits}
+            searching={searching}
+            query={search}
           />
-        ))}
-
-        {/* Unassigned sessions */}
-        {sortedUnassigned.length > 0 && (
-          <div className="mt-2">
-            <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
-              {t('sidebar.conversations', { defaultValue: 'Conversations' })}
-            </div>
-            {sortedUnassigned.map((session) => (
-              <SessionItem
-                key={session.id}
-                session={session}
-                isActive={activeSessionId === session.id}
-                onClick={() => navigateToSession(session.id)}
+        ) : (
+          <>
+            {/* Projects */}
+            {sortedProjects.map((project) => (
+              <ProjectItem
+                key={project.id}
+                project={project}
+                sessions={projectSessions[project.id] ?? []}
+                isExpanded={expandedProjects.has(project.id)}
+                onToggleExpand={() => toggleProjectExpand(project.id)}
               />
             ))}
-          </div>
-        )}
 
-        {/* Empty state */}
-        {sortedProjects.length === 0 && sortedUnassigned.length === 0 && (
-          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-            <MessageSquare className="size-8 text-muted-foreground/30" />
-            <p className="text-xs text-muted-foreground/60">
-              {t('sidebar.noSessionsYet', { defaultValue: 'No sessions yet. Click "New Chat" to start.' })}
-            </p>
-          </div>
+            {/* Unassigned sessions */}
+            {sortedUnassigned.length > 0 && (
+              <div className="mt-2">
+                <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
+                  {t('sidebar.conversations', { defaultValue: 'Conversations' })}
+                </div>
+                {sortedUnassigned.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    isActive={activeSessionId === session.id}
+                    onClick={() => navigateToSession(session.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {sortedProjects.length === 0 && sortedUnassigned.length === 0 && (
+              <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                <MessageSquare className="size-8 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground/60">
+                  {t('sidebar.noSessionsYet', { defaultValue: 'No sessions yet. Click "New Chat" to start.' })}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
