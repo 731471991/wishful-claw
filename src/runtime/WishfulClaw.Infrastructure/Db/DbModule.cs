@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization.Metadata;
+﻿using System.Text.Json.Serialization.Metadata;
 ﻿using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -49,6 +49,7 @@ public sealed class DbModule : IWorkerModule
         context.Register("db/messages-truncate-from", DbMessageTools.TruncateFrom);
         context.Register("db/messages-compact-session", DbMessageCompactTools.CompactSession);
         context.Register("db/messages-usage-stats", DbMessageCompactTools.UsageStats);
+        context.Register("db/messages-search-content", DbMessageTools.SearchContent);
 
         // ── Sub-Agent Runs ──
         context.Register("db/sub-agent-read-by-tool-use-id", DbSubAgentTools.ReadByToolUseId);
