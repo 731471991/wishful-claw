@@ -276,21 +276,18 @@ function ClipboardEnhancer(): React.JSX.Element {
                   {entry.preview}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1 transition-opacity group-hover:opacity-100" style={{ opacity: entry.pinned ? 1 : undefined }}>
-                {entry.pinned && (
-                  <Pin className="size-3 text-primary" fill="currentColor" />
-                )}
+              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="text-[10px] text-muted-foreground">{formatTime(entry.timestamp)}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     void handleTogglePin(entry.id)
                   }}
-                  className="rounded p-0.5 text-muted-foreground hover:text-primary"
+                  className={"rounded p-0.5 " + (entry.pinned ? "text-primary" : "text-muted-foreground hover:text-primary")}
                   title={entry.pinned ? '取消置顶' : '置顶'}
                 >
-                  <Pin className="size-3" fill={entry.pinned ? 'currentColor' : 'none'} />
+                  <Pin className="size-3" fill={entry.pinned ? "currentColor" : "none"} />
                 </button>
-                <span className="text-[10px] text-muted-foreground">{formatTime(entry.timestamp)}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
