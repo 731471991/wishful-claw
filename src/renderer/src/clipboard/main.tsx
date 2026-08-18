@@ -290,7 +290,7 @@ function ClipboardEnhancer(): React.JSX.Element {
                 (index === selectedIndex ? 'bg-accent' : 'hover:bg-accent')
               }
             >
-              <span className="mt-0.5 flex w-2 shrink-0 items-center justify-center">
+              <span className="self-center flex w-2 shrink-0 items-center justify-center">
                 {entry.pinned && (
                   <Pin className="size-2 text-primary" fill="currentColor" />
                 )}
