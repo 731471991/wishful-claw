@@ -356,7 +356,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps): React.J
 
       showCloseButton={true}
 
-      className="sm:max-w-2xl h-[520px] flex flex-col"
+      className="sm:max-w-2xl h-[70vh] flex flex-col"
 
     >
 
