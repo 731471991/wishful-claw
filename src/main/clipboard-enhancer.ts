@@ -39,6 +39,7 @@ interface ClipboardEntry {
   timestamp: number
   preview: string
   lastUsed?: number
+  pinned?: boolean
 }
 
 interface ClipboardConfig {
@@ -121,12 +122,18 @@ function saveHistory(): void {
   }
 }
 
-/** Remove entries older than maxDays. */
+/** Remove entries older than maxDays. Pinned items are never purged.
+ *  Expiry is based on lastUsed (or timestamp if never used), not creation time.
+ */
 function purgeExpired(): void {
   if (config.maxDays <= 0) return
   const cutoff = Date.now() - config.maxDays * 24 * 60 * 60 * 1000
   const before = history.length
-  history = history.filter((entry) => entry.timestamp >= cutoff)
+  history = history.filter((entry) => {
+    if (entry.pinned) return true
+    const refTime = entry.lastUsed ?? entry.timestamp
+    return refTime >= cutoff
+  })
   if (history.length !== before) {
     saveHistory()
   }
@@ -229,6 +236,18 @@ function registerClipboardIpc(): void {
   registerMessagePackHandler<string, ClipboardEntry[]>('clipboard:delete', (id) => {
     history = history.filter((item) => item.id !== id)
     saveHistory()
+    return history
+  })
+
+  registerMessagePackHandler<string, ClipboardEntry[]>('clipboard:toggle-pin', (id) => {
+    const entry = history.find((item) => item.id === id)
+    if (entry) {
+      entry.pinned = !entry.pinned
+      if (entry.pinned) {
+        entry.lastUsed = Date.now()
+      }
+      saveHistory()
+    }
     return history
   })
 

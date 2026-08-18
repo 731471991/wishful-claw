@@ -1,7 +1,7 @@
 ﻿import '../assets/main.css'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Clipboard, Trash2, X, Settings, ArrowLeft } from 'lucide-react'
+import { Clipboard, Trash2, X, Settings, ArrowLeft, Pin } from 'lucide-react'
 import { syncThemeFromSettings } from '../lib/theme-sync'
 
 interface ClipboardEntry {
@@ -10,6 +10,7 @@ interface ClipboardEntry {
   timestamp: number
   preview: string
   lastUsed?: number
+  pinned?: boolean
 }
 
 interface ClipboardConfig {
@@ -74,11 +75,16 @@ function ClipboardEnhancer(): React.JSX.Element {
     }
   }, [view, history.length])
 
-  const filteredHistory = searchQuery
+  const filteredHistory = (searchQuery
     ? history.filter(
         (e) => e.text.toLowerCase().includes(searchQuery.toLowerCase()) || e.preview.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : history
+  ).slice().sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1
+    if (!a.pinned && b.pinned) return 1
+    return 0
+  })
 
   // Reset selection when filtered list changes
   useEffect(() => {
@@ -112,6 +118,11 @@ function ClipboardEnhancer(): React.JSX.Element {
 
   const handleDelete = useCallback(async (id: string): Promise<void> => {
     const updated = await window.api.invoke<ClipboardEntry[]>('clipboard:delete', id)
+    setHistory(updated)
+  }, [])
+
+  const handleTogglePin = useCallback(async (id: string): Promise<void> => {
+    const updated = await window.api.invoke<ClipboardEntry[]>('clipboard:toggle-pin', id)
     setHistory(updated)
   }, [])
 
@@ -265,7 +276,20 @@ function ClipboardEnhancer(): React.JSX.Element {
                   {entry.preview}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="flex shrink-0 items-center gap-1 transition-opacity group-hover:opacity-100" style={{ opacity: entry.pinned ? 1 : undefined }}>
+                {entry.pinned && (
+                  <Pin className="size-3 text-primary" fill="currentColor" />
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void handleTogglePin(entry.id)
+                  }}
+                  className="rounded p-0.5 text-muted-foreground hover:text-primary"
+                  title={entry.pinned ? '取消置顶' : '置顶'}
+                >
+                  <Pin className="size-3" fill={entry.pinned ? 'currentColor' : 'none'} />
+                </button>
                 <span className="text-[10px] text-muted-foreground">{formatTime(entry.timestamp)}</span>
                 <button
                   onClick={(e) => {
