@@ -30,7 +30,8 @@ const DEFAULT_CONFIG: ClipboardConfig = {
   enabled: true,
   maxDays: 7,
   maxItems: 100,
-  accelerators: ['Ctrl+Shift+V']
+  accelerators: ['Ctrl+Shift+V'],
+  hideOnBlur: true
 }
 
 interface ClipboardEntry {
@@ -47,6 +48,7 @@ interface ClipboardConfig {
   maxDays: number
   maxItems: number
   accelerators: string[]
+  hideOnBlur: boolean
 }
 
 // ── Config persistence ──
@@ -67,7 +69,8 @@ function loadConfig(): ClipboardConfig {
         enabled: parsed.enabled ?? DEFAULT_CONFIG.enabled,
         maxDays: typeof parsed.maxDays === 'number' ? parsed.maxDays : DEFAULT_CONFIG.maxDays,
         maxItems: typeof parsed.maxItems === 'number' ? parsed.maxItems : DEFAULT_CONFIG.maxItems,
-        accelerators: accelerators.length > 0 ? accelerators : DEFAULT_CONFIG.accelerators
+        accelerators: accelerators.length > 0 ? accelerators : DEFAULT_CONFIG.accelerators,
+        hideOnBlur: typeof parsed.hideOnBlur === 'boolean' ? parsed.hideOnBlur : DEFAULT_CONFIG.hideOnBlur
       }
     }
   } catch {
@@ -336,7 +339,9 @@ export function createClipboardWindow(foregroundWindow: string | null = null): v
   })
 
   clipboardWindow.on('blur', () => {
-    clipboardWindow?.hide()
+    if (config.hideOnBlur) {
+      clipboardWindow?.hide()
+    }
   })
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {

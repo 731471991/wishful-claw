@@ -18,6 +18,7 @@ interface ClipboardConfig {
   maxDays: number
   maxItems: number
   accelerators: string[]
+  hideOnBlur: boolean
 }
 
 function formatTime(ts: number): string {
@@ -141,9 +142,10 @@ function ClipboardEnhancer(): React.JSX.Element {
     return (
       <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl">
         {/* Header */}
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
           <button
             onClick={() => setView('list')}
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ArrowLeft className="size-3.5" />
@@ -197,6 +199,26 @@ function ClipboardEnhancer(): React.JSX.Element {
                 </div>
               </div>
 
+              {/* Hide on blur */}
+              <div>
+                <label className="mb-1.5 block text-sm text-foreground">失焦自动隐藏</label>
+                <p className="mb-2 text-[11px] text-muted-foreground">关闭后剪贴板窗口不会在失去焦点时自动隐藏，方便拖动到其他位置进行数据对比</p>
+                <button
+                  onClick={() => void updateConfig({ hideOnBlur: !config.hideOnBlur })}
+                  className={
+                    'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ' +
+                    (config.hideOnBlur ? 'bg-primary' : 'bg-muted-foreground/30')
+                  }
+                >
+                  <span
+                    className={
+                      'inline-block size-4 transform rounded-full bg-white shadow transition-transform ' +
+                      (config.hideOnBlur ? 'translate-x-4' : 'translate-x-0.5')
+                    }
+                  />
+                </button>
+              </div>
+
             </div>
           ) : (
             <div className="flex h-full items-center justify-center text-xs text-muted-foreground">加载中...</div>
@@ -211,11 +233,12 @@ function ClipboardEnhancer(): React.JSX.Element {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden rounded-2xl border border-border bg-background/95 backdrop-blur-xl">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
         <Clipboard className="size-4 shrink-0 text-muted-foreground" />
         <span className="flex-1 text-sm font-medium text-foreground">剪贴板历史</span>
         <button
           onClick={() => setView('settings')}
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <Settings className="size-3" />
@@ -224,6 +247,7 @@ function ClipboardEnhancer(): React.JSX.Element {
         {history.length > 0 && (
           <button
             onClick={handleClear}
+            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
           >
             <Trash2 className="size-3" />
@@ -266,9 +290,9 @@ function ClipboardEnhancer(): React.JSX.Element {
                 (index === selectedIndex ? 'bg-accent' : 'hover:bg-accent')
               }
             >
-              <span className="mt-0.5 flex w-2 shrink-0 justify-center">
+              <span className="mt-0.5 flex w-2 shrink-0 items-center justify-center">
                 {entry.pinned && (
-                  <Pin className="size-2.5 text-primary" fill="currentColor" />
+                  <Pin className="size-2 text-primary" fill="currentColor" />
                 )}
               </span>
               {index < 10 && (
