@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Clipboard Enhancer — ditto-style clipboard history.
  *
  * - Polls clipboard (250ms) for near-instant capture
@@ -8,11 +8,11 @@
  * - Independent config file (not in settings-store)
  */
 
-import { app, BrowserWindow, globalShortcut, clipboard, screen } from 'electron'
+import { app, BrowserWindow, clipboard, screen } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
-import { exec } from 'child_process'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
+import { pasteToForegroundWindow, registerPriorityShortcut, unregisterPriorityShortcut } from './priority-shortcuts'
 import { safeSendMessagePackToWindow } from './window-ipc'
 
 let clipboardWindow: BrowserWindow | null = null
@@ -20,7 +20,7 @@ let pollTimer: NodeJS.Timeout | null = null
 let lastClipboardText = ''
 let history: ClipboardEntry[] = []
 let config: ClipboardConfig
-let currentAccelerator: string | null = null
+let previousForegroundWindow: string | null = null
 
 const DATA_DIR = join(app.getPath('home'), '.wishful-claw')
 const HISTORY_FILE = join(DATA_DIR, 'clipboard-history.json')
@@ -30,7 +30,7 @@ const DEFAULT_CONFIG: ClipboardConfig = {
   enabled: true,
   maxDays: 7,
   maxItems: 100,
-  accelerator: 'Ctrl+Shift+V'
+  accelerators: ['Ctrl+Shift+V']
 }
 
 interface ClipboardEntry {
@@ -38,13 +38,14 @@ interface ClipboardEntry {
   text: string
   timestamp: number
   preview: string
+  lastUsed?: number
 }
 
 interface ClipboardConfig {
   enabled: boolean
   maxDays: number
   maxItems: number
-  accelerator: string
+  accelerators: string[]
 }
 
 // ── Config persistence ──
@@ -54,11 +55,18 @@ function loadConfig(): ClipboardConfig {
     if (fs.existsSync(CONFIG_FILE)) {
       const raw = fs.readFileSync(CONFIG_FILE, 'utf8')
       const parsed = JSON.parse(raw)
+      const accelerators = Array.isArray(parsed.accelerators)
+        ? parsed.accelerators
+            .filter((value: unknown): value is string => typeof value === 'string')
+            .filter((value: string, index: number, values: string[]) => values.indexOf(value) === index)
+        : typeof parsed.accelerator === 'string'
+          ? [parsed.accelerator]
+          : DEFAULT_CONFIG.accelerators
       return {
         enabled: parsed.enabled ?? DEFAULT_CONFIG.enabled,
         maxDays: typeof parsed.maxDays === 'number' ? parsed.maxDays : DEFAULT_CONFIG.maxDays,
         maxItems: typeof parsed.maxItems === 'number' ? parsed.maxItems : DEFAULT_CONFIG.maxItems,
-        accelerator: typeof parsed.accelerator === 'string' ? parsed.accelerator : DEFAULT_CONFIG.accelerator
+        accelerators: accelerators.length > 0 ? accelerators : DEFAULT_CONFIG.accelerators
       }
     }
   } catch {
@@ -162,39 +170,30 @@ function startClipboardPolling(): void {
   }, 250)
 }
 
-/** Simulate Ctrl+V paste in the previously focused application. */
-function simulatePaste(): void {
-  // PowerShell SendKeys: ^ = Ctrl, v = v
-  const script = `Add-Type -AssemblyName System.Windows.Forms; Start-Sleep -Milliseconds 80; [System.Windows.Forms.SendKeys]::SendWait('^v')`
-  exec(`powershell -NoProfile -NonInteractive -Command "${script.replace(/"/g, '\\"')}"`, (err) => {
-    if (err) {
-      console.warn('[ClipboardEnhancer] simulatePaste failed:', err.message)
-    }
-  })
-}
-
 // ── Shortcut registration ──
 
+const registeredShortcutIds: string[] = []
+
 function unregisterShortcut(): void {
-  if (currentAccelerator) {
-    globalShortcut.unregister(currentAccelerator)
-    currentAccelerator = null
+  for (const id of registeredShortcutIds) {
+    unregisterPriorityShortcut(id)
   }
+  registeredShortcutIds.length = 0
 }
 
 function registerShortcut(): boolean {
   unregisterShortcut()
   if (!config.enabled) return false
-  const ret = globalShortcut.register(config.accelerator, () => {
-    createClipboardWindow()
-  })
-  if (ret) {
-    currentAccelerator = config.accelerator
-    return true
-  } else {
-    console.warn('[ClipboardEnhancer] Failed to register shortcut:', config.accelerator)
-    return false
+  let allRegistered = true
+  for (let index = 0; index < config.accelerators.length; index++) {
+    const id = `clipboard-enhancer-${index}`
+    const registered = registerPriorityShortcut(id, config.accelerators[index], ({ foregroundWindow }) => {
+      createClipboardWindow(foregroundWindow)
+    })
+    registeredShortcutIds.push(id)
+    if (!registered) allRegistered = false
   }
+  return allRegistered
 }
 
 // ── IPC ──
@@ -205,21 +204,26 @@ function registerClipboardIpc(): void {
   if (ipcRegistered) return
   ipcRegistered = true
 
-  // Copy without pasting — just update clipboard, keep window open
-  registerMessagePackHandler<string, boolean>('clipboard:copy-no-paste', (text) => {
-    clipboard.writeText(text)
-    lastClipboardText = text
-    return true
-  })
+  registerMessagePackHandler<void, ClipboardEntry[]>('clipboard:get-history', () => history)
 
-  // Copy + paste into previously focused app — hides window first
+  // Copy + paste into the app that was active before the panel opened.
   registerMessagePackHandler<string, boolean>('clipboard:copy', (text) => {
+    const targetWindow = previousForegroundWindow
+    previousForegroundWindow = null
+    clipboardWindow?.hide()
     clipboard.writeText(text)
     lastClipboardText = text
-    clipboardWindow?.hide()
-    // Simulate Ctrl+V after a short delay for window focus to return
-    setTimeout(() => simulatePaste(), 150)
-    return true
+    // Move the used entry to top and update lastUsed
+    const now = Date.now()
+    const existing = history.find((item) => item.text === text)
+    if (existing) {
+      existing.lastUsed = now
+      existing.timestamp = now
+      history = history.filter((item) => item.id !== existing.id)
+      history.unshift(existing)
+      saveHistory()
+    }
+    return pasteToForegroundWindow(targetWindow)
   })
 
   registerMessagePackHandler<string, ClipboardEntry[]>('clipboard:delete', (id) => {
@@ -243,7 +247,7 @@ function registerClipboardIpc(): void {
   })
 
   registerMessagePackHandler<Partial<ClipboardConfig>, ClipboardConfig & { shortcutRegistered: boolean }>('clipboard:update-config', (patch) => {
-    const oldAccelerator = config.accelerator
+    const oldAccelerators = config.accelerators
     const wasEnabled = config.enabled
     config = { ...config, ...patch }
     saveConfig()
@@ -257,10 +261,10 @@ function registerClipboardIpc(): void {
       history = history.slice(0, config.maxItems)
       saveHistory()
     }
-    if (patch.enabled !== undefined || patch.accelerator !== undefined) {
+    if (patch.enabled !== undefined || patch.accelerators !== undefined) {
       if (!config.enabled) {
         unregisterShortcut()
-      } else if (config.accelerator !== oldAccelerator || !wasEnabled) {
+      } else if (config.accelerators !== oldAccelerators || !wasEnabled) {
         shortcutRegistered = registerShortcut()
       }
     }
@@ -272,13 +276,15 @@ function registerClipboardIpc(): void {
 
 // ── Window ──
 
-export function createClipboardWindow(): void {
+export function createClipboardWindow(foregroundWindow: string | null = null): void {
   registerClipboardIpc()
 
   if (clipboardWindow) {
     if (clipboardWindow.isVisible()) {
+      previousForegroundWindow = null
       clipboardWindow.hide()
     } else {
+      previousForegroundWindow = foregroundWindow
       clipboardWindow.show()
       clipboardWindow.focus()
       pushThemeRefresh()
@@ -320,6 +326,7 @@ export function createClipboardWindow(): void {
     clipboardWindow.loadFile(join(__dirname, '../renderer/clipboard.html'))
   }
 
+  previousForegroundWindow = foregroundWindow
   clipboardWindow.show()
   clipboardWindow.focus()
   setTimeout(() => {
@@ -343,6 +350,7 @@ export function registerClipboardEnhancer(): void {
 
   app.on('will-quit', () => {
     unregisterShortcut()
+    previousForegroundWindow = null
     if (pollTimer) {
       clearInterval(pollTimer)
       pollTimer = null

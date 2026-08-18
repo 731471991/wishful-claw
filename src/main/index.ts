@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+﻿import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -625,9 +625,9 @@ registerWebSearchHandlers()
   createWindow()
   createTray()
 
-  // Quick Launcher (Alt+Space) and Clipboard Enhancer (Ctrl+Shift+V)
-  registerQuickLauncher()
+  // Clipboard Enhancer and Quick Launcher desktop utilities
   registerClipboardEnhancer()
+  registerQuickLauncher()
 
   // Auto-start enabled channels after window is ready
   if (channelManager) {

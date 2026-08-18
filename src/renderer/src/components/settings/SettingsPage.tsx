@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Server, Info, Settings, User, MessageCircle, Puzzle, Cable, Layers, Keyboard } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
@@ -141,7 +141,7 @@ function SettingsPage(): React.JSX.Element {
                 <ModelManagementPanel />
               </div>
             ) : settingsTab === 'shortcuts' ? (
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
                 <ShortcutsPanel />
               </div>
             ) : settingsTab === 'general' ? (

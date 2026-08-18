@@ -153,7 +153,7 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 - C# 用 partial class，TypeScript 用 export/import 模块化
 - 逻辑不相关的代码不放在同一个文件
 - 拆分后必须 `tsc --noEmit` + `dotnet build` 双编译验证
-- C# 文件名 PascalCase，TypeScript 文件名 kebab-case
+- C# 文件名 PascalCase，TypeScript 文件名 kebab-case 
 - 接口前缀 `I`（C# 遵循 .NET 惯例）
 
 ## 会话开始时请先执行

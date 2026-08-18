@@ -1,16 +1,34 @@
-{
+﻿{
   "title": "Settings",
   "shortcuts": {
     "title": "Shortcuts",
-    "desc": "Configure global shortcuts for clipboard and launcher",
+    "desc": "Manage Clipboard Enhancer and Quick Search availability and global shortcuts",
     "clipboard": "Clipboard Enhancer",
-    "launcher": "Quick Launcher",
+    "clipboardDesc": "Capture clipboard history and open it with a global shortcut",
+    "launcher": "Quick Search",
+    "launcherDesc": "Search and launch apps from a global shortcut",
+    "wakeShortcut": "Wake shortcut",
+    "multipleHint": "Configure multiple shortcuts; any one can open the window",
     "recording": "Press keys...",
     "save": "Save",
     "cancel": "Cancel",
     "modify": "Modify",
-    "registerFailed": "Shortcut registration failed — it may be occupied by another application. Please try a different combination.",
-    "hint": "Click \"Modify\" then press the desired key combination. Press ESC to cancel recording. Changes take effect immediately and sync with the clipboard window settings."
+    "add": "Add shortcut",
+    "hint": "Enable a feature before configuring or using its shortcuts. Click \"Modify\" and press the desired key combination; press ESC to cancel. Changes take effect immediately.",
+    "clipboardIntroTitle": "About Clipboard Enhancer",
+    "clipboardIntro": {
+      "p1": "Clipboard Enhancer is a ditto-style clipboard history manager. It automatically captures every text you copy, building a searchable history that survives reboots.",
+      "p2": "Press the global shortcut to summon the floating panel. Type to search, arrow keys to navigate, Enter to paste into the app you were using — no window switching, no context loss.",
+      "p3": "History is automatically pruned by configurable expiry (default 7 days) and max item count (default 100). Only plain text is captured — sensitive content is never stored.",
+      "p4": "Once you get used to it, you will never lose a copied snippet again. Just press the shortcut, find what you need, paste, and go."
+    },
+    "launcherIntroTitle": "About Quick Search",
+    "launcherIntro": {
+      "p1": "Quick Search is a spotlight-style application launcher. Press the global shortcut (default Alt+Space) to bring up the search bar, type a few characters, and launch any installed program instantly.",
+      "p2": "It supports searching by app name, English camelCase, Chinese pinyin, and pinyin initials. As long as you remember roughly what the app is called, typing it will find it.",
+      "p3": "Beyond Start Menu apps, you can add custom entries for portable or non-installed programs. Every launched app is recorded to history, so next time you can find it without adding it manually.",
+      "p4": "Once you familiarize yourself with it, you will save a significant amount of time. Instant access, no interruption, no distraction — just press, type, launch, and get back to work."
+    }
   },
   "tabs": {
     "shortcuts": {
