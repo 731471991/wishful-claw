@@ -1,4 +1,4 @@
-{
+﻿{
   "splash": {
     "enterMain": "Enter Main",
     "enterSettings": "AI Provider Settings",
@@ -244,7 +244,12 @@
     "projectSortBy": "Sort by",
     "projectSortRecentlyUpdated": "Recently updated",
     "projectSortName": "Name",
-    "projectSortCreatedAt": "Date created"
+    "projectSortCreatedAt": "Date created",
+    "searchPlaceholder": "Search messages…",
+    "searching": "Searching…",
+    "noResultsFor": "No results for",
+    "messages": "Messages",
+    "taskBoardLabel": "Task Board"
   },
   "sectionExecution": {
     "title": "Execution"
