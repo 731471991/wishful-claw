@@ -89,30 +89,6 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 - 验证：TypeScript 3/3 PASS；C# build 0 错误；安装包冒烟测试通过；用户人工验证通过
 - 下一步：先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 的最新 Bug/优化建议，再与老大讨论下一迭代范围
 
-## v2-iter-8 实际实现
-
-计划模式人机协同执行引擎，Agent 接收需求后走"探索→规划→产出计划文件→用户确认→分步执行→验证"流程。计划文件和任务状态落盘到 `.wishful-claw/` 固定位置，可被外部读取。
-
-- **计划模式状态机** — explore → plan → confirm → execute → verify，Agent 通过工具调用驱动状态流转
-- **计划工具**（`AgentRuntimePlanExecutor.cs`，partial class 拆分为 4 文件）— EnterPlanMode（进入/恢复计划）、SubmitPlanReview（提交审查，通过 reverse request 暂停 agent loop 等待用户确认）、ExitPlanMode（取消计划）、UpdatePlanStep（步骤状态跟踪）
-- **计划文件格式** — `.wishful-claw/plans/{planId}.md`（计划内容）+ `{planId}.state.json`（步骤清单 + 每步状态 + 执行结果摘要）
-- **状态落盘** — 执行过程中实时更新 state.json，外部可读取"当前在做什么、做到哪了"
-- **用户确认环节** — SubmitPlanReview 通过 reverse request（同 AskUserQuestion 模式）暂停 agent loop；PlanReviewCard 展示计划 + Implement/Adjust 两个按钮；Exit Plan Mode banner 按钮处理两种场景（agent 流式中 cancelStream + sendMessage，等待 review 时 cancelPlanReview resolve cancelled）
-- **前端** — PlanReviewCard（计划审查卡片 + 反馈输入）、plan mode banner（session 级隔离 planModesBySession）、plan-store 从 invokeMessagePackBinary 迁移到 workerRequest
-- **DB 层** — PlanEntity + DbPlanTools（6 个 DB 端点），CodeFirst 自动建表
-- **PromptBuilder guidance** — 计划模式引导通过工具返回值注入而非 system prompt
-
-## v2-iter-10 实际实现
-
-全局会话作为"项目经理"小助手，不绑项目目录，通过 4 个项目工具与各项目下的会话交互。
-
-- **工具注册**（`ProjectToolsProvider.cs`）— list_projects / get_project_details / create_session / send_session_message 四个工具定义，Category="project"，AvailableModes=["global"]
-- **后端执行器**（`AgentRuntimeProjectExecutor.cs`）— list_projects 查 DB 返回项目列表（含活跃会话数），get_project_details 查项目会话 + 读 `.wishful-claw/project-status.md` 文件（不存在时返回 statusUpdateTemplate 让 Agent 自主决定是否触发整理），create_session 给项目建新会话，send_session_message 通过 reverse request 转发到 renderer
-- **send_session_message 链路** — Worker → reverse request "project/send-session-message" → Main 进程 rendererMethods → Renderer renderer-tool-bridge → chat-store.sendMessage()（fire-and-forget，异步执行）
-- **ToolDispatchRouter 路由** — 新增 `AgentRuntimeProjectExecutor.IsProjectTool()` 分支分发 4 工具
-- **ToolPreset** — chat/coding preset 的 AllowedCategories 加入 "project" 类别
-- **sessionMode** — 新增 "global" 模式，InputArea 根据 `!activeProjectId` 自动设置 sessionMode="global"，各 ToolProvider 的 availableModes 扩展 "global"
-- **状态文件** — 固定目录 `.wishful-claw/project-status.md`，项目会话收到固定模版消息后自行整理输出，get_project_details 只读此文件，不扫描 plans/goals 目录兜底
 
 ## 下一步（需与老大讨论确认后确定）
 
