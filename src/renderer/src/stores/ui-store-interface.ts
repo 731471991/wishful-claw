@@ -110,6 +110,9 @@ export interface UIStore {
   codeGraphPageOpen: boolean
   openCodeGraphPage: () => void
   closeCodeGraphPage: () => void
+  taskBoardPageOpen: boolean
+  openTaskBoardPage: () => void
+  closeTaskBoardPage: () => void
 
   // Dialogs
   shortcutsOpen: boolean
