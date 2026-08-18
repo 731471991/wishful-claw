@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Text;
 using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
@@ -19,23 +20,77 @@ public static class ToolCallProcessor
     /// results (e.g. WebFetch of a full webpage) from blowing the context window
     /// and destroying prefix cache hit rates.
     /// </summary>
-    private const int MaxToolOutputChars = 16 * 1024; // ~16K chars (~16-48KB UTF-8)
+    private const int MaxToolOutputBytes = 32 * 1024;
 
-    /// <summary>
-    /// Truncate tool output to MaxToolOutputChars using head+tail strategy
-    /// (preserves beginning and end, elides the middle). Slices on char boundary.
-    /// Uses char count directly for simplicity and allocation-free slicing.
-    /// </summary>
     private static string TruncateToolOutput(string output)
     {
-        if (string.IsNullOrEmpty(output) || output.Length <= MaxToolOutputChars)
+        if (string.IsNullOrEmpty(output))
             return output;
 
-        var keep = MaxToolOutputChars / 2; // 8K chars per half
-        var head = output[..keep];
-        var tail = output[^(keep)..];
-        var omitted = output.Length - head.Length - tail.Length;
-        return head + "\n\n[truncated " + omitted + " of " + output.Length + " chars — rerun with narrower args to see the middle]\n\n" + tail;
+        var totalBytes = Encoding.UTF8.GetByteCount(output);
+        if (totalBytes <= MaxToolOutputBytes)
+            return output;
+
+        var keepBytes = MaxToolOutputBytes / 2;
+        var headEnd = FindUtf8PrefixLength(output, keepBytes);
+        var tailStart = FindUtf8SuffixStart(output, keepBytes);
+        var head = output[..headEnd];
+        var tail = output[tailStart..];
+        var keptBytes = Encoding.UTF8.GetByteCount(head) + Encoding.UTF8.GetByteCount(tail);
+        var omittedBytes = totalBytes - keptBytes;
+        return head + "\n\n[truncated " + omittedBytes + " of " + totalBytes
+            + " UTF-8 bytes — rerun with narrower args to see the middle]\n\n" + tail;
+    }
+
+    private static int FindUtf8PrefixLength(string value, int maxBytes)
+    {
+        var bytes = 0;
+        var index = 0;
+        foreach (var rune in value.EnumerateRunes())
+        {
+            if (bytes + rune.Utf8SequenceLength > maxBytes)
+                break;
+            bytes += rune.Utf8SequenceLength;
+            index += rune.Utf16SequenceLength;
+        }
+        return index;
+    }
+
+    private static int FindUtf8SuffixStart(string value, int maxBytes)
+    {
+        var bytes = 0;
+        var index = value.Length;
+        while (index > 0)
+        {
+            var runeStart = index - 1;
+            if (runeStart > 0
+                && char.IsLowSurrogate(value[runeStart])
+                && char.IsHighSurrogate(value[runeStart - 1]))
+            {
+                runeStart--;
+            }
+
+            var rune = Rune.GetRuneAt(value, runeStart);
+            if (bytes + rune.Utf8SequenceLength > maxBytes)
+                break;
+            bytes += rune.Utf8SequenceLength;
+            index = runeStart;
+        }
+        return index;
+    }
+
+    internal static string ApplyToolOutputLimit(AgentRuntimeNativeToolCall toolCall, string output)
+    {
+        if (AgentRuntimeUseCapabilityExecutor.IsUseCapabilityTool(toolCall.Name))
+        {
+            var action = (JsonHelpers.GetString(toolCall.Input, "action") ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant();
+            if (action is "list" or "inspect")
+                return output;
+        }
+
+        return TruncateToolOutput(output);
     }
     /// <summary>
     /// Executes a batch of tool calls with concurrency control and per-turn capping.
@@ -306,13 +361,13 @@ public static class ToolCallProcessor
                         startedAt,
                         completedAt)));
 
-            // Truncate oversized tool output (Reasonix-aligned head+tail strategy)
-            var truncatedOutput = TruncateToolOutput(toolOutput);
-            if (truncatedOutput.Length < toolOutput.Length)
+            var truncatedOutput = ApplyToolOutputLimit(toolCall, toolOutput);
+            if (!ReferenceEquals(truncatedOutput, toolOutput) && truncatedOutput != toolOutput)
             {
                 WorkerLog.Warn(
                     $"agent tool output truncated runId={state.RunId} tool={toolCall.Name} " +
-                    $"original={toolOutput.Length} truncated={truncatedOutput.Length}");
+                    $"originalBytes={Encoding.UTF8.GetByteCount(toolOutput)} " +
+                    $"truncatedBytes={Encoding.UTF8.GetByteCount(truncatedOutput)}");
             }
 
             WorkerLog.Debug(
