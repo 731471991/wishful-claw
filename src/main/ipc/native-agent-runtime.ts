@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification } from 'electron'
+﻿import { Notification } from 'electron'
 import { getNativeWorker } from '../lib/native-worker'
 import { safeSendMessagePackToWindow } from '../window-ipc'
 import {
@@ -19,6 +19,7 @@ import {
   DESKTOP_INPUT_SCROLL
 } from './desktop-control'
 import { isMainProcessMethod, dispatchReverseRequest } from './reverse-handlers'
+import { getMainWindow } from '../main-window-registry'
 
 const SIDECAR_RENDERER_REQUEST_TIMEOUT_MS = 30_000
 
@@ -91,9 +92,9 @@ async function handleReverseRequest(request: RendererToolRequest): Promise<void>
     return
   }
 
-  const targetWindow = BrowserWindow.getAllWindows()[0]
+  const targetWindow = getMainWindow()
   if (!targetWindow) {
-    await sendReverseResponse(id, undefined, 'No renderer window available')
+    await sendReverseResponse(id, undefined, 'Main window not available')
     return
   }
 
