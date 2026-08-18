@@ -84,6 +84,19 @@ public sealed class ToolRegistry
         return _toolCategories.TryGetValue(toolName, out var cat) ? cat : null;
     }
 
+    public bool IsAvailableInMode(string toolName, string? sessionMode)
+    {
+        if (!_tools.ContainsKey(toolName))
+            return false;
+        if (!_toolModes.TryGetValue(toolName, out var modes) || modes == null || modes.Length == 0)
+            return true;
+        if (string.IsNullOrWhiteSpace(sessionMode))
+            return false;
+
+        return Array.Exists(modes,
+            mode => string.Equals(mode, sessionMode, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>
     /// Get all registered tool definitions (for sending to LLM provider).
     /// Definitions are canonicalized once and cached. The returned list is sorted

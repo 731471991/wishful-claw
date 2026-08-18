@@ -20,11 +20,10 @@ public sealed class UseCapabilityToolProvider : IToolProvider
     {
         registry.Register(new ToolDefinitionPlaceholder(
             "use_capability",
-            "Stable capability proxy: list available MCP servers/tools, Skills, and proxied built-in tools, "
-            + "inspect a specific capability's schema, or call a capability by id. "
-            + "Use action=\"list\" to discover capabilities, action=\"inspect\" with "
-            + "capability_id to see a tool's input schema, action=\"call\" with "
-            + "capability_id and arguments to execute. "
+            "Stable capability proxy: discover MCP servers/tools, Skills, and proxied built-in tools. "
+            + "action=\"list\" returns paged summaries and supports type, category, query, cursor, and page_size filters. "
+            + "Use action=\"inspect\" with capability_id to retrieve one capability's complete input schema, "
+            + "or action=\"call\" with capability_id and arguments to execute. "
             + "capability_id format: \"mcp-tool:serverName/toolName\" for MCP tools, "
             + "\"skill:skillName\" for Skills, or \"builtin:toolName\" for proxied built-in tools.",
             ToolSchemaBuilder.Object(
@@ -36,6 +35,16 @@ public sealed class UseCapabilityToolProvider : IToolProvider
                     ["capability_id"] = ToolSchemaBuilder.String(
                         "Capability id: mcp-tool:server/tool, mcp-server:name, skill:name, or builtin:toolName. "
                         + "Not required for action=list."),
+                    ["type"] = ToolSchemaBuilder.String(
+                        "Optional action=list filter: mcp-server, mcp-tool, skill, or builtin."),
+                    ["category"] = ToolSchemaBuilder.String(
+                        "Optional action=list category filter, such as mcp, skill, project, desktop, or goal."),
+                    ["query"] = ToolSchemaBuilder.String(
+                        "Optional action=list case-insensitive search over capability id, name, and description."),
+                    ["cursor"] = ToolSchemaBuilder.String(
+                        "Optional action=list cursor returned as next_cursor by the previous page."),
+                    ["page_size"] = ToolSchemaBuilder.Number(
+                        "Optional action=list page size. Defaults to 20, maximum 100."),
                     ["arguments"] = ToolSchemaBuilder.Object(
                         new()
                         {
