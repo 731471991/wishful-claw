@@ -356,7 +356,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps): React.J
 
       showCloseButton={true}
 
-      className="sm:max-w-2xl flex flex-col"
+      className="sm:max-w-2xl h-[520px] flex flex-col"
 
     >
 
@@ -370,7 +370,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps): React.J
 
       />
 
-      <CommandList className={hasQuery ? "max-h-[420px]" : "max-h-[none] overflow-y-hidden"}>
+      <CommandList className="flex-1 min-h-0">
 
         {/* ── Search results mode ── */}
 
