@@ -120,14 +120,14 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps): React.J
       title={t('sidebar.searchLabel', { defaultValue: 'Search' })}
       description={t('sidebar.searchPlaceholder', { defaultValue: 'Search messages…' })}
       showCloseButton={true}
-      className="sm:max-w-2xl"
+      className="sm:max-w-2xl min-h-[480px] flex flex-col"
     >
       <CommandInput
         placeholder={t('sidebar.searchPlaceholder', { defaultValue: 'Search messages…' })}
         value={query}
         onValueChange={setQuery}
       />
-      <CommandList className="max-h-[420px]">
+      <CommandList className="flex-1 min-h-0">
         {searching && hits.length === 0 ? (
           <div className="flex items-center gap-2 px-3 py-6 text-sm text-muted-foreground/60">
             <Search className="size-4 animate-spin" />
