@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
@@ -33,7 +33,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
     {
         "desktop", "cron", "image-generate",
         "notebook", "widget", "team",
-        "channel-plugin", "plugin", "ssh", "skill-management"
+        "channel-plugin", "plugin", "ssh", "skill-management", "project"
     };
 
     private static readonly HashSet<string> ProxiedBuiltinTools = new(StringComparer.Ordinal)
@@ -60,12 +60,13 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
     {
         var action = (JsonHelpers.GetString(call.Input, "action") ?? "list").Trim().ToLowerInvariant();
         var capabilityId = (JsonHelpers.GetString(call.Input, "capability_id") ?? string.Empty).Trim();
+        var sessionMode = JsonHelpers.GetString(state.Parameters, "sessionMode");
 
         return action switch
         {
-            "list" => await ListCapabilitiesAsync(context, registry, cancellationToken),
-            "inspect" => await InspectCapabilityAsync(context, registry, capabilityId, cancellationToken),
-            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, projectId, sshConnectionId, capabilityId, cancellationToken),
+            "list" => await ListCapabilitiesAsync(call.Input, context, registry, sessionMode, cancellationToken),
+            "inspect" => await InspectCapabilityAsync(context, registry, sessionMode, capabilityId, cancellationToken),
+            "call" => await CallCapabilityAsync(call, state, context, registry, workingFolder, projectId, sshConnectionId, sessionMode, capabilityId, cancellationToken),
             _ => EncodeError($"Unknown action: {action}. Use list, inspect, or call.")
         };
     }
@@ -73,8 +74,10 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
     // ── list ──
 
     private static async Task<string> ListCapabilitiesAsync(
+        JsonElement input,
         IWorkerRequestContext context,
         ToolRegistry? registry,
+        string? sessionMode,
         CancellationToken cancellationToken)
     {
         try
@@ -86,7 +89,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
                 CreateEmptyObject(),
                 cancellationToken);
 
-            return EncodeListResponse(mcpResult, registry);
+            return EncodeListResponse(mcpResult, registry, sessionMode, ParseListOptions(input));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -99,6 +102,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
     private static async Task<string> InspectCapabilityAsync(
         IWorkerRequestContext context,
         ToolRegistry? registry,
+        string? sessionMode,
         string capabilityId,
         CancellationToken cancellationToken)
     {
@@ -168,7 +172,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         if (capabilityId.StartsWith("builtin:", StringComparison.Ordinal))
         {
             var toolName = capabilityId["builtin:".Length..];
-            return EncodeBuiltinInspectResponse(registry, toolName);
+            return EncodeBuiltinInspectResponse(registry, sessionMode, toolName);
         }
 
         return EncodeError($"Unknown capability_id format: {capabilityId}");
@@ -184,6 +188,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         string? workingFolder,
         string? projectId,
         string? sshConnectionId,
+        string? sessionMode,
         string capabilityId,
         CancellationToken cancellationToken)
     {
@@ -237,9 +242,10 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
 
             // Verify the tool is explicitly exposed through the capability proxy.
             var category = registry.GetCategory(toolName);
-            if (category is null || !IsProxiedBuiltinTool(toolName, category))
+            if (category is null || !IsProxiedBuiltinTool(toolName, category)
+                || !registry.IsAvailableInMode(toolName, sessionMode))
             {
-                return EncodeError($"Tool '{toolName}' is not a proxied capability. Call it directly.");
+                return EncodeError($"Tool '{toolName}' is not available through the capability proxy in this session mode.");
             }
 
             var builtinCall = new AgentRuntimeNativeToolCall(

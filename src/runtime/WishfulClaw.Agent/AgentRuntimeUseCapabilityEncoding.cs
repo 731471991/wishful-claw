@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Contracts;
+using WishfulClaw.Contracts;
 using System.Text.Json;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;
@@ -81,133 +81,7 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         }
     }
 
-    private static bool IsProxiedBuiltinTool(string toolName, string category)
-        => ProxiedCategories.Contains(category) || ProxiedBuiltinTools.Contains(toolName);
-
-    /// <summary>
-    /// Collect built-in tools from the registry that belong to proxied categories.
-    /// </summary>
-    private static List<(string Name, string Description, string Category)> GetProxiedBuiltinTools(ToolRegistry? registry)
-    {
-        var result = new List<(string, string, string)>();
-        if (registry is null) return result;
-
-        foreach (var name in registry.GetToolNames())
-        {
-            var category = registry.GetCategory(name);
-            if (category is null || !IsProxiedBuiltinTool(name, category)) continue;
-
-            // Get description from the tool definition
-            if (registry.TryGetExecutor(name, out var executor) && executor is not null)
-            {
-                result.Add((name, executor.Description, category));
-            }
-        }
-
-        result.Sort((a, b) => string.Compare(a.Item1, b.Item1, StringComparison.Ordinal));
-        return result;
-    }
-
     // ── encoding ──
-
-    private static string EncodeListResponse(JsonElement listResult, ToolRegistry? registry)
-    {
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("capabilities");
-            writer.WriteStartArray();
-
-            // MCP servers
-            if (listResult.ValueKind == JsonValueKind.Object &&
-                listResult.TryGetProperty("servers", out var servers) &&
-                servers.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var server in servers.EnumerateArray())
-                {
-                    if (server.ValueKind != JsonValueKind.Object) continue;
-                    var id = JsonHelpers.GetString(server, "id") ?? "";
-                    var name = JsonHelpers.GetString(server, "name") ?? id;
-                    var status = JsonHelpers.GetString(server, "status") ?? "configured";
-
-                    writer.WriteStartObject();
-                    writer.WriteString("capability_id", $"mcp-server:{id}");
-                    writer.WriteString("type", "mcp-server");
-                    writer.WriteString("name", name);
-                    writer.WriteString("status", status);
-                    writer.WritePropertyName("tools");
-                    writer.WriteStartArray();
-                    if (server.TryGetProperty("tools", out var tools) && tools.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach (var tool in tools.EnumerateArray())
-                        {
-                            if (tool.ValueKind != JsonValueKind.Object) continue;
-                            var toolName = JsonHelpers.GetString(tool, "name") ?? "";
-                            var toolDesc = JsonHelpers.GetString(tool, "description") ?? "";
-                            writer.WriteStartObject();
-                            writer.WriteString("capability_id", $"mcp-tool:{id}/{toolName}");
-                            writer.WriteString("name", toolName);
-                            writer.WriteString("description", toolDesc);
-                            writer.WriteEndObject();
-                        }
-                    }
-                    writer.WriteEndArray();
-                    writer.WriteEndObject();
-                }
-            }
-
-            // Skills
-            if (listResult.ValueKind == JsonValueKind.Object &&
-                listResult.TryGetProperty("skills", out var skills) &&
-                skills.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var skill in skills.EnumerateArray())
-                {
-                    if (skill.ValueKind != JsonValueKind.Object) continue;
-                    var name = JsonHelpers.GetString(skill, "name") ?? "";
-                    var desc = JsonHelpers.GetString(skill, "description") ?? "";
-                    writer.WriteStartObject();
-                    writer.WriteString("capability_id", $"skill:{name}");
-                    writer.WriteString("type", "skill");
-                    writer.WriteString("name", name);
-                    writer.WriteString("description", desc);
-                    writer.WriteEndObject();
-                }
-            }
-
-            // Built-in proxied tools
-            var builtinTools = GetProxiedBuiltinTools(registry);
-            if (builtinTools.Count > 0)
-            {
-                // Group by category for readability
-                foreach (var group in builtinTools.GroupBy(t => t.Category))
-                {
-                    writer.WriteStartObject();
-                    writer.WriteString("capability_id", $"builtin-group:{group.Key}");
-                    writer.WriteString("type", "builtin-group");
-                    writer.WriteString("name", group.Key);
-                    writer.WriteString("description", $"Built-in tools: {group.Key}");
-                    writer.WritePropertyName("tools");
-                    writer.WriteStartArray();
-                    foreach (var (name, desc, _) in group)
-                    {
-                        writer.WriteStartObject();
-                        writer.WriteString("capability_id", $"builtin:{name}");
-                        writer.WriteString("name", name);
-                        writer.WriteString("description", desc);
-                        writer.WriteEndObject();
-                    }
-                    writer.WriteEndArray();
-                    writer.WriteEndObject();
-                }
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        }
-        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
-    }
 
     private static string EncodeInspectResponse(string capabilityId, JsonElement detail)
     {
@@ -238,7 +112,10 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         return System.Text.Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private static string EncodeBuiltinInspectResponse(ToolRegistry? registry, string toolName)
+    private static string EncodeBuiltinInspectResponse(
+        ToolRegistry? registry,
+        string? sessionMode,
+        string toolName)
     {
         if (registry is null || !registry.TryGetExecutor(toolName, out var executor) || executor is null)
         {
@@ -246,9 +123,10 @@ internal static partial class AgentRuntimeUseCapabilityExecutor
         }
 
         var category = registry.GetCategory(toolName);
-        if (category is null || !IsProxiedBuiltinTool(toolName, category))
+        if (category is null || !IsProxiedBuiltinTool(toolName, category)
+            || !registry.IsAvailableInMode(toolName, sessionMode))
         {
-            return EncodeError($"Tool '{toolName}' is not a proxied capability.");
+            return EncodeError($"Tool '{toolName}' is not available through the capability proxy in this session mode.");
         }
 
         using var stream = new MemoryStream();

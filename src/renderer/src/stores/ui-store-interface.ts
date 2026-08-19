@@ -1,4 +1,4 @@
-﻿// Extracted from ui-store.ts — UIStore interface definition
+// Extracted from ui-store.ts — UIStore interface definition
 
 import type React from 'react'
 import type {
@@ -110,6 +110,9 @@ export interface UIStore {
   codeGraphPageOpen: boolean
   openCodeGraphPage: () => void
   closeCodeGraphPage: () => void
+  taskBoardPageOpen: boolean
+  openTaskBoardPage: () => void
+  closeTaskBoardPage: () => void
 
   // Dialogs
   shortcutsOpen: boolean

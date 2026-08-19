@@ -63,6 +63,7 @@
 | v2-iter-13 | OpenAI Responses API + 请求超时配置 + 文件树/输入框/设置页收口 — Responses Provider（5 文件）、全局超时配置、AgentFileTreeToolbar、搜索结果类型修复、终端路径传入选中目录、文件树持久化、ComposerStatusIndicator、移除死代码 5 文件 | ✅ 已完成，产品版本 0.2.13，tag v0.2.13，已合并 main |
 | v2-iter-14 | 历史消息反向分页 + 滚动修复 + 侧边栏收起图标统一 — ListLocator + ListByTurns 后端端点、按轮次分页（默认5轮）、loadRecentSessionMessages + fetchOlderMessages + prependMessages、首次加载误触发修复（prevScrollHeightRef + programmaticScrollUntilRef 双重守卫）、代码简化（511→350 行）、侧边栏收起图标统一（TitleBar toggle 常驻） | ✅ 已完成，产品版本 0.2.14，tag v0.2.14，已合并 main |
 | v2-iter-15 | 快捷键系统 + 快速启动器 + 剪贴板增强 + 开机启动 — 开机自启动开关 + 模块管理页面、快速启动器 (Alt+Space)、剪贴板增强 (Ctrl+Shift+V) 前端重写 + 内嵌设置面板、快捷键独立设置页 + 多快捷键编辑器 + 优先级快捷键桥接 + 注册反馈、弹窗主题同步修复、JSON BOM 修复 | ✅ 已完成，产品版本 0.2.15，tag v0.2.15，已合并 main |
+| v2-iter-16 | 左侧面板整理 + use_capability 工具发现增强 — 左侧面板搜索（cmdk 弹窗模式 + DB LIKE 消息搜索 + 快捷操作/最近会话）、扩展功能重组（绘图/自动化/任务面板占位）、主窗口注册修复（reverse-request 不再发错窗口）、use_capability 分页/过滤/搜索、工具输出截限改 UTF-8 字节级、剪贴板置顶功能、BOM 回归修复（28 文件） | ✅ 已完成，产品版本 0.2.16，tag v0.2.16，已合并 main |
 
 ## 当前项目架构（7 层）
 
@@ -84,39 +85,15 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，当前产品版本：`0.2.15`，最新 tag：`v0.2.15`
-- v2-iter-15（快捷键系统 + 快速启动器 + 剪贴板增强 + 开机启动）已完成，已合并 main 并打 tag v0.2.15，开发分支已清理
-- 验证：TypeScript 3/3 PASS；C# build 0 错误；安装包冒烟测试通过；用户人工验证通过
+- 当前分支：`main`，当前产品版本：`0.2.16`，最新 tag：`v0.2.16`
+- v2-iter-16（左侧面板整理 + use_capability 工具发现增强）已完成，已合并 main 并打 tag v0.2.16，开发分支已清理
+- 验证：TypeScript 3/3 PASS；C# build 0 错误；用户人工验证通过
 - 下一步：先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 的最新 Bug/优化建议，再与老大讨论下一迭代范围
 
-## v2-iter-8 实际实现
-
-计划模式人机协同执行引擎，Agent 接收需求后走"探索→规划→产出计划文件→用户确认→分步执行→验证"流程。计划文件和任务状态落盘到 `.wishful-claw/` 固定位置，可被外部读取。
-
-- **计划模式状态机** — explore → plan → confirm → execute → verify，Agent 通过工具调用驱动状态流转
-- **计划工具**（`AgentRuntimePlanExecutor.cs`，partial class 拆分为 4 文件）— EnterPlanMode（进入/恢复计划）、SubmitPlanReview（提交审查，通过 reverse request 暂停 agent loop 等待用户确认）、ExitPlanMode（取消计划）、UpdatePlanStep（步骤状态跟踪）
-- **计划文件格式** — `.wishful-claw/plans/{planId}.md`（计划内容）+ `{planId}.state.json`（步骤清单 + 每步状态 + 执行结果摘要）
-- **状态落盘** — 执行过程中实时更新 state.json，外部可读取"当前在做什么、做到哪了"
-- **用户确认环节** — SubmitPlanReview 通过 reverse request（同 AskUserQuestion 模式）暂停 agent loop；PlanReviewCard 展示计划 + Implement/Adjust 两个按钮；Exit Plan Mode banner 按钮处理两种场景（agent 流式中 cancelStream + sendMessage，等待 review 时 cancelPlanReview resolve cancelled）
-- **前端** — PlanReviewCard（计划审查卡片 + 反馈输入）、plan mode banner（session 级隔离 planModesBySession）、plan-store 从 invokeMessagePackBinary 迁移到 workerRequest
-- **DB 层** — PlanEntity + DbPlanTools（6 个 DB 端点），CodeFirst 自动建表
-- **PromptBuilder guidance** — 计划模式引导通过工具返回值注入而非 system prompt
-
-## v2-iter-10 实际实现
-
-全局会话作为"项目经理"小助手，不绑项目目录，通过 4 个项目工具与各项目下的会话交互。
-
-- **工具注册**（`ProjectToolsProvider.cs`）— list_projects / get_project_details / create_session / send_session_message 四个工具定义，Category="project"，AvailableModes=["global"]
-- **后端执行器**（`AgentRuntimeProjectExecutor.cs`）— list_projects 查 DB 返回项目列表（含活跃会话数），get_project_details 查项目会话 + 读 `.wishful-claw/project-status.md` 文件（不存在时返回 statusUpdateTemplate 让 Agent 自主决定是否触发整理），create_session 给项目建新会话，send_session_message 通过 reverse request 转发到 renderer
-- **send_session_message 链路** — Worker → reverse request "project/send-session-message" → Main 进程 rendererMethods → Renderer renderer-tool-bridge → chat-store.sendMessage()（fire-and-forget，异步执行）
-- **ToolDispatchRouter 路由** — 新增 `AgentRuntimeProjectExecutor.IsProjectTool()` 分支分发 4 工具
-- **ToolPreset** — chat/coding preset 的 AllowedCategories 加入 "project" 类别
-- **sessionMode** — 新增 "global" 模式，InputArea 根据 `!activeProjectId` 自动设置 sessionMode="global"，各 ToolProvider 的 availableModes 扩展 "global"
-- **状态文件** — 固定目录 `.wishful-claw/project-status.md`，项目会话收到固定模版消息后自行整理输出，get_project_details 只读此文件，不扫描 plans/goals 目录兜底
 
 ## 下一步（需与老大讨论确认后确定）
 
-当前已完成 v2-iter-15（产品版本 0.2.15，tag v0.2.15）。下一迭代范围待与老大讨论确认。
+当前已完成 v2-iter-16（产品版本 0.2.16，tag v0.2.16）。下一迭代范围待与老大讨论确认。
 
 1. 先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 中最新的 Bug 和优化建议。
 2. 听取老大新想法，整理优先级、范围、边界和验证标准。
@@ -159,7 +136,7 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，产品版本 `0.2.15`，最新 tag `v0.2.15`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，产品版本 `0.2.16`，最新 tag `v0.2.16`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
 3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看已完成迭代与历史计划
 4. 检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 中最新的 Bug 和优化建议

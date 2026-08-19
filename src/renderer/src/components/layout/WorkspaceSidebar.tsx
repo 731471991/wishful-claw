@@ -1,6 +1,6 @@
-﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageSquare, Settings, FolderTree, Sparkles, Ghost, RefreshCw, PenTool, GitBranch, Plus, Search, FolderOpen, ChevronRight, Image, CalendarDays, ArrowDownAZ, ListFilter } from 'lucide-react'
+import { MessageSquare, Settings, Plus, Search, FolderOpen, ChevronRight, Image, CalendarDays, ArrowDownAZ, ListFilter, SquareKanban } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuLabel } from '@renderer/components/ui/dropdown-menu'
 import { useUIStore } from '@renderer/stores/ui-store'
@@ -13,6 +13,7 @@ import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFo
 // ─── Helpers ───
 import { SessionItem, ProjectItem, sortProjects, sortSessions, readProjectSortMode, writeProjectSortMode, PROJECT_SORT_MODES, type ProjectSortMode } from './workspace-sidebar-items'
 import { ResizeHandle, renderNavItem, NavButtonItem } from './workspace-sidebar-nav'
+import { SearchDialog } from './search-dialog'
 
 export function WorkspaceSidebar(): React.JSX.Element | null {
   const { t } = useTranslation('layout')
@@ -29,8 +30,30 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   const createProject = useChatStore((s) => s.createProject)
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
-  const [searchQuery] = useState('')
   const [extensionsOpen, setExtensionsOpen] = useState(false)
+  const extensionsHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const openExtensions = useCallback(() => {
+    if (extensionsHoverTimer.current) {
+      clearTimeout(extensionsHoverTimer.current)
+      extensionsHoverTimer.current = null
+    }
+    setExtensionsOpen(true)
+  }, [])
+
+  const closeExtensions = useCallback(() => {
+    if (extensionsHoverTimer.current) {
+      clearTimeout(extensionsHoverTimer.current)
+    }
+    extensionsHoverTimer.current = setTimeout(() => {
+      setExtensionsOpen(false)
+      extensionsHoverTimer.current = null
+    }, 150)
+  }, [])
+
+  const openDrawPage = useUIStore((s) => s.openDrawPage)
+  const openTasksPage = useUIStore((s) => s.openTasksPage)
+  const openTaskBoardPage = useUIStore((s) => s.openTaskBoardPage)
 
   // Active project ID — used for highlighting only.
   // Expand/collapse is purely user-controlled via clicking the project title.
@@ -68,18 +91,8 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
       }
     }
 
-    // Filter by search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      for (const key of Object.keys(byProject)) {
-        byProject[key] = byProject[key].filter((s) => s.title.toLowerCase().includes(q))
-      }
-      const filtered = unassigned.filter((s) => s.title.toLowerCase().includes(q))
-      return { projectSessions: byProject, unassignedSessions: filtered }
-    }
-
     return { projectSessions: byProject, unassignedSessions: unassigned }
-  }, [sessions, searchQuery])
+  }, [sessions])
 
   const [projectSortMode, setProjectSortMode] = useState<ProjectSortMode>(readProjectSortMode)
   const sortedProjects = useMemo(
@@ -132,22 +145,15 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
     [createProject, t]
   )
 
-  const openCommandPalette = useCallback(() => {
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'k',
-        ctrlKey: true,
-        bubbles: true
-      })
-    )
-  }, [])
-
   // Collapsed state: completely hidden, use TitleBar button to expand
   if (!leftSidebarOpen) {
     return null
   }
 
-  // ─── Nav items ───
+  // ─── Search dialog ───
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  // ─── Nav items (top buttons) ───
   const navItems: NavButtonItem[] = [
     {
       key: 'new-chat',
@@ -161,37 +167,15 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
       label: t('sidebar.searchLabel', { defaultValue: 'Search' }),
       icon: <Search className="size-4 shrink-0" />,
       active: false,
-      onClick: openCommandPalette
-    },
-    {
-      key: 'draw',
-      label: t('sidebar.drawLabel', { defaultValue: 'Draw' }),
-      icon: <Image className="size-4 shrink-0" />,
-      active: false,
-      onClick: () => {
-        setActiveNavItem('draw')
-        toast.info(`Draw — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
-      }
-    },
-    {
-      key: 'automation',
-      label: t('sidebar.automationLabel', { defaultValue: 'Automation' }),
-      icon: <CalendarDays className="size-4 shrink-0" />,
-      active: false,
-      onClick: () => {
-        setActiveNavItem('tasks')
-        toast.info(`Automation — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
-      }
+      onClick: () => setSearchOpen(true)
     }
   ]
 
+  // ─── Extension items ───
   const extensionItems = [
-    { id: 'resources', icon: <FolderTree className="size-4" />, label: t('sidebar.resources', { defaultValue: 'Resources' }) },
-    { id: 'skills', icon: <Sparkles className="size-4" />, label: t('sidebar.skills', { defaultValue: 'Skills' }) },
-    { id: 'souls', icon: <Ghost className="size-4" />, label: t('sidebar.souls', { defaultValue: 'Souls' }) },
-    { id: 'sync', icon: <RefreshCw className="size-4" />, label: t('sidebar.sync', { defaultValue: 'Sync' }) },
-    { id: 'translate', icon: <PenTool className="size-4" />, label: t('sidebar.translate', { defaultValue: 'Translate' }) },
-    { id: 'codegraph', icon: <GitBranch className="size-4" />, label: t('sidebar.codegraph', { defaultValue: 'Code Graph' }) }
+    { id: 'draw', icon: <Image className="size-4" />, label: t('sidebar.drawLabel', { defaultValue: 'Draw' }), onClick: openDrawPage },
+    { id: 'automation', icon: <CalendarDays className="size-4" />, label: t('sidebar.automationLabel', { defaultValue: 'Automation' }), onClick: openTasksPage },
+    { id: 'taskboard', icon: <SquareKanban className="size-4" />, label: t('sidebar.taskBoardLabel', { defaultValue: 'Task Board' }), onClick: openTaskBoardPage }
   ]
 
   const currentWidth = leftSidebarWidth || 260
@@ -208,15 +192,17 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
         </div>
       </div>
 
-      {/* Nav items + extensions */}
+      {/* Nav items + search + extensions */}
       <div className="space-y-1 px-2 py-1.5">
-        {navItems.slice(0, 3).map(renderNavItem)}
+        {navItems.map(renderNavItem)}
 
-        {/* Extensions dropdown (collapsible) */}
+        {/* Extensions dropdown (collapsible, hover-to-open) */}
         <DropdownMenu open={extensionsOpen} onOpenChange={setExtensionsOpen}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              onMouseEnter={openExtensions}
+              onMouseLeave={closeExtensions}
               className={cn(
                 'flex h-8 w-full items-center gap-2 px-2 text-[13px] font-medium transition-colors rounded-md',
                 extensionsOpen
@@ -229,13 +215,20 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
               <ChevronRight className="ml-auto size-3.5 shrink-0" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="start" sideOffset={6} className="w-40">
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            sideOffset={6}
+            className="w-40"
+            onMouseEnter={openExtensions}
+            onMouseLeave={closeExtensions}
+          >
             {extensionItems.map((ext) => (
               <DropdownMenuItem
                 key={ext.id}
                 onSelect={() => {
-                  setActiveNavItem(ext.id as never)
-                  toast.info(`${ext.label} — ${t('sidebar.comingSoon', { defaultValue: 'coming soon' })}`)
+                  ext.onClick?.()
+                  setExtensionsOpen(false)
                 }}
               >
                 {ext.icon}
@@ -244,8 +237,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {navItems.slice(3).map(renderNavItem)}
       </div>
 
       {/* Project section header */}
@@ -369,6 +360,8 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
           handleCreateProjectWithDirectory(folderPath, connectionId, projectName)
         }
       />
+
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </aside>
   )
 }

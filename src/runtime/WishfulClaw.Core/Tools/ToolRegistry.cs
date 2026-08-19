@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
@@ -82,6 +82,19 @@ public sealed class ToolRegistry
     public string? GetCategory(string toolName)
     {
         return _toolCategories.TryGetValue(toolName, out var cat) ? cat : null;
+    }
+
+    public bool IsAvailableInMode(string toolName, string? sessionMode)
+    {
+        if (!_tools.ContainsKey(toolName))
+            return false;
+        if (!_toolModes.TryGetValue(toolName, out var modes) || modes == null || modes.Length == 0)
+            return true;
+        if (string.IsNullOrWhiteSpace(sessionMode))
+            return false;
+
+        return Array.Exists(modes,
+            mode => string.Equals(mode, sessionMode, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

@@ -784,43 +784,42 @@ GoalOrchestrator 编排循环：
 
 ---
 
-### v2-iter-15：模型管理页面
+### v2-iter-15：快捷键系统 + 快速启动器 + 剪贴板增强 + 开机启动 ✅ 已完成
 
-**目标**：完整的模型管理页面，支持查看、添加、编辑、删除 Provider 下的模型列表，以及模型参数配置（温度、max tokens 等）。
+**目标**：开机自启动开关 + 模块管理页面；全局快捷键 Alt+Space 唤起快速启动器；剪贴板增强 (Ctrl+Shift+V) 前端重写 + 内嵌设置面板；快捷键独立设置页 + 多快捷键编辑器 + 优先级快捷键桥接 + 注册反馈；模型管理页面（模型列表 + 添加/编辑/删除 + thinking 配置）。
 
-**背景**：已有 `modelManagement` 类型和部分入口骨架，但缺完整页面。
+**实际交付**：
+- 模型管理页面 — ModelManagementPanel（584 行），模型列表 + 添加/编辑/删除 + thinking 配置，从 OpenCowork ProviderPanel 迁移
+- 开机启动开关 + 模块管理页面
+- 快速启动器 (Alt+Space) — 全局快捷键唤起弹窗输入框，快捷键捕获注册
+- 剪贴板增强 (Ctrl+Shift+V) — 剪贴板弹窗前端重写，内嵌设置面板，双击粘贴
+- 快捷键系统 — 快捷键独立设置页（从主设置页提取），多快捷键编辑器，优先级快捷键桥接（priority-shortcuts.ts），快捷键注册反馈
+- 主题同步修复 — 弹窗窗口与主应用主题和预设同步
+- JSON BOM 修复 — 移除 JSON 文件 UTF-8 BOM 导致 PostCSS 解析错误
 
-| 步骤 | 内容 | 文件 |
-|------|------|------|
-| 1 | 后端模型 CRUD — `DbModelTools` 或扩展 `ProviderStore` 实现模型的增删改查 | `Infrastructure/Storage/ProviderStore.cs` |
-| 2 | 前端模型管理页面 — 完整页面：模型列表表格 + 添加/编辑弹窗 + 删除确认 | `renderer/src/components/settings/ModelManagementPanel.tsx` |
-| 3 | 模型参数配置 — 每个模型可配置 temperature / maxTokens / topP 等参数 | 同上 |
-| 4 | Provider 关联 — 模型与 Provider 关联，切换 Provider 时模型列表跟随切换 | `renderer/src/stores/settings-store.ts` |
-| 5 | 设置页接入 — SettingsPage 中 `modelManagement` tab 接入新页面 | `renderer/src/components/settings/SettingsPage.tsx` |
-| 6 | 默认模型设置 — 可设置每个 Provider 的默认模型 | 同上 |
-
-**验证标准**：设置页 → 模型管理 → 看到 Provider 下所有模型 → 添加新模型 → 编辑模型参数 → 设置默认模型 → 删除模型 → 对话页模型选择器中反映变化。
+**验证标准**：TypeScript 3/3 PASS；C# build 0 错误；安装包冒烟测试通过；用户人工验证通过。
 
 **分支**：`dev/v2-iter-15`　**产品版本**：`0.2.15`　**Tag**：`v0.2.15`
 
 ---
 
-### v2-iter-16：Goal 编排记录可视化
+### v2-iter-16：左侧面板整理 + use_capability 工具发现增强
 
-**目标**：Goal 自动编排过程记库，右侧面板可查看每轮计划及执行详情。当前 Goal 运行只能看最终结果，编排过程是黑箱。
+**目标**：参考 OpenCowork 实现左侧面板搜索功能；清空旧扩展项，将绘图/自动化/任务面板移入扩展下拉菜单；修复 use_capability 工具发现的分页/过滤/搜索能力；修复辅助窗口导致 reverse-request 发错窗口的 bug；工具输出截断从字符级改为 UTF-8 字节级。
 
-**背景**：涉及数据库新建表 + 运行时记录 + 前端面板，范围较大。
+**背景**：v2 功能基本开发完毕，发布正式版前整理左侧面板。Obsidian 知识库 `正式版发布规划.md` 中明确了整理方向。
 
 | 步骤 | 内容 | 文件 |
 |------|------|------|
-| 1 | DB 建表 — `goal_orchestrations`（编排记录：goalId/sessionId/createdAt/status）+ `goal_plan_tasks`（计划任务：orchestrationId/planIndex/title/status/result/startedAt/completedAt） | `Infrastructure/Db/DbClient.cs` |
-| 2 | 后端记录 — GoalOrchestrator 每轮分解/执行/验证时写入 `goal_orchestrations` 和 `goal_plan_tasks` | `Agent/GoalOrchestrator*.cs` |
-| 3 | IPC 端点 — `goal:list-orchestrations` / `goal:get-orchestration-detail` 分页查询编排记录 | `Agent/Modules/GoalModule.cs` |
-| 4 | 前端面板 — RightPanel 新增 Goal 编排记录 tab，展示编排列表 + 点击查看计划步骤详情 | `renderer/src/components/goal/GoalOrchestrationPanel.tsx` |
-| 5 | 实时更新 — Goal 运行时面板实时更新当前编排状态 | 同上 |
-| 6 | 历史查看 — 已完成的 Goal 也能查看编排记录 | 同上 |
+| 1 | 左侧面板搜索 — 搜索输入框 + DB LIKE 消息内容搜索（200ms 防抖）+ 会话标题/项目名称内存过滤 + 搜索结果展示组件 | `WorkspaceSidebar.tsx`、`use-sidebar-search.ts`、`sidebar-search-results.tsx`、`DbMessageTools.cs` |
+| 2 | 扩展功能重组 — 清空旧扩展项（resources/skills/souls/sync/translate/codegraph），新增绘图/自动化/任务面板三项，放入扩展下拉菜单 | `WorkspaceSidebar.tsx`、`MainLayout.tsx`、`ui-store.ts` |
+| 3 | 主窗口注册修复 — 新建 `main-window-registry.ts`，reverse-request 不再用 `BrowserWindow.getAllWindows()[0]`（辅助窗口会抢占 index 0），改为显式注册的 mainWindow | `main-window-registry.ts`、`native-agent-runtime.ts`、`index.ts` |
+| 4 | use_capability 工具发现增强 — list action 支持分页（cursor/page_size）、类型过滤（type/category）、模糊搜索（query）；提取 `AgentRuntimeUseCapabilityDiscovery.cs` partial class；ToolRegistry 新增 `IsAvailableInMode` 方法 | `AgentRuntimeUseCapabilityDiscovery.cs`、`UseCapabilityToolProvider.cs`、`ToolRegistry.cs` |
+| 5 | 工具输出截限改为 UTF-8 字节级 — 从 `MaxToolOutputChars=16K chars` 改为 `MaxToolOutputBytes=32K bytes`，Rune 边界安全切片；use_capability list/inspect 免截断 | `ToolCallProcessor.cs` |
+| 6 | DB 搜索端点 + JSON 上下文 — `db/messages-search-content` IPC 端点 + `MessageSearchResultRow` entity + `InfrastructureJsonContext` 注册 | `DbMessageTools.cs`、`DbModule.cs`、`InfrastructureJsonContext.cs`、`MessageSearchResultRow.cs` |
+| 7 | 回归测试适配 | `Program.Lifecycle.cs`、`Program.Support.cs` |
 
-**验证标准**：创建并运行 Goal → 右侧面板 Goal 编排 tab 实时显示编排进度 → 每轮计划标题、状态、执行结果可见 → Goal 完成后可回看完整编排历史。
+**验证标准**：左侧面板搜索输入关键词 → 搜索结果显示匹配的消息（含 snippet）→ 点击搜索结果跳转到对应会话；扩展下拉菜单显示绘图/自动化/任务面板三项；Agent 调用 use_capability list 能分页/过滤/搜索；工具输出超过 32KB 时正确截断不破坏 UTF-8；辅助窗口（剪贴板/启动器）打开时 reverse-request 不再发错窗口。
 
 **分支**：`dev/v2-iter-16`　**产品版本**：`0.2.16`　**Tag**：`v0.2.16`
 
@@ -867,6 +866,29 @@ GoalOrchestrator 编排循环：
 
 **分支**：`dev/v2-iter-18`　**产品版本**：`0.2.18`　**Tag**：`v0.2.18`
 
+
+---
+
+### v2-iter-19：Goal 编排记录可视化
+
+**目标**：Goal 自动编排过程记库，右侧面板可查看每轮计划及执行详情。当前 Goal 运行只能看最终结果，编排过程是黑箱。
+
+**背景**：涉及数据库新建表 + 运行时记录 + 前端面板，范围较大。原计划在 v2-iter-16，因实际优先级调整推后。
+
+| 步骤 | 内容 | 文件 |
+|------|------|------|
+| 1 | DB 建表 — `goal_orchestrations`（编排记录：goalId/sessionId/createdAt/status）+ `goal_plan_tasks`（计划任务：orchestrationId/planIndex/title/status/result/startedAt/completedAt） | `Infrastructure/Db/DbClient.cs` |
+| 2 | 后端记录 — GoalOrchestrator 每轮分解/执行/验证时写入 `goal_orchestrations` 和 `goal_plan_tasks` | `Agent/GoalOrchestrator*.cs` |
+| 3 | IPC 端点 — `goal:list-orchestrations` / `goal:get-orchestration-detail` 分页查询编排记录 | `Agent/Modules/GoalModule.cs` |
+| 4 | 前端面板 — RightPanel 新增 Goal 编排记录 tab，展示编排列表 + 点击查看计划步骤详情 | `renderer/src/components/goal/GoalOrchestrationPanel.tsx` |
+| 5 | 实时更新 — Goal 运行时面板实时更新当前编排状态 | 同上 |
+| 6 | 历史查看 — 已完成的 Goal 也能查看编排记录 | 同上 |
+
+**验证标准**：创建并运行 Goal → 右侧面板 Goal 编排 tab 实时显示编排进度 → 每轮计划标题、状态、执行结果可见 → Goal 完成后可回看完整编排历史。
+
+**分支**：`dev/v2-iter-19`　**产品版本**：`0.2.19`　**Tag**：`v0.2.19`
+
+
 ---
 
 ## 迭代依赖关系
@@ -908,8 +930,10 @@ v2-iter-15（模型管理页面）  ← 前端 + ProviderStore
 v2-iter-16（Goal 编排记录可视化）  ← 依赖 Goal 模式（已就绪）
 v2-iter-17（工具调用权限）  ← 安全策略 + 前端确认卡片
 v2-iter-18（Cron 自动化验证）  ← 独立端到端验收
+v2-iter-19（模型管理页面）  ← 前端 + ProviderStore
+v2-iter-19（Goal 编排记录可视化）  ← 依赖 Goal 模式（已就绪）
 ```
 
 v2-iter-1 ~ v2-iter-13 已全部完成（tag v0.2.13）。
-v2-iter-14 ~ v2-iter-18 为后续独立迭代，互不依赖，可按优先级逐个推进。
+v2-iter-14 ~ v2-iter-19 为后续独立迭代，互不依赖，可按优先级逐个推进。
 老大确认迭代范围后，从 main 拆分支 `dev/v2-iter-{N}` 开始。

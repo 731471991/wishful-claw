@@ -1,4 +1,4 @@
-﻿import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -31,6 +31,7 @@ import { registerQuickLauncher } from './quick-launcher'
 import { registerClipboardEnhancer } from './clipboard-enhancer'
 import { setPluginManager } from './channels/auto-reply'
 import { safeSendMessagePackToWindow } from './window-ipc'
+import { setMainWindow } from './main-window-registry'
 
 let mainWindow: BrowserWindow | null = null
 let channelManager: ChannelManager | null = null
@@ -101,6 +102,11 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Register the main window so other modules can send IPC to it reliably.
+  // Do NOT use BrowserWindow.getAllWindows()[0] — auxiliary windows (clipboard
+  // enhancer, quick launcher) can appear at index [0] and break reverse-requests.
+  setMainWindow(mainWindow)
 }
 
 // ── Tray ──

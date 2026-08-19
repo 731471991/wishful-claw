@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import {
   LEFT_SIDEBAR_DEFAULT_WIDTH,
   RIGHT_PANEL_DEFAULT_WIDTH,
@@ -144,6 +144,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
   codeGraphPageOpen: false,
   openCodeGraphPage: () => set({ codeGraphPageOpen: true }),
   closeCodeGraphPage: () => set({ codeGraphPageOpen: false }),
+  taskBoardPageOpen: false,
+  openTaskBoardPage: () => set({ taskBoardPageOpen: true }),
+  closeTaskBoardPage: () => set({ taskBoardPageOpen: false }),
 
   // Dialogs
   shortcutsOpen: false,

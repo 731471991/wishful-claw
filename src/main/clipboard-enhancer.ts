@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Clipboard Enhancer — ditto-style clipboard history.
  *
  * - Polls clipboard (250ms) for near-instant capture
@@ -30,7 +30,8 @@ const DEFAULT_CONFIG: ClipboardConfig = {
   enabled: true,
   maxDays: 7,
   maxItems: 100,
-  accelerators: ['Ctrl+Shift+V']
+  accelerators: ['Ctrl+Shift+V'],
+  hideOnBlur: true
 }
 
 interface ClipboardEntry {
@@ -39,6 +40,7 @@ interface ClipboardEntry {
   timestamp: number
   preview: string
   lastUsed?: number
+  pinned?: boolean
 }
 
 interface ClipboardConfig {
@@ -46,6 +48,7 @@ interface ClipboardConfig {
   maxDays: number
   maxItems: number
   accelerators: string[]
+  hideOnBlur: boolean
 }
 
 // ── Config persistence ──
@@ -66,7 +69,8 @@ function loadConfig(): ClipboardConfig {
         enabled: parsed.enabled ?? DEFAULT_CONFIG.enabled,
         maxDays: typeof parsed.maxDays === 'number' ? parsed.maxDays : DEFAULT_CONFIG.maxDays,
         maxItems: typeof parsed.maxItems === 'number' ? parsed.maxItems : DEFAULT_CONFIG.maxItems,
-        accelerators: accelerators.length > 0 ? accelerators : DEFAULT_CONFIG.accelerators
+        accelerators: accelerators.length > 0 ? accelerators : DEFAULT_CONFIG.accelerators,
+        hideOnBlur: typeof parsed.hideOnBlur === 'boolean' ? parsed.hideOnBlur : DEFAULT_CONFIG.hideOnBlur
       }
     }
   } catch {
@@ -121,12 +125,18 @@ function saveHistory(): void {
   }
 }
 
-/** Remove entries older than maxDays. */
+/** Remove entries older than maxDays. Pinned items are never purged.
+ *  Expiry is based on lastUsed (or timestamp if never used), not creation time.
+ */
 function purgeExpired(): void {
   if (config.maxDays <= 0) return
   const cutoff = Date.now() - config.maxDays * 24 * 60 * 60 * 1000
   const before = history.length
-  history = history.filter((entry) => entry.timestamp >= cutoff)
+  history = history.filter((entry) => {
+    if (entry.pinned) return true
+    const refTime = entry.lastUsed ?? entry.timestamp
+    return refTime >= cutoff
+  })
   if (history.length !== before) {
     saveHistory()
   }
@@ -232,6 +242,18 @@ function registerClipboardIpc(): void {
     return history
   })
 
+  registerMessagePackHandler<string, ClipboardEntry[]>('clipboard:toggle-pin', (id) => {
+    const entry = history.find((item) => item.id === id)
+    if (entry) {
+      entry.pinned = !entry.pinned
+      if (entry.pinned) {
+        entry.lastUsed = Date.now()
+      }
+      saveHistory()
+    }
+    return history
+  })
+
   registerMessagePackHandler<void, ClipboardEntry[]>('clipboard:clear', () => {
     history = []
     saveHistory()
@@ -317,7 +339,9 @@ export function createClipboardWindow(foregroundWindow: string | null = null): v
   })
 
   clipboardWindow.on('blur', () => {
-    clipboardWindow?.hide()
+    if (config.hideOnBlur) {
+      clipboardWindow?.hide()
+    }
   })
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {

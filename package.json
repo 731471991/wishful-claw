@@ -1,6 +1,6 @@
-{
+﻿{
   "name": "wishful-claw",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "description": "Wishful Claw - Agent 编程软件",
   "main": "./out/main/index.js",
   "scripts": {
@@ -44,6 +44,7 @@
     "bufferutil": "^4.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "dingtalk-stream": "^2.1.6-beta.1",
     "gpt-tokenizer": "^3.4.0",
     "i18next": "^26.3.6",

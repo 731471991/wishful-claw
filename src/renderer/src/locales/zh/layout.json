@@ -228,7 +228,7 @@
     "searchLabel": "搜索",
     "drawLabel": "绘图",
     "automationLabel": "自动化",
-    "extensionsLabel": "扩展功能",
+    "extensionsLabel": "扩展",
     "expand": "展开侧边栏",
     "projects": "项目",
     "conversations": "会话",
@@ -244,7 +244,12 @@
     "projectSortBy": "排序方式",
     "projectSortRecentlyUpdated": "最近更新",
     "projectSortName": "名称",
-    "projectSortCreatedAt": "创建时间"
+    "projectSortCreatedAt": "创建时间",
+    "searchPlaceholder": "搜索消息…",
+    "searching": "搜索中…",
+    "noResultsFor": "未找到相关结果",
+    "messages": "消息",
+    "taskBoardLabel": "任务面板"
   },
   "sectionExecution": {
     "title": "执行"
@@ -463,5 +468,13 @@
     "copyFailed": "复制失败",
     "pasteFailed": "粘贴失败",
     "agentSshSession": "Agent SSH 会话"
+  },
+  "searchDialog": {
+    "quickActions": "快捷操作",
+    "keyboardShortcuts": "快捷键设置",
+    "toggleSidebar": "切换侧边栏",
+    "toggleRightPanel": "切换右侧面板",
+    "toggleTheme": "切换主题",
+    "recentSessions": "最近会话"
   }
 }

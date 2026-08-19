@@ -128,6 +128,82 @@ public static class DbMessageTools
         }
     }
 
+    // ─── Search ───
+
+    /// <summary>
+    /// Search message content across all sessions by keyword.
+    /// Returns matching messages with a snippet around the keyword and the session title.
+    /// </summary>
+    public static WorkerResponse SearchContent(JsonElement parameters)
+    {
+        try
+        {
+            var query = RequireString(parameters, "query");
+            var limit = Math.Clamp(JsonHelpers.GetInt(parameters, "limit", 50), 1, 200);
+
+            DbClient.EnsureInitialized(parameters);
+            var db = DbClient.GetClient(parameters);
+
+            // LIKE search on messages.content, join sessions for title
+            var sql = """
+                SELECT m.id, m.session_id, m.content, m.created_at,
+                       s.title AS session_title
+                FROM messages m
+                JOIN sessions s ON s.id = m.session_id
+                WHERE m.content LIKE @pattern
+                ORDER BY m.created_at DESC
+                LIMIT @limit
+                """;
+
+            var pattern = $"%{query}%";
+            var rows = db.Query(
+                sql,
+                (r) =>
+                {
+                    var content = r.GetString("content");
+                    var snippet = BuildSnippet(content, query);
+                    return new MessageSearchResultRow
+                    {
+                        MessageId = r.GetString("id"),
+                        SessionId = r.GetString("session_id"),
+                        SessionTitle = r.GetString("session_title"),
+                        Snippet = snippet,
+                        CreatedAt = r.GetInt64("created_at")
+                    };
+                },
+                new SqliteParameter("@pattern", pattern),
+                new SqliteParameter("@limit", limit));
+
+            return WorkerResponse.Json(
+                new MessageSearchResult(true, rows, null),
+                InfrastructureJsonContext.Default.MessageSearchResult);
+        }
+        catch (Exception ex)
+        {
+            return WorkerResponse.Json(
+                new MessageSearchResult(false, new List<MessageSearchResultRow>(), ex.Message),
+                InfrastructureJsonContext.Default.MessageSearchResult);
+        }
+    }
+
+    /// <summary>
+    /// Build a short snippet around the first occurrence of <paramref name="query"/>
+    /// (already lowercased) within <paramref name="text"/>.
+    /// 20 chars before, 30 after — mirrors OpenCowork's buildSnippet.
+    /// </summary>
+    private static string BuildSnippet(string text, string query)
+    {
+        var lower = text.ToLowerInvariant();
+        var idx = lower.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        if (idx == -1) return string.Empty;
+        var start = Math.Max(0, idx - 20);
+        var end = idx + query.Length + 30;
+        var snippet = (start > 0 ? "..." : "") +
+                      text.AsSpan(start, Math.Min(end, text.Length) - start).ToString().Replace("\n", " ") +
+                      (end < text.Length ? "..." : "");
+        return snippet;
+    }
+
     // ─── Mutations ───
 
     public static WorkerResponse Add(JsonElement parameters)
