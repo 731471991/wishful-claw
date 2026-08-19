@@ -1,4 +1,4 @@
-# 新会话启动提示语
+﻿# 新会话启动提示语
 
 > 复制以下内容到新会话作为第一条消息发送。
 
@@ -63,6 +63,7 @@
 | v2-iter-13 | OpenAI Responses API + 请求超时配置 + 文件树/输入框/设置页收口 — Responses Provider（5 文件）、全局超时配置、AgentFileTreeToolbar、搜索结果类型修复、终端路径传入选中目录、文件树持久化、ComposerStatusIndicator、移除死代码 5 文件 | ✅ 已完成，产品版本 0.2.13，tag v0.2.13，已合并 main |
 | v2-iter-14 | 历史消息反向分页 + 滚动修复 + 侧边栏收起图标统一 — ListLocator + ListByTurns 后端端点、按轮次分页（默认5轮）、loadRecentSessionMessages + fetchOlderMessages + prependMessages、首次加载误触发修复（prevScrollHeightRef + programmaticScrollUntilRef 双重守卫）、代码简化（511→350 行）、侧边栏收起图标统一（TitleBar toggle 常驻） | ✅ 已完成，产品版本 0.2.14，tag v0.2.14，已合并 main |
 | v2-iter-15 | 快捷键系统 + 快速启动器 + 剪贴板增强 + 开机启动 — 开机自启动开关 + 模块管理页面、快速启动器 (Alt+Space)、剪贴板增强 (Ctrl+Shift+V) 前端重写 + 内嵌设置面板、快捷键独立设置页 + 多快捷键编辑器 + 优先级快捷键桥接 + 注册反馈、弹窗主题同步修复、JSON BOM 修复 | ✅ 已完成，产品版本 0.2.15，tag v0.2.15，已合并 main |
+| v2-iter-16 | 左侧面板整理 + use_capability 工具发现增强 — 左侧面板搜索（cmdk 弹窗模式 + DB LIKE 消息搜索 + 快捷操作/最近会话）、扩展功能重组（绘图/自动化/任务面板占位）、主窗口注册修复（reverse-request 不再发错窗口）、use_capability 分页/过滤/搜索、工具输出截限改 UTF-8 字节级、剪贴板置顶功能、BOM 回归修复（28 文件） | ✅ 已完成，产品版本 0.2.16，tag v0.2.16，已合并 main |
 
 ## 当前项目架构（7 层）
 
@@ -84,15 +85,15 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 当前状态
 
-- 当前分支：`main`，当前产品版本：`0.2.15`，最新 tag：`v0.2.15`
-- v2-iter-15（快捷键系统 + 快速启动器 + 剪贴板增强 + 开机启动）已完成，已合并 main 并打 tag v0.2.15，开发分支已清理
-- 验证：TypeScript 3/3 PASS；C# build 0 错误；安装包冒烟测试通过；用户人工验证通过
+- 当前分支：`main`，当前产品版本：`0.2.16`，最新 tag：`v0.2.16`
+- v2-iter-16（左侧面板整理 + use_capability 工具发现增强）已完成，已合并 main 并打 tag v0.2.16，开发分支已清理
+- 验证：TypeScript 3/3 PASS；C# build 0 错误；用户人工验证通过
 - 下一步：先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 的最新 Bug/优化建议，再与老大讨论下一迭代范围
 
 
 ## 下一步（需与老大讨论确认后确定）
 
-当前已完成 v2-iter-15（产品版本 0.2.15，tag v0.2.15）。下一迭代范围待与老大讨论确认。
+当前已完成 v2-iter-16（产品版本 0.2.16，tag v0.2.16）。下一迭代范围待与老大讨论确认。
 
 1. 先检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 中最新的 Bug 和优化建议。
 2. 听取老大新想法，整理优先级、范围、边界和验证标准。
@@ -135,7 +136,7 @@ Worker (12 文件)          — IPC 宿主 + 模块注册
 
 ## 会话开始时请先执行
 
-1. `git status` + `git log --oneline -5` — 确认当前在 `main`，产品版本 `0.2.15`，最新 tag `v0.2.15`
+1. `git status` + `git log --oneline -5` — 确认当前在 `main`，产品版本 `0.2.16`，最新 tag `v0.2.16`
 2. 读 `AGENTS.md` — 查看 7 层架构和分层约定
 3. 读 `docs/iteration-plan.md` + `docs/PROGRESS.md` — 查看已完成迭代与历史计划
 4. 检查 `D:\koda\Obsidian\02-AI教学\wishfulclaw` 中最新的 Bug 和优化建议
