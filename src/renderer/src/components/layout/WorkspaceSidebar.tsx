@@ -197,24 +197,26 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
         {navItems.map(renderNavItem)}
 
         {/* Extensions dropdown (collapsible, hover-to-open) */}
-        <DropdownMenu open={extensionsOpen} onOpenChange={setExtensionsOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              onMouseEnter={openExtensions}
-              onMouseLeave={closeExtensions}
-              className={cn(
-                'flex h-8 w-full items-center gap-2 px-2 text-[13px] font-medium transition-colors rounded-md',
-                extensionsOpen
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-              )}
-            >
-              <FolderOpen className="size-4 shrink-0" />
-              <span className="truncate">{t('sidebar.extensionsLabel', { defaultValue: 'Extensions' })}</span>
-              <ChevronRight className="ml-auto size-3.5 shrink-0" />
-            </button>
-          </DropdownMenuTrigger>
+        <DropdownMenu modal={false} open={extensionsOpen} onOpenChange={setExtensionsOpen}>
+          {/* Wrapper extends past the sidebar edge to bridge the hover gap
+              between trigger and content — prevents close/reopen flicker */}
+          <div className="-mr-1.5 pr-1.5" onMouseEnter={openExtensions} onMouseLeave={closeExtensions}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex h-8 w-full items-center gap-2 px-2 text-[13px] font-medium transition-colors rounded-md',
+                  extensionsOpen
+                    ? 'bg-accent text-foreground'
+                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                )}
+              >
+                <FolderOpen className="size-4 shrink-0" />
+                <span className="truncate">{t('sidebar.extensionsLabel', { defaultValue: 'Extensions' })}</span>
+                <ChevronRight className="ml-auto size-3.5 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+          </div>
           <DropdownMenuContent
             side="right"
             align="start"
@@ -222,6 +224,8 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
             className="w-40"
             onMouseEnter={openExtensions}
             onMouseLeave={closeExtensions}
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
           >
             {extensionItems.map((ext) => (
               <DropdownMenuItem
