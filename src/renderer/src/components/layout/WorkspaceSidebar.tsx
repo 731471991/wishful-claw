@@ -31,6 +31,9 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [extensionsOpen, setExtensionsOpen] = useState(false)
+  // Must be declared before the early return below — hook order must stay stable
+  // across collapsed/expanded renders (React error #300 otherwise).
+  const [searchOpen, setSearchOpen] = useState(false)
   const extensionsHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openExtensions = useCallback(() => {
@@ -149,9 +152,6 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   if (!leftSidebarOpen) {
     return null
   }
-
-  // ─── Search dialog ───
-  const [searchOpen, setSearchOpen] = useState(false)
 
   // ─── Nav items (top buttons) ───
   const navItems: NavButtonItem[] = [
