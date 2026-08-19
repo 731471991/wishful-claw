@@ -60,7 +60,7 @@ export interface ComposerEditorAreaProps {
 
   // Optimization dialog
   showOptimizationDialog: boolean
-  setShowOptimizationDialog: React.Dispatch<React.SetStateAction<boolean>>
+  setShowOptimizationDialog: (open: boolean) => void
   optimizationOptions: OptimizationOption[]
   selectedOptionIndex: number
   setSelectedOptionIndex: React.Dispatch<React.SetStateAction<number>>
