@@ -1,4 +1,4 @@
-﻿# Wishful Claw 迭代计划
+# Wishful Claw 迭代计划
 
 基于 MVP 边界，拆分为多个迭代，每个迭代独立可验证。
 

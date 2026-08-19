@@ -1,4 +1,4 @@
-﻿{
+{
   "splash": {
     "enterMain": "进入主页",
     "enterSettings": "AI 服务商设置",
@@ -228,7 +228,7 @@
     "searchLabel": "搜索",
     "drawLabel": "绘图",
     "automationLabel": "自动化",
-    "extensionsLabel": "扩展功能",
+    "extensionsLabel": "扩展",
     "expand": "展开侧边栏",
     "projects": "项目",
     "conversations": "会话",

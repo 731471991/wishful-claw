@@ -1,4 +1,4 @@
-﻿import '../assets/main.css'
+import '../assets/main.css'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Clipboard, Trash2, X, Settings, ArrowLeft, Pin } from 'lucide-react'

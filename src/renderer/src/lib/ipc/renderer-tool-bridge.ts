@@ -1,4 +1,4 @@
-﻿import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-native-ui'
+import { handleNativeBrowserToolRequest } from '@renderer/lib/tools/browser-native-ui'
 import { handleMcpCapabilityList, handleMcpCapabilityInspect } from '@renderer/lib/tools/mcp-capability-bridge'
 import { handleNativeAskUserRequest } from '@renderer/lib/tools/ask-user-tool'
 import { handleSubAgentApprovalRequest } from '@renderer/lib/tools/sub-agent-approval'

@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand'
+import { create } from 'zustand'
 import {
   LEFT_SIDEBAR_DEFAULT_WIDTH,
   RIGHT_PANEL_DEFAULT_WIDTH,

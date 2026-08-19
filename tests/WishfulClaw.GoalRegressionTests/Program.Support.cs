@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Microsoft.Data.Sqlite;
 using WishfulClaw.Agent;

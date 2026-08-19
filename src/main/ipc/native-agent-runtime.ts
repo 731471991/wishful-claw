@@ -1,4 +1,4 @@
-﻿import { Notification } from 'electron'
+import { Notification } from 'electron'
 import { getNativeWorker } from '../lib/native-worker'
 import { safeSendMessagePackToWindow } from '../window-ipc'
 import {

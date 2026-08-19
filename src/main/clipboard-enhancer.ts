@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Clipboard Enhancer — ditto-style clipboard history.
  *
  * - Polls clipboard (250ms) for near-instant capture

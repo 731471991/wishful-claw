@@ -1,4 +1,4 @@
-﻿// Extracted from ui-store.ts — UIStore interface definition
+// Extracted from ui-store.ts — UIStore interface definition
 
 import type React from 'react'
 import type {

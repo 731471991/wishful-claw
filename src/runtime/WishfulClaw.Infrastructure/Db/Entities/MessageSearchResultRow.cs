@@ -1,4 +1,4 @@
-﻿namespace WishfulClaw.Infrastructure.Db;
+namespace WishfulClaw.Infrastructure.Db;
 
 /// <summary>
 /// A single message content search result with a snippet around the matched keyword.

@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageSquare, Settings, Plus, Search, FolderOpen, ChevronRight, Image, CalendarDays, ArrowDownAZ, ListFilter, SquareKanban } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
@@ -31,6 +31,25 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [extensionsOpen, setExtensionsOpen] = useState(false)
+  const extensionsHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const openExtensions = useCallback(() => {
+    if (extensionsHoverTimer.current) {
+      clearTimeout(extensionsHoverTimer.current)
+      extensionsHoverTimer.current = null
+    }
+    setExtensionsOpen(true)
+  }, [])
+
+  const closeExtensions = useCallback(() => {
+    if (extensionsHoverTimer.current) {
+      clearTimeout(extensionsHoverTimer.current)
+    }
+    extensionsHoverTimer.current = setTimeout(() => {
+      setExtensionsOpen(false)
+      extensionsHoverTimer.current = null
+    }, 150)
+  }, [])
 
   const openDrawPage = useUIStore((s) => s.openDrawPage)
   const openTasksPage = useUIStore((s) => s.openTasksPage)
@@ -177,11 +196,13 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
       <div className="space-y-1 px-2 py-1.5">
         {navItems.map(renderNavItem)}
 
-        {/* Extensions dropdown (collapsible) */}
+        {/* Extensions dropdown (collapsible, hover-to-open) */}
         <DropdownMenu open={extensionsOpen} onOpenChange={setExtensionsOpen}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              onMouseEnter={openExtensions}
+              onMouseLeave={closeExtensions}
               className={cn(
                 'flex h-8 w-full items-center gap-2 px-2 text-[13px] font-medium transition-colors rounded-md',
                 extensionsOpen
@@ -194,7 +215,14 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
               <ChevronRight className="ml-auto size-3.5 shrink-0" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="start" sideOffset={6} className="w-40">
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            sideOffset={6}
+            className="w-40"
+            onMouseEnter={openExtensions}
+            onMouseLeave={closeExtensions}
+          >
             {extensionItems.map((ext) => (
               <DropdownMenuItem
                 key={ext.id}

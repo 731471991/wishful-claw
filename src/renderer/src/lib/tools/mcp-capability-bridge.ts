@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MCP Capability Bridge — handles reverse-requests from the Worker's
  * use_capability executor for listing and inspecting MCP capabilities.
  *
