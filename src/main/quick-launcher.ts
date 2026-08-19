@@ -368,12 +368,8 @@ export function createLauncherWindow(): void {
     } else {
       launcherWindow.show()
       launcherWindow.focus()
-      // Send reset event after show so renderer clears input and focuses
-      setTimeout(() => {
-        if (launcherWindow?.isVisible()) {
-          safeSendMessagePackToWindow(launcherWindow, 'launcher:reset', null)
-        }
-      }, 50)
+      // Reset/focus is driven by the 'show' event listener below (event-driven,
+      // no fixed-delay race)
     }
     return
   }
@@ -406,13 +402,15 @@ export function createLauncherWindow(): void {
     launcherWindow?.hide()
   })
 
-  // Send reset event after show so renderer clears input and focuses
+  // Send reset event after show so renderer clears input and focuses.
+  // A short delay lets the window finish activating on Windows (transparent
+  // alwaysOnTop windows can drop the first focus call when shown too early).
   launcherWindow.on('show', () => {
     setTimeout(() => {
-      if (launcherWindow?.isVisible()) {
-        safeSendMessagePackToWindow(launcherWindow, 'launcher:reset', null)
-      }
-    }, 50)
+      if (!launcherWindow?.isVisible()) return
+      launcherWindow.focus()
+      safeSendMessagePackToWindow(launcherWindow, 'launcher:reset', null)
+    }, 30)
   })
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {

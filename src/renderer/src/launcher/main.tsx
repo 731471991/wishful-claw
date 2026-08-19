@@ -36,19 +36,41 @@ function QuickLauncher(): React.JSX.Element {
     setRecentApps(apps as AppShortcut[])
   }, [])
 
+  // Retry focus until it actually lands. Focus loss is intermittent because the
+  // transparent alwaysOnTop window may not be fully activated when the first
+  // focus() call arrives — keep trying for up to ~800ms.
+  const focusInputUntilActive = useCallback((): void => {
+    const deadline = Date.now() + 800
+    const attempt = (): void => {
+      if (inputRef.current && document.activeElement === inputRef.current) return
+      inputRef.current?.focus({ preventScroll: true })
+      if (Date.now() < deadline) requestAnimationFrame(attempt)
+    }
+    attempt()
+  }, [])
+
   const handleLaunch = useCallback(async (app: AppShortcut): Promise<void> => {
     await window.api.invoke<boolean>('launcher:launch', app.path)
   }, [])
 
   useEffect(() => {
-    inputRef.current?.focus()
+    focusInputUntilActive()
     void loadRecent()
-  }, [])
+  }, [focusInputUntilActive, loadRecent])
 
   useEffect(() => {
     if (view !== 'list') return
-    inputRef.current?.focus()
-  }, [view])
+    focusInputUntilActive()
+  }, [view, focusInputUntilActive])
+
+  // Re-focus when the OS window itself regains focus (e.g. after blur-hide-show)
+  useEffect(() => {
+    const onWindowFocus = (): void => {
+      if (view === 'list') focusInputUntilActive()
+    }
+    window.addEventListener('focus', onWindowFocus)
+    return () => window.removeEventListener('focus', onWindowFocus)
+  }, [view, focusInputUntilActive])
 
   useEffect(() => {
     const trimmed = query.trim()
@@ -74,10 +96,9 @@ function QuickLauncher(): React.JSX.Element {
       setSelectedIndex(0)
       setView('list')
       void loadRecent()
-      // Defer focus to next tick to ensure DOM is ready
-      requestAnimationFrame(() => {
-        inputRef.current?.focus()
-      })
+      // Retry focus until it lands — covers the settings→list view transition
+      // and the window-not-yet-activated race
+      focusInputUntilActive()
     })
     return cleanup
   }, [])
