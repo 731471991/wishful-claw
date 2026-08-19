@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'

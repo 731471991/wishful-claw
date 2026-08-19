@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import * as React from 'react'
 import { ChevronDown, ChevronUp, FileCode2, LocateFixed, Trash2, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'

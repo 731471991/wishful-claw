@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 // Import the encoding directly. The package root also includes the much larger
 // o200k model catalog, even though this estimator is intentionally cl100k-based.
 import { encode } from 'gpt-tokenizer/encoding/cl100k_base'

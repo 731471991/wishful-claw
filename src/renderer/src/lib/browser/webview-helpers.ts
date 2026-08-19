@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 export type MaybePromise<T> = T | PromiseLike<T>
 
 export function isPromiseLike<T = unknown>(value: unknown): value is PromiseLike<T> {

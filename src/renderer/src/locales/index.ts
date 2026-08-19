@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { useSettingsStore } from '@renderer/stores/settings-store'

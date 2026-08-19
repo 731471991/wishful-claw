@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 // Extracted from the former monolithic ssh-store.ts; behavior unchanged.
 import type { StateCreator } from 'zustand'
 import type { SshWorkspaceSection } from './types'

@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { decode, encode } from '@msgpack/msgpack'
 
 export const SIDECAR_APPROVAL_REQUEST_MSGPACK_CHANNEL = 'sidecar:approval-request:msgpack'

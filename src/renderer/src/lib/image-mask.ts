@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 /**
  * Brush-mask engine shared by the chat image editor and the draw canvas.
  * A mask is a PNG at the source image's native resolution where painted

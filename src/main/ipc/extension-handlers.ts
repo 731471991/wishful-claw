@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { shell } from 'electron'
 import { registerMessagePackHandler } from './messagepack-handler'
 import type { ExtensionInstance } from '../../shared/extension-types'

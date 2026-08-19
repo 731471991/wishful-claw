@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import type { AgentEvent } from '@renderer/lib/agent/types'
 import type { AgentStreamEvent } from '../../../../shared/agent-stream-protocol'
 import { agentBridge } from '@renderer/lib/ipc/agent-bridge'

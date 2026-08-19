@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 /**
  * Build an `oc-media://` URL that streams a local file straight from disk via
  * the custom protocol registered in src/main/local-media-protocol.ts. Unlike

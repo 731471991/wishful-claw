@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import type { ContentBlock, ToolResultContent } from '@renderer/lib/api/types'
 import type { ToolCallState, ToolCallStatus } from '@renderer/lib/agent/types'
 import { TASK_TOOL_NAME } from '@renderer/lib/agent/sub-agents/create-tool'

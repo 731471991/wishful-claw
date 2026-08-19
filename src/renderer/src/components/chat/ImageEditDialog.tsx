@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import * as React from 'react'
 import { Eraser, Loader2, Pencil, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'

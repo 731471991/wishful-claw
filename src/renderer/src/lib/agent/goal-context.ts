@@ -1,4 +1,11 @@
-﻿import type { TokenUsage } from '@renderer/lib/api/types'
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
+import type { TokenUsage } from '@renderer/lib/api/types'
 import type { SessionGoal } from '@renderer/stores/goal-store'
 
 export const MAX_GOAL_OBJECTIVE_CHARS = 4000

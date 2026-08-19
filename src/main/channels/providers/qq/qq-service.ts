@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import WebSocket from 'ws'
 import { markQqWakeupSent, resolveQqWakeupEligibility } from '../../../db/qq-wakeup-dao'
 import { INTENT_LEVELS, RECONNECT_DELAYS, INVALID_SESSION_RECONNECT_DELAY, parseBooleanConfig } from './qq-config'

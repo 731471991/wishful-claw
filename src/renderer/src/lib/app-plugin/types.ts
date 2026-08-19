@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 export const IMAGE_PLUGIN_ID = 'image' as const
 export const BROWSER_PLUGIN_ID = 'browser' as const
 export const DESKTOP_CONTROL_PLUGIN_ID = 'desktop-control' as const

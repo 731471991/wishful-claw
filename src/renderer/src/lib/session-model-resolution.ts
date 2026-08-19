@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import type { AIModelConfig, AIProvider } from '@renderer/lib/api/types'
 import type { Session, SessionModelSelectionMode } from '@renderer/stores/chat-store'
 import type { MainModelSelectionMode } from '@renderer/stores/settings-store'

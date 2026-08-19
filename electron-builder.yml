@@ -1,4 +1,4 @@
-appId: com.wishfulclaw.app
+﻿appId: com.wishfulclaw.app
 productName: Wishful Claw
 directories:
   output: release
@@ -21,6 +21,8 @@ files:
   - out/**/*
   - package.json
   - resources/icon-256.png
+  - LICENSE
+  - THIRD_PARTY_NOTICES.md
 
   # ── 项目文件排除 ──
   - '!src/*'

@@ -1,4 +1,4 @@
-# Wishful Claw - Agents 指南
+﻿# Wishful Claw - Agents 指南
 
 本文档供 AI 编程助手阅读，帮助理解项目结构和开发约定。
 
@@ -185,15 +185,15 @@ Worker
 
 ## 参考源码
 
-> 以下是 WishfulClaw 的设计思路来源。OpenCowork 的代码经迁移和重构后纳入 WishfulClaw 架构，其余项目主要借鉴设计思路，代码由 WishfulClaw 自行实现。
+> 以下是 WishfulClaw 的设计思路来源。OpenCowork 的代码经迁移和重构后纳入 WishfulClaw 架构（迁移文件头部均保留原始版权声明），其余项目主要借鉴设计思路，代码由 WishfulClaw 自行实现。本地副本路径见 `docs/new-session-prompt.md`。
 
-| 项目 | 路径 | 参考内容 |
-|------|------|---------|
-| OpenCowork | `D:\claw\OpenCowork` | Agent Loop、工具链、Provider、流式协议（迁移+重构） |
-| KodaClaw | `D:\claw\koda-claw` | 记忆系统、人格系统、PromptBuilder（借鉴思路） |
-| OpenClaw.net | `D:\claw\openclaw.net` | 记忆主动回忆、记忆工具、上下文预算（借鉴思路） |
-| DeepSeek-Reasonix | `D:\claw\DeepSeek-Reasonix` | 缓存命中率统计、工具注册发现、工具注入体系（借鉴思路） |
-| OpenAI Codex | — | Goal 模式状态机、自检评估机制（借鉴思路，参考开源仓库 `github.com/openai/codex`） |
+| 项目 | 仓库地址 | 参考内容 |
+|------|---------|---------|
+| OpenCowork | https://github.com/AIDotNet/OpenCowork | Agent Loop、工具链、Provider、流式协议（迁移+重构） |
+| KodaClaw | https://github.com/nekonaka/koda-claw | 记忆系统、人格系统、PromptBuilder（借鉴思路） |
+| OpenClaw.net | https://github.com/nekonaka/openclaw.net | 记忆主动回忆、记忆工具、上下文预算（借鉴思路） |
+| DeepSeek-Reasonix | https://github.com/deepseek-ai/DeepSeek-Reasonix | 缓存命中率统计、工具注册发现、工具注入体系（借鉴思路） |
+| OpenAI Codex | https://github.com/openai/codex | Goal 模式状态机、自检评估机制（借鉴思路） |
 
 ## 开发约定
 

@@ -29,13 +29,13 @@
 
 **切勿**拿到计划文档后不经确认就默认执行。
 
-## 参考源码位置（笔记本实际路径）
+## 参考源码位置
 
-- OpenCowork：`D:\claw\OpenCowork`（Agent Loop / 工具链 / Provider / 前端 UI / Skill / MCP，代码已迁移）
-- KodaClaw：`D:\claw\koda-claw`（记忆 / 人格设计思路，代码已迁移）
-- OpenClaw.net：`D:\claw\openclaw.net`（记忆主动回忆 / 上下文预算，代码已迁移）
-- DeepSeek-Reasonix：`D:\claw\DeepSeek-Reasonix`（prefix cache / 重试策略 / 上下文压缩 / 工具注册发现 / 工具注入体系参考）
-- OpenAI Codex：开源仓库 `github.com/openai/codex`（Goal 模式状态机 plan→execute→verify→continue/adjust、自检评估机制参考）
+- OpenCowork：https://github.com/AIDotNet/OpenCowork（Agent Loop / 工具链 / Provider / 前端 UI / Skill / MCP，代码已迁移；本地副本 `D:\claw\OpenCowork`）
+- KodaClaw：https://github.com/nekonaka/koda-claw（记忆 / 人格设计思路，本地副本 `D:\claw\koda-claw`）
+- OpenClaw.net：https://github.com/nekonaka/openclaw.net（记忆主动回忆 / 上下文预算，本地副本 `D:\claw\openclaw.net`）
+- DeepSeek-Reasonix：https://github.com/deepseek-ai/DeepSeek-Reasonix（prefix cache / 重试策略 / 上下文压缩 / 工具注册发现 / 工具注入体系参考，本地副本 `D:\claw\DeepSeek-Reasonix`）
+- OpenAI Codex：https://github.com/openai/codex（Goal 模式状态机 plan→execute→verify→continue/adjust、自检评估机制参考）
 
 > 以上参考项目代码已全部迁移并适配为 WishfulClaw 命名空间，仅作历史溯源，开发时不再直接参考。
 

@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { Check, CircleX, Clock3, Loader2, Maximize2, ScrollText, UserRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { OrchestrationMember } from '@renderer/lib/orchestration/types'

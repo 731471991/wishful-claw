@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { getPetsDir } from '@renderer/stores/pet-skin-store'
 import { localDateKey } from '@renderer/stores/pet-store'

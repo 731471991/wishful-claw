@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LiveOutputAnimationStyle } from '@renderer/stores/settings-store'
 import { recordStreamingRenderPoolFlush } from '@renderer/lib/streaming-perf'

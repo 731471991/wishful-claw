@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 const LIVE_PREVIEW_CHARS = 1_200
 const LIVE_WIDGET_RENDER_CHARS = 64_000
 const LIVE_PRECISE_LINE_COUNT_LIMIT = 128 * 1024

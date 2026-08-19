@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 export const BUILTIN_BROWSER_PARTITION = 'persist:wishfulclaw-browser'
 export const BROWSER_SETTINGS_STORAGE_KEY = 'wishfulclaw-settings'
 export const BROWSER_USER_DATA_REUSE_SETTING_KEY = 'browserUserDataReuseEnabled'

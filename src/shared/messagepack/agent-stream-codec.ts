@@ -1,3 +1,10 @@
+/*
+ * Ported from OpenCowork.
+ * Original: Copyright 2026 AIDotNet
+ * Licensed under the Apache License, Version 2.0 (the "License").
+ * Modified by the Wishful 心相 team for Wishful Claw.
+ */
+
 import { decode, decodeMulti, encode } from '@msgpack/msgpack'
 import { AGENT_STREAM_PROTOCOL_VERSION, type AgentStreamEnvelope } from '../agent-stream-protocol'
 
