@@ -11,6 +11,7 @@
   - **编排写入** — GoalPlanRecorder（best-effort，失败仅 Warn 不阻断编排）挂接 GoalOrchestratorLoop 四节点；与 GoalPlanTracker 的 md 落盘并行镜像
   - **端点链路** — db/goal-plan-tasks-list（DbModule → main IPC → shared 常量 → loadGoalPlanTasks store）
   - **面板 UI** — GoalHistoryPanel 计划卡片点击展开每轮详情（轮次徽标/状态/耗时/评估理由/已调整标记/steps），active goal 10s 轮询刷新；轮次按链根 planId 匹配（兼容 adjust 换 planId）
+  - **后台子 agent 内容错位修复** — 根因：子 agent childState 复用父 SessionId，AgentLoop 以 sessionId 为键取 SessionConversation，后台子 agent 与主会话并发读写同一消息列表（主 agent 后续消息被子 agent 消费执行、子 agent transcript 反向污染主上下文；前台模式同样污染只是串行不明显）。修复：sessionMode=subAgent 时会话键改为 `__subagent__{runId}` 隔离，子 agent 结束后 Remove 清理
   - 验证：C# build 0 错误；TS 3/3 零错误；运行时待用户实测
 
 ## v2-iter-18：429重试配置化 + 输入框状态独立显示 + 默认模式工具审批
