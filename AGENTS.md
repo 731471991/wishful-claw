@@ -330,8 +330,16 @@ git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 pus
 收尾的最后一步是发布版本：
 
 1. **推送 main 和 tag**：`git -c http.proxy=... push origin main` + `push origin v0.2.{N}`（走代理，见上文步骤 3）
-2. **创建 GitHub Release**：基于 `v0.2.{N}` tag，标题为 `v0.2.{N}`，notes 按本迭代的功能单元汇总（用 `git log v0.2.{N-1}..v0.2.{N} --oneline` 提取）
-   - 本机未安装 gh CLI 时，通过浏览器登录 GitHub 创建（Releases → Draft a new release → 选择 tag → 填写 notes → Publish）
+2. **创建 GitHub Release**：使用本地便携版 gh CLI（固定路径 `D:\claw\tools\gh\bin\gh.exe`，须保留勿删，登录凭据存于系统 keyring）：
+
+   ```bash
+   # 用 git log 提取本迭代变更，按功能单元汇总成 notes 后：
+   HTTPS_PROXY=http://127.0.0.1:7897 /d/claw/tools/gh/bin/gh.exe release create v0.2.{N} \
+     --repo wishful-73/wishful-claw --title "v0.2.{N}" --notes-file <notes文件>
+   ```
+
+   - notes 按本迭代的功能单元汇总，用 `git log v0.2.{N-1}..v0.2.{N} --oneline` 提取
+   - gh 不在 PATH 中，必须用绝对路径调用；gh.exe 不可用时用浏览器登录 GitHub 手动创建（Releases → Draft a new release → 选择 tag → 填写 notes → Publish）
 3. **发布后核验**：确认 GitHub 上 main 分支、tag、Release 三者均到位
 4. 如需附带安装包，将打包产物（如有）作为 Release Assets 上传
 
