@@ -1,4 +1,4 @@
-﻿// Tab slice — extracted from ui-store.ts
+// Tab slice — extracted from ui-store.ts
 // Contains right panel tab management methods to keep ui-store.ts under 500 lines
 
 import type { UIStore } from './ui-store-interface'

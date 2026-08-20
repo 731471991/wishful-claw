@@ -1,4 +1,4 @@
-﻿import { useCallback } from 'react'
+import { useCallback } from 'react'
 import { useChatStore } from '@renderer/stores/chat-store'
 import { useProviderStore } from '@renderer/stores/provider-store'
 import { useActivityStore } from '@renderer/stores/activity-store'

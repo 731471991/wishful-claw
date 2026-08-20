@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X, MessageSquare, Sparkles } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'

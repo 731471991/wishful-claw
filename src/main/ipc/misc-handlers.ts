@@ -1,4 +1,4 @@
-﻿import { BrowserWindow, Notification, dialog, shell } from 'electron'
+import { BrowserWindow, Notification, dialog, shell } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 import { getNativeWorker } from '../lib/native-worker'

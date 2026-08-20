@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Core.Tools;
+using WishfulClaw.Core.Tools;
 
 namespace WishfulClaw.Agent.Tools.Providers;
 

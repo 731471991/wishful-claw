@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 using WishfulClaw.Core.Tools;

@@ -1,4 +1,4 @@
-﻿// Runtime status bar: token/cost/TPS/TTFT metrics + streaming status indicator
+// Runtime status bar: token/cost/TPS/TTFT metrics + streaming status indicator
 
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Model Management Panel — global model library.
  *
  * Displays all managed models (builtin + custom) with their provider sources.

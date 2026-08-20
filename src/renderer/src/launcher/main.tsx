@@ -1,4 +1,4 @@
-﻿import '../assets/main.css'
+import '../assets/main.css'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Search, CornerDownLeft, Settings, ArrowLeft, Plus, Trash2 } from 'lucide-react'
@@ -8,6 +8,8 @@ interface AppShortcut {
   name: string
   path: string
   iconDataUrl?: string
+  isHistory?: boolean
+  isSystem?: boolean
 }
 
 interface CustomApp {
@@ -183,6 +185,16 @@ function QuickLauncher(): React.JSX.Element {
                     )}
                   </div>
                   <span className="min-w-0 flex-1 truncate">{app.name}</span>
+                  {app.isHistory && (
+                    <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] leading-none text-muted-foreground">
+                      历史
+                    </span>
+                  )}
+                  {app.isSystem && (
+                    <span className="shrink-0 rounded bg-primary/15 px-1 py-0.5 text-[9px] leading-none text-primary">
+                      系统
+                    </span>
+                  )}
                   {index === selectedIndex && (
                     <CornerDownLeft className="size-3 shrink-0 text-muted-foreground" />
                   )}

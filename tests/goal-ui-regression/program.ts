@@ -1,4 +1,4 @@
-﻿import {
+import {
   applyGoalProgressState,
   applyGoalStatusToProjects,
   isRuntimeGoalVisible,

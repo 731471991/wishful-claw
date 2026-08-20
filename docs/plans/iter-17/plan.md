@@ -93,6 +93,34 @@
   - 新增 `logDebug` API；`log:write` IPC 支持 debug 级上报
 - **验证**：`npm run dev` 下日志含 warn/info；打包版运行后日志文件仅出现 ERROR 条目
 
+### 8. 🟡 快速搜索匹配增强（知识库改进项纳入，进行中）
+
+- **来源**：知识库 `改进.md` 2026-08-19 待优化项（参考 utools 匹配逻辑）+ 用户追加反馈
+- **需求**：
+  - ① Windows 内置应用（便签等 UWP/打包应用）也能搜出——当前只扫 Start Menu .lnk，UWP 应用无 .lnk
+  - ② 英文简写/模糊匹配：`wc` 匹配 Wishful Claw（词首字母），支持空格分隔与驼峰边界（如 `wc` 匹配 wishfulClaw）
+  - ③ 启动历史优先：搜索结果中启动历史条目排前面
+  - ④ 历史与注册表去重：同一应用不同名时按真实目标路径去重（.lnk 解析 target）
+- **实现**（`src/main/quick-launcher.ts`）：
+  - UWP 扫描：PowerShell + `Shell.Application` 枚举 `shell:AppsFolder` 命名空间（`GetDetailsOf($item,2)` 取 AppUserModelId），缓存到 `~/.wishful-claw/uwp-apps.json`（24h TTL，过期后台刷新当轮用旧缓存），path 用 `shell:AppsFolder\<AppUserModelId>` 形式，`shell.openPath` 可直接启动
+  - 历史优先：`getOrRefreshAppList` 合并顺序为 历史 → 自定义 → Start Menu .lnk → UWP；搜索评分中历史条目 +1000 分恒定排前；`launcher:launch` 记录历史后失效缓存
+  - 匹配：预生成名称变体，搜索时用输入值在变体中任意命中（includes）——原小写名 / 去空格纯小写（wishfulclaw）/ 词首+驼峰首字母小写（wc，Wishful Claw / wishfulClaw / WeChat 均得 wc）/ 拼音全拼与首字母；分层评分 —— 完全相等(100) > 名称前缀(90) > 拼音全拼前缀(88) > 拼音首字母前缀(86) > 子串(80-位置) > 去空格包含(75) > 首字母包含(70) > 拼音包含(60/58)；按分数降序取前 50
+  - 去重：.lnk 用 `shell.readShortcutLink().target` 解析真实路径作 key（+名称 key），历史先入池占位，后续同目标/同名条目跳过——历史与注册表一致时只保留历史条目；AppsFolder 中路径型 AppId 直接用 exe 路径入池，与 .lnk 目标去重
+  - 渲染侧（`src/renderer/src/launcher/main.tsx`）：历史条目显示"历史"徽标
+- **实测修复（第一轮反馈）**：
+  - 便签搜不到：实测该机器 AppsFolder 命名空间**第 2 列为空**，AppId 在第 0 列、显示名在第 1 列 → 改用 `GetDetailsOf($item,0/1)`；另旧逻辑 `*!*` 过滤把非经典 AUMID（Chrome.F64CFL.../com.xxx 形式）全部滤掉 → 去除该过滤（仅排除 http* URL 快捷方式）；旧版写入的空缓存 24h 不过期 → 手动删除 `~/.wishful-claw/uwp-apps.json` + 扫描完成后失效 appListCache
+  - 焦点被抢：扫描进程未加 `windowsHide: true`，控制台窗口闪现抢焦点；且 spawnSync 阻塞主进程数秒干扰焦点时序 → 改异步 spawn + windowsHide + 30s watchdog
+  - gc 排序：首字母/去空格名**全等**命中计 85 分，高于名称中部子串（80-位置）→ Google Chrome 排到杂项命中之前
+  - 启动：`shell:AppsFolder\...` 伪路径 `shell.openPath` 不支持 → 改 `spawn('explorer.exe', [path])`
+- **借鉴 ZTools（D:\claw\ZTools-main，开源 uTools 类项目）扫描器分析**：
+  - 已采纳：`SKIP_NAME_PATTERN` 过滤卸载/帮助/文档类噪音条目；`SKIP_FOLDERS` 递归跳过 sdk/docs/samples 等文件夹；新增桌面快捷方式扫描（用户桌面 + 公共桌面，平铺不递归）
+  - **系统设置入口已搬入**（用户要求直接搬）：新建 `src/main/launcher-system-settings.ts`（同质数据单文件），完整移植 ZTools 的 ~90 项 ms-settings URI + 控制面板/管理工具/系统工具；入池时 path 用 `syscmd:<command>` 标记，`launcher:launch` 按类型分发（ms-settings → openExternal / shell: → explorer / 带参命令行 → spawn / .msc → mmc / .cpl → control / 裸 exe → openPath）；渲染侧加"系统"徽标；"清空回收站"因需确认弹窗未搬
+  - 不采纳及理由：native C++ 扫描模块（TS+PowerShell 已够用）；Fuse.js（分层评分可预测且已覆盖拼音/首字母，拼写容错作后续候选）；chokidar 监听（5分钟 TTL + 失效机制够用）；`name|targetPath` 组合去重（允许同名异标共存，与用户"同目标去重"需求相反）
+- **便签搜不到的最终根因（第二轮）**：PowerShell 管道输出实际是 **GBK**（hex 实证），旧代码按 UTF-16LE 解码全是乱码 → 解析 0 条。修复：先 UTF-8 解码，含替换符则回退 GBK（`TextDecoder('gbk')`）；另空缓存（apps.length===0）也触发重扫，不再等 24h TTL
+- **UWP 条目无图标（第三轮）**：`app.getFileIcon` 解析不了 `shell:AppsFolder\...` 伪路径。ZTools 用自编译 native C++ 模块取图标；我们用同等 Windows API 路线的 PowerShell 内联 C# 替代：扫描脚本 `Add-Type` 编译 `ShellIconExtractor`（SHParseDisplayName → IShellItem → IShellItemImageFactory.GetImage），每个非路径型条目提取 48px PNG 存入 `~/.wishful-claw/uwp-icons/`，输出第三列 iconPath 写入缓存（UwpCacheFile 加 version 强制旧缓存重扫）；`AppShortcut.iconFile` 供 `withIcon` 直接读图，历史条目按 path 反查继承；提取失败回退首字母；watchdog 30s→60s
+- **图标黑底（第四轮）**：便签图标提取成功但显示为"默认图标"——`Bitmap.FromHbitmap` 会丢弃 GetImage 返回的 32bpp 预乘 HBITMAP 的 alpha 通道，透明区域填黑（像素级对比实证：中心点旧图 (115,105,57) 是黄×黑混合，新图 (236,195,0) 纯黄；四角 alpha 255→0）。修复：C# 内改用 GetObject+GetBitmapBits 手动拷 BGRA 位数据（bottom-up DIB 翻转为 top-down），保留 alpha；全 0 alpha 平面兼容为不透明；`UWP_CACHE_VERSION` 2→3 强制重扫覆盖黑底 PNG
+- **验证**：搜 `wc` 出 Wishful Claw；搜"便签"出 Windows 内置应用**且带图标**；搜"设备管理器"/"声音"出系统设置条目带"系统"标；启动过的应用搜任意命中词时排第一且带"历史"标；重复应用不出现两条
+
 ## 步骤建议
 
 1. 提交工作区拆分改动（编译已通过，作为首个 commit）
@@ -102,11 +130,12 @@
 
 ## 验证检查点
 
-- [ ] 左侧面板收起/展开切换无 React error #300
-- [ ] Alt+Space 连续唤起 10+ 次焦点稳定落在输入框（偶发问题需压测）
+- [x] 左侧面板收起/展开切换无 React error #300
+- [x] Alt+Space 连续唤起 10+ 次焦点稳定落在输入框（偶发问题需压测）
 - [x] 剪贴板点击条目后目标应用收到粘贴（含网页输入框，Ctrl+` 实测通过）
-- [ ] 剪贴板交互：方向键切换选中 + Enter 粘贴 + 单击选中 + 双击粘贴均可用
-- [ ] 扩展菜单子项不闪烁
-- [ ] 提示词优化可取消、超时不卡死
-- [ ] 打包版日志仅 ERROR；开发版全量（可用 `WISHFUL_CLAW_LOG_LEVEL` 覆盖）
-- [ ] 三层 TS 编译零错误
+- [x] 剪贴板交互：方向键切换选中 + Enter 粘贴 + 单击选中 + 双击粘贴均可用
+- [x] 扩展菜单子项不闪烁
+- [x] 提示词优化可取消、超时不卡死
+- [x] 打包版日志仅 ERROR；开发版全量（可用 `WISHFUL_CLAW_LOG_LEVEL` 覆盖）
+- [x] 三层 TS 编译零错误
+- [x] #8 快速搜索：`wc` 匹配 Wishful Claw；能搜出便签等内置应用；能搜出设备管理器等系统设置；历史条目排前带"历史"标；重复应用只出一条

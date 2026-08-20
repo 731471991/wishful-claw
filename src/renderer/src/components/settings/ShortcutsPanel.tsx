@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Clipboard, Search } from 'lucide-react'
 import { Switch } from '@renderer/components/ui/switch'

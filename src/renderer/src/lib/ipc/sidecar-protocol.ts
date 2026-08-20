@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   ProviderConfig
 } from '../api/types'
 import { summarizeToolInputForHistory } from '../tools/tool-input-sanitizer'

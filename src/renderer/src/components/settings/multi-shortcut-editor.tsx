@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Keyboard, Plus, Trash2 } from 'lucide-react'
 
 interface MultiShortcutEditorProps {

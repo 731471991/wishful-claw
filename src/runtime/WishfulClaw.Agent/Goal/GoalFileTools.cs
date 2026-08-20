@@ -1,4 +1,4 @@
-﻿using WishfulClaw.Contracts;
+using WishfulClaw.Contracts;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 

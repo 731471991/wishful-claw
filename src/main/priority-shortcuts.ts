@@ -1,4 +1,4 @@
-﻿import { app, globalShortcut } from 'electron'
+import { app, globalShortcut } from 'electron'
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import * as fs from 'fs'
 import { join } from 'path'

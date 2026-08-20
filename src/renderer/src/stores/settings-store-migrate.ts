@@ -1,4 +1,4 @@
-﻿import type { PermissionPolicy } from '../../../shared/permission-policy'
+import type { PermissionPolicy } from '../../../shared/permission-policy'
 import { sanitizePermissionPolicy } from '../../../shared/permission-policy'
 import {
   DEFAULT_APP_THEME_PRESET,

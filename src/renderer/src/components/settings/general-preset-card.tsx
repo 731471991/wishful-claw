@@ -1,4 +1,4 @@
-﻿import type { AppThemeMode, ThemePresetDefinition } from '@renderer/lib/theme-presets'
+import type { AppThemeMode, ThemePresetDefinition } from '@renderer/lib/theme-presets'
 import { cn } from '@renderer/lib/utils'
 
 function PresetSwatches({ preset }: { preset: ThemePresetDefinition }): React.JSX.Element {

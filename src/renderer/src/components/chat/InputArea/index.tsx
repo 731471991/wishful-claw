@@ -1,4 +1,4 @@
-﻿// InputArea: main composer component with editor, toolbar, and controls
+// InputArea: main composer component with editor, toolbar, and controls
 
 import * as React from 'react'
 import type { SendMessageOptions } from '@renderer/hooks/use-chat-actions'
