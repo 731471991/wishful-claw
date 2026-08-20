@@ -322,3 +322,77 @@ export function upsertGoalEvent(setState: GoalStoreSetter, event: SessionGoalEve
   })
 }
 
+
+// ─── Goal Plan Task（每轮执行记录）───
+
+export interface SessionGoalPlanTask {
+  id: string
+  sessionId: string
+  goalId: string
+  planId: string
+  originalPlanId?: string | null
+  planTitle?: string | null
+  round: number
+  status: 'executing' | 'completed' | 'failed'
+  description?: string | null
+  steps?: string[] | null
+  summary?: string | null
+  evaluationReasoning?: string | null
+  evaluationSatisfied?: boolean | null
+  adjusted: boolean
+  startedAt: number
+  finishedAt?: number | null
+}
+
+export interface SessionGoalPlanTaskRow {
+  id: number
+  sessionId: string
+  goalId: string
+  planId: string
+  originalPlanId: string | null
+  planTitle: string | null
+  round: number
+  status: string
+  description: string | null
+  stepsJson: string | null
+  summary: string | null
+  evaluationReasoning: string | null
+  evaluationSatisfied: boolean | null
+  adjusted: boolean
+  startedAt: number
+  finishedAt: number | null
+}
+
+export function rowToPlanTask(row: SessionGoalPlanTaskRow): SessionGoalPlanTask {
+  let steps: string[] | null = null
+  if (row.stepsJson) {
+    try {
+      const parsed = JSON.parse(row.stepsJson)
+      if (Array.isArray(parsed)) steps = parsed.filter((s): s is string => typeof s === 'string')
+    } catch {
+      steps = null
+    }
+  }
+  return {
+    id: String(row.id),
+    sessionId: row.sessionId,
+    goalId: row.goalId,
+    planId: row.planId,
+    originalPlanId: row.originalPlanId,
+    planTitle: row.planTitle,
+    round: row.round,
+    status: (['executing', 'completed', 'failed'] as const).includes(
+      row.status as SessionGoalPlanTask['status']
+    )
+      ? (row.status as SessionGoalPlanTask['status'])
+      : 'executing',
+    description: row.description,
+    steps,
+    summary: row.summary,
+    evaluationReasoning: row.evaluationReasoning,
+    evaluationSatisfied: row.evaluationSatisfied,
+    adjusted: row.adjusted || (row.originalPlanId != null && row.originalPlanId !== row.planId && row.round > 1),
+    startedAt: row.startedAt,
+    finishedAt: row.finishedAt
+  }
+}

@@ -1,17 +1,21 @@
 import { create } from 'zustand'
 import {
   DB_GOALS_LIST_PAGE_MSGPACK_CHANNEL,
-  DB_GOAL_EVENTS_LIST_PAGE_MSGPACK_CHANNEL
+  DB_GOAL_EVENTS_LIST_PAGE_MSGPACK_CHANNEL,
+  DB_GOAL_PLAN_TASKS_LIST_MSGPACK_CHANNEL
 } from '@shared/messagepack/binary-ipc'
 import { invokeMessagePackBinary } from '@renderer/lib/ipc/messagepack-ipc-client'
 import {
   mutationError,
   rowToEvent,
   rowToGoal,
+  rowToPlanTask,
   type GoalEventPageResult,
   type GoalPageResult,
   type SessionGoal,
-  type SessionGoalEvent
+  type SessionGoalEvent,
+  type SessionGoalPlanTask,
+  type SessionGoalPlanTaskRow
 } from './goal-store-helpers'
 import { applyGoalStatusToProjects } from './goal-state-transitions'
 
@@ -29,6 +33,7 @@ interface GoalEventPageCursor {
 interface GoalHistoryState {
   goalsByProject: Record<string, SessionGoal[]>
   eventsByGoal: Record<string, SessionGoalEvent[]>
+  planTasksByGoal: Record<string, SessionGoalPlanTask[]>
   goalCursorsByProject: Record<string, GoalPageCursor | null>
   eventCursorsByGoal: Record<string, GoalEventPageCursor | null>
   goalHasMoreByProject: Record<string, boolean>
@@ -53,6 +58,7 @@ interface GoalHistoryState {
     force?: boolean
   ) => Promise<SessionGoalEvent[]>
   loadMoreGoalEvents: (sessionId: string, goalId: string) => Promise<SessionGoalEvent[]>
+  loadGoalPlanTasks: (sessionId: string, goalId: string, force?: boolean) => Promise<SessionGoalPlanTask[]>
 }
 
 export function goalProjectKey(projectId: string | null): string {
@@ -66,6 +72,7 @@ export function goalHistoryKey(sessionId: string, goalId: string): string {
 export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
   goalsByProject: {},
   eventsByGoal: {},
+  planTasksByGoal: {},
   goalCursorsByProject: {},
   eventCursorsByGoal: {},
   goalHasMoreByProject: {},
@@ -263,6 +270,29 @@ export const useGoalHistoryStore = create<GoalHistoryState>((set, get) => ({
     } catch {
       set((current) => ({ loadingGoals: { ...current.loadingGoals, [key]: false } }))
       return cached
+    }
+  },
+
+  loadGoalPlanTasks: async (sessionId, goalId, force = false) => {
+    const key = goalHistoryKey(sessionId, goalId)
+    const cached = get().planTasksByGoal[key]
+    if (cached && !force) return cached
+
+    set((state) => ({ loadingGoals: { ...state.loadingGoals, [key]: true } }))
+    try {
+      const rows = await invokeMessagePackBinary<SessionGoalPlanTaskRow[]>(
+        DB_GOAL_PLAN_TASKS_LIST_MSGPACK_CHANNEL,
+        { sessionId, goalId }
+      )
+      const tasks = (rows ?? []).map(rowToPlanTask)
+      set((state) => ({
+        planTasksByGoal: { ...state.planTasksByGoal, [key]: tasks },
+        loadingGoals: { ...state.loadingGoals, [key]: false }
+      }))
+      return tasks
+    } catch {
+      set((state) => ({ loadingGoals: { ...state.loadingGoals, [key]: false } }))
+      return cached ?? []
     }
   }
 }))
