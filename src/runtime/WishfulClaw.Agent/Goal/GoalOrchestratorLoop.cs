@@ -114,6 +114,9 @@ public static partial class GoalOrchestrator
         {
             await ReachSafePointAsync(goal, context, ct);
 
+            // Mirror this execution round into goal_plan_tasks (best-effort)
+            var roundTaskId = GoalPlanRecorder.StartRound(parameters, goal, plan, plan.RetryCount + 1);
+
             // Execute the plan
             var result = await ExecutePlanAsync(
                 goal, plan, parameters, parentState, context, ct);
@@ -155,6 +158,7 @@ public static partial class GoalOrchestrator
                 // Plan completed successfully
                 plan.Status = "completed";
                 plan.ResultSummary = evaluation.Reasoning ?? result.Summary;
+                GoalPlanRecorder.FinishRound(parameters, roundTaskId, "completed", plan.ResultSummary, evaluation.Reasoning, true);
                 GoalPlanTracker.FinishPlan(goal.WorkingFolder, goal.GoalId, plan);
                 await EmitGoalEventAsync(goal, GoalEventType.PlanCompleted,
                     $"Plan {planIndex + 1} completed: {plan.Title}. {plan.ResultSummary}", context);
@@ -168,6 +172,7 @@ public static partial class GoalOrchestrator
             {
                 plan.Status = "failed";
                 plan.ResultSummary = $"Failed after {maxRetries} retries: {evaluation.Reasoning}";
+                GoalPlanRecorder.FinishRound(parameters, roundTaskId, "failed", plan.ResultSummary, evaluation.Reasoning, false);
                 GoalPlanTracker.FinishPlan(goal.WorkingFolder, goal.GoalId, plan);
                 await EmitGoalEventAsync(goal, GoalEventType.PlanFailed,
                     $"Plan {planIndex + 1} failed after {maxRetries} retries: {evaluation.Reasoning}", context);
@@ -175,6 +180,10 @@ public static partial class GoalOrchestrator
                 SyncGoalToDb(goal, parameters);
                 return;
             }
+
+            // Round did not satisfy the evaluation - record it, then retry/adjust
+            GoalPlanRecorder.FinishRound(parameters, roundTaskId, "failed",
+                result.Summary, evaluation.Reasoning, false);
 
             // Adjust plan based on evaluation
             await ReachSafePointAsync(goal, context, ct);
