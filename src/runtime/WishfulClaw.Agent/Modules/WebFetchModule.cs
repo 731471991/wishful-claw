@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using WishfulClaw.Contracts;
 using WishfulClaw.Agent;

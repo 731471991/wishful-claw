@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import type { TFunction } from 'i18next'
 import { toast } from 'sonner'
 import { useUIStore } from '@renderer/stores/ui-store'

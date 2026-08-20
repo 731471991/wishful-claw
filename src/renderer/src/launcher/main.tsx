@@ -1,4 +1,4 @@
-﻿import '../assets/main.css'
+import '../assets/main.css'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Search, CornerDownLeft, Settings, ArrowLeft, Plus, Trash2 } from 'lucide-react'
@@ -8,6 +8,8 @@ interface AppShortcut {
   name: string
   path: string
   iconDataUrl?: string
+  isHistory?: boolean
+  isSystem?: boolean
 }
 
 interface CustomApp {
@@ -36,19 +38,41 @@ function QuickLauncher(): React.JSX.Element {
     setRecentApps(apps as AppShortcut[])
   }, [])
 
+  // Retry focus until it actually lands. Focus loss is intermittent because the
+  // transparent alwaysOnTop window may not be fully activated when the first
+  // focus() call arrives — keep trying for up to ~800ms.
+  const focusInputUntilActive = useCallback((): void => {
+    const deadline = Date.now() + 800
+    const attempt = (): void => {
+      if (inputRef.current && document.activeElement === inputRef.current) return
+      inputRef.current?.focus({ preventScroll: true })
+      if (Date.now() < deadline) requestAnimationFrame(attempt)
+    }
+    attempt()
+  }, [])
+
   const handleLaunch = useCallback(async (app: AppShortcut): Promise<void> => {
     await window.api.invoke<boolean>('launcher:launch', app.path)
   }, [])
 
   useEffect(() => {
-    inputRef.current?.focus()
+    focusInputUntilActive()
     void loadRecent()
-  }, [])
+  }, [focusInputUntilActive, loadRecent])
 
   useEffect(() => {
     if (view !== 'list') return
-    inputRef.current?.focus()
-  }, [view])
+    focusInputUntilActive()
+  }, [view, focusInputUntilActive])
+
+  // Re-focus when the OS window itself regains focus (e.g. after blur-hide-show)
+  useEffect(() => {
+    const onWindowFocus = (): void => {
+      if (view === 'list') focusInputUntilActive()
+    }
+    window.addEventListener('focus', onWindowFocus)
+    return () => window.removeEventListener('focus', onWindowFocus)
+  }, [view, focusInputUntilActive])
 
   useEffect(() => {
     const trimmed = query.trim()
@@ -74,10 +98,9 @@ function QuickLauncher(): React.JSX.Element {
       setSelectedIndex(0)
       setView('list')
       void loadRecent()
-      // Defer focus to next tick to ensure DOM is ready
-      requestAnimationFrame(() => {
-        inputRef.current?.focus()
-      })
+      // Retry focus until it lands — covers the settings→list view transition
+      // and the window-not-yet-activated race
+      focusInputUntilActive()
     })
     return cleanup
   }, [])
@@ -162,6 +185,16 @@ function QuickLauncher(): React.JSX.Element {
                     )}
                   </div>
                   <span className="min-w-0 flex-1 truncate">{app.name}</span>
+                  {app.isHistory && (
+                    <span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[9px] leading-none text-muted-foreground">
+                      历史
+                    </span>
+                  )}
+                  {app.isSystem && (
+                    <span className="shrink-0 rounded bg-primary/15 px-1 py-0.5 text-[9px] leading-none text-primary">
+                      系统
+                    </span>
+                  )}
                   {index === selectedIndex && (
                     <CornerDownLeft className="size-3 shrink-0 text-muted-foreground" />
                   )}

@@ -1,4 +1,4 @@
-﻿// Lightweight status indicator (icon + text) for placement inside the composer shell.
+// Lightweight status indicator (icon + text) for placement inside the composer shell.
 // Renders only the status portion of ComposerRuntimeStatus.
 
 import * as React from 'react'

@@ -16,14 +16,6 @@ import {
   Trash2,
   Pencil,
   Brain,
-  Code2,
-  Eye,
-  Image as ImageIcon,
-  Mic,
-  Video,
-  Shapes,
-  MonitorSmartphone,
-  Sparkles,
   Layers,
   RefreshCw
 } from 'lucide-react'
@@ -54,7 +46,6 @@ import {
   AlertDialogTitle
 } from '@renderer/components/ui/alert-dialog'
 import { useProviderStore } from '@renderer/stores/provider-store'
-import { modelSupportsVision } from '@renderer/stores/provider-store'
 import type { AIModelConfig } from '../../../../../shared/types/provider'
 import type { ManagedModelConfig } from '@renderer/stores/managed-models'
 import { normalizeModelKey, toManagedModelBase } from '@renderer/stores/managed-models'
@@ -69,39 +60,7 @@ import {
   ALL_PROVIDER_FILTER,
   type ManagedModelProviderSource
 } from './provider-source-index'
-
-function modelSupportsComputerUse(model: AIModelConfig, providerType?: string): boolean {
-  return Boolean(model.supportsComputerUse || model.enableComputerUse) || providerType === 'openai-responses'
-}
-
-function getCapabilityIndicators(
-  model: ManagedModelConfig,
-  providerType?: string
-): Array<{ key: string; icon: React.ComponentType<{ className?: string }>; label: string }> {
-  const indicators: Array<{ key: string; icon: React.ComponentType<{ className?: string }>; label: string }> = []
-  if (model.category === 'image') {
-    indicators.push({ key: 'cat-image', icon: ImageIcon, label: '' })
-  } else if (model.category === 'speech') {
-    indicators.push({ key: 'cat-speech', icon: Mic, label: '' })
-  } else if (model.category === 'embedding') {
-    indicators.push({ key: 'cat-embedding', icon: Shapes, label: '' })
-  } else if (model.category === 'video') {
-    indicators.push({ key: 'cat-video', icon: Video, label: '' })
-  }
-  if (modelSupportsVision(model, model.type ?? providerType as any)) {
-    indicators.push({ key: 'vision', icon: Eye, label: '' })
-  }
-  if (model.supportsFunctionCall !== false) {
-    indicators.push({ key: 'function', icon: Code2, label: '' })
-  }
-  if (modelSupportsComputerUse(model, model.type ?? providerType)) {
-    indicators.push({ key: 'computer-use', icon: MonitorSmartphone, label: '' })
-  }
-  if (model.supportsThinking) {
-    indicators.push({ key: 'thinking', icon: Sparkles, label: '' })
-  }
-  return indicators
-}
+import { getCapabilityIndicators } from './model-capability-helpers'
 
 export function ModelManagementPanel(): React.JSX.Element {
   const { t } = useTranslation('settings')

@@ -1,4 +1,4 @@
-﻿namespace WishfulClaw.Contracts;
+namespace WishfulClaw.Contracts;
 
 public static class GoalStatusValues
 {

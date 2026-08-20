@@ -1,4 +1,4 @@
-﻿import { useGoalStore } from '@renderer/stores/goal-store'
+import { useGoalStore } from '@renderer/stores/goal-store'
 import { GoalConfirmResolvers, type GoalConfirmResponse } from './goal-confirm-resolvers'
 
 // Goal confirmation reverse request (like plan review).

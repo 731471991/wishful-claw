@@ -1,4 +1,4 @@
-﻿// ─── Types ───
+// ─── Types ───
 
 export type AppMode = 'chat' | 'clarify' | 'cowork' | 'code' | 'acp'
 

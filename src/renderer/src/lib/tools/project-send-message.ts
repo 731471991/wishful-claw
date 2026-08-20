@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Project Send-Session-Message Handler
  *
  * Handles `project/send-session-message` reverse-request from the native worker.

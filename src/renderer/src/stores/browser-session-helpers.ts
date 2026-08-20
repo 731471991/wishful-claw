@@ -1,4 +1,4 @@
-﻿/**
+/**
 
  * Browser session-scoped state helpers.
 

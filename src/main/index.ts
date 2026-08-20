@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, shell, dialog, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, shell, dialog, Tray, Menu, nativeImage } from 'electron'
 import { join } from 'path'
 import * as fs from 'fs'
 
@@ -7,7 +7,7 @@ import * as fs from 'fs'
 import appIcon from '../../resources/icon-256.png?asset'
 
 import { getNativeWorker } from './lib/native-worker'
-import { logError, logWarn, logInfo, installGlobalExceptionHandlers, readRecentLogs } from './lib/logger'
+import { logError, logWarn, logInfo, logDebug, installGlobalExceptionHandlers, readRecentLogs } from './lib/logger'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
@@ -32,6 +32,8 @@ import { registerClipboardEnhancer } from './clipboard-enhancer'
 import { setPluginManager } from './channels/auto-reply'
 import { safeSendMessagePackToWindow } from './window-ipc'
 import { setMainWindow } from './main-window-registry'
+import { registerLoginItemHandlers, registerWindowControlHandlers } from './ipc/window-handlers'
+import { registerMiscHandlers } from './ipc/misc-handlers'
 
 let mainWindow: BrowserWindow | null = null
 let channelManager: ChannelManager | null = null
@@ -129,44 +131,6 @@ function createTray(): void {
   tray.on('click', () => mainWindow?.show())
 }
 
-/**
- * Login item (auto-start) IPC handlers.
- * Uses Electron's native app.setLoginItemSettings API.
- * In dev mode this registers electron.exe; in packaged builds it registers the app exe.
- */
-function registerLoginItemHandlers(): void {
-  registerMessagePackHandler<void, boolean>('app:get-login-item-settings', () => {
-    const settings = app.getLoginItemSettings()
-    return settings.openAtLogin
-  })
-
-  registerMessagePackHandler<boolean, boolean>('app:set-login-item-settings', (openAtLogin) => {
-    app.setLoginItemSettings({ openAtLogin })
-    return app.getLoginItemSettings().openAtLogin
-  })
-}
-
-function registerWindowControlHandlers(): void {
-  registerMessagePackHandler<void>('window:minimize', (_args, event) => {
-    BrowserWindow.fromWebContents(event.sender)?.minimize()
-  })
-
-  registerMessagePackHandler<void>('window:maximize', (_args, event) => {
-    const win = BrowserWindow.fromWebContents(event.sender)
-    if (!win) return
-    if (win.isMaximized()) win.unmaximize()
-    else win.maximize()
-  })
-
-  registerMessagePackHandler<void>('window:close', (_args, event) => {
-    BrowserWindow.fromWebContents(event.sender)?.close()
-  })
-
-  registerMessagePackHandler<void, boolean>('window:isMaximized', (_args, event) => {
-    return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
-  })
-}
-
 app.setName('WishfulClaw')
 
 // 单实例锁：双击 exe 时聚焦已有窗口，不启动新进程
@@ -193,43 +157,8 @@ if (!gotTheLock) {
   // Login item (auto-start) handlers
   registerLoginItemHandlers()
 
-  // Desktop notification handler — renderer calls this when agent loop ends
-  // and the window is NOT focused (user is away from the app).
-  registerMessagePackHandler<{ title: string; body: string; type?: string }, { success: boolean }>(
-    'notification:show',
-    async (args) => {
-      if (!Notification.isSupported()) {
-        return { success: false }
-      }
-      const notification = new Notification({
-        title: args.title,
-        body: args.body,
-        urgency: args.type === 'error' ? 'critical' : 'normal'
-      })
-      notification.show()
-      return { success: true }
-    }
-  )
-
-  // Register IPC handler: forward ping to worker
-  registerMessagePackHandler<Record<string, unknown>, { ok: boolean; pid: number }>(
-    'worker/ping',
-    async () => {
-      const worker = getNativeWorker()
-      const result = await worker.request<{ ok: boolean; pid: number }>('worker/ping', {})
-      return result
-    }
-  )
-
-  // Generic worker request forwarder: renderer calls window.api.workerRequest(method, params)
-  // and main forwards to the worker via named pipe IPC.
-  registerMessagePackHandler<{ method: string; params?: unknown; timeoutMs?: number }, unknown>(
-    'worker:request',
-    async (args) => {
-      const worker = getNativeWorker()
-      return worker.request(args.method, args.params ?? {}, args.timeoutMs)
-    }
-  )
+  // Register miscellaneous IPC handlers (notifications, worker forwarders, shell, file watch, image persistence)
+  registerMiscHandlers(() => mainWindow)
 
   // Register AI provider persistence handlers
   registerAiProviderHandlers()
@@ -464,7 +393,10 @@ registerWebSearchHandlers()
   registerMessagePackHandler<{ level: string; message: string; stack?: string; extra?: Record<string, unknown> }, void>(
     'log:write',
     async (args) => {
-      const fn = args.level === 'error' ? logError : args.level === 'warn' ? logWarn : logInfo
+      const fn =
+        args.level === 'error' ? logError :
+        args.level === 'warn' ? logWarn :
+        args.level === 'debug' ? logDebug : logInfo
       fn('renderer', args.message, { stack: args.stack, extra: args.extra })
     }
   )
@@ -476,157 +408,7 @@ registerWebSearchHandlers()
     }
   )
 
-  // -- Shell handlers --
-  registerMessagePackHandler<string, void>(
-    'shell:openExternal',
-    async (args) => {
-      await shell.openExternal(args)
-    }
-  )
-
-  registerMessagePackHandler<string, void>(
-    'shell:openPath',
-    async (args) => {
-      await shell.openPath(args)
-    }
-  )
-
-  registerMessagePackHandler<string, void>(
-    'shell:showItemInFolder',
-    async (args) => {
-      shell.showItemInFolder(args)
-    }
-  )
-
-  registerMessagePackHandler<string, void>(
-    'shell:trashPath',
-    async (args) => {
-      await shell.trashItem(args)
-    }
-  )
-
-  registerMessagePackHandler<{ path: string; appId?: string }, void>(
-    'shell:openWithApp',
-    async (args) => {
-      // Open file with default app (appId ignored for now, uses OS default)
-      await shell.openPath(args.path)
-    }
-  )
-
-  // -- File selection dialog --
-  registerMessagePackHandler<{ multiSelections?: boolean }, { canceled: boolean; path: string; paths: string[] }>(
-    'fs:select-file',
-    async (args) => {
-      const properties: ('openFile' | 'multiSelections')[] = ['openFile']
-      if (args?.multiSelections) properties.push('multiSelections')
-      const result = await dialog.showOpenDialog(mainWindow!, {
-        properties: properties as ('openFile' | 'multiSelections')[]
-      })
-      return {
-        canceled: result.canceled,
-        path: result.filePaths[0] ?? '',
-        paths: result.filePaths
-      }
-    }
-  )
-
-  // -- File watch handlers --
-  const watchedFiles = new Map<string, fs.FSWatcher>()
-
-  registerMessagePackHandler<{ path: string }, { path: string }>(
-    'fs:watch-file',
-    async (args) => {
-      const filePath = args.path
-      if (watchedFiles.has(filePath)) {
-        return { path: filePath }
-      }
-      try {
-        const watcher = fs.watch(filePath, { persistent: false }, (eventType) => {
-          if (eventType === 'change') {
-            safeSendMessagePackToWindow(mainWindow!, 'fs:file-changed', { path: filePath })
-          }
-        })
-        watcher.on('error', () => {
-          watchedFiles.delete(filePath)
-        })
-        watchedFiles.set(filePath, watcher)
-        return { path: filePath }
-      } catch {
-        return { path: filePath }
-      }
-    }
-  )
-
-  registerMessagePackHandler<{ path: string }, void>(
-    'fs:unwatch-file',
-    async (args) => {
-      const watcher = watchedFiles.get(args.path)
-      if (watcher) {
-        watcher.close()
-        watchedFiles.delete(args.path)
-      }
-    }
-  )
-
-  // -- Browser emulation status (stub -- returns defaults) --
-  registerMessagePackHandler<void, { success: true; status: { reuseEnabled: boolean; userAgent: string } }>(
-    'browser:emulation-status',
-    async () => {
-      return { success: true, status: { reuseEnabled: false, userAgent: '' } }
-    }
-  )
-
-  // -- Image persistence (browser screenshots, generated images) --
-  const GENERATED_IMAGES_DIR = 'wishful-claw'
-  const GENERATED_IMAGES_SUBDIR = 'image'
-
-  function getGeneratedImagesDir(): string {
-    const { homedir } = require('os')
-    const dir = join(homedir(), GENERATED_IMAGES_DIR, GENERATED_IMAGES_SUBDIR)
-    fs.mkdirSync(dir, { recursive: true })
-    return dir
-  }
-
-  function guessExtensionFromMimeType(mediaType?: string): string {
-    switch ((mediaType || '').toLowerCase()) {
-      case 'image/jpeg':
-        return '.jpg'
-      case 'image/webp':
-        return '.webp'
-      case 'image/gif':
-        return '.gif'
-      case 'image/bmp':
-        return '.bmp'
-      default:
-        return '.png'
-    }
-  }
-
-  registerMessagePackHandler<{ data?: string; mediaType?: string; url?: string; filePath?: string }, { filePath?: string; mediaType?: string; data?: string; error?: string }>(
-    'image:persist-generated',
-    async (args) => {
-      try {
-        let buffer: Buffer
-        if (typeof args.data === 'string' && args.data.trim()) {
-          buffer = Buffer.from(args.data, 'base64')
-        } else {
-          return { error: 'Missing image data' }
-        }
-        const mediaType = args.mediaType || 'image/png'
-        const fileExt = guessExtensionFromMimeType(mediaType)
-        const { randomUUID } = require('crypto')
-        const filePath = join(getGeneratedImagesDir(), `${Date.now()}-${randomUUID()}${fileExt}`)
-        fs.writeFileSync(filePath, buffer)
-        return {
-          filePath,
-          mediaType,
-          data: args.data
-        }
-      } catch (err) {
-        return { error: String(err) }
-      }
-    }
-  )
+  // -- Shell, file watch, image persistence handlers are registered via registerMiscHandlers --
 
   createWindow()
   createTray()

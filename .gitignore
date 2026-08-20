@@ -51,3 +51,4 @@ build_out
 release/
 dist-electron/
 scripts/
+.kb-update/

@@ -1,4 +1,4 @@
-﻿# v2-iter-13 候选需求分析
+# v2-iter-13 候选需求分析
 
 > 来源：`D:\koda\Obsidian\02-AI教学\wishfulclaw` 知识库（更新于 2026-08-14）+ GPT-5.6 Sol 适配排查
 > 当前状态：v2-iter-12 已完成，产品版本 0.2.12，tag v0.2.12，main 分支

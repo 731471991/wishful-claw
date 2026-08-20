@@ -98,24 +98,31 @@ function ClipboardEnhancer(): React.JSX.Element {
     selected?.scrollIntoView({ block: 'nearest' })
   }, [selectedIndex, filteredHistory])
 
-  // Single click: copy, hide the panel, and paste into the previous app.
+  // Paste: copy, hide the panel, and paste into the previous app.
   const handlePaste = useCallback(async (text: string): Promise<void> => {
     await window.api.invoke<boolean>('clipboard:copy', text)
   }, [])
 
-  const handleListKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIndex((prev) => Math.min(prev + 1, filteredHistory.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIndex((prev) => Math.max(prev - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      const entry = filteredHistory[selectedIndex]
-      if (entry) void handlePaste(entry.text)
+  // Window-level keyboard navigation: Arrow keys move selection, Enter pastes.
+  // Attached to window (not the list div) so it works while the search input holds focus.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (view !== 'list') return
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex((prev) => Math.min(prev + 1, filteredHistory.length - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex((prev) => Math.max(prev - 1, 0))
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        const entry = filteredHistory[selectedIndex]
+        if (entry) void handlePaste(entry.text)
+      }
     }
-  }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [view, filteredHistory, selectedIndex, handlePaste])
 
   const handleDelete = useCallback(async (id: string): Promise<void> => {
     const updated = await window.api.invoke<ClipboardEntry[]>('clipboard:delete', id)
@@ -270,8 +277,8 @@ function ClipboardEnhancer(): React.JSX.Element {
         </div>
       )}
 
-      {/* History list */}
-      <div ref={listRef} className="flex-1 overflow-y-auto" onKeyDown={handleListKeyDown}>
+      {/* History list — single click selects, double click pastes */}
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         {filteredHistory.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <Clipboard className="size-8 opacity-40" />
@@ -283,7 +290,8 @@ function ClipboardEnhancer(): React.JSX.Element {
           filteredHistory.map((entry, index) => (
             <div
               key={entry.id}
-              onClick={() => void handlePaste(entry.text)}
+              onClick={() => setSelectedIndex(index)}
+              onDoubleClick={() => void handlePaste(entry.text)}
               onMouseEnter={() => setSelectedIndex(index)}
               className={
                 'group flex cursor-pointer items-start gap-2 border-b border-border/50 px-4 py-3 transition-colors ' +
@@ -312,6 +320,7 @@ function ClipboardEnhancer(): React.JSX.Element {
                     e.stopPropagation()
                     void handleTogglePin(entry.id)
                   }}
+                  onDoubleClick={(e) => e.stopPropagation()}
                   className={"rounded p-0.5 " + (entry.pinned ? "text-primary" : "text-muted-foreground hover:text-primary")}
                   title={entry.pinned ? '取消置顶' : '置顶'}
                 >
@@ -322,6 +331,7 @@ function ClipboardEnhancer(): React.JSX.Element {
                     e.stopPropagation()
                     void handleDelete(entry.id)
                   }}
+                  onDoubleClick={(e) => e.stopPropagation()}
                   className="rounded p-0.5 text-muted-foreground hover:text-destructive"
                 >
                   <X className="size-3" />

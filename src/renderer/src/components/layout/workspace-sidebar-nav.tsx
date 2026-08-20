@@ -1,4 +1,4 @@
-﻿import { useCallback, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
 

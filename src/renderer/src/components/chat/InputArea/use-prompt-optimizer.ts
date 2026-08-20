@@ -26,6 +26,9 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
   const [showOptimizationDialog, setShowOptimizationDialog] = React.useState(false)
   const [selectedOptionIndex, setSelectedOptionIndex] = React.useState(0)
   const contentScrollRef = React.useRef<HTMLDivElement>(null)
+  // Abort handle for the in-flight stream — cancel button and timeout both use it,
+  // so a hung network request can never lock the input area forever.
+  const abortRef = React.useRef<AbortController | null>(null)
 
   const handleOptimizePrompt = React.useCallback(async () => {
     const trimmed = text.trim()
@@ -37,6 +40,11 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
     setSelectedOptionIndex(0)
     // Show dialog immediately — options will load progressively
     setShowOptimizationDialog(true)
+
+    const controller = new AbortController()
+    abortRef.current = controller
+    // Hard timeout so a hung request cannot keep isOptimizing=true forever
+    const timeout = setTimeout(() => controller.abort(new Error('Optimization timed out')), 120_000)
 
     try {
       const { optimizePrompt } = await import('@renderer/lib/prompt-optimizer/optimizer')
@@ -51,6 +59,7 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
           description: 'Please configure an AI provider in Settings'
         })
         setIsOptimizing(false)
+        setShowOptimizationDialog(false)
         return
       }
 
@@ -64,6 +73,7 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
       if (!modelId) {
         toast.error('No AI model available', { description: 'Please enable a model in Settings' })
         setIsOptimizing(false)
+        setShowOptimizationDialog(false)
         return
       }
 
@@ -78,7 +88,8 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
         systemPrompt: ''
       }
 
-      for await (const event of optimizePrompt(trimmed, providerConfig, currentLanguage)) {
+      for await (const event of optimizePrompt(trimmed, providerConfig, currentLanguage, controller.signal)) {
+        if (controller.signal.aborted) break
         if (event.type === 'text') {
           setOptimizingText((prev) => prev + event.content)
         } else if (event.type === 'tool_call' && event.options && event.options.length > 0) {
@@ -91,10 +102,14 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
         }
       }
     } catch (error) {
-      toast.error('Optimization failed', {
-        description: error instanceof Error ? error.message : String(error)
-      })
+      if (!controller.signal.aborted) {
+        toast.error('Optimization failed', {
+          description: error instanceof Error ? error.message : String(error)
+        })
+      }
     } finally {
+      clearTimeout(timeout)
+      abortRef.current = null
       setIsOptimizing(false)
     }
   }, [text, isOptimizing, currentLanguage])
@@ -114,17 +129,33 @@ export function usePromptOptimizer(opts: UsePromptOptimizerOptions) {
   )
 
   const handleCancelOptimization = React.useCallback(() => {
+    // Abort the in-flight stream so it cannot keep the input area locked
+    abortRef.current?.abort(new Error('Cancelled'))
     setOptimizationOptions([])
     setOptimizingText('')
     setSelectedOptionIndex(0)
     setShowOptimizationDialog(false)
+    setIsOptimizing(false)
+  }, [])
+
+  // Dialog open-state wrapper: closing via Esc/X/overlay also aborts the stream,
+  // otherwise isOptimizing would keep the input area locked until the request ends.
+  const handleDialogOpenChange = React.useCallback((open: boolean) => {
+    if (!open) {
+      abortRef.current?.abort(new Error('Cancelled'))
+      setOptimizationOptions([])
+      setOptimizingText('')
+      setSelectedOptionIndex(0)
+      setIsOptimizing(false)
+    }
+    setShowOptimizationDialog(open)
   }, [])
 
   return {
     isOptimizing,
     optimizationOptions,
     showOptimizationDialog,
-    setShowOptimizationDialog,
+    setShowOptimizationDialog: handleDialogOpenChange,
     selectedOptionIndex,
     setSelectedOptionIndex,
     contentScrollRef,

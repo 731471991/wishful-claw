@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using WishfulClaw.Core.Tools;
 using WishfulClaw.Workspace.Memory;
 

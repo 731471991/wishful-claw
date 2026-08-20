@@ -1,4 +1,4 @@
-﻿// Pure utility functions and types extracted from MessageList.tsx
+// Pure utility functions and types extracted from MessageList.tsx
 
 import type { ContentBlock, ToolResultContent, UnifiedMessage } from '@renderer/lib/api/types'
 import type { ChatRenderableMessageMeta, TailToolExecutionState } from '../transcript-utils'

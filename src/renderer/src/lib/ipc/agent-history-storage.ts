@@ -1,4 +1,4 @@
-﻿import { ipcClient } from './ipc-client'
+import { ipcClient } from './ipc-client'
 
 export interface AgentHistoryApplyRequest<T> {
   upserts?: T[]

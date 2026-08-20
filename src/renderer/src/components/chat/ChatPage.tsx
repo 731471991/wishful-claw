@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react'
+import { useEffect } from 'react'
 import { MessageList } from './MessageList'
 import { InputArea } from './InputArea'
 import { ActivityPanel } from '../activity/ActivityPanel'

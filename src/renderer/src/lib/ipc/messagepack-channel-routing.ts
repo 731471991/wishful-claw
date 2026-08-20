@@ -1,4 +1,4 @@
-﻿import { HOOK_IPC_CHANNELS } from '../../../../shared/hooks/types'
+import { HOOK_IPC_CHANNELS } from '../../../../shared/hooks/types'
 
 const MESSAGEPACK_INVOKE_CHANNELS = new Set<string>([
   'app:homedir',

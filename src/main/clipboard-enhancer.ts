@@ -21,6 +21,12 @@ let lastClipboardText = ''
 let history: ClipboardEntry[] = []
 let config: ClipboardConfig
 let previousForegroundWindow: string | null = null
+let previousFocusWindow: string | null = null
+// Whether the accelerator that opened the panel contains Alt. A bare Alt press
+// leaks to the target app (low-level hooks can't block the modifier itself)
+// and Chrome answers by focusing its menu button — the restore path then
+// injects Escape to clear that state.
+let openedWithAlt = false
 
 const DATA_DIR = join(app.getPath('home'), '.wishful-claw')
 const HISTORY_FILE = join(DATA_DIR, 'clipboard-history.json')
@@ -197,8 +203,10 @@ function registerShortcut(): boolean {
   let allRegistered = true
   for (let index = 0; index < config.accelerators.length; index++) {
     const id = `clipboard-enhancer-${index}`
-    const registered = registerPriorityShortcut(id, config.accelerators[index], ({ foregroundWindow }) => {
-      createClipboardWindow(foregroundWindow)
+    const accelerator = config.accelerators[index]
+    const registered = registerPriorityShortcut(id, accelerator, ({ foregroundWindow, focusWindow }) => {
+      openedWithAlt = accelerator.toLowerCase().includes('alt')
+      createClipboardWindow(foregroundWindow, focusWindow)
     })
     registeredShortcutIds.push(id)
     if (!registered) allRegistered = false
@@ -219,8 +227,10 @@ function registerClipboardIpc(): void {
   // Copy + paste into the app that was active before the panel opened.
   registerMessagePackHandler<string, boolean>('clipboard:copy', (text) => {
     const targetWindow = previousForegroundWindow
+    const targetFocus = previousFocusWindow
+    const clearMenu = openedWithAlt
     previousForegroundWindow = null
-    clipboardWindow?.hide()
+    previousFocusWindow = null
     clipboard.writeText(text)
     lastClipboardText = text
     // Move the used entry to top and update lastUsed
@@ -233,7 +243,8 @@ function registerClipboardIpc(): void {
       history.unshift(existing)
       saveHistory()
     }
-    return pasteToForegroundWindow(targetWindow)
+    clipboardWindow?.hide()
+    return pasteToForegroundWindow(targetWindow, targetFocus, true, clearMenu)
   })
 
   registerMessagePackHandler<string, ClipboardEntry[]>('clipboard:delete', (id) => {
@@ -265,7 +276,7 @@ function registerClipboardIpc(): void {
   registerMessagePackHandler<void, ClipboardConfig>('clipboard:get-config', () => config)
 
   registerMessagePackHandler<void, void>('clipboard:hide', () => {
-    clipboardWindow?.hide()
+    hideClipboardWindow()
   })
 
   registerMessagePackHandler<Partial<ClipboardConfig>, ClipboardConfig & { shortcutRegistered: boolean }>('clipboard:update-config', (patch) => {
@@ -298,15 +309,34 @@ function registerClipboardIpc(): void {
 
 // ── Window ──
 
-export function createClipboardWindow(foregroundWindow: string | null = null): void {
+/** Hide the panel. When the hide is explicit (hotkey toggle / Escape), hand
+ *  focus back to the app that opened it (ditto-style). Order matters: activate
+ *  the target FIRST, then hide — hiding first races the OS's own window switch
+ *  and Chrome loses the page's DOM focus (Ditto does ReleaseFocus before
+ *  ShowWindow(SW_HIDE) for the same reason). On blur the focus has already
+ *  moved to whatever the user clicked, so leave it alone. */
+function hideClipboardWindow(restoreFocus = true): void {
+  if (!clipboardWindow || !clipboardWindow.isVisible()) return
+  const targetWindow = previousForegroundWindow
+  const targetFocus = previousFocusWindow
+  const clearMenu = openedWithAlt
+  previousForegroundWindow = null
+  previousFocusWindow = null
+  if (restoreFocus && targetWindow) {
+    pasteToForegroundWindow(targetWindow, targetFocus, false, clearMenu)
+  }
+  clipboardWindow.hide()
+}
+
+export function createClipboardWindow(foregroundWindow: string | null = null, focusWindow: string | null = null): void {
   registerClipboardIpc()
 
   if (clipboardWindow) {
     if (clipboardWindow.isVisible()) {
-      previousForegroundWindow = null
-      clipboardWindow.hide()
+      hideClipboardWindow()
     } else {
       previousForegroundWindow = foregroundWindow
+      previousFocusWindow = focusWindow
       clipboardWindow.show()
       clipboardWindow.focus()
       pushThemeRefresh()
@@ -340,7 +370,7 @@ export function createClipboardWindow(foregroundWindow: string | null = null): v
 
   clipboardWindow.on('blur', () => {
     if (config.hideOnBlur) {
-      clipboardWindow?.hide()
+      hideClipboardWindow(false)
     }
   })
 
@@ -351,6 +381,7 @@ export function createClipboardWindow(foregroundWindow: string | null = null): v
   }
 
   previousForegroundWindow = foregroundWindow
+  previousFocusWindow = focusWindow
   clipboardWindow.show()
   clipboardWindow.focus()
   setTimeout(() => {
@@ -375,6 +406,7 @@ export function registerClipboardEnhancer(): void {
   app.on('will-quit', () => {
     unregisterShortcut()
     previousForegroundWindow = null
+    previousFocusWindow = null
     if (pollTimer) {
       clearInterval(pollTimer)
       pollTimer = null

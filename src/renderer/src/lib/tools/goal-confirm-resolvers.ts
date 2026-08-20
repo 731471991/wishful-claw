@@ -1,4 +1,4 @@
-﻿export interface GoalConfirmResponse {
+export interface GoalConfirmResponse {
   confirmed: boolean
 }
 

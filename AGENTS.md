@@ -1,4 +1,4 @@
-﻿# Wishful Claw - Agents 指南
+# Wishful Claw - Agents 指南
 
 本文档供 AI 编程助手阅读，帮助理解项目结构和开发约定。
 

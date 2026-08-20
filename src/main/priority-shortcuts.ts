@@ -1,4 +1,4 @@
-﻿import { app, globalShortcut } from 'electron'
+import { app, globalShortcut } from 'electron'
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import * as fs from 'fs'
 import { join } from 'path'
@@ -6,6 +6,7 @@ import { logWarn } from './lib/logger'
 
 interface ShortcutContext {
   foregroundWindow: string | null
+  focusWindow: string | null
 }
 
 interface ShortcutRegistration {
@@ -17,6 +18,7 @@ interface BridgeMessage {
   type?: string
   id?: string
   foregroundWindow?: string
+  focusWindow?: string
 }
 
 const registrations = new Map<string, ShortcutRegistration>()
@@ -36,6 +38,7 @@ $source = @'
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 
 public static class PriorityHotkeyBridge
@@ -51,6 +54,28 @@ public static class PriorityHotkeyBridge
     private const uint LLKHF_INJECTED = 0x00000010;
     private const uint LLKHF_ALTDOWN = 0x00000020;
     private const int SW_RESTORE = 9;
+    private const int VK_MENU = 0x12;
+    private const int VK_SHIFT = 0x10;
+    private const int VK_CONTROL = 0x11;
+    private const int SPI_GETFOREGROUNDLOCKTIMEOUT = 0x2000;
+    private const int SPI_SETFOREGROUNDLOCKTIMEOUT = 0x2001;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct GUITHREADINFO
+    {
+        public uint cbSize;
+        public uint flags;
+        public IntPtr hwndActive;
+        public IntPtr hwndFocus;
+        public IntPtr hwndCapture;
+        public IntPtr hwndMenuOwner;
+        public IntPtr hwndMoveSize;
+        public IntPtr hwndCaret;
+        public RECT rcCaret;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int left; public int top; public int right; public int bottom; }
 
     private sealed class HotkeySpec
     {
@@ -65,6 +90,7 @@ public static class PriorityHotkeyBridge
     private static readonly object Sync = new object();
     private static readonly ManualResetEvent Ready = new ManualResetEvent(false);
     private static readonly HashSet<int> SuppressedKeys = new HashSet<int>();
+    private static readonly HashSet<int> ReleasedMods = new HashSet<int>();
     private static readonly LowLevelKeyboardProc HookProc = HookCallback;
     private static HotkeySpec[] _hotkeys = new HotkeySpec[0];
     private static IntPtr _hook = IntPtr.Zero;
@@ -97,11 +123,181 @@ public static class PriorityHotkeyBridge
         }
     }
 
-    public static bool Paste(long windowValue)
+    public static bool Paste(long windowValue, long focusValue, bool clearMenu)
     {
         IntPtr target = new IntPtr(windowValue);
-        if (target == IntPtr.Zero || !IsWindow(target)) return false;
+        if (target == IntPtr.Zero || !IsWindow(target))
+        {
+            Console.Error.WriteLine("paste: invalid target window " + windowValue);
+            return false;
+        }
 
+        // Release any leftover modifier keys from the hotkey press so the
+        // injected paste is a clean Ctrl+V (Ditto does AllKeysUp first).
+        AllKeysUp();
+
+        if (!EnsureForeground(target))
+        {
+            Console.Error.WriteLine("paste: failed to activate target " + windowValue + ", foreground=" + GetForegroundWindow().ToInt64());
+            return false;
+        }
+
+        // Restore keyboard focus to the control that was focused before the
+        // panel opened. For browsers hwndFocus is the render widget so this is
+        // a no-op there, but for multi-control apps it prevents focus landing
+        // on the wrong control.
+        RestoreFocus(target, new IntPtr(focusValue));
+
+        // An Alt-based hotkey leaks the Alt press to the target app; Chrome
+        // answers a bare Alt with menu-button focus. A single Escape clears
+        // that state and puts focus back on the page.
+        if (clearMenu)
+        {
+            KeySend(0x1B, 0);
+            KeySend(0x1B, KEYEVENTF_KEYUP);
+        }
+
+        // Let the target app settle (internal focus restore) before typing.
+        Thread.Sleep(120);
+
+        // Never inject keystrokes unless the target is really foreground,
+        // otherwise Ctrl+V would land in whatever window happens to be active.
+        if (GetForegroundWindow() != target) return false;
+
+        INPUT[] inputs = new INPUT[]
+        {
+            KeyboardInput(0x11, 0),
+            KeyboardInput(0x56, 0),
+            KeyboardInput(0x56, KEYEVENTF_KEYUP),
+            KeyboardInput(0x11, KEYEVENTF_KEYUP)
+        };
+        return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) == inputs.Length;
+    }
+
+    // Reactivate the window that was focused before the panel opened, without
+    // injecting any keystrokes. Used when the panel hides so the target app
+    // can run its own internal focus restore (Chrome re-focuses the page).
+    public static bool ActivateOnly(long windowValue, long focusValue, bool clearMenu)
+    {
+        IntPtr target = new IntPtr(windowValue);
+        if (target == IntPtr.Zero || !IsWindow(target))
+        {
+            Console.Error.WriteLine("activate: invalid target window " + windowValue);
+            return false;
+        }
+        AllKeysUp();
+        bool activated = EnsureForeground(target);
+        if (activated)
+        {
+            RestoreFocus(target, new IntPtr(focusValue));
+            if (clearMenu)
+            {
+                KeySend(0x1B, 0);
+                KeySend(0x1B, KEYEVENTF_KEYUP);
+            }
+        }
+        return activated;
+    }
+
+    private static bool EnsureForeground(IntPtr target)
+    {
+        // Hiding the panel returns focus to the target app naturally. If that
+        // already happened, skip activation entirely — re-activating a window
+        // that just regained foreground disturbs the app's internal focus
+        // restore (Chrome lands on its toolbar buttons instead of the page).
+        bool activated = GetForegroundWindow() == target;
+
+        // Otherwise give the OS a short grace period to hand focus back on its
+        // own before forcing activation.
+        for (int i = 0; i < 10 && !activated; i++)
+        {
+            Thread.Sleep(30);
+            activated = GetForegroundWindow() == target;
+        }
+
+        if (!activated)
+        {
+            // Disable foreground lock timeout while activating (restore afterwards).
+            uint oldTimeout = 0;
+            SystemParametersInfo(SPI_GETFOREGROUNDLOCKTIMEOUT, 0, ref oldTimeout, 0);
+            SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, IntPtr.Zero, 0);
+
+            activated = Activate(target);
+            if (!activated)
+            {
+                // Last-resort foreground-lock workaround. NOTE: a bare Alt
+                // press moves Chrome focus to its menu button, so this path
+                // is logged to stderr for diagnosis.
+                Console.Error.WriteLine("paste: first activate failed for " + target.ToInt64() + ", using Alt workaround");
+                KeySend(VK_MENU, 0);
+                KeySend(VK_MENU, KEYEVENTF_KEYUP);
+                activated = Activate(target);
+            }
+
+            SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, new IntPtr(oldTimeout), 0);
+        }
+
+        return activated;
+    }
+
+    private static void AllKeysUp()
+    {
+        int[] modifiers = new int[] { VK_CONTROL, VK_SHIFT, VK_MENU };
+        foreach (int vk in modifiers)
+        {
+            if ((GetAsyncKeyState(vk) & 0x8000) != 0)
+            {
+                KeySend(vk, KEYEVENTF_KEYUP);
+            }
+        }
+    }
+
+    private static void RestoreFocus(IntPtr active, IntPtr focus)
+    {
+        uint activeThread = GetWindowThreadProcessId(active, IntPtr.Zero);
+        uint currentThread = GetCurrentThreadId();
+        if (activeThread == 0 || activeThread == currentThread) return;
+
+        // Browsers expose a single render-widget child for the whole page; the
+        // captured hwndFocus is often the top-level frame instead (e.g. after an
+        // Alt-based hotkey left the frame focused). Find the render widget so
+        // Chrome re-focuses the page (and its DOM input).
+        IntPtr target = focus;
+        if (target == IntPtr.Zero || !IsWindow(target) || target == active)
+        {
+            target = FindRenderWidget(active);
+        }
+        if (target == IntPtr.Zero || !IsWindow(target) || target == active) return;
+
+        if (AttachThreadInput(currentThread, activeThread, true))
+        {
+            if (GetFocus() != target)
+            {
+                SetFocus(target);
+            }
+            AttachThreadInput(currentThread, activeThread, false);
+        }
+    }
+
+    private static IntPtr FindRenderWidget(IntPtr root)
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumChildWindows(root, (hwnd, lParam) =>
+        {
+            StringBuilder className = new StringBuilder(256);
+            GetClassName(hwnd, className, 256);
+            if (className.ToString() == "Chrome_RenderWidgetHostHWND")
+            {
+                found = hwnd;
+                return false;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+
+    private static bool Activate(IntPtr target)
+    {
         if (IsIconic(target)) ShowWindow(target, SW_RESTORE);
         IntPtr foreground = GetForegroundWindow();
         uint currentThread = GetCurrentThreadId();
@@ -120,15 +316,19 @@ public static class PriorityHotkeyBridge
             if (targetAttached) AttachThreadInput(currentThread, targetThread, false);
         }
 
-        Thread.Sleep(80);
-        INPUT[] inputs = new INPUT[]
+        // Wait until activation actually takes effect (up to ~500ms)
+        for (int i = 0; i < 25; i++)
         {
-            KeyboardInput(0x11, 0),
-            KeyboardInput(0x56, 0),
-            KeyboardInput(0x56, KEYEVENTF_KEYUP),
-            KeyboardInput(0x11, KEYEVENTF_KEYUP)
-        };
-        return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT))) == inputs.Length;
+            if (GetForegroundWindow() == target) return true;
+            Thread.Sleep(20);
+        }
+        return GetForegroundWindow() == target;
+    }
+
+    private static void KeySend(int keyCode, uint flags)
+    {
+        INPUT[] inputs = new INPUT[] { KeyboardInput((ushort)keyCode, flags) };
+        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
     }
 
     public static void Stop()
@@ -166,7 +366,17 @@ public static class PriorityHotkeyBridge
 
         lock (Sync)
         {
-            if (isUp && SuppressedKeys.Remove(keyCode)) return new IntPtr(1);
+            if (isUp)
+            {
+                lock (ReleasedMods)
+                {
+                    // Real modifier release after we synthesized one: swallow it
+                    // so the app never sees a second down/up pair (Chrome would
+                    // treat it as another Alt press and focus its menu button).
+                    if (ReleasedMods.Remove(keyCode)) return new IntPtr(1);
+                }
+                if (SuppressedKeys.Remove(keyCode)) return new IntPtr(1);
+            }
             if (!isDown) return CallNextHookEx(_hook, code, message, data);
             if (SuppressedKeys.Contains(keyCode)) return new IntPtr(1);
 
@@ -178,8 +388,30 @@ public static class PriorityHotkeyBridge
             {
                 if (spec.KeyCode != keyCode || spec.Ctrl != ctrl || spec.Alt != alt || spec.Shift != shift || spec.Win != win) continue;
                 SuppressedKeys.Add(keyCode);
+                // Modifier presses (Alt down etc.) already passed through to the
+                // app before the full combo matched. Synthesize their releases now
+                // and swallow the real ups later, so the app sees a clean
+                // press+release sequence (a dangling Alt down would leave apps
+                // like Chrome in menu-mode).
+                lock (ReleasedMods)
+                {
+                    ReleasedMods.Clear();
+                    if (ctrl && IsPressed(VK_CONTROL)) { KeySend(VK_CONTROL, KEYEVENTF_KEYUP); ReleasedMods.Add(VK_CONTROL); }
+                    if (shift && IsPressed(VK_SHIFT)) { KeySend(VK_SHIFT, KEYEVENTF_KEYUP); ReleasedMods.Add(VK_SHIFT); }
+                    if (alt && IsPressed(VK_MENU)) { KeySend(VK_MENU, KEYEVENTF_KEYUP); ReleasedMods.Add(VK_MENU); }
+                }
                 long foreground = GetForegroundWindow().ToInt64();
-                Console.WriteLine("{\"type\":\"pressed\",\"id\":\"" + spec.Id + "\",\"foregroundWindow\":\"" + foreground.ToString() + "\"}");
+                // Capture the focused control (edit box etc.) inside the foreground
+                // window so paste can restore focus to it afterwards (Ditto-style).
+                long focus = 0;
+                uint fgThread = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+                GUITHREADINFO gui = new GUITHREADINFO();
+                gui.cbSize = (uint)Marshal.SizeOf(typeof(GUITHREADINFO));
+                if (GetGUIThreadInfo(fgThread, ref gui) && gui.hwndFocus != IntPtr.Zero)
+                {
+                    focus = gui.hwndFocus.ToInt64();
+                }
+                Console.WriteLine("{\"type\":\"pressed\",\"id\":\"" + spec.Id + "\",\"foregroundWindow\":\"" + foreground.ToString() + "\",\"focusWindow\":\"" + focus.ToString() + "\"}");
                 return new IntPtr(1);
             }
         }
@@ -285,11 +517,20 @@ public static class PriorityHotkeyBridge
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern bool BringWindowToTop(IntPtr window);
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumWindowsProc callback, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder builder, int maxCount);
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, IntPtr processId);
     [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint attachThread, uint attachToThread, bool attach);
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint inputCount, INPUT[] inputs, int inputSize);
+    [DllImport("user32.dll")] private static extern bool GetGUIThreadInfo(uint threadId, ref GUITHREADINFO info);
+    [DllImport("user32.dll")] private static extern IntPtr SetFocus(IntPtr window);
+    [DllImport("user32.dll")] private static extern IntPtr GetFocus();
+    [DllImport("user32.dll")] private static extern bool SystemParametersInfo(int action, int param, ref uint value, int init);
+    [DllImport("user32.dll")] private static extern bool SystemParametersInfo(int action, int param, IntPtr value, int init);
     [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 }
 '@
@@ -304,7 +545,13 @@ try {
       $entries = @($message.shortcuts | ForEach-Object { "$($_.id)|$($_.accelerator)" })
       [PriorityHotkeyBridge]::Configure([string[]]$entries)
     } elseif ($message.type -eq 'paste') {
-      [void][PriorityHotkeyBridge]::Paste([long]$message.foregroundWindow)
+      if ($message.inject -eq $false) {
+        $restored = [PriorityHotkeyBridge]::ActivateOnly([long]$message.foregroundWindow, [long]$message.focusWindow, [bool]$message.clearMenu)
+        if (-not $restored) { Write-Error "focus restore failed for window $($message.foregroundWindow)" }
+      } else {
+        $pasted = [PriorityHotkeyBridge]::Paste([long]$message.foregroundWindow, [long]$message.focusWindow, [bool]$message.clearMenu)
+        if (-not $pasted) { Write-Error "paste failed for window $($message.foregroundWindow)" }
+      }
     }
   }
 } finally {
@@ -347,7 +594,10 @@ function handleBridgeOutput(chunk: Buffer): void {
         if (message.type === 'ready') {
           syncBridge()
         } else if (message.type === 'pressed' && message.id) {
-          registrations.get(message.id)?.callback({ foregroundWindow: message.foregroundWindow ?? null })
+          registrations.get(message.id)?.callback({
+            foregroundWindow: message.foregroundWindow ?? null,
+            focusWindow: message.focusWindow ?? null
+          })
         }
       } catch {
         logWarn('main', `Invalid priority shortcut bridge output: ${line}`)
@@ -419,7 +669,7 @@ function registerFallback(id: string, registration: ShortcutRegistration): boole
   const oldAccelerator = fallbackAccelerators.get(id)
   if (oldAccelerator) globalShortcut.unregister(oldAccelerator)
   const registered = globalShortcut.register(registration.accelerator, () => {
-    registration.callback({ foregroundWindow: null })
+    registration.callback({ foregroundWindow: null, focusWindow: null })
   })
   if (registered) fallbackAccelerators.set(id, registration.accelerator)
   else fallbackAccelerators.delete(id)
@@ -459,8 +709,8 @@ export function unregisterPriorityShortcut(id: string): void {
   }
 }
 
-export function pasteToForegroundWindow(foregroundWindow: string | null): boolean {
+export function pasteToForegroundWindow(foregroundWindow: string | null, focusWindow: string | null = null, injectKeys = true, clearMenu = false): boolean {
   if (process.platform !== 'win32' || !foregroundWindow || foregroundWindow === '0') return false
   ensureWindowsBridge()
-  return sendToBridge({ type: 'paste', foregroundWindow })
+  return sendToBridge({ type: 'paste', foregroundWindow, focusWindow: focusWindow ?? '0', inject: injectKeys, clearMenu })
 }

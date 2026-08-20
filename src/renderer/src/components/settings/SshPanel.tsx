@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2, Plus, Pencil, Server, Trash2, Zap, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'

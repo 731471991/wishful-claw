@@ -1,4 +1,4 @@
-﻿import type { StateCreator } from 'zustand'
+import type { StateCreator } from 'zustand'
 import type { AgentStore } from '../types'
 import { emitAgentRuntimeSync, isAgentRuntimeSyncSuppressed } from '../../../lib/agent-runtime-sync'
 import { useTeamStore } from '../../team-store'
