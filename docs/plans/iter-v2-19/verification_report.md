@@ -16,6 +16,13 @@
 - 写入链路：GoalOrchestratorLoop 四个节点（轮开始 insert / completed / maxRetries failed / retry-adjust failed）均调用 GoalPlanRecorder，best-effort 不阻断
 - 迁移：`CREATE TABLE IF NOT EXISTS goal_plan_tasks` + 索引，幂等，与既有表创建模式一致
 
+## 补充验证（步骤 7/8/9，2026-08-20）
+
+- 步骤7：GoalOrchestratorLoop 拆分节点后立即调用 SyncGoalToDb，plans 全量入库（静态核对调用点）
+- 步骤8/9 编译：C# `dotnet build` 0 错误；TS 三配置全零错误（含 goal-store / chat-store / GoalHistoryPanel 改动）
+- goal_activity 事件链：SubAgentExecutor.CreateCollector 转发（带 GoalEventContext 的 run）→ AgentRuntimeStreamEvent.Input(JsonElement) 携带 goalId/planId/round/kind/toolName → chat-store index.ts 分流 → useGoalStore.applyGoalActivity → GoalHistoryPanel 计划卡片活动流（链根 planId 过滤，最近 30 条）
+- 降噪：Goal 运行时 CreateCollector 跳过 text_delta 逐条转发（静态核对）
+
 ## 运行时验证（待用户实测）
 
 以下需要真实模型调用，无法自动完成，留待用户人工验证：
@@ -24,6 +31,8 @@
 2. 计划卡片点击展开：应显示每轮记录（轮次/状态/耗时/评估理由），进行中 goal 每 10s 刷新
 3. 触发一次 retry/adjust：确认多轮记录归到同一计划卡片（链根 planId 匹配），adjust 轮带"已调整"标记
 4. 旧 goal（0.2.18 及之前）：展开显示"暂无每轮执行记录"占位，不报错
+5. 步骤7：计划生成后（decomposer 拆分完成）面板应立即出现计划列表，而非整轮执行完才可见
+6. 步骤8：计划卡片展开后应实时滚动显示子 agent 工具调用/结果/迭代条目；控制台 seq 不再疯狂增长（text_delta 已降噪）
 
 ## 结论
 

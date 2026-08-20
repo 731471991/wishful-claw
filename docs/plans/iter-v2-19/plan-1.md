@@ -76,6 +76,6 @@ Goal 编排过程结构化记库（新增 goal_plan_tasks 表），Goal 右侧�
 
 实测问题：Goal 确认后面板黑盒 30 分钟，计划/轮次/过程全部执行完才可见；子 agent 工具活动无面板通道。
 
-- [ ] 步骤7：拆分即落库 — decomposer 拆完立即 SyncGoalToDb（plans 全量入库），面板立刻显示计划列表与"计划 1 执行中"
-- [ ] 步骤8：Goal 子 agent 事件携带 goal 上下文（goalId/planId/round），前端 goal 面板实时显示计划卡片内的工具调用活动流（工具名+输入摘要，滚动）
-- [ ] 步骤9：Goal 子 agent 流式降噪 — text_delta 不逐条转发前端（聚合或仅关键事件），消除 seq 疯狂增长与控制台刷屏
+- [x] 步骤7：拆分即落库 — decomposer 拆完立即 SyncGoalToDb（plans 全量入库），面板立刻显示计划列表与"计划 1 执行中"
+- [x] 步骤8：Goal 子 agent 事件携带 goal 上下文（goalId/planId/round），前端 goal 面板实时显示计划卡片内的工具调用活动流（工具名+输入摘要，滚动）
+- [x] 步骤9：Goal 子 agent 流式降噪 — text_delta 不逐条转发前端（聚合或仅关键事件），消除 seq 疯狂增长与控制台刷屏

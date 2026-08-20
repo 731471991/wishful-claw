@@ -12,7 +12,10 @@
   - **端点链路** — db/goal-plan-tasks-list（DbModule → main IPC → shared 常量 → loadGoalPlanTasks store）
   - **面板 UI** — GoalHistoryPanel 计划卡片点击展开每轮详情（轮次徽标/状态/耗时/评估理由/已调整标记/steps），active goal 10s 轮询刷新；轮次按链根 planId 匹配（兼容 adjust 换 planId）
   - **后台子 agent 内容错位修复** — 根因：子 agent childState 复用父 SessionId，AgentLoop 以 sessionId 为键取 SessionConversation，后台子 agent 与主会话并发读写同一消息列表（主 agent 后续消息被子 agent 消费执行、子 agent transcript 反向污染主上下文；前台模式同样污染只是串行不明显）。修复：sessionMode=subAgent 时会话键改为 `__subagent__{runId}` 隔离，子 agent 结束后 Remove 清理
-  - 验证：C# build 0 错误；TS 3/3 零错误；运行时待用户实测
+  - **步骤7：拆分即落库** — decomposer 拆完立即 SyncGoalToDb（plans 全量入库），面板无需等执行完才见计划列表
+  - **步骤8：goal_activity 实时事件链** — GoalEventContext(GoalId/PlanId/Round) 挂 RunState；SubAgentExecutor.CreateCollector 将子 agent tool_call/tool_result/iteration 以 goal_activity 事件转发（复用 Input(JsonElement) 字段，不改协议）；前端 chat-store 分流 → goal-store.applyGoalActivity（每 goal 保留 200 条）→ GoalHistoryPanel 计划卡片展开显示实时活动流（最近 30 条，按链根 planId 过滤，active 时带转圈）
+  - **步骤9：流式降噪** — Goal 运行时子 agent text_delta 不逐条转发，消除 seq 爆炸刷屏（最终报告仍随 sub_agent_end 到达）
+  - 验证：C# build 0 错误；TS 3/3 零错误；运行时待用户实测（含子 agent 隔离修复、Goal 面板实时可视化）
 
 ## v2-iter-18：429重试配置化 + 输入框状态独立显示 + 默认模式工具审批
 - 状态：已完成，已合并 main
