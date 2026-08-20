@@ -1,11 +1,33 @@
-// electron app import removed — logs now go to ~/.wishful-claw/logs/
+// Logs go to ~/.wishful-claw/logs/; packaged builds persist errors only.
+import { app } from 'electron'
 import { join } from 'path'
 import * as os from 'os'
 import * as fs from 'fs'
 
 // ─── Types ───
 
-export type LogLevel = 'error' | 'warn' | 'info'
+export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
+
+const LEVEL_PRIORITY: Record<LogLevel, number> = {
+  error: 3,
+  warn: 2,
+  info: 1,
+  debug: 0
+}
+
+/**
+ * Minimum level that gets written to disk.
+ * - Packaged (released) builds: error only, to keep log files small.
+ * - Dev builds: everything (debug and up).
+ * - Override via env WISHFUL_CLAW_LOG_LEVEL=error|warn|info|debug.
+ */
+function resolveMinLevel(): LogLevel {
+  const override = process.env['WISHFUL_CLAW_LOG_LEVEL'] as LogLevel | undefined
+  if (override && override in LEVEL_PRIORITY) return override
+  return app.isPackaged ? 'error' : 'debug'
+}
+
+const MIN_LEVEL = resolveMinLevel()
 
 export interface LogEntry {
   timestamp: string
@@ -64,6 +86,7 @@ function formatEntry(entry: LogEntry): string {
 }
 
 function writeLog(entry: LogEntry): void {
+  if (LEVEL_PRIORITY[entry.level] < LEVEL_PRIORITY[MIN_LEVEL]) return
   try {
     ensureLogDir()
     const text = formatEntry(entry)
@@ -113,6 +136,20 @@ export function logInfo(
   writeLog({
     timestamp: new Date().toISOString(),
     level: 'info',
+    source,
+    message,
+    extra: options?.extra
+  })
+}
+
+export function logDebug(
+  source: LogEntry['source'],
+  message: string,
+  options?: { extra?: Record<string, unknown> }
+): void {
+  writeLog({
+    timestamp: new Date().toISOString(),
+    level: 'debug',
     source,
     message,
     extra: options?.extra

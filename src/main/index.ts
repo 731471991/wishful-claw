@@ -7,7 +7,7 @@ import * as fs from 'fs'
 import appIcon from '../../resources/icon-256.png?asset'
 
 import { getNativeWorker } from './lib/native-worker'
-import { logError, logWarn, logInfo, installGlobalExceptionHandlers, readRecentLogs } from './lib/logger'
+import { logError, logWarn, logInfo, logDebug, installGlobalExceptionHandlers, readRecentLogs } from './lib/logger'
 import { registerMessagePackHandler } from './ipc/messagepack-handler'
 import { registerAiProviderHandlers } from './ipc/ai-provider-handlers'
 import { registerSettingsHandlers } from './ipc/settings-handlers'
@@ -393,7 +393,10 @@ registerWebSearchHandlers()
   registerMessagePackHandler<{ level: string; message: string; stack?: string; extra?: Record<string, unknown> }, void>(
     'log:write',
     async (args) => {
-      const fn = args.level === 'error' ? logError : args.level === 'warn' ? logWarn : logInfo
+      const fn =
+        args.level === 'error' ? logError :
+        args.level === 'warn' ? logWarn :
+        args.level === 'debug' ? logDebug : logInfo
       fn('renderer', args.message, { stack: args.stack, extra: args.extra })
     }
   )
