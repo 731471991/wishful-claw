@@ -45,6 +45,9 @@ public static partial class GoalOrchestrator
             }
 
             goal.Plans = decomposition.Plans;
+            // Persist immediately so the panel shows the plan list while
+            // the first plan is still executing (not 30 min later).
+            SyncGoalToDb(goal, parameters);
             await EmitGoalEventAsync(goal, GoalEventType.GoalStarted,
                 $"Goal started: {goal.GoalText}. {goal.Plans.Count} plans generated.", context);
         }
