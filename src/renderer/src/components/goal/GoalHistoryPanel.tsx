@@ -170,9 +170,12 @@ export function GoalHistoryPanel({
       void useGoalHistoryStore
         .getState()
         .loadGoalPlanTasks(selectedGoal.sessionId, selectedGoal.goalId, true)
+      // Also refresh the goal row itself: plan statuses (pending → executing →
+      // completed) and progress counters live in session_goals, not plan tasks.
+      void useGoalHistoryStore.getState().loadProjectGoals(projectId, true)
     }, 10000)
     return () => window.clearInterval(timer)
-  }, [selectedGoal?.goalId, selectedGoal?.sessionId, selectedGoal?.status])
+  }, [projectId, selectedGoal?.goalId, selectedGoal?.sessionId, selectedGoal?.status])
 
   const cancelSelectedGoal = React.useCallback(async (): Promise<void> => {
     if (!selectedGoal) return

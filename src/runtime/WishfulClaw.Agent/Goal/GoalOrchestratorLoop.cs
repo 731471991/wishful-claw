@@ -77,6 +77,16 @@ public static partial class GoalOrchestrator
             goal.CurrentPlanIndex = i;
             var plan = goal.Plans[i];
 
+            // Mark the plan as executing and sync immediately so the panel
+            // reflects "executing" (and an up-to-date progress count) while
+            // the round runs, not only after it finishes.
+            if (plan.Status != GoalPlanStatusValues.Completed
+                && plan.Status != GoalPlanStatusValues.Failed)
+            {
+                plan.Status = GoalPlanStatusValues.Executing;
+                SyncGoalToDb(goal, parameters);
+            }
+
             // Execute plan with retry + evaluation loop
             await ExecutePlanWithRetryAsync(goal, plan, i, parameters, parentState, context, ct);
             await ReachSafePointAsync(goal, context, ct);
