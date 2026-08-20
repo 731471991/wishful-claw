@@ -19,10 +19,12 @@ import {
   type SessionGoalStatus
 } from '@renderer/stores/goal-store'
 import { type SessionGoalEvent, type SessionGoalPlanTask } from '@renderer/stores/goal-store-helpers'
+import type { GoalActivity } from '@renderer/stores/goal-store-helpers'
 
 const EMPTY_GOALS: SessionGoal[] = []
 const EMPTY_EVENTS: SessionGoalEvent[] = []
 const EMPTY_PLAN_TASKS: SessionGoalPlanTask[] = []
+const EMPTY_ACTIVITIES: GoalActivity[] = []
 
 interface GoalHistoryPanelProps {
   projectId?: string | null
@@ -146,6 +148,9 @@ export function GoalHistoryPanel({
   )
   const planTasks = useGoalHistoryStore((state) =>
     selectedKey ? state.planTasksByGoal[selectedKey] ?? EMPTY_PLAN_TASKS : EMPTY_PLAN_TASKS
+  )
+  const liveActivities = useGoalStore((state) =>
+    selectedGoal ? state.goalActivitiesByGoal[selectedGoal.goalId] ?? EMPTY_ACTIVITIES : EMPTY_ACTIVITIES
   )
 
   React.useEffect(() => {
@@ -283,7 +288,14 @@ export function GoalHistoryPanel({
                       </button>
                       {plan.resultSummary ? <p className="mt-1 text-[11px] text-muted-foreground">{plan.resultSummary}</p> : null}
                       {expanded ? (
-                        planRounds.length > 0 ? (
+                        <>
+                        <GoalPlanLiveActivities
+                          activities={liveActivities.filter(
+                            (a) => planTaskChainRoot(a.planId) === planRoot || a.planId === plan.planId
+                          )}
+                          isActive={selectedGoal?.status === 'active'}
+                        />
+                        {planRounds.length > 0 ? (
                           <div className="mt-2 space-y-1.5 border-t border-border/40 pt-2">
                             {planRounds.map((task) => (
                               <div key={task.id} className="rounded-sm bg-muted/40 px-2 py-1.5">
@@ -321,7 +333,8 @@ export function GoalHistoryPanel({
                           <p className="mt-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground/70">
                             {t('goal.history.noRoundRecords')}
                           </p>
-                        )
+                        )}
+                        </>
                       ) : null}
                     </div>
                   )
@@ -439,6 +452,42 @@ function Metric({ label, value }: { label: string; value: string }): React.JSX.E
     <div className="rounded-md border border-border/60 p-2">
       <div className="text-[10px] text-muted-foreground">{label}</div>
       <div className="mt-1 break-words font-medium">{value}</div>
+    </div>
+  )
+}
+
+function GoalPlanLiveActivities({
+  activities,
+  isActive
+}: {
+  activities: GoalActivity[]
+  isActive: boolean
+}) {
+  const { t } = useTranslation('goal')
+  if (activities.length === 0) return null
+  const recent = activities.slice(-30)
+  return (
+    <div className="mt-2 border-t border-border/40 pt-2">
+      <p className="mb-1 flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+        {isActive ? <Loader2 className="size-3 animate-spin" /> : null}
+        {t('goal.history.liveActivity')}
+      </p>
+      <div className="max-h-44 space-y-0.5 overflow-y-auto pr-1">
+        {recent.map((a) => (
+          <div key={a.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="shrink-0 rounded-sm bg-muted px-1 font-mono">R{a.round}</span>
+            <span className="shrink-0 text-muted-foreground/70">
+              {a.kind === 'tool_call' ? '→' : a.kind === 'tool_result' ? '✓' : '⟳'}
+            </span>
+            <span className="min-w-0 truncate">
+              {a.kind === 'iteration'
+                ? t('goal.history.iterationStep', { iteration: a.iteration ?? '-' })
+                : a.toolName ?? a.kind}
+              {a.kind === 'tool_result' && a.status ? ` (${a.status})` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

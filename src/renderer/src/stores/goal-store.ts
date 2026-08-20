@@ -24,6 +24,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
   activeGoalRunsBySession: {},
   goalProgressBySession: {},
   goalRunStatesBySession: {},
+  goalActivitiesByGoal: {},
   _loaded: false,
 
   loadGoalsFromDb: async () => {
@@ -366,6 +367,25 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
       const next = { ...state.goalProgressBySession }
       delete next[sessionId]
       return { goalProgressBySession: next }
+    })
+  },
+
+  applyGoalActivity: (activity) => {
+    set((state) => {
+      const key = activity.goalId
+      const existing = state.goalActivitiesByGoal[key] ?? []
+      // Keep the latest 200 entries per goal — a live feed, not a log archive.
+      const next = [...existing, activity].slice(-200)
+      return { goalActivitiesByGoal: { ...state.goalActivitiesByGoal, [key]: next } }
+    })
+  },
+
+  clearGoalActivities: (goalId: string) => {
+    set((state) => {
+      if (!state.goalActivitiesByGoal[goalId]) return {}
+      const next = { ...state.goalActivitiesByGoal }
+      delete next[goalId]
+      return { goalActivitiesByGoal: next }
     })
   }
 }))

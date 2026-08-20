@@ -152,12 +152,27 @@ export interface GoalProgressState {
   timestamp: number
 }
 
+export interface GoalActivity {
+  id: string
+  sessionId: string
+  goalId: string
+  planId: string
+  round: number
+  kind: 'tool_call' | 'tool_result' | 'iteration'
+  toolName: string | null
+  toolCallId: string | null
+  status: string | null
+  iteration: number | null
+  timestamp: number
+}
+
 export interface GoalStore {
   goalsBySession: Record<string, SessionGoal>
   goalEventsBySession: Record<string, SessionGoalEvent[]>
   activeGoalRunsBySession: Record<string, ActiveGoalRun>
   goalProgressBySession: Record<string, GoalProgressState>
   goalRunStatesBySession: Record<string, GoalRunState>
+  goalActivitiesByGoal: Record<string, GoalActivity[]>
   _loaded: boolean
 
   loadGoalsFromDb: () => Promise<void>
@@ -212,6 +227,8 @@ export interface GoalStore {
   }) => void
   applyGoalProgress: (progress: GoalProgressState) => void
   clearGoalProgress: (sessionId: string, goalId?: string | null) => void
+  applyGoalActivity: (activity: GoalActivity) => void
+  clearGoalActivities: (goalId: string) => void
 }
 
 export function rowToGoal(row: SessionGoalRow): SessionGoal {
