@@ -155,6 +155,26 @@ public static partial class DbClient
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
                 );",
+                @"CREATE TABLE IF NOT EXISTS goal_plan_tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    goal_id TEXT NOT NULL,
+                    plan_id TEXT NOT NULL,
+                    original_plan_id TEXT,
+                    plan_title TEXT,
+                    round INTEGER NOT NULL DEFAULT 1,
+                    status TEXT NOT NULL DEFAULT 'executing',
+                    description TEXT,
+                    steps_json TEXT,
+                    summary TEXT,
+                    evaluation_reasoning TEXT,
+                    evaluation_satisfied INTEGER,
+                    adjusted INTEGER NOT NULL DEFAULT 0,
+                    started_at INTEGER NOT NULL,
+                    finished_at INTEGER
+                );",
+                @"CREATE INDEX IF NOT EXISTS ix_goal_plan_tasks_goal_round " +
+                "ON goal_plan_tasks(goal_id, round);",
                 @"CREATE TABLE IF NOT EXISTS goal_events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     session_id TEXT NOT NULL,

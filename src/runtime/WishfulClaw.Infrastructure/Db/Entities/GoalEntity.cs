@@ -155,3 +155,84 @@ public sealed record GoalReopenResult(
     GoalRow? Goal = null,
     string? SourceGoalId = null,
     string? Error = null);
+
+// ─── Goal Plan Task Entity (per-round execution record) ───
+
+public class GoalPlanTaskEntity
+{
+    public long Id { get; set; }
+
+    public string SessionId { get; set; } = string.Empty;
+
+    public string GoalId { get; set; } = string.Empty;
+
+    public string PlanId { get; set; } = string.Empty;
+
+    public string? OriginalPlanId { get; set; }
+
+    public string? PlanTitle { get; set; }
+
+    public int Round { get; set; } = 1;
+
+    /// <summary>executing | completed | failed</summary>
+    public string Status { get; set; } = "executing";
+
+    public string? Description { get; set; }
+
+    public string? StepsJson { get; set; }
+
+    public string? Summary { get; set; }
+
+    public string? EvaluationReasoning { get; set; }
+
+    public bool? EvaluationSatisfied { get; set; }
+
+    public bool Adjusted { get; set; }
+
+    public long StartedAt { get; set; }
+
+    public long? FinishedAt { get; set; }
+}
+
+public sealed class GoalPlanTaskRow
+{
+    public long Id { get; set; }
+    public string SessionId { get; set; } = string.Empty;
+    public string GoalId { get; set; } = string.Empty;
+    public string PlanId { get; set; } = string.Empty;
+    public string? OriginalPlanId { get; set; }
+    public string? PlanTitle { get; set; }
+    public int Round { get; set; }
+    public string Status { get; set; } = "executing";
+    public string? Description { get; set; }
+    public string? StepsJson { get; set; }
+    public string? Summary { get; set; }
+    public string? EvaluationReasoning { get; set; }
+    public bool? EvaluationSatisfied { get; set; }
+    public bool Adjusted { get; set; }
+    public long StartedAt { get; set; }
+    public long? FinishedAt { get; set; }
+
+    public static GoalPlanTaskRow FromEntity(GoalPlanTaskEntity e) => new()
+    {
+        Id = e.Id,
+        SessionId = e.SessionId,
+        GoalId = e.GoalId,
+        PlanId = e.PlanId,
+        OriginalPlanId = e.OriginalPlanId,
+        PlanTitle = e.PlanTitle,
+        Round = e.Round,
+        Status = e.Status,
+        Description = e.Description,
+        StepsJson = e.StepsJson,
+        Summary = e.Summary,
+        EvaluationReasoning = e.EvaluationReasoning,
+        EvaluationSatisfied = e.EvaluationSatisfied,
+        Adjusted = e.Adjusted,
+        StartedAt = e.StartedAt,
+        FinishedAt = e.FinishedAt
+    };
+}
+
+public sealed record GoalPlanTaskFindResult(bool Success, List<GoalPlanTaskRow> Tasks, string? Error);
+public sealed record GoalPlanTaskMutationResult(bool Success, GoalPlanTaskRow? Task, string? Error);

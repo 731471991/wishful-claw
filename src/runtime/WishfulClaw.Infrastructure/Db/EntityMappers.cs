@@ -107,6 +107,26 @@ public static class EntityMappers
         UpdatedAt = r.GetInt64("updated_at")
     };
 
+    public static GoalPlanTaskEntity MapGoalPlanTask(SqliteDataReader r) => new()
+    {
+        Id = r.GetInt64("id"),
+        SessionId = r.GetString("session_id"),
+        GoalId = r.GetString("goal_id"),
+        PlanId = r.GetString("plan_id"),
+        OriginalPlanId = r.GetNullableString("original_plan_id"),
+        PlanTitle = r.GetNullableString("plan_title"),
+        Round = r.GetInt32("round"),
+        Status = r.GetString("status"),
+        Description = r.GetNullableString("description"),
+        StepsJson = r.GetNullableString("steps_json"),
+        Summary = r.GetNullableString("summary"),
+        EvaluationReasoning = r.GetNullableString("evaluation_reasoning"),
+        EvaluationSatisfied = r.GetNullableInt32("evaluation_satisfied") is int v && v != 0,
+        Adjusted = r.GetBoolAsInt("adjusted") != 0,
+        StartedAt = r.GetInt64("started_at"),
+        FinishedAt = r.GetNullableInt64("finished_at")
+    };
+
     public static GoalEventEntity MapGoalEvent(SqliteDataReader r) => new()
     {
         Id = r.GetInt64("id"),
