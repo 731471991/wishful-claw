@@ -282,7 +282,7 @@ export function GoalHistoryPanel({
                               {t('goal.history.roundsCount', { count: planRounds.length })}
                             </span>
                           ) : null}
-                          <span className="text-[10px] text-muted-foreground">{plan.status ?? 'pending'}</span>
+                          <span className="text-[10px] text-muted-foreground">{t(`goal.history.taskStatus.${plan.status ?? 'pending'}`)}</span>
                           <span className="text-[10px] text-muted-foreground">{expanded ? '▴' : '▾'}</span>
                         </span>
                       </button>
