@@ -126,6 +126,9 @@ public static partial class SubAgentExecutor
             }
             finally
             {
+                // The sub-agent conversation is isolated under its runId (see
+                // AgentLoop); remove it so isolated conversations don't leak.
+                SessionConversationManager.Remove($"__subagent__{childRunId}");
                 childState.Dispose();
             }
         }, parentState.CancellationToken);

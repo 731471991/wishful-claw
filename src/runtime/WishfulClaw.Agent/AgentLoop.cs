@@ -45,7 +45,16 @@ internal static partial class AgentLoop
         // First turn (empty session): Initialize with the user message.
         // Subsequent turns: Append the new user message to the existing session.
         var sessionId = state.SessionId ?? "";
-        var sessionConv = SessionConversationManager.GetOrCreate(sessionId);
+        // Sub-agent loops run with the parent's sessionId (for event routing),
+        // but MUST NOT share the parent's SessionConversation: a background
+        // sub-agent keeps running while the main conversation continues, and a
+        // shared conversation would interleave both message streams (the main
+        // agent's follow-up turns would execute inside the sub-agent and vice
+        // versa). Isolate sub-agent conversations under their runId instead.
+        var sessionModeForConv = JsonHelpers.GetString(parameters, "sessionMode");
+        var isSubAgentLoop = string.Equals(sessionModeForConv, "subAgent", StringComparison.Ordinal);
+        var conversationKey = isSubAgentLoop ? $"__subagent__{state.RunId}" : sessionId;
+        var sessionConv = SessionConversationManager.GetOrCreate(conversationKey);
 
         List<AgentRuntimeChatMessage> conversation;
         List<JsonElement> wireConversation;
