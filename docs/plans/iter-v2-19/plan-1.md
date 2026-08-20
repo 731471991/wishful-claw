@@ -33,26 +33,26 @@ Goal 编排过程结构化记库（新增 goal_plan_tasks 表），Goal 右侧�
 
 ## 步骤清单
 
-- [ ] 步骤1：DB 迁移 + Entity + 查询/写入工具 — Infrastructure 层
+- [✓] 步骤1：DB 迁移 + Entity + 查询/写入工具 — Infrastructure 层
   - `DbClientGoalMigrations.cs` 加 CREATE TABLE IF NOT EXISTS goal_plan_tasks + 索引 (goal_id, round)
   - `Entities/GoalEntity.cs` 加 GoalPlanTaskEntity + GoalPlanTaskRow DTO
   - `DbGoalTools.cs` 新增 ListPlanTasks / InsertPlanTask / UpdatePlanTask（partial 新文件 `DbGoalTaskTools.cs`，避免现有文件膨胀）
   - 验证：`dotnet build` 0 错误
-- [ ] 步骤2：编排循环写入 — Agent 层
+- [✓] 步骤2：编排循环写入 — Agent 层
   - `GoalOrchestratorLoop.cs`：StartPlan 处 insert executing 行（记录 round/description/steps）；完成/失败处 update 为终态（summary/evaluation）；retry/adjust 处更新当前行并下一轮 insert 新行；429 退避处 append 事件不建新行
   - 轮次计数：plan.RetryCount + 1；adjust 后 planId 变化时记录 original_plan_id
   - 验证：`dotnet build` 0 错误
-- [ ] 步骤3：sidecar 端点注册
+- [✓] 步骤3：sidecar 端点注册
   - 按现有 `goal_events` list 的通道模式注册 `goal_plan_tasks` list 到模块分发（Worker/Agent Runtime Tools）
   - 验证：`dotnet build` 0 错误；grep 确认路由注册
-- [ ] 步骤4：前端查询层
+- [✓] 步骤4：前端查询层
   - goal-history-store（或新 hook）增加 loadGoalPlanTasks；类型定义 GoalPlanTask
   - 验证：`npx tsc --noEmit -p tsconfig.web.json` 零错误
-- [ ] 步骤5：GoalHistoryPanel 计划详情展开 UI
+- [✓] 步骤5：GoalHistoryPanel 计划详情展开 UI
   - 计划卡片点击展开：每轮记录（轮次徽标/状态/耗时/评估理由/执行摘要/调整标记）；空数据显示占位（旧 goal 无记录属正常）
   - i18n zh/en 文案
   - 验证：tsc 三配置零错误
-- [ ] 步骤6：回归验证 + 实测引导
+- [✓] 步骤6：回归验证 + 实测引导
   - C# build + TS 3/3 零错误
   - 启动应用，跑一个 Goal，验证面板能看到每轮记录（日志截图/DB 查询证据）
 

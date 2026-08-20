@@ -34,9 +34,18 @@ type GoalHistoryFilter = 'all' | 'current' | 'complete' | 'failed' | 'aborted'
 
 interface GoalPlanSummary {
   planId?: string
+  originalPlanId?: string | null
   title?: string
   status?: string
   resultSummary?: string | null
+}
+
+/**
+ * adjust 会更换 planId（OriginalPlanId 指向最初的 id）。
+ * 每轮执行记录与计划摘要按"链根 planId"匹配，保证调整前后轮次都归到同一计划卡片。
+ */
+function planTaskChainRoot(planId?: string | null, originalPlanId?: string | null): string {
+  return originalPlanId ?? planId ?? ''
 }
 
 function matchesFilter(status: SessionGoalStatus, filter: GoalHistoryFilter): boolean {
@@ -247,8 +256,11 @@ export function GoalHistoryPanel({
               <div className="space-y-1.5">
                 {plans.map((plan, index) => {
                   const planKey = plan.planId ?? `plan-${index}`
+                  const planRoot = planTaskChainRoot(plan.planId, plan.originalPlanId)
                   const planRounds = planTasks.filter(
-                    (task) => task.planId === plan.planId || task.originalPlanId === plan.planId
+                    (task) =>
+                      planTaskChainRoot(task.planId, task.originalPlanId) === planRoot ||
+                      task.planId === plan.planId
                   )
                   const expanded = expandedPlanId === planKey
                   return (

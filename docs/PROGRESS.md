@@ -1,5 +1,18 @@
 # 开发进度
 
+## v2-iter-19：Goal 编排记录可视化
+- 状态：进行中，代码完成待实测
+- 分支：dev/v2-iter-19
+- Plan: docs/plans/iter-v2-19/
+- VERDICT: —（待用户实测）
+- 日期: 2026-08-20
+- 备注：
+  - **goal_plan_tasks 表** — 每行 = 一个计划的一轮执行（round = retry+1）：description/steps/summary/评估 reasoning/是否 satisfied/adjusted/起止时间；偏离排期为单表设计（两表方案其中一表语义空洞），已获老大确认
+  - **编排写入** — GoalPlanRecorder（best-effort，失败仅 Warn 不阻断编排）挂接 GoalOrchestratorLoop 四节点；与 GoalPlanTracker 的 md 落盘并行镜像
+  - **端点链路** — db/goal-plan-tasks-list（DbModule → main IPC → shared 常量 → loadGoalPlanTasks store）
+  - **面板 UI** — GoalHistoryPanel 计划卡片点击展开每轮详情（轮次徽标/状态/耗时/评估理由/已调整标记/steps），active goal 10s 轮询刷新；轮次按链根 planId 匹配（兼容 adjust 换 planId）
+  - 验证：C# build 0 错误；TS 3/3 零错误；运行时待用户实测
+
 ## v2-iter-18：429重试配置化 + 输入框状态独立显示 + 默认模式工具审批
 - 状态：已完成，已合并 main
 - 分支：dev/v2-iter-18（合并后清理）
