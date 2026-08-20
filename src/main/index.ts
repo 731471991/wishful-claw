@@ -367,6 +367,10 @@ registerWebSearchHandlers()
     'db:goal-events:add:msgpack',
     async (args) => getNativeWorker().request('db/goal-events-add', args)
   )
+  registerMessagePackHandler<Record<string, unknown>, unknown[]>(
+    'db:goal-plan-tasks:list:msgpack',
+    async (args) => getNativeWorker().request('db/goal-plan-tasks-list', args)
+  )
   // -- Goal control handlers --
   registerMessagePackHandler<Record<string, unknown>, unknown>(
     'goal:pause:msgpack',

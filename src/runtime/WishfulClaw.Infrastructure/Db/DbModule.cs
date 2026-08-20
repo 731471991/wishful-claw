@@ -96,6 +96,9 @@ public sealed class DbModule : IWorkerModule
         context.Register("db/goal-events-list-page", DbGoalTools.ListEventsPage);
         context.Register("db/goal-events-add", DbGoalTools.AddEvent);
 
+        // ── Goal Plan Tasks (per-round execution records) ──
+        context.Register("db/goal-plan-tasks-list", DbGoalTaskTools.ListPlanTasks);
+
         // ── Plugin Sessions ──
         context.Register("db/plugin-normal-projects", DbPluginSessionTools.ListNormalProjects);
         context.Register("db/plugin-sync-session-models", DbPluginSessionTools.SyncPluginSessionModels);
