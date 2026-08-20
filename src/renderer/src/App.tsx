@@ -3,6 +3,7 @@ import { Toaster } from '@renderer/components/ui/sonner'
 import { ThemeProvider } from '@renderer/components/theme-provider'
 import { ThemeRuntimeSync } from '@renderer/components/ThemeRuntimeSync'
 import { TooltipProvider } from '@renderer/components/ui/tooltip'
+import { ConfirmDialogProvider } from '@renderer/components/ui/confirm-dialog'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { useSettingsStore } from '@renderer/stores/settings-store'
@@ -99,6 +100,7 @@ function App(): React.JSX.Element | null {
           {view === 'main' && <MainLayout />}
           {view === 'settings' && <SettingsPage />}
           <Toaster position="bottom-left" theme="system" richColors />
+          <ConfirmDialogProvider />
         </TooltipProvider>
       </ErrorBoundary>
     </ThemeProvider>

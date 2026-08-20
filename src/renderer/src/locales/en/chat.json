@@ -120,7 +120,7 @@
       "ready": "Ready",
       "waiting": "Waiting",
       "thinking": "Thinking",
-      "receiving": "Receiving",
+      "receiving": "Generating",
       "optimizing": "Optimizing",
       "loadingMedia": "Loading media",
       "generatingImage": "Generating image",

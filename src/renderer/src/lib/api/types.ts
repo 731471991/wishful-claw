@@ -418,6 +418,10 @@ export interface ProviderConfig {
   providerId?: string
   providerBuiltinId?: string
   serviceTier?: 'priority'
+  /** Request timeout in seconds (0 = no limit). Passed through to the sidecar. */
+  requestTimeoutSeconds?: number
+  /** Max retry attempts on 429/5xx (0 = unlimited). Passed through to the sidecar. */
+  requestMaxRetries?: number
   maxTokens?: number
   temperature?: number
   systemPrompt?: string

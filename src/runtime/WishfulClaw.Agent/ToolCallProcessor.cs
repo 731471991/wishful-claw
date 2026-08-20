@@ -111,6 +111,11 @@ public static class ToolCallProcessor
         var maxToolCallsPerTurn = JsonHelpers.GetInt(parameters, "maxToolCallsPerTurn", 0); // 0 = unlimited
         var maxConcurrentSubAgents = Math.Max(1, JsonHelpers.GetInt(parameters, "maxConcurrentSubAgents", 2));
         var registry = ToolModuleState.Registry;
+        // "default" permission mode asks the user to confirm write/delete/execute
+        // class tools before execution. "whitelist"/"fullAccess" never pause here
+        // (whitelist rules are enforced on the renderer side).
+        var permissionMode = JsonHelpers.GetString(parameters, "permissionMode");
+        var defaultModeApproval = string.Equals(permissionMode, "default", StringComparison.OrdinalIgnoreCase);
 
         // Split tool calls into executable vs skipped (over per-turn limit)
         var toolCallsToExecute = toolCalls;
@@ -147,7 +152,8 @@ public static class ToolCallProcessor
 
             await semaphore.WaitAsync(state.CancellationToken);
             toolTasks.Add(ExecuteSingleAsync(
-                toolCall, workingFolder, projectId, sshConnectionId, state, context, semaphore, registry));
+                toolCall, workingFolder, projectId, sshConnectionId, state, context, semaphore, registry,
+                defaultModeApproval));
         }
 
         // Wait for all started tool tasks to complete
@@ -223,7 +229,8 @@ public static class ToolCallProcessor
         AgentRuntimeRunState state,
         IWorkerRequestContext context,
         SemaphoreSlim semaphore,
-        ToolRegistry? registry)
+        ToolRegistry? registry,
+        bool defaultModeApproval = false)
     {
         try
         {
@@ -248,7 +255,7 @@ public static class ToolCallProcessor
             // (SuppressTransportEvents = true), certain tools require user
             // approval before execution. The approval request is sent via
             // reverse-request to the renderer.
-            if (state.SuppressTransportEvents && RequiresSubAgentApproval(toolCall.Name))
+            if (RequiresApprovalBeforeExecution(toolCall, state, defaultModeApproval))
             {
                 // Update status to pending_approval
                 await AgentRuntimeTools.EmitAsync(
@@ -277,6 +284,7 @@ public static class ToolCallProcessor
                     aw.WriteStartObject();
                     aw.WriteString("toolCallId", toolCall.Id);
                     aw.WriteString("toolName", toolCall.Name);
+                    aw.WriteString("source", defaultModeApproval ? "default-mode" : "sub-agent");
                     aw.WritePropertyName("input");
                     toolCall.Input.WriteTo(aw);
                     aw.WriteEndObject();
@@ -400,6 +408,38 @@ public static class ToolCallProcessor
     private static bool RequiresSubAgentApproval(string toolName)
     {
         return SubAgentApprovalTools.Contains(toolName);
+    }
+
+    /// <summary>
+    /// Tools that require user confirmation in "default" permission mode:
+    /// write/delete/execute class operations. Read/search class tools
+    /// (Read/Glob/Grep/LS/webfetch/web search/memory search) run freely.
+    /// </summary>
+    private static readonly HashSet<string> DefaultModeApprovalTools = new(StringComparer.Ordinal)
+    {
+        // File writes
+        "Write", "Edit",
+        // Shell execution
+        "Bash", "Shell", "ShellExec", "PowerShell", "Monitor",
+        // Desktop input (executes real UI actions on the user's machine)
+        "DesktopClick", "DesktopType", "DesktopScroll"
+    };
+
+    private static bool RequiresApprovalBeforeExecution(
+        AgentRuntimeNativeToolCall toolCall,
+        AgentRuntimeRunState state,
+        bool defaultModeApproval)
+    {
+        if (state.SuppressTransportEvents && RequiresSubAgentApproval(toolCall.Name))
+        {
+            return true;
+        }
+
+        // Default-mode approval applies to the main agent loop (sub-agents keep
+        // their own autonomous policy).
+        return defaultModeApproval
+            && !state.SuppressTransportEvents
+            && DefaultModeApprovalTools.Contains(toolCall.Name);
     }
 
     private static readonly JsonWriterOptions WriteOptions = new()

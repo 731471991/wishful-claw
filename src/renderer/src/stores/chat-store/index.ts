@@ -78,6 +78,7 @@ export interface AgentActions {
     contextCompressionEnabled?: boolean
     contextCompressionThreshold?: number
     sshConnectionId?: string
+    permissionMode?: 'default' | 'whitelist' | 'fullAccess'
     projectId?: string
     enablePlanMode?: boolean
     sessionMode?: 'normal' | 'goal' | 'global'

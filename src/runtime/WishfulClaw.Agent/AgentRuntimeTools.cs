@@ -57,9 +57,9 @@ public static class AgentRuntimeTools
             return Task.FromResult(WorkerResponse.Error($"Agent run already exists: {runId}"));
         }
 
-        WorkerLog.Info(
+        WorkerLog.Debug(
             $"agent run accepted runId={runId} sessionId={FormatLogValue(sessionId)} " +
-            $"messages={initialMessageCount}");
+            $"messages={initialMessageCount} permissionMode={FormatLogValue(JsonHelpers.GetString(parameters, "permissionMode"))}");
 
         var backgroundContext = context.ForBackgroundOperation();
         _ = Task.Run(

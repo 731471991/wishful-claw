@@ -143,6 +143,12 @@ export function mapSidecarProvider(provider: SidecarProviderInput): SidecarProvi
       : {}),
     ...(provider.thinkingConfig ? { thinkingConfig: provider.thinkingConfig } : {}),
     ...(provider.reasoningEffort ? { reasoningEffort: provider.reasoningEffort } : {}),
+    ...(provider.requestTimeoutSeconds !== undefined
+      ? { requestTimeoutSeconds: provider.requestTimeoutSeconds }
+      : {}),
+    ...(provider.requestMaxRetries !== undefined
+      ? { requestMaxRetries: provider.requestMaxRetries }
+      : {}),
     ...(provider.providerId ? { providerId: provider.providerId } : {}),
     ...(provider.providerBuiltinId ? { providerBuiltinId: provider.providerBuiltinId } : {}),
     userAgent: resolveProviderUserAgent(provider.userAgent),
@@ -313,11 +319,7 @@ export function buildSidecarAgentRunRequest(args: {
     ...(args.compression ? { compression: args.compression } : {}),
     maxIterations: args.maxIterations,
     forceApproval: args.forceApproval,
-    permissionMode: settings.autoApprove
-      ? 'fullAccess'
-      : permissionPolicy
-        ? 'whitelist'
-        : 'default',
+    permissionMode: settings.autoApprove ? 'fullAccess' : 'default',
     ...(maxParallelTools !== undefined ? { maxParallelTools } : {}),
     ...(args.maxToolCallsPerTurn !== undefined ? { maxToolCallsPerTurn: args.maxToolCallsPerTurn } : {}),
     maxConcurrentSubAgents,

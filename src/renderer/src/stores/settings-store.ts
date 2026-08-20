@@ -25,7 +25,7 @@ import {
   DEFAULT_PERMISSION_POLICY,
   type PermissionPolicy
 } from '../../../shared/permission-policy'
-import { type ModelBinding, type SessionDefaultModelBinding, type ClaudeCodeConfig, type CodexConfig, type PromptRecommendationModelBindings, type ClarifyPlanModeAutoSwitchTarget, type RecentWorkingTarget, type FileDiffViewMode, type LiveOutputAnimationStyle, type ShellExecutionEndpoint, type MainModelSelectionMode, type MemoryAutomationWritePolicy, type MemoryScopeMode, type ProjectDefaultDirectoryMode, DEFAULT_THEME_MODE, DEFAULT_MAX_PARALLEL_TOOL_CALLS, DEFAULT_MAX_CONCURRENT_SUB_AGENTS, DEFAULT_MAX_TOOL_CALLS_PER_TURN, DEFAULT_SHELL_EXECUTION_ENDPOINT, createDefaultClaudeCodeConfig, createDefaultCodexConfig, normalizeShellExecutionEndpoint, sanitizeRecentWorkingTargets, clampMaxConcurrentSubAgents, clampMaxParallelToolCalls, clampMaxToolCallsPerTurn } from './settings-store-types'
+import { type ModelBinding, type SessionDefaultModelBinding, type ClaudeCodeConfig, type CodexConfig, type PromptRecommendationModelBindings, type ClarifyPlanModeAutoSwitchTarget, type RecentWorkingTarget, type FileDiffViewMode, type LiveOutputAnimationStyle, type ShellExecutionEndpoint, type MainModelSelectionMode, type MemoryAutomationWritePolicy, type MemoryScopeMode, type ProjectDefaultDirectoryMode, DEFAULT_THEME_MODE, DEFAULT_MAX_PARALLEL_TOOL_CALLS, DEFAULT_MAX_CONCURRENT_SUB_AGENTS, DEFAULT_MAX_TOOL_CALLS_PER_TURN, DEFAULT_SHELL_EXECUTION_ENDPOINT, createDefaultClaudeCodeConfig, createDefaultCodexConfig, normalizeShellExecutionEndpoint, sanitizeRecentWorkingTargets, clampMaxConcurrentSubAgents, clampMaxParallelToolCalls, clampMaxToolCallsPerTurn, clampRequestMaxRetries } from './settings-store-types'
 
 // Re-export types for consumers
 export type {
@@ -67,6 +67,9 @@ export function clampApiRequestTimeoutSeconds(value: number): number {
 // Re-export constants and functions for consumers
 export {
   DEFAULT_MAX_CONCURRENT_SUB_AGENTS,
+  DEFAULT_REQUEST_MAX_RETRIES,
+  MAX_REQUEST_MAX_RETRIES,
+  clampRequestMaxRetries,
   DEFAULT_MAX_PARALLEL_TOOL_CALLS,
   DEFAULT_MAX_TOOL_CALLS_PER_TURN,
   DEFAULT_SHELL_EXECUTION_ENDPOINT,
@@ -183,6 +186,9 @@ interface SettingsStore {
 
   // API Request Timeout (seconds, 0 = no limit)
   apiRequestTimeoutSeconds: number
+
+  // Provider max retry attempts on 429/5xx (0 = unlimited, default 10)
+  requestMaxRetries: number
 
   // CodeGraph Settings (opt-in standalone sidecar; default off)
   codegraphEnabled: boolean
@@ -308,6 +314,9 @@ export const useSettingsStore = create<SettingsStore>()(
 
       // API Request Timeout (seconds, 0 = no limit, default 100s)
       apiRequestTimeoutSeconds: 100,
+
+      // Provider max retry attempts on 429/5xx (0 = unlimited, default 10)
+      requestMaxRetries: 10,
 
       // CodeGraph Settings (opt-in standalone sidecar; default off)
       codegraphEnabled: false,
@@ -457,6 +466,7 @@ export const useSettingsStore = create<SettingsStore>()(
         apiRequestTimeoutSeconds: clampApiRequestTimeoutSeconds(
           state.apiRequestTimeoutSeconds
         ),
+        requestMaxRetries: clampRequestMaxRetries(state.requestMaxRetries),
         // CodeGraph Settings
         codegraphEnabled: state.codegraphEnabled,
         codegraphFullToolSurface: state.codegraphFullToolSurface,

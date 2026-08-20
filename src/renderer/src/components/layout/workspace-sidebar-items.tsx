@@ -22,6 +22,8 @@ import { toast } from 'sonner'
 import { MoreHorizontal } from 'lucide-react'
 import { ipcClient } from '@renderer/lib/ipc/ipc-client'
 import { IPC } from '@renderer/lib/ipc/channels'
+import { confirm } from '@renderer/components/ui/confirm-dialog'
+import * as React from 'react'
 
 // ─── Helpers ───
 
@@ -156,9 +158,21 @@ export function SessionItem({ session, isActive, onClick }: SessionItemProps): R
     setIsEditing(false)
   }, [editTitle, session.id, session.title, updateSessionTitle])
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
+    const ok = await confirm({
+      title: t('sidebar.deleteSessionConfirmTitle', {
+        defaultValue: 'Delete this session?'
+      }),
+      description: t('sidebar.deleteSessionConfirmDesc', {
+        defaultValue:
+          '"{{title}}" and its message history will be permanently deleted. This cannot be undone.',
+        title: session.title
+      }),
+      variant: 'destructive'
+    })
+    if (!ok) return
     deleteSession(session.id)
-  }, [session.id, deleteSession])
+  }, [session.id, session.title, deleteSession, t])
 
   const handleClear = useCallback(() => {
     clearSessionMessages(session.id)
@@ -204,14 +218,13 @@ export function SessionItem({ session, isActive, onClick }: SessionItemProps): R
           )}
         >
           {session.pinned && <Pin className="size-3 shrink-0 text-primary/60" />}
-          <span className="flex-1 truncate">{session.title}</span>
-          {isStreaming ? (
+          {isStreaming && (
             <Loader2 className="size-3 shrink-0 animate-spin text-primary" />
-          ) : (
-            <span className="shrink-0 text-[10px] text-muted-foreground/40">
-              {formatRelativeTime(session.updatedAt)}
-            </span>
           )}
+          <span className="flex-1 truncate">{session.title}</span>
+          <span className="shrink-0 text-[10px] text-muted-foreground/40">
+            {formatRelativeTime(session.updatedAt)}
+          </span>
         </button>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -277,6 +290,23 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
 
   const isActive = activeProjectId === project.id
   const sortedSessions = useMemo(() => sortSessions(sessions), [sessions])
+  // Project-level running indicator: spins when any session under this
+  // project is streaming (matches OpenCowork's project row spinner).
+  const hasStreamingSession = useChatStore(
+    (s) => sessions.some((session) => Boolean(s.streamingMessages[session.id]))
+  )
+
+  // Show the first N sessions by default; "load more" reveals the rest.
+  // Reset when the underlying list changes (session deleted/added).
+  const SESSION_COLLAPSE_COUNT = 5
+  const [showAllSessions, setShowAllSessions] = React.useState(false)
+  React.useEffect(() => {
+    setShowAllSessions(false)
+  }, [sessions])
+  const hasHiddenSessions = !showAllSessions && sortedSessions.length > SESSION_COLLAPSE_COUNT
+  const visibleSessions = hasHiddenSessions
+    ? sortedSessions.slice(0, SESSION_COLLAPSE_COUNT)
+    : sortedSessions
 
   const handleClick = useCallback(() => {
     setActiveProjectHome(project.id)
@@ -296,9 +326,21 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
   }, [editName, project.id, project.name, renameProject])
 
   const handleDelete = useCallback(async () => {
+    const ok = await confirm({
+      title: t('sidebar.deleteProjectConfirmTitle', {
+        defaultValue: 'Delete this project?'
+      }),
+      description: t('sidebar.deleteProjectConfirmDesc', {
+        defaultValue:
+          'Project "{{name}}" and its sessions will be removed from the app. Files on disk are NOT deleted.',
+        name: project.name
+      }),
+      variant: 'destructive'
+    })
+    if (!ok) return
     await deleteProject(project.id)
     toast.success(t('sidebar.projectDeleted', { defaultValue: 'Project deleted' }))
-  }, [project.id, deleteProject, t])
+  }, [project.id, project.name, deleteProject, t])
 
   const handleChangeFolder = useCallback(async () => {
     if (!project.workingFolder) {
@@ -364,6 +406,9 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
           >
             {project.pinned && <Pin className="size-3 shrink-0 text-primary/60" />}
             {isExpanded ? <FolderOpen className="size-3.5 shrink-0" /> : <Folder className="size-3.5 shrink-0" />}
+            {hasStreamingSession && (
+              <Loader2 className="size-3 shrink-0 animate-spin text-primary" />
+            )}
             <span className="flex-1 truncate text-xs font-medium">{project.name}</span>
             
             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -464,7 +509,7 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
       {/* Sessions under this project */}
       {isExpanded && sortedSessions.length > 0 && (
         <div className="ml-3 mt-0.5 flex flex-col gap-0.5 pl-2">
-          {sortedSessions.map((session) => (
+          {visibleSessions.map((session) => (
             <SessionItem
               key={session.id}
               session={session}
@@ -472,6 +517,18 @@ export function ProjectItem({ project, sessions, isExpanded, onToggleExpand }: P
               onClick={() => navigateToSession(session.id)}
             />
           ))}
+          {hasHiddenSessions && (
+            <button
+              type="button"
+              onClick={() => setShowAllSessions(true)}
+              className="mt-0.5 rounded px-2 py-1 text-left text-[10px] text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {t('sidebar.loadMoreSessions', {
+                defaultValue: 'Load more ({{count}} hidden)',
+                count: sortedSessions.length - SESSION_COLLAPSE_COUNT
+              })}
+            </button>
+          )}
         </div>
       )}
       {isExpanded && sortedSessions.length === 0 && (

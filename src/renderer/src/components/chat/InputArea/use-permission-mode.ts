@@ -3,21 +3,23 @@ import type { TFunction } from 'i18next'
 import { confirm } from '@renderer/components/ui/confirm-dialog'
 import { useSettingsStore } from '@renderer/stores/settings-store'
 
+// Permission modes were simplified to two tiers: default (ask for risky
+// tools) and fullAccess (YOLO — auto-approve everything). The legacy
+// whitelist tier is no longer selectable; existing whitelist settings in
+// the store are ignored (kept for migration compatibility only).
+
+export type PermissionMode = 'default' | 'fullAccess'
+
 interface UsePermissionModeOptions {
   autoApprove: boolean
-  permissionWhitelistEnabled: boolean
   t: TFunction
 }
 
 export function usePermissionMode(opts: UsePermissionModeOptions) {
-  const permissionMode: 'default' | 'whitelist' | 'fullAccess' = opts.autoApprove
-    ? 'fullAccess'
-    : opts.permissionWhitelistEnabled
-      ? 'whitelist'
-      : 'default'
+  const permissionMode: PermissionMode = opts.autoApprove ? 'fullAccess' : 'default'
 
   const handleSelectPermissionMode = React.useCallback(
-    async (mode: 'default' | 'whitelist' | 'fullAccess'): Promise<void> => {
+    async (mode: PermissionMode): Promise<void> => {
       if (mode === permissionMode) return
       if (mode === 'fullAccess') {
         const ok = await confirm({
@@ -30,11 +32,7 @@ export function usePermissionMode(opts: UsePermissionModeOptions) {
         useSettingsStore.getState().updateSettings({ autoApprove: true })
         return
       }
-      const { permissionPolicy } = useSettingsStore.getState()
-      useSettingsStore.getState().updateSettings({
-        autoApprove: false,
-        permissionPolicy: { ...permissionPolicy, enabled: mode === 'whitelist' }
-      })
+      useSettingsStore.getState().updateSettings({ autoApprove: false })
     },
     [permissionMode, opts.t]
   )

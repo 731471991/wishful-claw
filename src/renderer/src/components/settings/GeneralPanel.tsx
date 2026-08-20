@@ -13,6 +13,7 @@ import {
   type ThemeMode,
   clampApiRequestTimeoutSeconds,
   DEFAULT_API_REQUEST_TIMEOUT_SECONDS,
+  clampRequestMaxRetries,
   MIN_API_REQUEST_TIMEOUT_SECONDS,
   MAX_API_REQUEST_TIMEOUT_SECONDS
 } from '@renderer/stores/settings-store'
@@ -423,6 +424,69 @@ function GeneralPanel(): React.JSX.Element {
           {t('general.apiRequestTimeoutHint', {
             defaultValue: 'Default: {{default}} seconds. Applies to all providers.',
             default: DEFAULT_API_REQUEST_TIMEOUT_SECONDS
+          })}
+        </p>
+      </section>
+
+      {/* Provider Max Retries */}
+      <section className="space-y-3">
+        <div className="max-w-lg">
+          <label className="text-sm font-medium text-foreground">
+            {t('general.requestMaxRetries', { defaultValue: 'Provider Max Retries' })}
+          </label>
+          <p className="text-xs text-muted-foreground">
+            {t('general.requestMaxRetriesDesc', {
+              defaultValue:
+                'Retries on rate limits (429) and server errors (5xx). Set 0 to retry indefinitely; retries beyond 10 wait 1 minute each.'
+            })}
+          </p>
+        </div>
+        <div className="flex max-w-lg items-center gap-3">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            value={settings.requestMaxRetries}
+            onChange={(event) =>
+              settings.updateSettings({
+                requestMaxRetries: clampRequestMaxRetries(Number(event.target.value))
+              })
+            }
+            className="w-28 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">
+            {settings.requestMaxRetries === 0
+              ? t('general.requestMaxRetriesNoLimit', { defaultValue: 'Unlimited' })
+              : t('general.requestMaxRetriesCount', {
+                  defaultValue: '{{count}} attempts',
+                  count: settings.requestMaxRetries
+                })}
+          </span>
+        </div>
+        <div className="flex max-w-lg flex-wrap gap-1.5">
+          {[0, 10, 20, 50].map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => settings.updateSettings({ requestMaxRetries: value })}
+              className={cn(
+                'rounded-md border px-2.5 py-1 text-[11px] transition-colors',
+                settings.requestMaxRetries === value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              {value === 0
+                ? t('general.requestMaxRetriesNoLimit', { defaultValue: 'Unlimited' })
+                : `${value}`}
+            </button>
+          ))}
+        </div>
+        <p className="max-w-lg text-xs text-muted-foreground/70">
+          {t('general.requestMaxRetriesHint', {
+            defaultValue: 'Default: 10 attempts. Applies to all providers.',
+            default: 10
           })}
         </p>
       </section>

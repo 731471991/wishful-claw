@@ -14,6 +14,7 @@ import { WorkingFolderSelectorDialog } from '@renderer/components/chat/WorkingFo
 import { SessionItem, ProjectItem, sortProjects, sortSessions, readProjectSortMode, writeProjectSortMode, PROJECT_SORT_MODES, type ProjectSortMode } from './workspace-sidebar-items'
 import { ResizeHandle, renderNavItem, NavButtonItem } from './workspace-sidebar-nav'
 import { SearchDialog } from './search-dialog'
+import * as React from 'react'
 
 export function WorkspaceSidebar(): React.JSX.Element | null {
   const { t } = useTranslation('layout')
@@ -25,6 +26,7 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
   const activeSessionId = useChatStore((s) => s.activeSessionId)
 
   const sessions = useChatStore((s) => s.sessions)
+
   const projects = useChatStore((s) => s.projects)
   const setActiveProjectHome = useChatStore((s) => s.setActiveProjectHome)
   const createProject = useChatStore((s) => s.createProject)
@@ -120,6 +122,17 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
       return next
     })
   }, [])
+  // Unassigned session list: show the first N by default, "load more" reveals the rest.
+  const UNASSIGNED_COLLAPSE_COUNT = 5
+  const [showAllUnassigned, setShowAllUnassigned] = React.useState(false)
+  React.useEffect(() => {
+    setShowAllUnassigned(false)
+  }, [sessions])
+  const hasHiddenUnassigned =
+    !showAllUnassigned && sortedUnassigned.length > UNASSIGNED_COLLAPSE_COUNT
+  const visibleUnassigned = hasHiddenUnassigned
+    ? sortedUnassigned.slice(0, UNASSIGNED_COLLAPSE_COUNT)
+    : sortedUnassigned
 
   const handleNewChat = useCallback(() => {
     // Don't create a session yet — just navigate to home.
@@ -318,7 +331,7 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
             <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
               {t('sidebar.conversations', { defaultValue: 'Conversations' })}
             </div>
-            {sortedUnassigned.map((session) => (
+            {visibleUnassigned.map((session) => (
               <SessionItem
                 key={session.id}
                 session={session}
@@ -326,6 +339,18 @@ export function WorkspaceSidebar(): React.JSX.Element | null {
                 onClick={() => navigateToSession(session.id)}
               />
             ))}
+            {hasHiddenUnassigned && (
+              <button
+                type="button"
+                onClick={() => setShowAllUnassigned(true)}
+                className="mt-0.5 rounded px-2 py-1 text-left text-[10px] text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+              >
+                {t('sidebar.loadMoreSessions', {
+                  defaultValue: 'Load more ({{count}} hidden)',
+                  count: sortedUnassigned.length - UNASSIGNED_COLLAPSE_COUNT
+                })}
+              </button>
+            )}
           </div>
         )}
 

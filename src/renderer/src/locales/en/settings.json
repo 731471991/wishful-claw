@@ -178,7 +178,12 @@
       "desc": "Automatically start WishfulClaw when you log in to your computer",
       "enabled": "Enabled",
       "disabled": "Disabled"
-    }
+    },
+    "requestMaxRetries": "Provider Max Retries",
+    "requestMaxRetriesDesc": "Automatic retries on rate limits (429) and server errors (5xx). Set 0 to retry indefinitely; retries beyond 10 wait 1 minute each.",
+    "requestMaxRetriesNoLimit": "Unlimited",
+    "requestMaxRetriesCount": "{{count}} attempts",
+    "requestMaxRetriesHint": "Default: 10 attempts. Applies to all providers."
   },
   "provider": {
     "list": {

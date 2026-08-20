@@ -59,8 +59,8 @@ interface ComposerToolbarProps {
   hasText: boolean
 
   // Permission
-  permissionMode: 'default' | 'whitelist' | 'fullAccess'
-  onSelectPermissionMode: (mode: 'default' | 'whitelist' | 'fullAccess') => Promise<void>
+  permissionMode: 'default' | 'fullAccess'
+  onSelectPermissionMode: (mode: 'default' | 'fullAccess') => Promise<void>
   onOpenSettings: (tab: string) => void
 
   // Send

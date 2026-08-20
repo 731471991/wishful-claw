@@ -107,11 +107,18 @@ export function ComposerRuntimeStatus({
         }
       }
 
+      const messageSnapshot = collectRuntimeOutputSnapshot(message)
+      const previousUserSnapshot = collectRuntimeOutputSnapshot(previousUserMessage)
+
       return {
         targetSessionId,
         streamingMessageId,
-        content: message?.content,
-        previousUserContent: previousUserMessage?.content,
+        // Compute the snapshot inside the selector so streaming mutations
+        // (text/thinking/segments) re-render via shallow-compare on primitives.
+        snapshotText: messageSnapshot.text,
+        snapshotHasActiveThinking: messageSnapshot.hasActiveThinking,
+        snapshotHasTextOutput: messageSnapshot.hasTextOutput,
+        previousUserText: previousUserSnapshot.text,
         revision: message?._revision ?? 0,
         currentInputTokens: normalizeTokenCount(message?.usage?.inputTokens),
         currentOutputTokens: normalizeTokenCount(message?.usage?.outputTokens),
@@ -134,6 +141,9 @@ export function ComposerRuntimeStatus({
           : streamingMessageId
             ? Boolean(s.generatingImageMessages[streamingMessageId])
             : false,
+        thinkingEncrypted: streamingMessageId
+          ? Boolean((message as { thinkingEncrypted?: boolean } | undefined)?.thinkingEncrypted)
+          : false,
         sessionCacheHit: session?.sessionCacheHit,
         sessionCacheMiss: session?.sessionCacheMiss
       }
@@ -184,15 +194,18 @@ export function ComposerRuntimeStatus({
       }
     })
   )
-  const outputSnapshot = collectRuntimeOutputSnapshot(live.content)
+  const outputSnapshot = {
+    text: live.snapshotText,
+    hasActiveThinking: live.snapshotHasActiveThinking,
+    hasTextOutput: live.snapshotHasTextOutput
+  }
   const estimatedOutputTokens = React.useMemo(
     () => estimateTokens(outputSnapshot.text),
     [outputSnapshot.text]
   )
-  const previousUserInputSnapshot = collectRuntimeOutputSnapshot(live.previousUserContent)
   const previousUserInputTokens = React.useMemo(
-    () => estimateTokens(previousUserInputSnapshot.text),
-    [previousUserInputSnapshot.text]
+    () => estimateTokens(live.previousUserText),
+    [live.previousUserText]
   )
   const currentEstimatedInputTokens = Math.max(
     live.currentInputTokens,
@@ -323,8 +336,10 @@ export function ComposerRuntimeStatus({
     }
     if (agentRuntime.sessionStatus === 'retrying') {
       const attempt =
-        agentRuntime.retryAttempt && agentRuntime.retryMaxAttempts
-          ? `${agentRuntime.retryAttempt}/${agentRuntime.retryMaxAttempts}`
+        agentRuntime.retryAttempt
+          ? agentRuntime.retryMaxAttempts
+            ? `${agentRuntime.retryAttempt}/${agentRuntime.retryMaxAttempts}`
+            : `${agentRuntime.retryAttempt}/∞`
           : ''
       return {
         text: t('input.runtimeStatus.retrying', {
@@ -363,7 +378,9 @@ export function ComposerRuntimeStatus({
         className: 'text-cyan-500/85 dark:text-cyan-300/85'
       }
     }
-    if (isStreaming && outputSnapshot.hasActiveThinking && !outputSnapshot.hasTextOutput) {
+    const isThinkingPhase =
+      (outputSnapshot.hasActiveThinking || live.thinkingEncrypted) && !outputSnapshot.hasTextOutput
+    if (isStreaming && isThinkingPhase) {
       return {
         text: t('input.runtimeStatus.thinking', { defaultValue: 'Thinking' }),
         Icon: Brain,
@@ -372,7 +389,7 @@ export function ComposerRuntimeStatus({
     }
     if (isStreaming && (outputTokens > 0 || outputSnapshot.hasTextOutput)) {
       return {
-        text: t('input.runtimeStatus.receiving', { defaultValue: 'Receiving' }),
+        text: t('input.runtimeStatus.receiving', { defaultValue: 'Generating' }),
         Icon: Activity,
         className: 'text-emerald-500/85 dark:text-emerald-300/85'
       }
@@ -401,6 +418,7 @@ export function ComposerRuntimeStatus({
     isOptimizing,
     isStreaming,
     live.isGeneratingImage,
+    live.thinkingEncrypted,
     outputSnapshot.hasActiveThinking,
     outputSnapshot.hasTextOutput,
     outputTokens,

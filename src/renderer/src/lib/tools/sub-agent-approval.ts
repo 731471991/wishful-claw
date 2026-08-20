@@ -14,6 +14,9 @@
  * is stored and applied when the request arrives.
  */
 
+import { confirm } from '@renderer/components/ui/confirm-dialog'
+import { inputSummary } from '@renderer/components/chat/tool-call-summary'
+
 const pendingApprovals = new Map<
   string,
   { resolve: (approved: boolean) => void; toolName: string; input: Record<string, unknown> }
@@ -50,6 +53,27 @@ export async function handleSubAgentApprovalRequest(
 
   if (!toolCallId) {
     return { approved: false }
+  }
+
+  console.warn('[SubAgentApproval] request received', {
+    toolCallId,
+    toolName,
+    source: record.source,
+    keys: Object.keys(record)
+  })
+
+  // Default permission mode (main agent loop): no card UI is mounted for these
+  // approvals, so resolve synchronously via a confirm dialog.
+  if (record.source === 'default-mode') {
+    const detail = inputSummary(toolName, input)
+    const approved = await confirm({
+      title: `工具调用确认 — ${toolName}`,
+      description: detail ? `即将执行：${detail}` : '此工具需要你的确认后才会执行。',
+      confirmLabel: '允许执行',
+      cancelLabel: '拒绝',
+      variant: 'warning'
+    })
+    return { approved }
   }
 
   // Check if user already resolved before the request arrived

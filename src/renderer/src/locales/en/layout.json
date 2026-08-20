@@ -249,7 +249,12 @@
     "searching": "Searching…",
     "noResultsFor": "No results for",
     "messages": "Messages",
-    "taskBoardLabel": "Task Board"
+    "taskBoardLabel": "Task Board",
+    "deleteSessionConfirmTitle": "Delete this session?",
+    "deleteSessionConfirmDesc": "\"{{title}}\" and its message history will be permanently deleted. This cannot be undone.",
+    "deleteProjectConfirmTitle": "Delete this project?",
+    "deleteProjectConfirmDesc": "Project \"{{name}}\" and its sessions will be removed from the app. Files on disk are NOT deleted.",
+    "loadMoreSessions": "Load more ({{count}} hidden)"
   },
   "sectionExecution": {
     "title": "Execution"

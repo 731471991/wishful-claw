@@ -231,7 +231,8 @@ internal static partial class AgentLoop
             var turn = await ProviderRetryPolicy.ExecuteAsync(
                 () => ExecuteTurnAsync(parameters, provider, conversation, toolDefs, state, context),
                 state,
-                context);
+                context,
+                provider);
 
             // Clear transient memory recall after first API call — subsequent
             // iterations within the same turn don't need it re-injected.

@@ -5,6 +5,7 @@ import { EventEmitter } from 'events'
 import * as net from 'net'
 import * as path from 'path'
 import { decode, encode } from '@msgpack/msgpack'
+import { app } from 'electron'
 import { logError, logWarn } from './logger'
 import { readPersistedSettings, SETTINGS_STORAGE_KEY } from './settings-store'
 
@@ -121,6 +122,11 @@ class NativeWorkerManager {
 
     // Read defaultShell from persisted settings and inject as env var
     let workerEnv = { ...process.env }
+    // Propagate the main process's log level so the Worker matches dev/prod
+    // verbosity (main: debug in dev, error when packaged; Worker default: warn).
+    if (!workerEnv.WISHFUL_CLAW_LOG_LEVEL) {
+      workerEnv.WISHFUL_CLAW_LOG_LEVEL = resolveWorkerLogLevel()
+    }
     try {
       const persisted = readPersistedSettings(SETTINGS_STORAGE_KEY) as
         { state?: { defaultShell?: string } } | null
@@ -336,6 +342,12 @@ function createEndpoint(): string {
     return `\\\\.\\pipe\\wishful-claw-${id}`
   }
   return path.join('/tmp', `wishful-claw-${id}.sock`)
+}
+
+function resolveWorkerLogLevel(): string {
+  const override = process.env['WISHFUL_CLAW_LOG_LEVEL']
+  if (override) return override
+  return app.isPackaged ? 'warn' : 'debug'
 }
 
 function resolveWorkerPath(): string | null {

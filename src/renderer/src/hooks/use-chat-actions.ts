@@ -111,7 +111,9 @@ export function useChatActions() {
         maxTokens: settings.maxTokens ?? undefined,
         thinkingEnabled,
         thinkingConfig: thinkingConfig ?? undefined,
-        reasoningEffort
+        reasoningEffort,
+        requestTimeoutSeconds: settings.apiRequestTimeoutSeconds ?? undefined,
+        requestMaxRetries: settings.requestMaxRetries ?? undefined
       }
 
       await sendMessage({
@@ -133,7 +135,8 @@ export function useChatActions() {
         sshConnectionId,
         projectId,
         ...(opts?.enablePlanMode ? { enablePlanMode: true } : {}),
-        sessionMode: opts?.sessionMode
+        sessionMode: opts?.sessionMode,
+        permissionMode: settings.autoApprove ? 'fullAccess' : 'default'
       })
 
       void opts
@@ -205,7 +208,8 @@ export function buildProviderPayload(
     thinkingEnabled,
     thinkingConfig: thinkingConfig ?? undefined,
     reasoningEffort,
-    requestTimeoutSeconds: settings.apiRequestTimeoutSeconds ?? 100
+    requestTimeoutSeconds: settings.apiRequestTimeoutSeconds ?? 100,
+    requestMaxRetries: settings.requestMaxRetries ?? 10
   }
 }
 

@@ -183,7 +183,12 @@
       "desc": "登录电脑时自动启动 WishfulClaw",
       "enabled": "已启用",
       "disabled": "已禁用"
-    }
+    },
+    "requestMaxRetries": "服务商重试次数",
+    "requestMaxRetriesDesc": "遇到限流（429）或服务端错误（5xx）时的自动重试次数。设为 0 表示无限重试；超过 10 次后每次重试间隔 1 分钟。",
+    "requestMaxRetriesNoLimit": "无限",
+    "requestMaxRetriesCount": "{{count}} 次",
+    "requestMaxRetriesHint": "默认：10 次，适用于所有服务商。"
   },
   "provider": {
     "list": {
