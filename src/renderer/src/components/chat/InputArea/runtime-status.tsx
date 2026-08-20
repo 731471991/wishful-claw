@@ -326,8 +326,10 @@ export function ComposerRuntimeStatus({
     }
     if (agentRuntime.sessionStatus === 'retrying') {
       const attempt =
-        agentRuntime.retryAttempt && agentRuntime.retryMaxAttempts
-          ? `${agentRuntime.retryAttempt}/${agentRuntime.retryMaxAttempts}`
+        agentRuntime.retryAttempt
+          ? agentRuntime.retryMaxAttempts
+            ? `${agentRuntime.retryAttempt}/${agentRuntime.retryMaxAttempts}`
+            : `${agentRuntime.retryAttempt}/∞`
           : ''
       return {
         text: t('input.runtimeStatus.retrying', {
