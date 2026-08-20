@@ -4,24 +4,25 @@ import {
 import { Button } from '@renderer/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger
+  DropdownMenuTrigger
 } from '@renderer/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
-
-type PermissionMode = 'default' | 'whitelist' | 'fullAccess'
+import type { PermissionMode } from './use-permission-mode'
 
 interface PermissionControlProps {
   permissionMode: PermissionMode
   onSelectMode: (mode: PermissionMode) => Promise<void>
-  onOpenSettings: (tab?: string) => void
+  /** Retained for API compatibility; whitelist settings entry was removed. */
+  onOpenSettings?: (tab?: string) => void
 }
 
+// Composer-level control: icon-only trigger (mode labels live in the dropdown
+// items only, per product decision). Two tiers: default + YOLO (fullAccess).
 export function PermissionControl({
   permissionMode,
-  onSelectMode,
-  onOpenSettings
+  onSelectMode
 }: PermissionControlProps) {
   const { t } = useTranslation('chat')
   const composerIconControlClass = 'composer-control rounded-xl'
@@ -37,9 +38,8 @@ export function PermissionControl({
               size="sm"
               className={cn(
                 composerIconControlClass,
-                'gap-1.5 px-2 text-xs font-medium',
-                permissionMode === 'fullAccess' && 'text-amber-600 dark:text-amber-400',
-                permissionMode === 'whitelist' && 'text-emerald-600 dark:text-emerald-400'
+                'px-2 text-xs font-medium',
+                permissionMode === 'fullAccess' && 'text-amber-600 dark:text-amber-400'
               )}
               aria-label={t('permission.label')}
             >
@@ -48,17 +48,14 @@ export function PermissionControl({
               ) : (
                 <ShieldCheck className="size-3.5" />
               )}
-              <span className="max-w-24 truncate">
-                {permissionMode === 'fullAccess'
-                  ? t('permission.fullAccess')
-                  : permissionMode === 'whitelist'
-                    ? t('permission.whitelist')
-                    : t('permission.default')}
-              </span>
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent>{t('permission.tooltip')}</TooltipContent>
+        <TooltipContent>
+          {permissionMode === 'fullAccess'
+            ? t('permission.fullAccess')
+            : t('permission.default')}
+        </TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuItem
@@ -76,19 +73,6 @@ export function PermissionControl({
         </DropdownMenuItem>
         <DropdownMenuItem
           className="flex-col items-start gap-0.5"
-          onSelect={() => void onSelectMode('whitelist')}
-        >
-          <div className="flex w-full items-center gap-2">
-            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="flex-1 font-medium">{t('permission.whitelist')}</span>
-            {permissionMode === 'whitelist' && <Check className="size-3.5" />}
-          </div>
-          <span className="pl-[1.375rem] text-xs text-muted-foreground">
-            {t('permission.whitelistDesc')}
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="flex-col items-start gap-0.5"
           onSelect={() => void onSelectMode('fullAccess')}
         >
           <div className="flex w-full items-center gap-2">
@@ -99,10 +83,6 @@ export function PermissionControl({
           <span className="pl-[1.375rem] text-xs text-muted-foreground">
             {t('permission.fullAccessDesc')}
           </span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => onOpenSettings('permission')}>
-          <span className="text-xs">{t('permission.manageWhitelist')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -120,7 +120,7 @@
       "ready": "就绪",
       "waiting": "等待响应",
       "thinking": "思考中",
-      "receiving": "接收中",
+      "receiving": "正在输出",
       "optimizing": "优化中",
       "loadingMedia": "载入媒体",
       "generatingImage": "生成图片中",

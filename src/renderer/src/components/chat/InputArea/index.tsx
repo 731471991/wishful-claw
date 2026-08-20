@@ -66,7 +66,7 @@ export function InputArea({
   const {
     chatView, isHomeComposer,
     language: currentLanguage, autoApprove,
-    permissionWhitelistEnabled, clarifyAutoAcceptRecommended, animationsEnabled,
+    clarifyAutoAcceptRecommended, animationsEnabled,
     webSearchEnabled, canToggleWebSearch,
     supportsVision, composerModelCfg,
     mode, openSettings, openFilePreview,
@@ -305,7 +305,7 @@ export function InputArea({
 
   const { dragging, handleDragOver, handleDragLeave, handleDropWrapped } = useDragDrop({ addFilesToEditor })
   const { contextCompressionStatus, isContextCompressing, handleCompressContext, contextCompressionStatusLabel } = useContextCompression({ onCompressContext, t })
-  const { permissionMode, handleSelectPermissionMode } = usePermissionMode({ autoApprove, permissionWhitelistEnabled, t })
+  const { permissionMode, handleSelectPermissionMode } = usePermissionMode({ autoApprove, t })
 
   // Subscribe to external composer inject requests (e.g. from PreviewPanel)
   React.useEffect(() => {

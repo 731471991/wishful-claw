@@ -15,6 +15,7 @@
  */
 
 import { confirm } from '@renderer/components/ui/confirm-dialog'
+import { inputSummary } from '@renderer/components/chat/tool-call-summary'
 
 const pendingApprovals = new Map<
   string,
@@ -54,13 +55,22 @@ export async function handleSubAgentApprovalRequest(
     return { approved: false }
   }
 
+  console.warn('[SubAgentApproval] request received', {
+    toolCallId,
+    toolName,
+    source: record.source,
+    keys: Object.keys(record)
+  })
+
   // Default permission mode (main agent loop): no card UI is mounted for these
   // approvals, so resolve synchronously via a confirm dialog.
   if (record.source === 'default-mode') {
-    const inputPreview = summarizeInput(input)
+    const detail = inputSummary(toolName, input)
     const approved = await confirm({
-      title: `${toolName}`,
-      description: inputPreview,
+      title: `工具调用确认 — ${toolName}`,
+      description: detail ? `即将执行：${detail}` : '此工具需要你的确认后才会执行。',
+      confirmLabel: '允许执行',
+      cancelLabel: '拒绝',
       variant: 'warning'
     })
     return { approved }
@@ -138,14 +148,4 @@ export function cancelAllPendingApprovals(): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function summarizeInput(input: Record<string, unknown>): string {
-  try {
-    const json = JSON.stringify(input, null, 2) ?? ''
-    return json.length > 1200 ? `${json.slice(0, 1200)}
-...` : json
-  } catch {
-    return Object.keys(input).join(', ')
-  }
 }

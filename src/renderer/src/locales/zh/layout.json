@@ -249,7 +249,12 @@
     "searching": "搜索中…",
     "noResultsFor": "未找到相关结果",
     "messages": "消息",
-    "taskBoardLabel": "任务面板"
+    "taskBoardLabel": "任务面板",
+    "deleteSessionConfirmTitle": "删除这个会话？",
+    "deleteSessionConfirmDesc": "「{{title}}」及其全部消息记录将被永久删除，无法恢复。",
+    "deleteProjectConfirmTitle": "删除这个项目？",
+    "deleteProjectConfirmDesc": "项目「{{name}}」及其会话将从应用中移除（磁盘上的文件不会被删除）。",
+    "loadMoreSessions": "加载更多（还有 {{count}} 个）"
   },
   "sectionExecution": {
     "title": "执行"

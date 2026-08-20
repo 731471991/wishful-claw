@@ -39,8 +39,10 @@ export function ComposerStatusIndicator({
       const message = streamingMessageId
         ? messages?.find((item) => item.id === streamingMessageId)
         : undefined
+      const snapshot = collectRuntimeOutputSnapshot(message)
       return {
-        content: message?.content,
+        hasActiveThinking: snapshot.hasActiveThinking,
+        hasTextOutput: snapshot.hasTextOutput,
         isGeneratingImage: streamingMessageId
           ? Boolean(s.generatingImageMessages[streamingMessageId])
           : false,
@@ -78,7 +80,10 @@ export function ComposerStatusIndicator({
       }
     })
   )
-  const outputSnapshot = collectRuntimeOutputSnapshot(live.content)
+  const outputSnapshot = {
+    hasActiveThinking: live.hasActiveThinking,
+    hasTextOutput: live.hasTextOutput
+  }
   const outputTokens = 0 // Not needed for status view; only used for metrics
 
   const statusView = React.useMemo<RuntimeStatusView>(() => {
@@ -174,7 +179,7 @@ export function ComposerStatusIndicator({
     }
     if (isStreaming && (outputTokens > 0 || outputSnapshot.hasTextOutput)) {
       return {
-        text: t('input.runtimeStatus.receiving', { defaultValue: 'Receiving' }),
+        text: t('input.runtimeStatus.receiving', { defaultValue: 'Generating' }),
         Icon: Activity,
         className: 'text-emerald-500/85 dark:text-emerald-300/85'
       }
@@ -203,8 +208,8 @@ export function ComposerStatusIndicator({
     isOptimizing,
     isStreaming,
     live.isGeneratingImage,
-    outputSnapshot.hasActiveThinking,
-    outputSnapshot.hasTextOutput,
+    live.hasActiveThinking,
+    live.hasTextOutput,
     live.thinkingEncrypted,
     outputTokens,
     t

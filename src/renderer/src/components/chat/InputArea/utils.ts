@@ -11,6 +11,7 @@ import { IMAGE_MEDIA_TYPE_BY_EXTENSION } from './types'
 import { calculateCost, calculateCostBreakdown, getBillableInputTokens, getCacheCreationTokens, getCacheCreationSplit } from '@renderer/lib/format-tokens'
 import { formatDurationMs } from '@renderer/lib/format-duration'
 import { selectFileTextToPlainText } from '@renderer/lib/select-file-tags'
+import { parseThinkTags } from '../AssistantMessage/think-parser'
 
 export function normalizeTokenCount(value: number | null | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 0
@@ -105,9 +106,110 @@ export function addUsageToTotals(
   }
 }
 
+/** Source shape accepted by `collectRuntimeOutputSnapshot`.
+ *
+ * During streaming, chat-store flushes deltas into `text` / `thinking` /
+ * `segments` (NOT `content` — that field is only populated for messages
+ * rehydrated from the DB). The runtime status components therefore must read
+ * the streaming fields, mirroring how OpenCowork reads its content blocks. */
+export interface RuntimeSnapshotSource {
+  content?: string | UnifiedMessage['content']
+  text?: string
+  thinking?: string
+  segments?: Array<{
+    type: 'thinking' | 'text' | 'tool_use' | string
+    iteration?: number
+    thinking?: string
+    text?: string
+    completedAt?: number
+  }>
+  currentIteration?: number
+  isStreaming?: boolean
+}
+
 export function collectRuntimeOutputSnapshot(
-  content: UnifiedMessage['content'] | undefined
+  source: RuntimeSnapshotSource | undefined
 ): RuntimeOutputSnapshot {
+  if (!source) {
+    return { text: '', hasTextOutput: false, hasActiveThinking: false }
+  }
+
+  const parts: string[] = []
+  let hasTextOutput = false
+  let hasActiveThinking = false
+
+  const pushTextBlock = (raw: string): void => {
+    if (!raw) return
+    parts.push(raw)
+    // OpenAI-compatible providers (GLM etc.) stream reasoning as inline
+    // <think> tags inside text blocks. Match the chat view: an unclosed
+    // think segment means the model is still reasoning, not "waiting".
+    const segments = parseThinkTags(raw)
+    if (segments.some((seg) => seg.type === 'think')) {
+      if (segments.some((seg) => seg.type === 'think' && !seg.closed)) {
+        hasActiveThinking = true
+      }
+      if (segments.some((seg) => seg.type === 'text' && seg.content.trim())) {
+        hasTextOutput = true
+      }
+    } else {
+      hasTextOutput = hasTextOutput || raw.trim().length > 0
+    }
+  }
+
+  // 1. Streaming path: segments carry the live iteration state written by
+  //    chat-store's flushStreamDeltas. Only the CURRENT iteration is relevant
+  //    — earlier iterations legitimately produced text before a tool call.
+  const currentIteration = source.currentIteration ?? 1
+  const liveSegments = (source.segments ?? []).filter(
+    (seg) => (seg.iteration ?? 1) === currentIteration
+  )
+  if (liveSegments.length > 0) {
+    for (const seg of liveSegments) {
+      if (seg.type === 'text' && seg.text) {
+        pushTextBlock(seg.text)
+      } else if (seg.type === 'thinking') {
+        if (seg.thinking) {
+          parts.push(seg.thinking)
+        }
+        // An unclosed thinking segment of the current iteration means the
+        // model is reasoning right now (DeepSeek-style reasoning deltas).
+        if (!seg.completedAt) {
+          hasActiveThinking = true
+        }
+      }
+    }
+    if (hasActiveThinking || hasTextOutput || parts.length > 0) {
+      return {
+        text: parts.join('\n'),
+        hasTextOutput,
+        hasActiveThinking
+      }
+    }
+  }
+
+  // 2. Fallback for legacy/in-flight messages without segments: raw text +
+  //    accumulated thinking. `thinking` is the whole-turn accumulation, so
+  //    only count it as active while the message is still streaming.
+  if (source.text) {
+    pushTextBlock(source.text)
+  }
+  if (source.thinking) {
+    parts.push(source.thinking)
+    if (source.isStreaming) {
+      hasActiveThinking = true
+    }
+  }
+  if (hasActiveThinking || hasTextOutput || parts.length > 0) {
+    return {
+      text: parts.join('\n'),
+      hasTextOutput,
+      hasActiveThinking
+    }
+  }
+
+  // 3. Rehydrated / legacy `content` blocks (OpenCowork-style content).
+  const content = source.content
   if (!content) {
     return { text: '', hasTextOutput: false, hasActiveThinking: false }
   }
@@ -120,16 +222,9 @@ export function collectRuntimeOutputSnapshot(
     }
   }
 
-  const parts: string[] = []
-  let hasTextOutput = false
-  let hasActiveThinking = false
-
   for (const block of content) {
     if (block.type === 'text') {
-      if (block.text) {
-        parts.push(block.text)
-        hasTextOutput = hasTextOutput || block.text.trim().length > 0
-      }
+      pushTextBlock(block.text ?? '')
       continue
     }
 
@@ -137,7 +232,10 @@ export function collectRuntimeOutputSnapshot(
       if (block.thinking) {
         parts.push(block.thinking)
       }
-      if (!block.completedAt && block.thinking.trim().length > 0) {
+      // Match ThinkingBlock's live state: any not-yet-completed thinking block
+      // counts as active thinking, even before text arrives (GLM-style models
+      // emit an empty thinking block first, content streams in afterwards).
+      if (!block.completedAt) {
         hasActiveThinking = true
       }
     }

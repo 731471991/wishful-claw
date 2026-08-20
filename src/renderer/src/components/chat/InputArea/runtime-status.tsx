@@ -107,11 +107,18 @@ export function ComposerRuntimeStatus({
         }
       }
 
+      const messageSnapshot = collectRuntimeOutputSnapshot(message)
+      const previousUserSnapshot = collectRuntimeOutputSnapshot(previousUserMessage)
+
       return {
         targetSessionId,
         streamingMessageId,
-        content: message?.content,
-        previousUserContent: previousUserMessage?.content,
+        // Compute the snapshot inside the selector so streaming mutations
+        // (text/thinking/segments) re-render via shallow-compare on primitives.
+        snapshotText: messageSnapshot.text,
+        snapshotHasActiveThinking: messageSnapshot.hasActiveThinking,
+        snapshotHasTextOutput: messageSnapshot.hasTextOutput,
+        previousUserText: previousUserSnapshot.text,
         revision: message?._revision ?? 0,
         currentInputTokens: normalizeTokenCount(message?.usage?.inputTokens),
         currentOutputTokens: normalizeTokenCount(message?.usage?.outputTokens),
@@ -187,15 +194,18 @@ export function ComposerRuntimeStatus({
       }
     })
   )
-  const outputSnapshot = collectRuntimeOutputSnapshot(live.content)
+  const outputSnapshot = {
+    text: live.snapshotText,
+    hasActiveThinking: live.snapshotHasActiveThinking,
+    hasTextOutput: live.snapshotHasTextOutput
+  }
   const estimatedOutputTokens = React.useMemo(
     () => estimateTokens(outputSnapshot.text),
     [outputSnapshot.text]
   )
-  const previousUserInputSnapshot = collectRuntimeOutputSnapshot(live.previousUserContent)
   const previousUserInputTokens = React.useMemo(
-    () => estimateTokens(previousUserInputSnapshot.text),
-    [previousUserInputSnapshot.text]
+    () => estimateTokens(live.previousUserText),
+    [live.previousUserText]
   )
   const currentEstimatedInputTokens = Math.max(
     live.currentInputTokens,
@@ -379,7 +389,7 @@ export function ComposerRuntimeStatus({
     }
     if (isStreaming && (outputTokens > 0 || outputSnapshot.hasTextOutput)) {
       return {
-        text: t('input.runtimeStatus.receiving', { defaultValue: 'Receiving' }),
+        text: t('input.runtimeStatus.receiving', { defaultValue: 'Generating' }),
         Icon: Activity,
         className: 'text-emerald-500/85 dark:text-emerald-300/85'
       }

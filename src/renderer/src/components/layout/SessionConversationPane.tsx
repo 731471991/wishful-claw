@@ -19,6 +19,7 @@ import { useActivityStore } from '@renderer/stores/activity-store'
 import { useTerminalStore } from '@renderer/stores/terminal-store'
 import { BottomTerminalDock } from '@renderer/components/terminal/BottomTerminalDock'
 import { toast } from 'sonner'
+import { confirm } from '@renderer/components/ui/confirm-dialog'
 
 interface SessionConversationPaneProps {
   sessionId?: string | null
@@ -80,11 +81,23 @@ export function SessionConversationPane({
     }
   }, [resolvedSessionId, session, clearSessionMessages, t])
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!resolvedSessionId) return
+    const ok = await confirm({
+      title: t('sidebar.deleteSessionConfirmTitle', {
+        defaultValue: 'Delete this session?'
+      }),
+      description: t('sidebar.deleteSessionConfirmDesc', {
+        defaultValue:
+          '"{{title}}" and its message history will be permanently deleted. This cannot be undone.',
+        title: session?.title ?? ''
+      }),
+      variant: 'destructive'
+    })
+    if (!ok) return
     deleteSession(resolvedSessionId)
     useUIStore.getState().navigateToHome()
-  }, [resolvedSessionId, deleteSession])
+  }, [resolvedSessionId, session, deleteSession, t])
 
   const handleRename = useCallback(() => {
     if (!resolvedSessionId || !session) return
