@@ -1,11 +1,12 @@
 /*
  * Ported from OpenCowork.
  * Original: Copyright 2026 AIDotNet
- * Licensed under the Apache License, Version 2.0 (the "License").
+ * Licensed under the Apache License, Version 2.0 (the "License");
  * Modified by the Wishful 心相 team for Wishful Claw.
  */
 
 using System.Net;
+using System.Text.Json;
 using WishfulClaw.Contracts;
 using WishfulClaw.Core.Protocol;
 
@@ -55,7 +56,14 @@ public sealed class ProviderHttpException : InvalidOperationException
 /// </summary>
 public static class ProviderRetryPolicy
 {
-    private const int MaxRetryAttempts = 10;
+    private const int DefaultMaxRetryAttempts = 10;
+    /// <summary>
+    /// Retries beyond this attempt use a fixed 60s interval — by then the provider
+    /// is rate-limiting at its own pace (per-minute quota), so exponential backoff
+    /// adds nothing but user-visible dead time.
+    /// </summary>
+    private const int SlowRetryThreshold = 10;
+    private const int SlowRetryDelayMs = 60_000;
     private const int BaseDelayMs = 500;
     private const int MaxBackoffMs = 15_000;
     private const int MaxRetryAfterMs = 60_000;
@@ -66,12 +74,18 @@ public static class ProviderRetryPolicy
     /// <summary>
     /// Wraps a provider turn execution with automatic retry on 429/5xx.
     /// Emits request_retry stream events so the UI can show retry status.
+    /// The optional provider payload carries the user-configured
+    /// requestMaxRetries: null/missing → 10 (default); 0 → unlimited; &gt;0 → that count.
     /// </summary>
     public static async Task<AgentRuntimeProviderTurnResult> ExecuteAsync(
         Func<Task<AgentRuntimeProviderTurnResult>> execute,
         AgentRuntimeRunState state,
-        IWorkerRequestContext context)
+        IWorkerRequestContext context,
+        JsonElement? provider = null)
     {
+        var maxAttempts = ResolveMaxRetryAttempts(provider);
+        var isUnlimited = maxAttempts == 0;
+
         for (var retryAttempt = 0; ; retryAttempt++)
         {
             try
@@ -80,14 +94,14 @@ public static class ProviderRetryPolicy
             }
             catch (ProviderHttpException ex) when (
                 IsRetryableStatus(ex.StatusCode) &&
-                retryAttempt < MaxRetryAttempts &&
+                (isUnlimited || retryAttempt < maxAttempts) &&
                 !state.IsCancellationRequested)
             {
-                var delayMs = ComputeDelayMs(retryAttempt + 1, ex.RetryAfter);
                 var attempt = retryAttempt + 1;
+                var delayMs = ComputeDelayMs(attempt, ex.RetryAfter);
                 WorkerLog.Warn(
                     $"provider request HTTP {ex.StatusCode}; retrying in {delayMs}ms " +
-                    $"attempt={attempt}/{MaxRetryAttempts}");
+                    $"attempt={attempt}{(isUnlimited ? "/unlimited" : $"/{maxAttempts}")}");
                 await AgentRuntimeTools.EmitAsync(
                     state,
                     context,
@@ -95,12 +109,33 @@ public static class ProviderRetryPolicy
                         "request_retry",
                         Reason: $"HTTP {ex.StatusCode}",
                         Attempt: attempt,
-                        MaxAttempts: MaxRetryAttempts,
+                        // 0 signals "unlimited" to the renderer.
+                        MaxAttempts: isUnlimited ? 0 : maxAttempts,
                         DelayMs: delayMs,
                         StatusCode: ex.StatusCode));
                 await Task.Delay(delayMs, state.CancellationToken);
             }
         }
+    }
+
+    /// <summary>
+    /// Reads the user-configured max retry count from the provider payload.
+    /// requestMaxRetries: null/missing → 10 (default); 0 → unlimited; &gt;0 → that count.
+    /// </summary>
+    internal static int ResolveMaxRetryAttempts(JsonElement? provider)
+    {
+        if (provider is not { } p)
+        {
+            return DefaultMaxRetryAttempts;
+        }
+
+        var configured = JsonHelpers.GetIntNullable(p, "requestMaxRetries");
+        if (configured is null || configured < 0)
+        {
+            return DefaultMaxRetryAttempts;
+        }
+
+        return configured.Value;
     }
 
     private static bool IsRetryableStatus(int statusCode)
@@ -115,6 +150,7 @@ public static class ProviderRetryPolicy
     /// Attempt 3: 2000ms + jitter = 2000-2250ms
     /// ...capped at MaxBackoffMs (15s).
     /// If Retry-After is provided, it takes precedence (capped at MaxRetryAfterMs).
+    /// Attempts beyond SlowRetryThreshold retry at a fixed 1-minute interval.
     /// </summary>
     private static int ComputeDelayMs(int attempt, TimeSpan? retryAfter)
     {
@@ -123,6 +159,13 @@ public static class ProviderRetryPolicy
         {
             var raMs = (int)Math.Clamp(ra.TotalMilliseconds, 0, MaxRetryAfterMs);
             if (raMs > 0) return Math.Min(raMs, MaxBackoffMs);
+        }
+
+        // Beyond SlowRetryThreshold the provider is rate-limiting on its own
+        // schedule (e.g. per-minute quota) — retry at a fixed 1-minute interval.
+        if (attempt > SlowRetryThreshold)
+        {
+            return SlowRetryDelayMs;
         }
 
         // Exponential backoff: 500ms * 2^(attempt-1)

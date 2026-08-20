@@ -205,7 +205,8 @@ export function buildProviderPayload(
     thinkingEnabled,
     thinkingConfig: thinkingConfig ?? undefined,
     reasoningEffort,
-    requestTimeoutSeconds: settings.apiRequestTimeoutSeconds ?? 100
+    requestTimeoutSeconds: settings.apiRequestTimeoutSeconds ?? 100,
+    requestMaxRetries: settings.requestMaxRetries ?? 10
   }
 }
 

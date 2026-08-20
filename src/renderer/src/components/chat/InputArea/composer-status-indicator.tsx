@@ -44,6 +44,9 @@ export function ComposerStatusIndicator({
         isGeneratingImage: streamingMessageId
           ? Boolean(s.generatingImageMessages[streamingMessageId])
           : false,
+        thinkingEncrypted: streamingMessageId
+          ? Boolean((message as { thinkingEncrypted?: boolean } | undefined)?.thinkingEncrypted)
+          : false,
         sessionCacheHit: session?.sessionCacheHit,
         sessionCacheMiss: session?.sessionCacheMiss
       }
@@ -158,7 +161,9 @@ export function ComposerStatusIndicator({
         className: 'text-cyan-500/85 dark:text-cyan-300/85'
       }
     }
-    if (isStreaming && outputSnapshot.hasActiveThinking && !outputSnapshot.hasTextOutput) {
+    const isThinkingPhase =
+      (outputSnapshot.hasActiveThinking || live.thinkingEncrypted) && !outputSnapshot.hasTextOutput
+    if (isStreaming && isThinkingPhase) {
       return {
         text: t('input.runtimeStatus.thinking', { defaultValue: 'Thinking' }),
         Icon: Brain,
@@ -198,6 +203,7 @@ export function ComposerStatusIndicator({
     live.isGeneratingImage,
     outputSnapshot.hasActiveThinking,
     outputSnapshot.hasTextOutput,
+    live.thinkingEncrypted,
     outputTokens,
     t
   ])

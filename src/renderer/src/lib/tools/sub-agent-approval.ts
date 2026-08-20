@@ -14,6 +14,8 @@
  * is stored and applied when the request arrives.
  */
 
+import { confirm } from '@renderer/components/ui/confirm-dialog'
+
 const pendingApprovals = new Map<
   string,
   { resolve: (approved: boolean) => void; toolName: string; input: Record<string, unknown> }
@@ -50,6 +52,18 @@ export async function handleSubAgentApprovalRequest(
 
   if (!toolCallId) {
     return { approved: false }
+  }
+
+  // Default permission mode (main agent loop): no card UI is mounted for these
+  // approvals, so resolve synchronously via a confirm dialog.
+  if (record.source === 'default-mode') {
+    const inputPreview = summarizeInput(input)
+    const approved = await confirm({
+      title: `${toolName}`,
+      description: inputPreview,
+      variant: 'warning'
+    })
+    return { approved }
   }
 
   // Check if user already resolved before the request arrived
@@ -124,4 +138,14 @@ export function cancelAllPendingApprovals(): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function summarizeInput(input: Record<string, unknown>): string {
+  try {
+    const json = JSON.stringify(input, null, 2) ?? ''
+    return json.length > 1200 ? `${json.slice(0, 1200)}
+...` : json
+  } catch {
+    return Object.keys(input).join(', ')
+  }
 }

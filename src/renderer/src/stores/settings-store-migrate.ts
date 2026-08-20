@@ -22,10 +22,12 @@ import type {
 } from './settings-store-types'
 import {
   DEFAULT_MAX_CONCURRENT_SUB_AGENTS,
+  DEFAULT_REQUEST_MAX_RETRIES,
   DEFAULT_MAX_PARALLEL_TOOL_CALLS,
   DEFAULT_MAX_TOOL_CALLS_PER_TURN,
   DEFAULT_THEME_MODE,
   clampMaxConcurrentSubAgents,
+  clampRequestMaxRetries,
   clampMaxParallelToolCalls,
   clampMaxToolCallsPerTurn,
   isThemeSetting,
@@ -97,6 +99,14 @@ export function migrateSettings(persisted: unknown, version: number): Record<str
     )
   }
   // Add CodeGraph opt-in flag if missing (default off)
+  if (state.requestMaxRetries === undefined ||
+      typeof state.requestMaxRetries !== 'number') {
+    state.requestMaxRetries = DEFAULT_REQUEST_MAX_RETRIES
+  } else {
+    state.requestMaxRetries = clampRequestMaxRetries(
+      state.requestMaxRetries as number
+    )
+  }
   if (state.codegraphEnabled === undefined) {
     state.codegraphEnabled = false
   }

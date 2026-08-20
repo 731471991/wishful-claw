@@ -73,6 +73,15 @@ export const DEFAULT_MAX_PARALLEL_TOOL_CALLS = 3
 export const MIN_MAX_PARALLEL_TOOL_CALLS = 1
 export const MAX_MAX_PARALLEL_TOOL_CALLS = 16
 
+// Provider retry constants (attempts, 0 = unlimited)
+export const DEFAULT_REQUEST_MAX_RETRIES = 10
+export const MAX_REQUEST_MAX_RETRIES = 100
+
+export function clampRequestMaxRetries(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_REQUEST_MAX_RETRIES
+  return Math.min(MAX_REQUEST_MAX_RETRIES, Math.max(0, Math.floor(value)))
+}
+
 export const DEFAULT_MAX_CONCURRENT_SUB_AGENTS = 2
 export const MIN_MAX_CONCURRENT_SUB_AGENTS = 1
 export const MAX_MAX_CONCURRENT_SUB_AGENTS = 8

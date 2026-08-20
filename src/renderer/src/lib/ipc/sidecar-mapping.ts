@@ -315,7 +315,7 @@ export function buildSidecarAgentRunRequest(args: {
     forceApproval: args.forceApproval,
     permissionMode: settings.autoApprove
       ? 'fullAccess'
-      : permissionPolicy
+      : permissionPolicy?.enabled
         ? 'whitelist'
         : 'default',
     ...(maxParallelTools !== undefined ? { maxParallelTools } : {}),
