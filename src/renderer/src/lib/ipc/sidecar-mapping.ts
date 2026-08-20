@@ -143,6 +143,12 @@ export function mapSidecarProvider(provider: SidecarProviderInput): SidecarProvi
       : {}),
     ...(provider.thinkingConfig ? { thinkingConfig: provider.thinkingConfig } : {}),
     ...(provider.reasoningEffort ? { reasoningEffort: provider.reasoningEffort } : {}),
+    ...(provider.requestTimeoutSeconds !== undefined
+      ? { requestTimeoutSeconds: provider.requestTimeoutSeconds }
+      : {}),
+    ...(provider.requestMaxRetries !== undefined
+      ? { requestMaxRetries: provider.requestMaxRetries }
+      : {}),
     ...(provider.providerId ? { providerId: provider.providerId } : {}),
     ...(provider.providerBuiltinId ? { providerBuiltinId: provider.providerBuiltinId } : {}),
     userAgent: resolveProviderUserAgent(provider.userAgent),
