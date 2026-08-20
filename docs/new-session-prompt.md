@@ -1,4 +1,4 @@
-# 新会话启动提示语
+﻿# 新会话启动提示语
 
 > 复制以下内容到新会话作为第一条消息发送。
 
@@ -64,6 +64,7 @@
 | v2-iter-14 | 历史消息反向分页 + 滚动修复 + 侧边栏收起图标统一 — ListLocator + ListByTurns 后端端点、按轮次分页（默认5轮）、loadRecentSessionMessages + fetchOlderMessages + prependMessages、首次加载误触发修复（prevScrollHeightRef + programmaticScrollUntilRef 双重守卫）、代码简化（511→350 行）、侧边栏收起图标统一（TitleBar toggle 常驻） | ✅ 已完成，产品版本 0.2.14，tag v0.2.14，已合并 main |
 | v2-iter-15 | 快捷键系统 + 快速启动器 + 剪贴板增强 + 开机启动 — 开机自启动开关 + 模块管理页面、快速启动器 (Alt+Space)、剪贴板增强 (Ctrl+Shift+V) 前端重写 + 内嵌设置面板、快捷键独立设置页 + 多快捷键编辑器 + 优先级快捷键桥接 + 注册反馈、弹窗主题同步修复、JSON BOM 修复 | ✅ 已完成，产品版本 0.2.15，tag v0.2.15，已合并 main |
 | v2-iter-16 | 左侧面板整理 + use_capability 工具发现增强 — 左侧面板搜索（cmdk 弹窗模式 + DB LIKE 消息搜索 + 快捷操作/最近会话）、扩展功能重组（绘图/自动化/任务面板占位）、主窗口注册修复（reverse-request 不再发错窗口）、use_capability 分页/过滤/搜索、工具输出截限改 UTF-8 字节级、剪贴板置顶功能、BOM 回归修复（28 文件） | ✅ 已完成，产品版本 0.2.16，tag v0.2.16，已合并 main |
+| v2-iter-17 | 缺陷修复迭代 — 左侧面板收起 React error #300 修复、启动器焦点偶发丢失修复、剪贴板粘贴未到目标/网页焦点丢失（Alt 系快捷键根因 + clearMenu 兼容层）、扩展菜单子项闪烁修复、提示词优化永久卡死修复、剪贴板交互增强（方向键+双击粘贴）、日志分级（打包版仅 error）、快速搜索匹配增强（UWP 应用扫描 + 系统设置入口 + 拼音首字母/历史优先/去重 + PE 图标提取）、BOM 回归修复（156 文件） | ✅ 已完成，产品版本 0.2.17，tag v0.2.17，已合并 main |
 
 ## 当前项目架构（7 层）
 
