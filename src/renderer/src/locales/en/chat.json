@@ -483,6 +483,12 @@
       "planProgress": "Plans {{completed}} / {{total}}",
       "loadMore": "Load more",
       "loadingMore": "Loading...",
+      "roundsCount": "{{count}} rounds",
+      "round": "Round {{round}}",
+      "adjusted": "Adjusted",
+      "evaluation": "Evaluation",
+      "noRoundRecords": "No per-round records for this plan (legacy goal or records purged)",
+      "taskStatus": { "executing": "Executing", "completed": "Completed", "failed": "Failed" },
       "filters": {
         "all": "All",
         "current": "Active",
