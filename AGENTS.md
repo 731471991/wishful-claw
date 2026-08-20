@@ -319,7 +319,21 @@ git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 pus
 
 7. 更新 `docs/PROGRESS.md`（状态 + VERDICT + Commit ID + Tag + 日期）。
 
+8. 发布到 GitHub Release（见下节）。
+
 **关键要求**：收尾完成后，当前会话结束。下个会话直接从 main 拉取最新代码开始新迭代，不需要关心旧分支。
+
+### 发布到 GitHub
+
+仓库地址：https://github.com/wishful-73/wishful-claw（旧地址 `731471991/wishful-claw` 已迁移，若 remote 仍指向旧地址需先 `git remote set-url origin` 更新）。
+
+收尾的最后一步是发布版本：
+
+1. **推送 main 和 tag**：`git -c http.proxy=... push origin main` + `push origin v0.2.{N}`（走代理，见上文步骤 3）
+2. **创建 GitHub Release**：基于 `v0.2.{N}` tag，标题为 `v0.2.{N}`，notes 按本迭代的功能单元汇总（用 `git log v0.2.{N-1}..v0.2.{N} --oneline` 提取）
+   - 本机未安装 gh CLI 时，通过浏览器登录 GitHub 创建（Releases → Draft a new release → 选择 tag → 填写 notes → Publish）
+3. **发布后核验**：确认 GitHub 上 main 分支、tag、Release 三者均到位
+4. 如需附带安装包，将打包产物（如有）作为 Release Assets 上传
 
 ## 异常日志
 
