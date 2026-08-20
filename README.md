@@ -51,7 +51,7 @@
 ### 🎭 人格系统
 
 - **Identity + Soul 双层** — 身份定义"我是谁"，灵魂定义"我怎么说话"
-- **6 套内置预设** — 极简执行者、深度分析师、创意伙伴、耐心向导、务实顾问、均衡默认
+- **6 套内置预设** — 桃子、老郑、贾维斯、小爪、婷姐、阿明
 - **PromptBuilder 分段组装** — Base Instruction + Profile Overlay + Context Files + Character Budget
 - **会话级切换** — 不同会话可以绑定不同人格
 - **AI 辅助创建** — 描述你想要的人格，自动生成 Identity / Soul 文件
