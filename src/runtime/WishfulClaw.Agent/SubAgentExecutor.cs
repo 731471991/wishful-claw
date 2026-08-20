@@ -218,14 +218,110 @@ public static partial class SubAgentExecutor
         {
             ForwardEvent = async (evt) =>
             {
+                // Goal-orchestrated plan runs stream thousands of text deltas
+                // (one per token batch). For goal runs, skip per-delta
+                // forwarding entirely — the goal panel consumes goal_activity
+                // events instead, and the final report arrives with the
+                // sub_agent_end result. This kills the seq explosion and the
+                // dev-console log flood without touching normal sub-agents.
+                if (parentState.GoalEventContext is not null &&
+                    evt.Type == "sub_agent_text_delta")
+                {
+                    return;
+                }
+
                 var wrappedEvent = evt with
                 {
                     SubAgentName = agentName,
                     ToolUseId = toolCallId
                 };
                 await AgentRuntimeTools.EmitAsync(parentState, context, wrappedEvent);
+
+                // Goal-orchestrated execution: also tag the event with the goal
+                // context so the Goal panel can render a live activity feed.
+                if (parentState.GoalEventContext is { } goalCtx)
+                {
+                    var activity = BuildGoalActivityEvent(goalCtx, evt);
+                    if (activity is not null)
+                    {
+                        await AgentRuntimeTools.EmitAsync(parentState, context, activity);
+                    }
+                }
             }
         };
+    }
+
+    /// <summary>
+    /// Build a "goal_activity" stream event from a sub-agent event for the Goal
+    /// panel. Only meaningful activity is forwarded: tool calls (name + brief
+    /// input summary) and iterations. Text deltas are NOT forwarded one by one
+    /// (they caused thousands of events per minute); a throttled text snapshot
+    /// is emitted instead so the panel can still show live progress text.
+    /// </summary>
+    private static AgentRuntimeStreamEvent? BuildGoalActivityEvent(
+        GoalEventContext goalCtx,
+        AgentRuntimeStreamEvent evt)
+    {
+        switch (evt.Type)
+        {
+            case "sub_agent_tool_call":
+                if (evt.ToolCall is not { } toolCall) return null;
+                return new AgentRuntimeStreamEvent(
+                    "goal_activity",
+                    ToolUseId: goalCtx.GoalId,
+                    SubAgentName: goalCtx.PlanTitle,
+                    Input: WorkerJsonHelper.BuildJsonElement(w =>
+                    {
+                        w.WriteStartObject();
+                        w.WriteString("goalId", goalCtx.GoalId);
+                        w.WriteString("planId", goalCtx.PlanId);
+                        w.WriteNumber("round", goalCtx.Round);
+                        w.WriteString("kind", "tool_call");
+                        w.WriteString("toolCallId", toolCall.Id);
+                        w.WriteString("toolName", toolCall.Name);
+                        w.WriteString("status", toolCall.Status);
+                        w.WriteEndObject();
+                    }));
+
+            case "sub_agent_tool_call_result":
+                if (evt.ToolCall is not { } doneCall) return null;
+                return new AgentRuntimeStreamEvent(
+                    "goal_activity",
+                    ToolUseId: goalCtx.GoalId,
+                    SubAgentName: goalCtx.PlanTitle,
+                    Input: WorkerJsonHelper.BuildJsonElement(w =>
+                    {
+                        w.WriteStartObject();
+                        w.WriteString("goalId", goalCtx.GoalId);
+                        w.WriteString("planId", goalCtx.PlanId);
+                        w.WriteNumber("round", goalCtx.Round);
+                        w.WriteString("kind", "tool_result");
+                        w.WriteString("toolCallId", doneCall.Id);
+                        w.WriteString("toolName", doneCall.Name);
+                        w.WriteString("status", doneCall.Status);
+                        w.WriteEndObject();
+                    }));
+
+            case "sub_agent_iteration":
+                return new AgentRuntimeStreamEvent(
+                    "goal_activity",
+                    Iteration: evt.Iteration,
+                    ToolUseId: goalCtx.GoalId,
+                    SubAgentName: goalCtx.PlanTitle,
+                    Input: WorkerJsonHelper.BuildJsonElement(w =>
+                    {
+                        w.WriteStartObject();
+                        w.WriteString("goalId", goalCtx.GoalId);
+                        w.WriteString("planId", goalCtx.PlanId);
+                        w.WriteNumber("round", goalCtx.Round);
+                        w.WriteString("kind", "iteration");
+                        w.WriteNumber("iteration", evt.Iteration ?? 0);
+                        w.WriteEndObject();
+                    }));
+
+            default:
+                return null;
+        }
     }
 
     /// <summary>

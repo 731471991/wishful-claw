@@ -38,6 +38,14 @@ public sealed class AgentRuntimeRunState : IDisposable
     public bool SuppressTransportEvents { get; set; }
 
     /// <summary>
+    /// When set, this run is a Goal-orchestrated plan execution. Sub-agent
+    /// events forwarded to the parent stream are additionally tagged with this
+    /// context (emitted as "goal_activity") so the Goal panel can render a
+    /// live activity feed for the executing plan.
+    /// </summary>
+    public GoalEventContext? GoalEventContext { get; set; }
+
+    /// <summary>
     /// Identifies the source of usage events: "executor", "subagent", "compaction", etc.
     /// Default is "executor". Set by the caller before executing a provider turn.
     /// </summary>

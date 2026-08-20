@@ -329,10 +329,16 @@ public static partial class GoalOrchestrator
             GoalPromptTemplates.ExecutionSystemPrompt);
         var toolCallId = $"goal-plan-{plan.PlanId}-{Guid.NewGuid():N}";
 
+        // Tag this run with the goal context so forwarded sub-agent events
+        // also reach the Goal panel as goal_activity events (live feed).
+        parentState.GoalEventContext = new GoalEventContext(
+            goal.GoalId, plan.PlanId, plan.RetryCount + 1, plan.Title);
+
         try
         {
             var result = await SubAgentExecutor.ExecuteAsync(
                 input, parameters, parentState, context, toolCallId);
+            parentState.GoalEventContext = null;
             ct.ThrowIfCancellationRequested();
 
             stopwatch.Stop();
