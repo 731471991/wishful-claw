@@ -340,8 +340,19 @@ git -c http.proxy=http://127.0.0.1:7897 -c https.proxy=http://127.0.0.1:7897 pus
 
    - notes 按本迭代的功能单元汇总，用 `git log v0.2.{N-1}..v0.2.{N} --oneline` 提取
    - gh 不在 PATH 中，必须用绝对路径调用；gh.exe 不可用时用浏览器登录 GitHub 手动创建（Releases → Draft a new release → 选择 tag → 填写 notes → Publish）
-3. **发布后核验**：确认 GitHub 上 main 分支、tag、Release 三者均到位
-4. 如需附带安装包，将打包产物（如有）作为 Release Assets 上传
+3. **打包安装包并上传**（Windows NSIS 安装器，需上传到 Release Assets）：
+
+   ```bash
+   npm run pack:installer:full   # AOT Worker + 前端 + electron-builder NSIS
+   # 产物： release/wishful-claw-{N}-setup.exe
+   HTTPS_PROXY=http://127.0.0.1:7897 /d/claw/tools/gh/bin/gh.exe release upload v0.2.{N} \
+     --repo wishful-73/wishful-claw "release/wishful-claw-0.2.17-setup.exe"
+   ```
+
+   - 打包前确认无残留 WishfulClaw/electron 测试进程（`tasklist` 检查），否则旧 `release/win-unpacked/` 被锁报 EBUSY
+   - 若 `win-unpacked/app.asar` 被锁（杀软/索引句柄）且杀进程无效，改用新输出目录绕开：`npx electron-builder --win -c.directories.output=release/v0.2.{N}`
+   - 上传后核验 Release 页面出现 setup.exe
+4. **发布后核验**：确认 GitHub 上 main 分支、tag、Release（含安装包）三者均到位
 
 ## 异常日志
 
