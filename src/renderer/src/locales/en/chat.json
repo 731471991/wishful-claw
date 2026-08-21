@@ -423,6 +423,7 @@
       "budget_limited": "limited by budget",
       "complete": "complete",
       "aborted": "cancelled",
+        "interrupted": "Interrupted",
       "failed": "failed"
     },
     "errors": {
@@ -490,7 +491,7 @@
       "liveActivity": "Live activity",
       "iterationStep": "iteration {{iteration}}",
       "noRoundRecords": "No per-round records for this plan (legacy goal or records purged)",
-      "taskStatus": { "pending": "Pending", "executing": "Executing", "completed": "Completed", "failed": "Failed" },
+      "taskStatus": { "interrupted": "Interrupted", "pending": "Pending", "executing": "Executing", "completed": "Completed", "failed": "Failed" },
       "filters": {
         "all": "All",
         "current": "Active",

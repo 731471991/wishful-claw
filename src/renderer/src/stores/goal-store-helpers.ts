@@ -8,6 +8,7 @@ export type SessionGoalStatus =
   | 'budget_limited'
   | 'complete'
   | 'aborted'
+  | 'interrupted'
   | 'failed'
 export type GoalRunState = 'idle' | 'running' | 'paused'
 export type SessionGoalEventType =

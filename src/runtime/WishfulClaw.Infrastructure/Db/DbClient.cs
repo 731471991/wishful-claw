@@ -270,6 +270,7 @@ public static partial class DbClient
             NormalizeGoalStatuses();
             NormalizeGoalPlansJson();
             EnsureGoalHistorySchema();
+            SweepInterruptedGoals();
             WorkerLog.Info("DbClient: migrations completed");
 
             _initialized = true;

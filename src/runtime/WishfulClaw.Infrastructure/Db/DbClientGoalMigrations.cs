@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
 
 namespace WishfulClaw.Infrastructure.Db;
@@ -98,4 +100,71 @@ public static partial class DbClient
     }
 
     private sealed record GoalMigrationConflict(string GoalId, string SessionId);
+
+    /// <summary>
+    /// Sweep stale goal state left behind by a previous process: at DB init time
+    /// no goal runtime exists yet, so any goal still marked active (and its
+    /// executing plans / round tasks) was interrupted by an app shutdown.
+    /// Mark them as interrupted so the panel no longer shows fake "executing"
+    /// entries with a running timer.
+    /// </summary>
+    public static void SweepInterruptedGoals()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var affected = _db!.Query(
+            "SELECT goal_id, plans_json FROM goals WHERE status = 'active' AND plans_json IS NOT NULL",
+            reader => new GoalPlansJsonMigrationRow(
+                reader.GetString("goal_id"),
+                reader.GetString("plans_json")));
+
+        foreach (var row in affected)
+        {
+            try
+            {
+                if (JsonNodeUtility.RewriteExecutingPlans(row.PlansJson) is { } rewritten)
+                {
+                    _db.Execute(
+                        "UPDATE goals SET plans_json = @plans WHERE goal_id = @goalId",
+                        new SqliteParameter("@plans", rewritten),
+                        new SqliteParameter("@goalId", row.GoalId));
+                }
+            }
+            catch (JsonException)
+            {
+                // Leave malformed plans_json untouched; the goal status below is still fixed.
+            }
+        }
+
+        _db!.Execute(
+            "UPDATE goals SET status = 'interrupted', updated_at = @now WHERE status = 'active'",
+            new SqliteParameter("@now", now));
+        _db.Execute(
+            "UPDATE goal_plan_tasks SET status = 'interrupted', finished_at = @now WHERE status = 'executing'",
+            new SqliteParameter("@now", now));
+    }
+
+    private static class JsonNodeUtility
+    {
+        /// <summary>Rewrite plans with status=executing to interrupted. Returns null when nothing changed.</summary>
+        public static string? RewriteExecutingPlans(string plansJson)
+        {
+            JsonNode? root;
+            try { root = JsonNode.Parse(plansJson); }
+            catch (JsonException) { return null; }
+            if (root is not JsonArray arr) return null;
+
+            var changed = false;
+            foreach (var node in arr)
+            {
+                if (node is not JsonObject obj) continue;
+                if (obj["status"]?.GetValue<string>() == "executing")
+                {
+                    obj["status"] = "interrupted";
+                    changed = true;
+                }
+            }
+            return changed ? arr.ToJsonString() : null;
+        }
+    }
 }

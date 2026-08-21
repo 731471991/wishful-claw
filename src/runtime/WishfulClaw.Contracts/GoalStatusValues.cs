@@ -7,9 +7,10 @@ public static class GoalStatusValues
     public const string Complete = "complete";
     public const string Failed = "failed";
     public const string Aborted = "aborted";
+    public const string Interrupted = "interrupted";
 
     public static bool IsTerminal(string? status)
-        => status is Complete or Failed or Aborted;
+        => status is Complete or Failed or Aborted or Interrupted;
 }
 
 public static class GoalRunStateValues
