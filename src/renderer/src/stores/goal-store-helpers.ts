@@ -351,7 +351,7 @@ export interface SessionGoalPlanTask {
   originalPlanId?: string | null
   planTitle?: string | null
   round: number
-  status: 'executing' | 'completed' | 'failed'
+  status: 'executing' | 'completed' | 'failed' | 'interrupted'
   description?: string | null
   steps?: string[] | null
   summary?: string | null
@@ -399,7 +399,7 @@ export function rowToPlanTask(row: SessionGoalPlanTaskRow): SessionGoalPlanTask 
     originalPlanId: row.originalPlanId,
     planTitle: row.planTitle,
     round: row.round,
-    status: (['executing', 'completed', 'failed'] as const).includes(
+    status: (['executing', 'completed', 'failed', 'interrupted'] as const).includes(
       row.status as SessionGoalPlanTask['status']
     )
       ? (row.status as SessionGoalPlanTask['status'])
