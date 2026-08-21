@@ -225,7 +225,7 @@ public static partial class DbGoalTools
     {
         var entity = DbClient.GetClient().QueryFirstOrDefault(
             "SELECT * FROM goals WHERE session_id = @sid " +
-            "AND status IN ('pending', 'active', 'paused') " +
+            "AND status IN ('pending', 'active') " +
             "ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1",
             EntityMappers.MapGoal,
             new SqliteParameter("@sid", sessionId));

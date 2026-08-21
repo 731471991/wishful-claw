@@ -105,7 +105,7 @@ public static partial class DbClient
     /// Sweep stale goal state left behind by a previous process: at DB init time
     /// no goal runtime exists yet, so any goal still marked active (and its
     /// executing plans / round tasks) was interrupted by an app shutdown.
-    /// The goal itself becomes paused (resumable, still visible in the UI); only
+        /// The goal itself stays active (resumable, still visible in the UI); only
     /// plans and round tasks are marked interrupted so the panel no longer shows
     /// fake "executing" entries with a running timer.
     /// </summary>
@@ -133,13 +133,10 @@ public static partial class DbClient
             }
             catch (JsonException)
             {
-                // Leave malformed plans_json untouched; the goal status below is still fixed.
+                // Leave malformed plans_json untouched; round tasks are still swept below.
             }
         }
 
-        _db!.Execute(
-            "UPDATE goals SET status = 'paused', updated_at = @now WHERE status = 'active'",
-            new SqliteParameter("@now", now));
         _db.Execute(
             "UPDATE goal_plan_tasks SET status = 'interrupted', finished_at = @now WHERE status = 'executing'",
             new SqliteParameter("@now", now));

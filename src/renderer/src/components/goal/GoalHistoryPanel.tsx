@@ -52,8 +52,7 @@ function planTaskChainRoot(planId?: string | null, originalPlanId?: string | nul
 
 function matchesFilter(status: SessionGoalStatus, filter: GoalHistoryFilter): boolean {
   if (filter === 'all') return true
-  if (filter === 'current')
-    return status === 'pending' || status === 'active' || status === 'paused' || status === 'interrupted'
+  if (filter === 'current') return status === 'pending' || status === 'active'
   return status === filter
 }
 
