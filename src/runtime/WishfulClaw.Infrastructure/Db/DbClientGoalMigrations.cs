@@ -105,8 +105,9 @@ public static partial class DbClient
     /// Sweep stale goal state left behind by a previous process: at DB init time
     /// no goal runtime exists yet, so any goal still marked active (and its
     /// executing plans / round tasks) was interrupted by an app shutdown.
-    /// Mark them as interrupted so the panel no longer shows fake "executing"
-    /// entries with a running timer.
+    /// The goal itself becomes paused (resumable, still visible in the UI); only
+    /// plans and round tasks are marked interrupted so the panel no longer shows
+    /// fake "executing" entries with a running timer.
     /// </summary>
     public static void SweepInterruptedGoals()
     {
@@ -137,7 +138,7 @@ public static partial class DbClient
         }
 
         _db!.Execute(
-            "UPDATE goals SET status = 'interrupted', updated_at = @now WHERE status = 'active'",
+            "UPDATE goals SET status = 'paused', updated_at = @now WHERE status = 'active'",
             new SqliteParameter("@now", now));
         _db.Execute(
             "UPDATE goal_plan_tasks SET status = 'interrupted', finished_at = @now WHERE status = 'executing'",
